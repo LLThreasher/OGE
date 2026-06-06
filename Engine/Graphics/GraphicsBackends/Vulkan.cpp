@@ -188,10 +188,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 		{
 			requiredSet.erase(extension.extensionName);
 		}
-		for (const auto& extension : requiredSet)
-		{
-			LOG_DEBUG("Unsupported extension: {}", extension);
-		}
 		return requiredSet.empty();
 	}
 
@@ -230,8 +226,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 				!swapchainSupport.formats.empty() &&
 				!swapchainSupport.presentModes.empty();
 		}
-
-		LOG_DEBUG("queueIndices={}, extensionsSupported={}, swapchainAdequate={}", queueIndices.IsComplete(), extensionsSupported, swapchainAdequate);
 
 		return queueIndices.IsComplete()
 			&& extensionsSupported
@@ -483,6 +477,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 		VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 		for (auto& mode : swapchainSupport.presentModes)
 		{
+			if (mode == VK_PRESENT_MODE_FIFO_KHR)
+			{
+				presentMode = mode;
+				break;
+			}
 			if (mode == VK_PRESENT_MODE_MAILBOX_KHR)
 			{
 				presentMode = mode;
@@ -669,8 +668,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 			tex.format = m_device.surfaceFormat.format;
 			tex.image = images[i];
 			tex.view = views[i];
-			LOG_DEBUG("tex.image[{}]={}", i, (void*)images[i]);
-			LOG_DEBUG("tex.view[{}]={}", i, (void*)views[i]);
 			m_swapchain.colorTextures[i] = m_textures.Create(tex);
 		}
 
@@ -790,10 +787,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 	void VulkanBackend::BeginFrame()
 	{
-		LOG_DEBUG("BF m_frameIndex = {}", m_frameIndex);
 		FrameData& frame = m_frames[m_frameIndex];
 
-		LOG_DEBUG("wait on {}", (void*)frame.inFlightFence);
 		// Wait for previous frame to finish
 		vkWaitForFences(
 			m_device.device,
@@ -802,17 +797,13 @@ namespace OneGame::Engine::Graphics::Vulkan
 			VK_TRUE,
 			UINT64_MAX);
 
-		LOG_DEBUG("reset {}", (void*)frame.inFlightFence);
 		vkResetFences(
 			m_device.device,
 			1,
 			&frame.inFlightFence);
 
-		LOG_DEBUG("enter2 BeginFrame");
 		VkDevice& device = m_device.device;
 		VkSwapchainKHR& swapchain = m_swapchain.swapchain;
-
-		LOG_DEBUG("acquired image {} wait s {}", m_imageIndex, (void*)frame.imageAvailable);
 
 		// 2️⃣ Acquire next swapchain image
 		VkResult result = vkAcquireNextImageKHR(
@@ -838,7 +829,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 		// avoid drawing on active image
 		if (m_imagesInFlight[m_imageIndex] != VK_NULL_HANDLE)
 		{
-			LOG_DEBUG("image {} wait on {}", m_imageIndex, (void*)frame.inFlightFence);
 			vkWaitForFences(
 				m_device.device,
 				1,
@@ -853,12 +843,10 @@ namespace OneGame::Engine::Graphics::Vulkan
 		frame.usedCount = 0;
 
 		m_imagesInFlight[m_imageIndex] = frame.inFlightFence;
-		LOG_DEBUG("leave BeginFrame");
 	}
 
 	void VulkanBackend::EndFrame()
 	{
-		LOG_DEBUG("EF m_frameIndex = {}", m_frameIndex);
 		FrameData& frame = m_frames[m_frameIndex];
 		VkSwapchainKHR& swapchain = m_swapchain.swapchain;
 
@@ -869,14 +857,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 		presentInfo.waitSemaphoreCount = 1;
 		presentInfo.pWaitSemaphores = &m_imagesFinishRender[m_imageIndex];
 
-		LOG_DEBUG("image {} wait on s {}", m_imageIndex, (void*)m_imagesFinishRender[m_imageIndex]);
-
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = &swapchain;
 		presentInfo.pImageIndices = &m_imageIndex;
 
 		VkResult result = vkQueuePresentKHR(m_device.m_presentQueue, &presentInfo);
-		LOG_DEBUG("present called with result {} and queue {}", static_cast<uint32_t>(result), (void*)m_device.m_presentQueue);
 
 		m_frameIndex = (m_frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -1000,7 +985,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 		VkSubmitInfo submitInfo{};
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-		LOG_DEBUG("SUBMIT m_frameIndex = {}", m_frameIndex);
 		auto& frame = m_frames[m_frameIndex];
 		VkPipelineStageFlags waitStage =
 			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -1033,8 +1017,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 			break;
 		}
 
-		LOG_DEBUG("submit image {} wait s {}, signal s {}", m_imageIndex, (void*)frame.imageAvailable, (void*)m_imagesFinishRender[m_imageIndex]);
-		LOG_DEBUG("submit signal {} when submit with queue {}", (void*)frame.inFlightFence, (void*)queue);
 		vkQueueSubmit(queue, 1, &submitInfo, frame.inFlightFence);
 	}
 }

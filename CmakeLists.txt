@@ -9,6 +9,33 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # This sets variables like Vulkan_INCLUDE_DIRS and Vulkan_LIBRARIES
 find_package(Vulkan REQUIRED)
 
+function(compile_shader TARGET SHADER)
+    get_filename_component(FILE_NAME ${SHADER} NAME)
+    set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.spv")
+
+    add_custom_command(
+        OUTPUT ${SPIRV}
+        COMMAND Vulkan::glslc ${CMAKE_CURRENT_SOURCE_DIR}/${SHADER} -o ${SPIRV}
+        DEPENDS ${SHADER}
+        COMMENT "Compiling shader ${SHADER}"
+        VERBATIM
+    )
+
+    target_sources(${TARGET} PRIVATE ${SPIRV})
+endfunction()
+
+option(ENABLE_ASAN "Enable AddressSanitizer" ON)
+
+if(ENABLE_ASAN)
+    if(MSVC)
+        add_compile_options(/fsanitize=address)
+        add_link_options(/fsanitize=address)
+    else()
+        add_compile_options(-fsanitize=address -fno-omit-frame-pointer -g)
+        add_link_options(-fsanitize=address)
+    endif()
+endif()
+
 add_subdirectory("3rdparty/spdlog")
 
 add_executable(VoxelEngine
@@ -37,3 +64,5 @@ target_link_libraries(VoxelEngine PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_
 # 4. Link Vulkan to your project
 # Use the modern imported target Vulkan::Vulkan
 target_link_libraries(VoxelEngine PRIVATE Vulkan::Vulkan)
+compile_shader(VoxelEngine "test_triangle.frag")
+compile_shader(VoxelEngine "test_triangle.vert")

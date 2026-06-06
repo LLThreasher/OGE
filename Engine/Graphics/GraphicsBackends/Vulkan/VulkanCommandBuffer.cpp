@@ -17,6 +17,22 @@ namespace OneGame::Engine::Graphics::Vulkan
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
         vkBeginCommandBuffer(m_cmd, &beginInfo);
+
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = (float)m_backend->m_swapchain.extent.width;
+        viewport.height = (float)m_backend->m_swapchain.extent.height;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+
+        vkCmdSetViewport(m_cmd, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = { 0, 0 };
+        scissor.extent = m_backend->m_swapchain.extent;
+
+        vkCmdSetScissor(m_cmd, 0, 1, &scissor);
     }
 
     void VulkanCommandBuffer::End()

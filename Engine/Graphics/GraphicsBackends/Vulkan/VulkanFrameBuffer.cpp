@@ -226,9 +226,6 @@ namespace OneGame::Engine::Graphics::Vulkan
             auto texHandle = desc.colors[i];
             VulkanTexture& tex = m_textures.Get(texHandle);
 
-            LOG_DEBUG("fb tex.image[{}]={}", i, (void*)(tex.image));
-            LOG_DEBUG("fb tex.view[{}]={}", i, (void*)(tex.view));
-
             // Validate format
             if (pass.desc.renderTextures[i].format != tex.format)
             {
@@ -260,9 +257,6 @@ namespace OneGame::Engine::Graphics::Vulkan
         if (desc.hasDepth)
         {
             VulkanTexture& tex = m_textures.Get(desc.depth);
-
-            LOG_DEBUG("fb tex.image[{}]={}", 5, (void*)tex.image);
-            LOG_DEBUG("fb tex.view[{}]={}", 5, (void*)tex.view);
 
             if (!pass.desc.hasDepth)
             {

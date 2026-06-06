@@ -1,3 +1,4 @@
+#include <chrono>
 #include <windows.h>
 #include "Engine/EngineLogger.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
@@ -20,6 +21,16 @@ LRESULT CALLBACK WindowProc(
     }
 
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
+}
+
+double getTimeSeconds()
+{
+    static auto start = std::chrono::high_resolution_clock::now();
+
+    auto now = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = now - start;
+
+    return elapsed.count();
 }
 
 int main() {
@@ -71,10 +82,24 @@ int main() {
     MSG msg = {};
     bool running = true;
 
-    auto testRenderer = TestRenderer();
-    bool stepFrame = false;
+    //auto testRenderer = TestRenderer();
+    auto testRenderer = TestRendererRotateTriangle();
+    //bool stepFrame = false;
+    testRenderer.Initialize(backend.get());
+
+    double frameTime = 0.0;
+    int frameCount = 0;
+    double cumTime = 0.0;
+    auto lastTime = std::chrono::high_resolution_clock::now();
     while (msg.message != WM_QUIT)
     {
+
+        auto now = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = now - lastTime;
+        lastTime = now;
+
+        float deltaTime = static_cast<float>(elapsed.count());
+
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
             if (msg.message == WM_QUIT)
@@ -83,15 +108,15 @@ int main() {
                 break;
             }
 
-            if (msg.message == WM_KEYDOWN && msg.wParam == VK_SPACE)
-            {
-                bool wasDown = (msg.lParam & (1 << 30)) != 0;
+            //if (msg.message == WM_KEYDOWN && msg.wParam == VK_SPACE)
+            //{
+            //    bool wasDown = (msg.lParam & (1 << 30)) != 0;
 
-                if (!wasDown)
-                {
-                    stepFrame = true;
-                }
-            }
+            //    if (!wasDown)
+            //    {
+            //        stepFrame = true;
+            //    }
+            //}
 
             TranslateMessage(&msg);
             DispatchMessage(&msg);
@@ -100,14 +125,21 @@ int main() {
         if (!running)
             break;
 
-        if (stepFrame)
-        {
-            backend->BeginFrame();
-            testRenderer.Render(backend.get(), 0.f);
-            backend->EndFrame();
+        //if (stepFrame)
+        //{
+        //    backend->BeginFrame();
+        //    testRenderer.Render(backend.get(), 0.f);
+        //    backend->EndFrame();
 
-            stepFrame = false;  // consume the press
-        }
+        //    stepFrame = false;  // consume the press
+        //}
+        backend->BeginFrame();
+        
+        auto frameStart = std::chrono::high_resolution_clock::now();
+        
+        testRenderer.Render(backend.get(), deltaTime);
+
+        backend->EndFrame();
     }
     backend->Shutdown();
 }

@@ -6,7 +6,7 @@
 namespace OneGame::Engine::Graphics::Vulkan
 {
     VkShaderModule VulkanBackend::CreateShaderModule(
-        const std::vector<uint8_t>& code)
+        const std::vector<char>& code)
     {
         VkShaderModuleCreateInfo createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -175,6 +175,27 @@ namespace OneGame::Engine::Graphics::Vulkan
         //
         // --- Pipeline Layout
         //
+        std::vector<VkPushConstantRange> vkRanges;
+        for (const auto& range : desc.pushConstants)
+        {
+            VkPushConstantRange vkRange{};
+            vkRange.offset = range.offset;
+            vkRange.size = range.size;
+
+            vkRange.stageFlags = 0;
+
+            if (HasFlag(range.stageFlags, ShaderStage::Vertex))
+                vkRange.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+
+            if (HasFlag(range.stageFlags, ShaderStage::Fragment))
+                vkRange.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+
+            if (HasFlag(range.stageFlags, ShaderStage::Compute))
+                vkRange.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
+
+            vkRanges.push_back(vkRange);
+        }
+
         VkPipelineLayoutCreateInfo layoutInfo{};
         layoutInfo.sType =
             VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -187,6 +208,9 @@ namespace OneGame::Engine::Graphics::Vulkan
         }
         layoutInfo.pSetLayouts = vkLayouts.data();
 
+        layoutInfo.pushConstantRangeCount = static_cast<uint32_t>(vkRanges.size());
+        layoutInfo.pPushConstantRanges = vkRanges.empty() ? nullptr : vkRanges.data();
+
         if (vkCreatePipelineLayout(
             m_device.device,
             &layoutInfo,
@@ -195,6 +219,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         {
             throw std::runtime_error("Failed to create pipeline layout");
         }
+
 
         //
         // --- Graphics Pipeline

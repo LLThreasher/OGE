@@ -365,10 +365,17 @@ namespace OneGame::Engine::Graphics
         CCW,
     };
 
+    struct PushConstantRangeDesc
+    {
+        uint32_t offset = 0;
+        uint32_t size = 0;
+        ShaderStage stageFlags;
+    };
+
     struct GraphicsPipelineDesc
     {
-        std::vector<uint8_t> vertexShader;
-        std::vector<uint8_t> fragmentShader;
+        std::vector<char> vertexShader;
+        std::vector<char> fragmentShader;
         std::vector<VertexAttributeFormat> vertexLayout;
         bool depthTest;
         bool writeDepth;
@@ -378,11 +385,12 @@ namespace OneGame::Engine::Graphics
         FrontFace frontFace;
 
         std::vector<GPUBindingGroupLayoutHandle> bindingGroupLayouts;
+        std::vector<PushConstantRangeDesc> pushConstants;
     };
 
     struct ComputePipelineDesc
     {
-        std::vector<uint8_t> shader;
+        std::vector<char> shader;
         std::vector<GPUBindingGroupLayoutHandle> bindingGroupLayouts;
     };
 
@@ -608,5 +616,6 @@ namespace OneGame::Engine::Graphics
     };
 
     std::unique_ptr<IGraphicsBackend> CreateBackend(BackendType type);
+    void LoadShaderBinary(const char* filePath, std::vector<char>& output);
 
 }

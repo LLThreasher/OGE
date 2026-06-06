@@ -88,7 +88,8 @@ namespace OneGame::Engine
         // ----------------------------
         bool IsAlive(Handle handle) const
         {
-            assert(handle.index != 0 && "using nullptr handle");
+            if (handle.index == 0)
+                assert(false && "using nullptr handle");
             auto index = handle.index - 1;
             if (index >= m_entries.size())
                 return false;

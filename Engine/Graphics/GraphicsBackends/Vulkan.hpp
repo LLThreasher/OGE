@@ -492,7 +492,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         void CreateSyncObjects(QueueIndices&, int);
         void RecreateSwapchain(int&);
         void DestroySwapchain(VkSwapchainKHR);
-        VkShaderModule CreateShaderModule(const std::vector<uint8_t>& code);
+        VkShaderModule CreateShaderModule(const std::vector<char>& code);
         void CreateTextureInternal(
             uint32_t width,
             uint32_t height,
