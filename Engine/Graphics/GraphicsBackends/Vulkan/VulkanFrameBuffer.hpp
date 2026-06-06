@@ -4,11 +4,26 @@
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
+    struct RenderTextureDesc
+    {
+        VkFormat format;
+        VkAttachmentLoadOp loadOp;
+        VkAttachmentStoreOp storeOp;
+    };
+
+    struct VulkanRenderPassDesc
+    {
+        int colorCount;
+        bool hasDepth;
+        bool isSwapchain;
+        std::array<RenderTextureDesc, MaxColorAttachments + 1> renderTextures;
+    };
+
     struct VulkanRenderPass
     {
         VkRenderPass handle = VK_NULL_HANDLE;
 
-        RenderPassDesc desc; // store for validation / reuse
+        VulkanRenderPassDesc desc; // store for validation / reuse
     };
 
     struct VulkanFrameBuffer

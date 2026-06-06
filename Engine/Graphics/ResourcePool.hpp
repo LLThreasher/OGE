@@ -50,7 +50,7 @@ namespace OneGame::Engine
             entry.resource = Resource(std::forward<Args>(args)...);
             entry.alive = true;
 
-            return Handle{ index, entry.generation };
+            return Handle{ index + 1, entry.generation };
         }
 
         // ----------------------------
@@ -60,11 +60,12 @@ namespace OneGame::Engine
         {
             assert(IsAlive(handle));
 
-            Entry& entry = m_entries[handle.index];
+            auto index = handle.index - 1;
+            Entry& entry = m_entries[index];
 
             entry.alive = false;
             entry.generation++;           // invalidate old handles
-            m_freeList.push_back(handle.index);
+            m_freeList.push_back(index);
         }
 
         // ----------------------------
@@ -73,13 +74,13 @@ namespace OneGame::Engine
         Resource& Get(Handle handle)
         {
             assert(IsAlive(handle));
-            return m_entries[handle.index].resource;
+            return m_entries[handle.index - 1].resource;
         }
 
         const Resource& Get(Handle handle) const
         {
             assert(IsAlive(handle));
-            return m_entries[handle.index].resource;
+            return m_entries[handle.index - 1].resource;
         }
 
         // ----------------------------
@@ -87,10 +88,12 @@ namespace OneGame::Engine
         // ----------------------------
         bool IsAlive(Handle handle) const
         {
-            if (handle.index >= m_entries.size())
+            assert(handle.index != 0 && "using nullptr handle");
+            auto index = handle.index - 1;
+            if (index >= m_entries.size())
                 return false;
 
-            const Entry& entry = m_entries[handle.index];
+            const Entry& entry = m_entries[index];
 
             return entry.alive &&
                 entry.generation == handle.generation;
@@ -123,7 +126,7 @@ namespace OneGame::Engine
                 Entry& entry = m_entries[i];
 
                 if (entry.alive)
-                    return Handle{ i, entry.generation };
+                    return Handle{ i + 1, entry.generation };
             }
         }
     };

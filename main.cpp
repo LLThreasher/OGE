@@ -1,6 +1,7 @@
 #include <windows.h>
-#include "Engine/Logger.hpp"
+#include "Engine/EngineLogger.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
+#include "Engine/Graphics/TestRenderer.hpp"
 
 using namespace OneGame::Engine;
 using namespace OneGame::Engine::Graphics;
@@ -32,7 +33,7 @@ int main() {
     HWND hwnd = CreateWindowEx(
         0,
         "MyWindowClass",
-        "Vulkan Window",
+        "OneGame",
         WS_OVERLAPPEDWINDOW,
         CW_USEDEFAULT, CW_USEDEFAULT,
         1280, 720,
@@ -50,15 +51,13 @@ int main() {
     uint32_t width = rect.right - rect.left;
     uint32_t height = rect.bottom - rect.top;
 
-    Logger::Init();
-    LOG_INFO("Logger initialized");
-
     auto backend = CreateBackend(BackendType::Vulkan);
     try
     {
         WindowHandle handle{};
         handle.hInstance = GetModuleHandle(nullptr);
         handle.hwnd = hwnd;
+        backend->Resize(width, height);
         backend->Initialize(BackendDesc{ &handle });
     }
     catch (const std::exception& e)
@@ -67,20 +66,51 @@ int main() {
         return -1;
     }
 
-    MSG msg = {};
+    LOG_INFO("Backend created");
 
+    MSG msg = {};
+    bool running = true;
+
+    auto testRenderer = TestRenderer();
+    bool stepFrame = false;
     while (msg.message != WM_QUIT)
     {
-        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
+            if (msg.message == WM_QUIT)
+            {
+                running = false;
+                break;
+            }
+
+            if (msg.message == WM_KEYDOWN && msg.wParam == VK_SPACE)
+            {
+                bool wasDown = (msg.lParam & (1 << 30)) != 0;
+
+                if (!wasDown)
+                {
+                    stepFrame = true;
+                }
+            }
+
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
-        else
+
+        if (!running)
+            break;
+
+        if (stepFrame)
         {
-            // Your engine update + render
+            backend->BeginFrame();
+            testRenderer.Render(backend.get(), 0.f);
+            backend->EndFrame();
+
+            stepFrame = false;  // consume the press
         }
     }
+    backend->Shutdown();
 }
+
 
 

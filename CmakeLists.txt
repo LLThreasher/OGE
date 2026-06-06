@@ -22,7 +22,7 @@ add_executable(VoxelEngine
     "Engine/Graphics/GraphicsBackends/Vulkan/VulkanFrameBuffer.cpp"
     "Engine/Graphics/GraphicsBackends/Vulkan/VulkanBindingGroups.cpp"
     "Engine/Graphics/GraphicsBackends/GraphicsBackends.cpp"
-)
+ "Engine/Graphics/TestRenderer.cpp")
   
 if (WIN32)
     target_compile_definitions(VoxelEngine PRIVATE VK_USE_PLATFORM_WIN32_KHR)

@@ -3,40 +3,72 @@
 #include "../Vulkan.hpp"
 #include "VulkanFrameBuffer.hpp"
 #include "VulkanTexture.hpp"
+#include "VulkanLogger.hpp"
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
     GPURenderPassHandle VulkanBackend::CreateRenderPass(
         const RenderPassDesc& desc)
     {
+        VulkanRenderPassDesc vkPassDesc{};
+        for (size_t i = 0; i < desc.colorCount; ++i)
+        {
+            auto& color = desc.colors[i];
+            vkPassDesc.renderTextures[i] = {
+                ToVkFormat(color.format),
+                ToVkLoadOp(color.loadOp),
+                ToVkStoreOp(color.storeOp),
+            };
+        }
+        if (desc.hasDepth)
+        {
+            auto& depth = desc.depth;
+            vkPassDesc.renderTextures[MaxColorAttachments] = {
+                ToVkFormat(depth.format),
+                ToVkLoadOp(depth.loadOp),
+                ToVkStoreOp(depth.storeOp),
+            };
+        }
+
+        auto vkPass = CreateRenderPassInternal(vkPassDesc);
+        return m_renderPasses.Create(vkPass);
+    }
+
+    VulkanRenderPass VulkanBackend::CreateRenderPassInternal(
+        VulkanRenderPassDesc& desc)
+    {
         std::vector<VkAttachmentDescription> attachments;
         std::vector<VkAttachmentReference> colorRefs;
 
         VkAttachmentReference depthRef{};
-        bool hasDepth = desc.hasDepth;
 
         // --------------------------------------------------
         // Color Attachments
         // --------------------------------------------------
 
-        for (size_t i = 0; i < desc.colors.size(); ++i)
+        for (size_t i = 0; i < desc.colorCount; ++i)
         {
-            const auto& color = desc.colors[i];
+            auto& color = desc.renderTextures[i];
 
             VkAttachmentDescription att{};
-            att.format = ToVkFormat(color.format);
+            att.format = color.format;
             att.samples = VK_SAMPLE_COUNT_1_BIT;
-            att.loadOp = ToVkLoadOp(color.loadOp);
-            att.storeOp = ToVkStoreOp(color.storeOp);
+            att.loadOp = color.loadOp;
+            att.storeOp = color.storeOp;
             att.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
             att.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
             att.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            att.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
-            if (color.isSwapchain)
-                att.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-            else
-                att.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            //if (desc.isSwapchain)
+            //{
+            //    att.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+            //}
+            //else
+            //{
+            //    att.finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+            //}
 
             attachments.push_back(att);
 
@@ -51,15 +83,15 @@ namespace OneGame::Engine::Graphics::Vulkan
         // Depth Attachment
         // --------------------------------------------------
 
-        if (hasDepth)
+        if (desc.hasDepth)
         {
-            const auto& depth = desc.depth;
+            auto& depth = desc.renderTextures[MaxColorAttachments];
 
             VkAttachmentDescription att{};
-            att.format = ToVkFormat(depth.format);
+            att.format = depth.format;
             att.samples = VK_SAMPLE_COUNT_1_BIT;
-            att.loadOp = ToVkLoadOp(depth.loadOp);
-            att.storeOp = ToVkStoreOp(depth.storeOp);
+            att.loadOp = depth.loadOp;
+            att.storeOp = depth.storeOp;
             att.stencilLoadOp = att.loadOp;
             att.stencilStoreOp = att.storeOp;
 
@@ -85,7 +117,7 @@ namespace OneGame::Engine::Graphics::Vulkan
             static_cast<uint32_t>(colorRefs.size());
         subpass.pColorAttachments = colorRefs.data();
 
-        if (hasDepth)
+        if (desc.hasDepth)
             subpass.pDepthStencilAttachment = &depthRef;
 
         // --------------------------------------------------
@@ -104,14 +136,14 @@ namespace OneGame::Engine::Graphics::Vulkan
             VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
             VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 
-        dependency.srcAccessMask = 0;
-
-        dependency.dstAccessMask =
+        dependency.srcAccessMask =
             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-        if (hasDepth)
-            dependency.dstAccessMask |=
+        dependency.dstAccessMask =
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
             VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+
+        dependency.dependencyFlags = 0;
 
         // --------------------------------------------------
         // Create
@@ -142,7 +174,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         vkPass.handle = renderPass;
         vkPass.desc = desc;
 
-        return m_renderPasses.Create(vkPass);
+        return vkPass;
     }
 
     void VulkanBackend::DestroyRenderPass(GPURenderPassHandle handle)
@@ -172,11 +204,11 @@ namespace OneGame::Engine::Graphics::Vulkan
         // --------------------------------------------------
 
         size_t expectedAttachmentCount =
-            pass.desc.colors.size() +
+            pass.desc.colorCount +
             (pass.desc.hasDepth ? 1 : 0);
 
         size_t providedAttachmentCount =
-            desc.colors.size() +
+            desc.colorCount +
             (desc.hasDepth ? 1 : 0);
 
         if (expectedAttachmentCount != providedAttachmentCount)
@@ -189,13 +221,16 @@ namespace OneGame::Engine::Graphics::Vulkan
         // Color attachments
         // --------------------------------------------------
 
-        for (size_t i = 0; i < desc.colors.size(); ++i)
+        for (size_t i = 0; i < desc.colorCount; ++i)
         {
             auto texHandle = desc.colors[i];
             VulkanTexture& tex = m_textures.Get(texHandle);
 
+            LOG_DEBUG("fb tex.image[{}]={}", i, (void*)(tex.image));
+            LOG_DEBUG("fb tex.view[{}]={}", i, (void*)(tex.view));
+
             // Validate format
-            if (ToVkFormat(pass.desc.colors[i].format) != tex.format)
+            if (pass.desc.renderTextures[i].format != tex.format)
             {
                 throw std::runtime_error(
                     "Framebuffer color format mismatch with render pass");
@@ -226,13 +261,16 @@ namespace OneGame::Engine::Graphics::Vulkan
         {
             VulkanTexture& tex = m_textures.Get(desc.depth);
 
+            LOG_DEBUG("fb tex.image[{}]={}", 5, (void*)tex.image);
+            LOG_DEBUG("fb tex.view[{}]={}", 5, (void*)tex.view);
+
             if (!pass.desc.hasDepth)
             {
                 throw std::runtime_error(
                     "Framebuffer has depth but render pass does not");
             }
 
-            if (ToVkFormat(pass.desc.depth.format) != tex.format)
+            if (pass.desc.renderTextures[MaxColorAttachments].format != tex.format)
             {
                 throw std::runtime_error(
                     "Framebuffer depth format mismatch");

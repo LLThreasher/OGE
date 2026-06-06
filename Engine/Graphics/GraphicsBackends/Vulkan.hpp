@@ -38,8 +38,6 @@ namespace OneGame::Engine::Graphics::Vulkan
     };
 
     // Forward declare internal classes
-    class VulkanDevice;
-    class VulkanSwapchain;
     class VulkanCommandList;
 
     struct VulkanBuffer;
@@ -50,6 +48,8 @@ namespace OneGame::Engine::Graphics::Vulkan
     struct VulkanFence;
     struct VulkanRenderPass;
     struct VulkanFrameBuffer;
+    struct VulkanRenderPassDesc;
+    struct QueueIndices;
 
     inline VkCompareOp ToVkCompareOp(DepthCompareOp op)
     {
@@ -268,6 +268,8 @@ namespace OneGame::Engine::Graphics::Vulkan
         case TextureFormat::RGBA32Float: return VK_FORMAT_R32G32B32A32_SFLOAT;
         case TextureFormat::Depth24FloatStencil8:
             return VK_FORMAT_D24_UNORM_S8_UINT;
+        case TextureFormat::Depth32Float:
+            return VK_FORMAT_D32_SFLOAT;
         default:
             assert(false && "Unknown TextureFormat");
             return VK_FORMAT_UNDEFINED;
@@ -395,7 +397,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 
     struct VulkanSwapchain
     {
-        VkSwapchainKHR swapchain;
+        VkSwapchainKHR swapchain = VK_NULL_HANDLE;
         VkExtent2D extent;
         VkExtent2D nextExtent;
         std::vector<GPUTextureHandle> colorTextures;
@@ -464,12 +466,14 @@ namespace OneGame::Engine::Graphics::Vulkan
         GPUFrameBufferHandle GetCurrentFrameBuffer() override;
 
     private:
-        VulkanDevice        m_device;
-        VulkanSwapchain     m_swapchain;
-        std::vector<FrameData>  m_frames;
-        uint32_t			m_frameIndex = 0;
-        std::vector<VkFence> m_imagesInFlight;
-        uint32_t			m_imageIndex = 0;
+        VulkanDevice                m_device;
+        VulkanSwapchain             m_swapchain;
+        uint32_t			        m_frameIndex = 0;
+        std::vector<FrameData>      m_frames;
+        uint32_t			        m_imageIndex = 0;
+        std::vector<VkFence>        m_imagesInFlight;
+        uint32_t                    m_imagesAvailableSlot = 0;
+        std::vector<VkSemaphore>    m_imagesFinishRender;
 
         VkDescriptorPool    m_descriptorPool;
 #ifdef _DEBUG
@@ -484,8 +488,9 @@ namespace OneGame::Engine::Graphics::Vulkan
         ResourcePool<GPURenderPass, VulkanRenderPass> m_renderPasses;
         ResourcePool<GPUFrameBuffer, VulkanFrameBuffer> m_frameBuffers;
 
-        void CreateSyncObjects();
-        void RecreateSwapchain();
+        VulkanRenderPass CreateRenderPassInternal(VulkanRenderPassDesc&);
+        void CreateSyncObjects(QueueIndices&, int);
+        void RecreateSwapchain(int&);
         void DestroySwapchain(VkSwapchainKHR);
         VkShaderModule CreateShaderModule(const std::vector<uint8_t>& code);
         void CreateTextureInternal(

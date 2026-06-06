@@ -71,8 +71,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         ici.tiling = VK_IMAGE_TILING_OPTIMAL;
         ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
         ici.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-        ici.usage = 0;
-
+        ici.usage = vkUsage;
 
         // --- Allocate with VMA ---
         VmaAllocationCreateInfo allocInfo{};

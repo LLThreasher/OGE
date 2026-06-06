@@ -15,7 +15,9 @@
 #define VMA_IMPLEMENTATION
 #include "Vulkan/vk_mem_alloc.h"
 
-#include "../../Logger.hpp"
+#include "Vulkan/VulkanLogger.hpp"
+
+#include "../../PrintStackTrace.hpp"
 
 
 namespace OneGame::Engine::Graphics::Vulkan
@@ -43,25 +45,24 @@ namespace OneGame::Engine::Graphics::Vulkan
 		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 		void* pUserData)
 	{
-		auto logger = Logger::Get();  // your spdlog wrapper
-
 		std::string message = pCallbackData->pMessage;
 
 		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 		{
-			logger->error("[Vulkan] {}", message);
-		}
+			LOG_ERROR(message);
+			PrintStackTrace();
+ 		}
 		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 		{
-			logger->warn("[Vulkan] {}", message);
+			LOG_WARN(message);
 		}
 		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
 		{
-			logger->info("[Vulkan] {}", message);
+			LOG_INFO(message);
 		}
 		else
 		{
-			logger->debug("[Vulkan] {}", message);
+			LOG_DEBUG(message);
 		}
 
 		return VK_FALSE; // do NOT abort Vulkan calls
@@ -98,6 +99,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 	VulkanBackend::VulkanBackend()
 	{
+		m_device = {};
+		m_swapchain = {};
 	}
 
 	VulkanBackend::~VulkanBackend()
@@ -434,12 +437,21 @@ namespace OneGame::Engine::Graphics::Vulkan
 				queueCreateInfos.push_back(queueCreateInfo);
 			}
 
+			VkPhysicalDeviceFeatures supportedFeatures;
+			vkGetPhysicalDeviceFeatures(physicalDevice, &supportedFeatures);
+			VkPhysicalDeviceFeatures enabledFeatures{};
+			if (supportedFeatures.samplerAnisotropy)
+			{
+				enabledFeatures.samplerAnisotropy = VK_TRUE;
+			}
+
 			VkDeviceCreateInfo createInfo{};
 			createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 			createInfo.queueCreateInfoCount = queueCreateInfos.size();
 			createInfo.pQueueCreateInfos = queueCreateInfos.data();
 			createInfo.enabledExtensionCount = deviceExtensions.size();
 			createInfo.ppEnabledExtensionNames = deviceExtensions.data();
+			createInfo.pEnabledFeatures = &enabledFeatures;
 
 			vkCreateDevice(physicalDevice, &createInfo, nullptr, &m_device.device);
 			vkGetDeviceQueue(m_device.device, queueIndices.graphics.value(), 0, &m_device.m_graphicsQueue);
@@ -495,28 +507,25 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 		vkCreateDescriptorPool(m_device.device, &poolInfo, nullptr, &m_descriptorPool);
 
-		CreateSyncObjects();
+		int swapImageCount;
+		RecreateSwapchain(swapImageCount);
+		CreateSyncObjects(queueIndices, swapImageCount);
 	}
 
 	void VulkanBackend::CreateSwapchainRenderPass()
 	{
-		RenderPassDesc desc{};
-
-		ColorAttachmentDesc color{};
-		color.format = TextureFormat::RGBA8Srgb;
-		color.loadOp = LoadOp::Clear;
-		color.storeOp = StoreOp::Store;
-		color.isSwapchain = true;
-
-		desc.colors[0] = color;
-
+		VulkanRenderPassDesc desc{};
+		desc.renderTextures[0].format = m_device.surfaceFormat.format;
+		desc.renderTextures[0].loadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR;
+		desc.renderTextures[0].storeOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_STORE;
+		desc.colorCount = 1;
 		desc.hasDepth = true;
-		desc.depth.format = TextureFormat::Depth32Float;
-		desc.depth.loadOp = LoadOp::Clear;
-		desc.depth.storeOp = StoreOp::DontCare;
-
-		m_swapchain.renderPass =
-			CreateRenderPass(desc);
+		desc.renderTextures[MaxColorAttachments].format = m_device.depthFormat;
+		desc.renderTextures[MaxColorAttachments].loadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR;
+		desc.renderTextures[MaxColorAttachments].storeOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_DONT_CARE;
+		desc.isSwapchain = true;
+		auto vkPass = CreateRenderPassInternal(desc);
+		m_swapchain.renderPass = m_renderPasses.Create(vkPass);
 	}
 
 	void VulkanBackend::CreateSwapchainFrameBuffers()
@@ -554,7 +563,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		vkDestroySwapchainKHR(m_device.device, oldSwapchain, nullptr);
 	}
 
-	void VulkanBackend::RecreateSwapchain()
+	void VulkanBackend::RecreateSwapchain(int& swapImageCount)
 	{
 		// Handle swapchain recreation on window resize
 		VkSurfaceCapabilitiesKHR capabilities;
@@ -584,6 +593,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		{
 			imageCount = capabilities.maxImageCount;
 		}
+		swapImageCount = imageCount;
 
 		{
 			vkDeviceWaitIdle(m_device.device);
@@ -654,8 +664,13 @@ namespace OneGame::Engine::Graphics::Vulkan
 		for (size_t i = 0; i < images.size(); ++i)
 		{
 			VulkanTexture tex;
+			tex.width = m_swapchain.extent.width;
+			tex.height = m_swapchain.extent.height;
+			tex.format = m_device.surfaceFormat.format;
 			tex.image = images[i];
 			tex.view = views[i];
+			LOG_DEBUG("tex.image[{}]={}", i, (void*)images[i]);
+			LOG_DEBUG("tex.view[{}]={}", i, (void*)views[i]);
 			m_swapchain.colorTextures[i] = m_textures.Create(tex);
 		}
 
@@ -716,14 +731,14 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 		for (auto& frame : m_frames)
 		{
+			vkDestroyCommandPool(m_device.device, frame.pool, nullptr);
+			vkDestroyFence(m_device.device, frame.inFlightFence, nullptr);
 			vkDestroySemaphore(m_device.device, frame.imageAvailable, nullptr);
 			vkDestroySemaphore(m_device.device, frame.renderFinished, nullptr);
-			vkDestroyFence(m_device.device, frame.inFlightFence, nullptr);
 		}
-
-		for (auto& imageInFlight : m_imagesInFlight)
+		for (auto& semaphore : m_imagesFinishRender)
 		{
-			vkDestroyFence(m_device.device, imageInFlight, nullptr);
+			vkDestroySemaphore(m_device.device, semaphore, nullptr);
 		}
 
 		if (m_device.m_allocator != nullptr)
@@ -765,7 +780,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 	GPUFrameBufferHandle VulkanBackend::GetCurrentFrameBuffer()
 	{
-		return m_swapchain.framebuffers[m_frameIndex];
+		return m_swapchain.framebuffers[m_imageIndex];
 	}
 
 	GPURenderPassHandle VulkanBackend::GetCurrentRenderPass()
@@ -775,8 +790,10 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 	void VulkanBackend::BeginFrame()
 	{
+		LOG_DEBUG("BF m_frameIndex = {}", m_frameIndex);
 		FrameData& frame = m_frames[m_frameIndex];
 
+		LOG_DEBUG("wait on {}", (void*)frame.inFlightFence);
 		// Wait for previous frame to finish
 		vkWaitForFences(
 			m_device.device,
@@ -785,16 +802,17 @@ namespace OneGame::Engine::Graphics::Vulkan
 			VK_TRUE,
 			UINT64_MAX);
 
+		LOG_DEBUG("reset {}", (void*)frame.inFlightFence);
 		vkResetFences(
 			m_device.device,
 			1,
 			&frame.inFlightFence);
 
+		LOG_DEBUG("enter2 BeginFrame");
 		VkDevice& device = m_device.device;
 		VkSwapchainKHR& swapchain = m_swapchain.swapchain;
 
-		vkWaitForFences(device, 1, &frame.inFlightFence, VK_TRUE, UINT64_MAX);
-		vkResetFences(device, 1, &frame.inFlightFence);
+		LOG_DEBUG("acquired image {} wait s {}", m_imageIndex, (void*)frame.imageAvailable);
 
 		// 2️⃣ Acquire next swapchain image
 		VkResult result = vkAcquireNextImageKHR(
@@ -807,7 +825,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR)
 		{
-			RecreateSwapchain();
+			int swapImageCnt;
+			RecreateSwapchain(swapImageCnt);
 			return;
 		}
 
@@ -816,50 +835,48 @@ namespace OneGame::Engine::Graphics::Vulkan
 			throw std::runtime_error("Failed to acquire swapchain image");
 		}
 
-		// 3️⃣ Reset command pool
-		vkResetCommandPool(device, frame.pool, 0);
-		frame.usedCount = 0;
-
 		// avoid drawing on active image
 		if (m_imagesInFlight[m_imageIndex] != VK_NULL_HANDLE)
 		{
+			LOG_DEBUG("image {} wait on {}", m_imageIndex, (void*)frame.inFlightFence);
 			vkWaitForFences(
 				m_device.device,
 				1,
 				&m_imagesInFlight[m_imageIndex],
 				VK_TRUE,
 				UINT64_MAX);
+			m_imagesInFlight[m_imageIndex] = VK_NULL_HANDLE;
 		}
+
+		// 3️⃣ Reset command pool
+		vkResetCommandPool(device, frame.pool, 0);
+		frame.usedCount = 0;
+
 		m_imagesInFlight[m_imageIndex] = frame.inFlightFence;
+		LOG_DEBUG("leave BeginFrame");
 	}
 
 	void VulkanBackend::EndFrame()
 	{
+		LOG_DEBUG("EF m_frameIndex = {}", m_frameIndex);
 		FrameData& frame = m_frames[m_frameIndex];
 		VkSwapchainKHR& swapchain = m_swapchain.swapchain;
-
-		VkPipelineStageFlags waitStage =
-			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &frame.imageAvailable;
-		submitInfo.pWaitDstStageMask = &waitStage;
 
 		// Present
 		VkPresentInfoKHR presentInfo{};
 		presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 
 		presentInfo.waitSemaphoreCount = 1;
-		presentInfo.pWaitSemaphores = &frame.renderFinished;
+		presentInfo.pWaitSemaphores = &m_imagesFinishRender[m_imageIndex];
+
+		LOG_DEBUG("image {} wait on s {}", m_imageIndex, (void*)m_imagesFinishRender[m_imageIndex]);
 
 		presentInfo.swapchainCount = 1;
 		presentInfo.pSwapchains = &swapchain;
 		presentInfo.pImageIndices = &m_imageIndex;
 
 		VkResult result = vkQueuePresentKHR(m_device.m_presentQueue, &presentInfo);
+		LOG_DEBUG("present called with result {} and queue {}", static_cast<uint32_t>(result), (void*)m_device.m_presentQueue);
 
 		m_frameIndex = (m_frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -868,7 +885,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 			m_swapchain.nextExtent.width != m_swapchain.extent.width ||
 			m_swapchain.nextExtent.height != m_swapchain.extent.height)
 		{
-			RecreateSwapchain();
+			int swapImagCnt;
+			RecreateSwapchain(swapImagCnt);
 		}
 		else if (result != VK_SUCCESS)
 		{
@@ -876,9 +894,19 @@ namespace OneGame::Engine::Graphics::Vulkan
 		}
 	}
 
-	void VulkanBackend::CreateSyncObjects()
+	void VulkanBackend::CreateSyncObjects(QueueIndices& queueIndices, int swapImageCount)
 	{
 		m_frames.resize(MAX_FRAMES_IN_FLIGHT);
+
+		for (auto& frame : m_frames)
+		{
+			VkCommandPoolCreateInfo createInfo{};
+			createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+			createInfo.queueFamilyIndex = queueIndices.graphics.value();
+			createInfo.flags =
+				VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+			vkCreateCommandPool(m_device.device, &createInfo, nullptr, &frame.pool);
+		}
 
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
@@ -918,35 +946,25 @@ namespace OneGame::Engine::Graphics::Vulkan
 			}
 		}
 
-		VkSurfaceCapabilitiesKHR capabilities;
-		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
-			m_device.physicalDevice,
-			m_device.surface,
-			&capabilities);
-
-		uint32_t imageCount = capabilities.minImageCount + 1;
-		if (capabilities.maxImageCount > 0 &&
-			imageCount > capabilities.maxImageCount)
+		m_imagesInFlight.resize(swapImageCount);
+		m_imagesFinishRender.resize(swapImageCount);
+		for (uint32_t i = 0; i < swapImageCount; ++i)
 		{
-			imageCount = capabilities.maxImageCount;
-		}
-
-		m_imagesInFlight.resize(imageCount);
-		for (uint32_t i = 0; i < imageCount; i++)
-		{
-			if (vkCreateFence(
+			m_imagesInFlight[i] = VK_NULL_HANDLE;
+			if (vkCreateSemaphore(
 				m_device.device,
-				&fenceInfo,
+				&semaphoreInfo,
 				nullptr,
-				&m_imagesInFlight[i]) != VK_SUCCESS)
+				&m_imagesFinishRender[i]) != VK_SUCCESS)
 			{
-				throw std::runtime_error("Failed to create imageInFlight fence");
+				throw std::runtime_error("Failed to create imageAvailable semaphore");
 			}
 		}
 	}
 
 	ICommandList* VulkanBackend::CreateCommandList(QueueType queueType)
 	{
+		assert(queueType == QueueType::Present);
 		FrameData& frame = m_frames[m_frameIndex];
 
 		VkCommandBuffer cmd;
@@ -979,10 +997,21 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 		VkCommandBuffer vkCmd = cmd->GetVulkanCommandBuffer();
 
-		VkSubmitInfo submit{};
-		submit.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-		submit.commandBufferCount = 1;
-		submit.pCommandBuffers = &vkCmd;
+		VkSubmitInfo submitInfo{};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+		LOG_DEBUG("SUBMIT m_frameIndex = {}", m_frameIndex);
+		auto& frame = m_frames[m_frameIndex];
+		VkPipelineStageFlags waitStage =
+			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &frame.imageAvailable;
+		submitInfo.pWaitDstStageMask = &waitStage;
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &m_imagesFinishRender[m_imageIndex];
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &vkCmd;
+
 
 		VkQueue queue;
 		switch (cmd->GetQueueType())
@@ -1001,8 +1030,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 			break;
 		default:
 			std::runtime_error("unknown queue type");
+			break;
 		}
 
-		vkQueueSubmit(queue, 1, &submit, VK_NULL_HANDLE);
+		LOG_DEBUG("submit image {} wait s {}, signal s {}", m_imageIndex, (void*)frame.imageAvailable, (void*)m_imagesFinishRender[m_imageIndex]);
+		LOG_DEBUG("submit signal {} when submit with queue {}", (void*)frame.inFlightFence, (void*)queue);
+		vkQueueSubmit(queue, 1, &submitInfo, frame.inFlightFence);
 	}
 }
