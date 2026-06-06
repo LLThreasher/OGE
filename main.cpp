@@ -59,7 +59,7 @@ int main() {
         WindowHandle handle{};
         handle.hInstance = GetModuleHandle(nullptr);
         handle.hwnd = hwnd;
-        //backend->Initialize(BackendDesc{ &handle });
+        backend->Initialize(BackendDesc{ &handle });
     }
     catch (const std::exception& e)
     {

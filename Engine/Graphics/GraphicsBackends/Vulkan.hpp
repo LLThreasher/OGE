@@ -472,7 +472,9 @@ namespace OneGame::Engine::Graphics::Vulkan
         uint32_t			m_imageIndex = 0;
 
         VkDescriptorPool    m_descriptorPool;
-
+#ifdef _DEBUG
+        VkDebugUtilsMessengerEXT m_debugMessenger;
+#endif
         ResourcePool<GPUBuffer, VulkanBuffer> m_buffers;
         ResourcePool<GPUTexture, VulkanTexture> m_textures;
         ResourcePool<GPUPipeline, VulkanPipeline> m_pipelines;

@@ -15,9 +15,87 @@
 #define VMA_IMPLEMENTATION
 #include "Vulkan/vk_mem_alloc.h"
 
+#include "../../Logger.hpp"
+
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
+	static bool CheckValidationLayerSupport()
+	{
+		uint32_t layerCount;
+		vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+
+		std::vector<VkLayerProperties> layers(layerCount);
+		vkEnumerateInstanceLayerProperties(&layerCount, layers.data());
+
+		for (const auto& layer : layers)
+		{
+			if (strcmp(layer.layerName, "VK_LAYER_KHRONOS_validation") == 0)
+				return true;
+		}
+
+		return false;
+	}
+
+	static VKAPI_ATTR VkBool32 VKAPI_CALL DebugCallback(
+		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+		VkDebugUtilsMessageTypeFlagsEXT messageType,
+		const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+		void* pUserData)
+	{
+		auto logger = Logger::Get();  // your spdlog wrapper
+
+		std::string message = pCallbackData->pMessage;
+
+		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+		{
+			logger->error("[Vulkan] {}", message);
+		}
+		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+		{
+			logger->warn("[Vulkan] {}", message);
+		}
+		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
+		{
+			logger->info("[Vulkan] {}", message);
+		}
+		else
+		{
+			logger->debug("[Vulkan] {}", message);
+		}
+
+		return VK_FALSE; // do NOT abort Vulkan calls
+	}
+
+	static VkResult CreateDebugUtilsMessengerEXT(
+		VkInstance instance,
+		const VkDebugUtilsMessengerCreateInfoEXT* createInfo,
+		const VkAllocationCallbacks* allocator,
+		VkDebugUtilsMessengerEXT* messenger)
+	{
+		auto func = (PFN_vkCreateDebugUtilsMessengerEXT)
+			vkGetInstanceProcAddr(instance,
+				"vkCreateDebugUtilsMessengerEXT");
+
+		if (func != nullptr)
+			return func(instance, createInfo, allocator, messenger);
+
+		return VK_ERROR_EXTENSION_NOT_PRESENT;
+	}
+
+	static void DestroyDebugUtilsMessengerEXT(
+		VkInstance instance,
+		VkDebugUtilsMessengerEXT messenger,
+		const VkAllocationCallbacks* allocator)
+	{
+		auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)
+			vkGetInstanceProcAddr(instance,
+				"vkDestroyDebugUtilsMessengerEXT");
+
+		if (func != nullptr)
+			func(instance, messenger, allocator);
+	}
+
 	VulkanBackend::VulkanBackend()
 	{
 	}
@@ -87,7 +165,9 @@ namespace OneGame::Engine::Graphics::Vulkan
 			if ((flags & VK_QUEUE_TRANSFER_BIT) && !indices.transfer)
 				indices.transfer = i;
 
-			if (vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, nullptr) == VK_TRUE && !indices.present)
+			VkBool32 supported = false;
+			vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &supported);
+			if (supported == VK_TRUE && !indices.present)
 				indices.present = i;
 		}
 
@@ -104,6 +184,10 @@ namespace OneGame::Engine::Graphics::Vulkan
 		for (const auto& extension : availableExtensions)
 		{
 			requiredSet.erase(extension.extensionName);
+		}
+		for (const auto& extension : requiredSet)
+		{
+			LOG_DEBUG("Unsupported extension: {}", extension);
 		}
 		return requiredSet.empty();
 	}
@@ -143,6 +227,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 				!swapchainSupport.formats.empty() &&
 				!swapchainSupport.presentModes.empty();
 		}
+
+		LOG_DEBUG("queueIndices={}, extensionsSupported={}, swapchainAdequate={}", queueIndices.IsComplete(), extensionsSupported, swapchainAdequate);
 
 		return queueIndices.IsComplete()
 			&& extensionsSupported
@@ -213,19 +299,22 @@ namespace OneGame::Engine::Graphics::Vulkan
 	void VulkanBackend::Initialize(const BackendDesc& desc)
 	{
 #if defined(PLATFORM_WINDOWS)
-		const std::vector<const char*> extensions =
+		std::vector<const char*> extensions =
 		{
 			VK_KHR_SURFACE_EXTENSION_NAME,
 			VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
 		};
 #elif defined(PLATFORM_ANDROID)
-		const std::vector<const char*> extensions =
+		std::vector<const char*> extensions =
 		{
 			VK_KHR_SURFACE_EXTENSION_NAME,
 			VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
 		};
 #else
-		const std::vector<const char*> extensions;
+		std::vector<const char*> extensions;
+#endif
+#ifdef _DEBUG
+		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
 
 		// Initialize Vulkan instance, physical device, logical device, swapchain, etc.
@@ -238,7 +327,37 @@ namespace OneGame::Engine::Graphics::Vulkan
 		appInfo.apiVersion = VK_API_VERSION_1_1;
 
 		{
+			const std::vector<const char*> validationLayers = {
+				"VK_LAYER_KHRONOS_validation"
+			};
 			VkInstanceCreateInfo createInfo{};
+
+#ifdef _DEBUG
+			if (!CheckValidationLayerSupport())
+				throw std::runtime_error("Validation layers not available");
+
+			createInfo.enabledLayerCount =
+				static_cast<uint32_t>(validationLayers.size());
+			createInfo.ppEnabledLayerNames =
+				validationLayers.data();
+
+			VkValidationFeaturesEXT validationFeatures{};
+			validationFeatures.sType =
+				VK_STRUCTURE_TYPE_VALIDATION_FEATURES_EXT;
+
+			VkValidationFeatureEnableEXT enables[] = {
+				VK_VALIDATION_FEATURE_ENABLE_BEST_PRACTICES_EXT,
+				VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT
+			};
+
+			validationFeatures.enabledValidationFeatureCount = 2;
+			validationFeatures.pEnabledValidationFeatures = enables;
+
+			createInfo.pNext = &validationFeatures;
+#else
+			createInfo.enabledLayerCount = 0;
+#endif
+
 			createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
 			createInfo.pApplicationInfo = &appInfo;
 			createInfo.enabledExtensionCount = extensions.size();
@@ -246,6 +365,33 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 			vkCreateInstance(&createInfo, nullptr, &m_device.instance);
 		}
+
+#ifdef _DEBUG
+		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+		debugCreateInfo.sType =
+			VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+
+		debugCreateInfo.messageSeverity =
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+
+		debugCreateInfo.messageType =
+			VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+			VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+
+		debugCreateInfo.pfnUserCallback = DebugCallback;
+
+		if (CreateDebugUtilsMessengerEXT(
+			m_device.instance,
+			&debugCreateInfo,
+			nullptr,
+			&m_debugMessenger) != VK_SUCCESS)
+		{
+			throw std::runtime_error("Failed to create debug messenger");
+		}
+#endif
 
 #ifdef PLATFORM_WINDOWS
 		{
@@ -264,7 +410,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 		}
 #endif
 
-		auto [physicalDevice, swapchainSupport, queueIndices] = SelectPhysicalDevice(m_device.instance, m_device.surface, extensions);
+		std::vector deviceExtensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
+		auto [physicalDevice, swapchainSupport, queueIndices] = SelectPhysicalDevice(m_device.instance, m_device.surface, deviceExtensions);
 		m_device.physicalDevice = physicalDevice;
 		{
 			float queuePriority = 1.0f;
@@ -291,8 +438,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 			createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 			createInfo.queueCreateInfoCount = queueCreateInfos.size();
 			createInfo.pQueueCreateInfos = queueCreateInfos.data();
-			createInfo.enabledExtensionCount = extensions.size();
-			createInfo.ppEnabledExtensionNames = extensions.data();
+			createInfo.enabledExtensionCount = deviceExtensions.size();
+			createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
 			vkCreateDevice(physicalDevice, &createInfo, nullptr, &m_device.device);
 			vkGetDeviceQueue(m_device.device, queueIndices.graphics.value(), 0, &m_device.m_graphicsQueue);
@@ -599,6 +746,13 @@ namespace OneGame::Engine::Graphics::Vulkan
 				nullptr);
 			m_device.surface = VK_NULL_HANDLE;
 		}
+
+#ifdef _DEBUG
+		DestroyDebugUtilsMessengerEXT(
+			m_device.instance,
+			m_debugMessenger,
+			nullptr);
+#endif
 
 		if (m_device.instance != VK_NULL_HANDLE)
 		{
