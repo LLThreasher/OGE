@@ -1,0 +1,39 @@
+cmake_minimum_required(VERSION 3.20)
+project(VoxelEngine)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+
+# 2. Find the Vulkan SDK
+# This sets variables like Vulkan_INCLUDE_DIRS and Vulkan_LIBRARIES
+find_package(Vulkan REQUIRED)
+
+add_subdirectory("3rdparty/spdlog")
+
+add_executable(VoxelEngine
+    "main.cpp"
+    "Engine/Graphics/GraphicsBackends/Vulkan.cpp"
+    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanBuffer.cpp"
+    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanFence.cpp"
+    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanPipeline.cpp"
+    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanTexture.cpp"
+    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanCommandBuffer.cpp"
+    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanFrameBuffer.cpp"
+    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanBindingGroups.cpp"
+    "Engine/Graphics/GraphicsBackends/GraphicsBackends.cpp"
+)
+  
+if (WIN32)
+    target_compile_definitions(VoxelEngine PRIVATE VK_USE_PLATFORM_WIN32_KHR)
+    target_compile_definitions(VoxelEngine PRIVATE PLATFORM_WINDOWS)
+elseif (ANDROID)
+    target_compile_definitions(VoxelEngine PRIVATE VK_USE_PLATFORM_ANDROID_KHR)
+    target_compile_definitions(VoxelEngine PRIVATE PLATFORM_ANDROID)
+endif()
+
+target_link_libraries(VoxelEngine PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+
+# 4. Link Vulkan to your project
+# Use the modern imported target Vulkan::Vulkan
+target_link_libraries(VoxelEngine PRIVATE Vulkan::Vulkan)
