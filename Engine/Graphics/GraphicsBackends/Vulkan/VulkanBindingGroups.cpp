@@ -36,7 +36,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         //
         // Buffers
         //
-        for (uint32_t i = 0; i < desc.buffers.size(); ++i)
+        for (uint32_t i = 0; i < desc.bufferCount; ++i)
         {
             bool dynamic = (desc.dynamicBufferMask & (1 << i)) != 0;
 

@@ -99,8 +99,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 	VulkanBackend::VulkanBackend()
 	{
-		m_device = {};
-		m_swapchain = {};
 	}
 
 	VulkanBackend::~VulkanBackend()
@@ -127,7 +125,10 @@ namespace OneGame::Engine::Graphics::Vulkan
 		return 0; // Placeholder, should return the actual current frame index
 	}
 
-
+	float VulkanBackend::SwapchainAspect() const
+	{
+		return (float)m_swapchain.extent.width / (float)m_swapchain.extent.height;
+	}
 
 	struct QueueIndices
 	{
@@ -947,7 +948,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		}
 	}
 
-	ICommandList* VulkanBackend::CreateCommandList(QueueType queueType)
+	std::unique_ptr<ICommandList> VulkanBackend::CreateCommandList(QueueType queueType)
 	{
 		assert(queueType == QueueType::Present);
 		FrameData& frame = m_frames[m_frameIndex];
@@ -960,6 +961,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		}
 		else
 		{
+			LOG_DEBUG("allocate cmd list");
 			// allocate new one
 			VkCommandBufferAllocateInfo alloc{};
 			alloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -973,12 +975,12 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 		frame.usedCount++;
 
-		return new VulkanCommandBuffer(queueType, m_device.device, cmd, this);
+		return std::unique_ptr<ICommandList>(new VulkanCommandBuffer(queueType, m_device.device, cmd, this));
 	}
 
-	void VulkanBackend::Submit(ICommandList* list)
+	void VulkanBackend::Submit(std::unique_ptr<ICommandList> list)
 	{
-		auto* cmd = static_cast<VulkanCommandBuffer*>(list);
+		auto* cmd = static_cast<VulkanCommandBuffer*>(list.get());
 
 		VkCommandBuffer vkCmd = cmd->GetVulkanCommandBuffer();
 
@@ -997,7 +999,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		submitInfo.pCommandBuffers = &vkCmd;
 
 
-		VkQueue queue;
+		VkQueue queue{};
 		switch (cmd->GetQueueType())
 		{
 		case QueueType::Graphics:

@@ -24,7 +24,7 @@ function(compile_shader TARGET SHADER)
     target_sources(${TARGET} PRIVATE ${SPIRV})
 endfunction()
 
-option(ENABLE_ASAN "Enable AddressSanitizer" ON)
+option(ENABLE_ASAN "Enable AddressSanitizer")
 
 if(ENABLE_ASAN)
     if(MSVC)
@@ -37,6 +37,7 @@ if(ENABLE_ASAN)
 endif()
 
 add_subdirectory("3rdparty/spdlog")
+add_subdirectory("3rdparty/glm")
 
 add_executable(VoxelEngine
     "main.cpp"
@@ -59,10 +60,25 @@ elseif (ANDROID)
     target_compile_definitions(VoxelEngine PRIVATE PLATFORM_ANDROID)
 endif()
 
+if (MSVC)
+    target_compile_options(VoxelEngine PRIVATE
+        $<$<CONFIG:Debug>:
+            /permissive-
+            /sdl
+            /analyze
+            /we4700
+            /RTC1
+        >
+    )
+endif()
+
 target_link_libraries(VoxelEngine PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
+target_link_libraries(VoxelEngine PRIVATE glm::glm)
 
 # 4. Link Vulkan to your project
 # Use the modern imported target Vulkan::Vulkan
 target_link_libraries(VoxelEngine PRIVATE Vulkan::Vulkan)
 compile_shader(VoxelEngine "test_triangle.frag")
 compile_shader(VoxelEngine "test_triangle.vert")
+compile_shader(VoxelEngine "test_cube.frag")
+compile_shader(VoxelEngine "test_cube.vert")

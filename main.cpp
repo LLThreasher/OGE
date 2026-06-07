@@ -83,9 +83,18 @@ int main() {
     bool running = true;
 
     //auto testRenderer = TestRenderer();
-    auto testRenderer = TestRendererRotateTriangle();
-    //bool stepFrame = false;
-    testRenderer.Initialize(backend.get());
+    //auto testRenderer = TestRendererRotateTriangle();
+    auto testRenderer = TestRendererCubeWithMVP();
+    try
+    {
+        //bool stepFrame = false;
+        testRenderer.Initialize(backend.get());
+    }
+    catch (const std::exception& e)
+    {
+        MessageBoxA(hwnd, e.what(), "Vulkan Error", MB_OK);
+        return -1;
+    }
 
     double frameTime = 0.0;
     int frameCount = 0;
@@ -134,8 +143,6 @@ int main() {
         //    stepFrame = false;  // consume the press
         //}
         backend->BeginFrame();
-        
-        auto frameStart = std::chrono::high_resolution_clock::now();
         
         testRenderer.Render(backend.get(), deltaTime);
 

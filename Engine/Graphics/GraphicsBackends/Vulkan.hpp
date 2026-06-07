@@ -24,8 +24,6 @@ using VmaAllocator = VmaAllocator_T*;
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
-    static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
-
     struct FrameData
     {
         VkCommandPool pool;
@@ -385,14 +383,14 @@ namespace OneGame::Engine::Graphics::Vulkan
 		VkPhysicalDevice    physicalDevice  = VK_NULL_HANDLE;
         VmaAllocator        m_allocator     = nullptr;
 
-        VkSurfaceFormatKHR  surfaceFormat;
-		VkFormat		    depthFormat;
-		VkPresentModeKHR    presentMode;
+        VkSurfaceFormatKHR  surfaceFormat   = {};
+        VkFormat		    depthFormat     = VK_FORMAT_UNDEFINED;
+        VkPresentModeKHR    presentMode     = {};
 
-        VkQueue m_graphicsQueue;
-        VkQueue m_computeQueue;
-        VkQueue m_transferQueue;
-        VkQueue m_presentQueue;
+        VkQueue     m_graphicsQueue         = VK_NULL_HANDLE;
+        VkQueue     m_computeQueue          = VK_NULL_HANDLE;
+        VkQueue     m_transferQueue         = VK_NULL_HANDLE;
+        VkQueue     m_presentQueue          = VK_NULL_HANDLE;
     };
 
     struct VulkanSwapchain
@@ -420,6 +418,8 @@ namespace OneGame::Engine::Graphics::Vulkan
         uint32_t FramesInFlight() const override;
         uint32_t CurrentFrameIndex() const override;
 
+        float SwapchainAspect() const override;
+
         void Initialize(const BackendDesc&) override;
         void Resize(uint32_t width, uint32_t height) override;
         void Shutdown() override;
@@ -427,8 +427,8 @@ namespace OneGame::Engine::Graphics::Vulkan
         void BeginFrame() override;
         void EndFrame() override;
 
-        ICommandList* CreateCommandList(QueueType) override;
-        void Submit(ICommandList*) override;
+        std::unique_ptr<ICommandList> CreateCommandList(QueueType) override;
+        void Submit(std::unique_ptr<ICommandList>) override;
 
         // ----- Buffers -----
         GPUBufferHandle CreateBuffer(const BufferDesc&) override;
@@ -466,8 +466,8 @@ namespace OneGame::Engine::Graphics::Vulkan
         GPUFrameBufferHandle GetCurrentFrameBuffer() override;
 
     private:
-        VulkanDevice                m_device;
-        VulkanSwapchain             m_swapchain;
+        VulkanDevice                m_device = {};
+        VulkanSwapchain             m_swapchain = {};
         uint32_t			        m_frameIndex = 0;
         std::vector<FrameData>      m_frames;
         uint32_t			        m_imageIndex = 0;
@@ -475,9 +475,9 @@ namespace OneGame::Engine::Graphics::Vulkan
         uint32_t                    m_imagesAvailableSlot = 0;
         std::vector<VkSemaphore>    m_imagesFinishRender;
 
-        VkDescriptorPool    m_descriptorPool;
+        VkDescriptorPool            m_descriptorPool = {};
 #ifdef _DEBUG
-        VkDebugUtilsMessengerEXT m_debugMessenger;
+        VkDebugUtilsMessengerEXT    m_debugMessenger = {};
 #endif
         ResourcePool<GPUBuffer, VulkanBuffer> m_buffers;
         ResourcePool<GPUTexture, VulkanTexture> m_textures;

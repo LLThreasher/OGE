@@ -254,6 +254,9 @@ namespace OneGame::Engine::Graphics::Vulkan
             throw std::runtime_error("Failed to create graphics pipeline");
         }
 
+        vkDestroyShaderModule(m_device.device, vertModule, nullptr);
+        vkDestroyShaderModule(m_device.device, fragModule, nullptr);
+
         pipeline.bindingPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 
         return m_pipelines.Create(pipeline);

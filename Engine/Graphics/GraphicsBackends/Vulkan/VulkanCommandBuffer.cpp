@@ -137,6 +137,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         uint32_t setIndex,
         std::span<const uint32_t> dynamicOffsets)
     {
+        assert(m_currentPipelineLayout != nullptr && "cannot call bind binding group before bind pipeline");
         VulkanBindingGroup& group = m_backend->m_bindingGroups.Get(handle);
 
         vkCmdBindDescriptorSets(

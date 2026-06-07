@@ -23,7 +23,7 @@ namespace OneGame::Engine::Graphics::Vulkan
     {
         VkRenderPass handle = VK_NULL_HANDLE;
 
-        VulkanRenderPassDesc desc; // store for validation / reuse
+        VulkanRenderPassDesc desc = {};
     };
 
     struct VulkanFrameBuffer

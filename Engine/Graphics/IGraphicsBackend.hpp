@@ -190,7 +190,8 @@ This scales with chunk count and removes per-chunk CPU submission cost.
 
 namespace OneGame::Engine::Graphics
 {
-    const size_t MaxColorAttachments = 4;
+    static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
+    static constexpr size_t MaxColorAttachments = 4;
 
     struct WindowHandle
     {
@@ -384,8 +385,8 @@ namespace OneGame::Engine::Graphics
         CullMode cullMode;
         FrontFace frontFace;
 
-        std::vector<GPUBindingGroupLayoutHandle> bindingGroupLayouts;
         std::vector<PushConstantRangeDesc> pushConstants;
+        std::vector<GPUBindingGroupLayoutHandle> bindingGroupLayouts;
     };
 
     struct ComputePipelineDesc
@@ -460,7 +461,7 @@ namespace OneGame::Engine::Graphics
     struct BindingGroupLayoutDesc
     {
         int textureCount;
-        std::vector<VertexAttributeFormat> buffers;
+        int bufferCount;
         int dynamicBufferMask;
     };
 
@@ -569,6 +570,8 @@ namespace OneGame::Engine::Graphics
         virtual uint32_t FramesInFlight() const = 0;
         virtual uint32_t CurrentFrameIndex() const = 0;
 
+        virtual float SwapchainAspect() const = 0;
+
         virtual void Initialize(const BackendDesc&) = 0;
         virtual void Resize(uint32_t width, uint32_t height) = 0;
         virtual void Shutdown() = 0;
@@ -576,8 +579,8 @@ namespace OneGame::Engine::Graphics
         virtual void BeginFrame() = 0;
         virtual void EndFrame() = 0;
 
-        virtual ICommandList* CreateCommandList(QueueType) = 0;
-        virtual void Submit(ICommandList*) = 0;
+        virtual std::unique_ptr<ICommandList> CreateCommandList(QueueType) = 0;
+        virtual void Submit(std::unique_ptr<ICommandList>) = 0;
 
         // ----- Buffers -----
         virtual GPUBufferHandle CreateBuffer(const BufferDesc&) = 0;

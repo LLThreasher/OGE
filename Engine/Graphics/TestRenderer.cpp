@@ -15,18 +15,18 @@ namespace OneGame::Engine::Graphics
         float g = float((sin(m_Time + 2.0) + 1.0) * 0.5);
         float b = float((sin(m_Time + 4.0) + 1.0) * 0.5);
 
-        auto* cmd = backend->CreateCommandList(QueueType::Present);
+        auto cmd = backend->CreateCommandList(QueueType::Present);
 
         cmd->Begin();
 
         ClearValues values{};
         values.colorClears[0] = { r, g, b, 1.0f };
         cmd->BeginRenderPass(backend->GetCurrentRenderPass(), backend->GetCurrentFrameBuffer(), values);
-
         cmd->EndRenderPass();
+
         cmd->End();
 
-        backend->Submit(cmd);
+        backend->Submit(std::move(cmd));
     }
 
     void TestRendererRotateTriangle::Initialize(IGraphicsBackend* backend)
@@ -55,7 +55,7 @@ namespace OneGame::Engine::Graphics
         float g = float((sin(m_Time + 2.0) + 1.0) * 0.5);
         float b = float((sin(m_Time + 4.0) + 1.0) * 0.5);
 
-        auto* cmd = backend->CreateCommandList(QueueType::Present);
+        auto cmd = backend->CreateCommandList(QueueType::Present);
 
         cmd->Begin();
 
@@ -68,6 +68,104 @@ namespace OneGame::Engine::Graphics
         cmd->EndRenderPass();
         cmd->End();
 
-        backend->Submit(cmd);
+        backend->Submit(std::move(cmd));
+    }
+
+
+    void TestRendererCubeWithMVP::Initialize(IGraphicsBackend* backend)
+    {
+        BindingGroupLayoutDesc layout{};
+        layout.bufferCount = 1;
+        bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
+
+        {
+            GraphicsPipelineDesc desc{};
+            LoadShaderBinary("test_cube.vert.spv", desc.vertexShader);
+            LoadShaderBinary("test_cube.frag.spv", desc.fragmentShader);
+            // position
+            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
+            // color
+            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
+            desc.bindingGroupLayouts.push_back(bindingGroupLayout);
+            desc.depthTest = true;
+            desc.writeDepth = true;
+            desc.depthCompareOp = DepthCompareOp::Less;
+            pipeline = backend->CreateGraphicsPipeline(desc);
+        }
+
+        BufferDesc vBuf{};
+        vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
+        vBuf.memory = MemoryUsage::GPUOnly;
+        vBuf.size = vertices.size() * sizeof(Vertex);
+        vertexBuffer = backend->CreateBuffer(vBuf);
+
+        BufferDesc iBuf{};
+        iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
+        iBuf.memory = MemoryUsage::GPUOnly;
+        iBuf.size = indices.size() * sizeof(uint32_t);
+        indexBuffer = backend->CreateBuffer(iBuf);
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
+        {
+            BufferDesc uBuf{};
+            uBuf.usage = BufferUsage::Uniform | BufferUsage::TransferDst;
+            uBuf.memory = MemoryUsage::GPUOnly;
+            uBuf.size = sizeof(UBO);
+            uniformBufferPerFrame[i] = backend->CreateBuffer(uBuf);
+
+            BindingGroupDesc desc{};
+            desc.layout = bindingGroupLayout;
+            desc.buffers.push_back(uniformBufferPerFrame[i]);
+            bindingGroupPerFrame[i] = backend->CreateBindingGroup(desc);
+        }
+    }
+
+    void TestRendererCubeWithMVP::Render(IGraphicsBackend* backend, float dt)
+    {
+        m_Frame = (m_Frame + 1) % MAX_FRAMES_IN_FLIGHT;
+        m_Time += dt;
+        UBO ubo{};
+        ubo.model = math::rotate(math::mat4(1.0f),
+            m_Time * math::radians(90.0f),
+            { 0,1,0 });
+
+        ubo.view = math::lookAt(
+            math::vec3(2, 2, 2),
+            math::vec3(0, 0, 0),
+            math::vec3(0, 1, 0));
+
+        ubo.proj = math::perspective(
+            math::radians(45.0f),
+            backend->SwapchainAspect(),
+            0.1f,
+            10.0f);
+
+        auto cmd = backend->CreateCommandList(QueueType::Present);
+        cmd->Begin();
+        if (isFirstFrame)
+        {
+            cmd->UpdateBuffer(vertexBuffer, 0, vertices.size() * sizeof(Vertex), vertices.data());
+            cmd->UpdateBuffer(indexBuffer, 0, indices.size() * sizeof(uint32_t), indices.data());
+            cmd->BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
+            cmd->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
+            isFirstFrame = false;
+        }
+        cmd->UpdateBuffer(uniformBufferPerFrame[m_Frame], 0, sizeof(UBO), &ubo);
+        cmd->BufferBarrier(uniformBufferPerFrame[m_Frame], BufferUsage::Uniform | BufferUsage::TransferDst, BufferUsage::Uniform);
+
+        ClearValues values{};
+        values.colorClears[0] = { 0.1f, 0.2f, 0.4f, 1.0f };
+        values.depthClear = 1.0f;
+        values.stencilClear = 0.f;
+        cmd->BeginRenderPass(backend->GetCurrentRenderPass(), backend->GetCurrentFrameBuffer(), values);
+        cmd->BindGraphicsPipeline(pipeline);
+        cmd->BindVertexBuffer(vertexBuffer);
+        cmd->BindIndexBuffer(indexBuffer);
+        cmd->BindBindingGroup(bindingGroupPerFrame[m_Frame], 0);
+        cmd->DrawIndexed(indices.size(), 1, 0, 0, 0);
+        cmd->EndRenderPass();
+        cmd->End();
+
+        backend->Submit(std::move(cmd));
     }
 }
