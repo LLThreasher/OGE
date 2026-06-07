@@ -192,9 +192,12 @@ namespace OneGame::Engine::Graphics
             desc.vertexLayout.push_back(VertexAttributeFormat::Float32x2);
 
             desc.bindingGroupLayouts.push_back(bindingGroupLayout);
+            desc.writeDepth = false;
+            desc.blending = true;
             desc.depthTest = true;
             desc.writeDepth = true;
             desc.depthCompareOp = DepthCompareOp::Less;
+            desc.cullMode = CullMode::Back;
             pipeline = backend->CreateGraphicsPipeline(desc);
         }
 

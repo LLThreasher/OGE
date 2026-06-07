@@ -88,7 +88,6 @@ int main() {
     auto testRenderer = TestRendererCubeTextured();
     try
     {
-        //bool stepFrame = false;
         testRenderer.Initialize(backend.get());
     }
     catch (const std::exception& e)
