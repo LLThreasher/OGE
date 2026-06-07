@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VoxelEngine)
+project(OneGame)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -9,19 +9,64 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # This sets variables like Vulkan_INCLUDE_DIRS and Vulkan_LIBRARIES
 find_package(Vulkan REQUIRED)
 
-function(compile_shader TARGET SHADER)
-    get_filename_component(FILE_NAME ${SHADER} NAME)
-    set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/${FILE_NAME}.spv")
+function(fetch_file FILE_NAME URL)
+if(NOT EXISTS ${FILE_NAME})
+    message(STATUS "Downloading ${FILE_NAME}...")
+    file(DOWNLOAD
+        ${URL}
+        ${FILE_NAME}
+        SHOW_PROGRESS
+        TLS_VERIFY ON
+    )
+endif()
+endfunction()
 
-    add_custom_command(
-        OUTPUT ${SPIRV}
-        COMMAND Vulkan::glslc ${CMAKE_CURRENT_SOURCE_DIR}/${SHADER} -o ${SPIRV}
-        DEPENDS ${SHADER}
-        COMMENT "Compiling shader ${SHADER}"
-        VERBATIM
+
+function(compile_shaders TARGET SHADER_DIR)
+
+    # Collect all shader files
+    file(GLOB_RECURSE SHADER_FILES
+        CONFIGURE_DEPENDS
+        "${SHADER_DIR}/*.vert"
+        "${SHADER_DIR}/*.frag"
+        "${SHADER_DIR}/*.comp"
+        "${SHADER_DIR}/*.geom"
+        "${SHADER_DIR}/*.tesc"
+        "${SHADER_DIR}/*.tese"
     )
 
-    target_sources(${TARGET} PRIVATE ${SPIRV})
+    set(SPIRV_FILES "")
+
+    foreach(SHADER ${SHADER_FILES})
+
+        get_filename_component(FILE_NAME ${SHADER} NAME)
+        set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/shaders/${FILE_NAME}.spv")
+
+        add_custom_command(
+            OUTPUT ${SPIRV}
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+                    ${CMAKE_CURRENT_BINARY_DIR}/shaders
+            COMMAND Vulkan::glslc ${SHADER} -o ${SPIRV}
+            DEPENDS ${SHADER}
+            COMMENT "Compiling shader ${FILE_NAME}"
+            VERBATIM
+        )
+
+        list(APPEND SPIRV_FILES ${SPIRV})
+
+    endforeach()
+
+    target_sources(${TARGET} PRIVATE ${SPIRV_FILES})
+
+endfunction()
+
+function(copy_assets TARGET ASSET_DIR)
+
+add_custom_command(TARGET ${TARGET} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_CURRENT_SOURCE_DIR}/${ASSET_DIR}
+        $<TARGET_FILE_DIR:${TARGET}>/assets)
+
 endfunction()
 
 option(ENABLE_ASAN "Enable AddressSanitizer")
@@ -36,57 +81,7 @@ if(ENABLE_ASAN)
     endif()
 endif()
 
-add_subdirectory("3rdparty/spdlog")
-add_subdirectory("3rdparty/glm")
 
-add_executable(VoxelEngine
-    "main.cpp"
-    "Engine/Graphics/GraphicsBackends/Vulkan.cpp"
-    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanBuffer.cpp"
-    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanFence.cpp"
-    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanPipeline.cpp"
-    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanTexture.cpp"
-    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanCommandBuffer.cpp"
-    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanFrameBuffer.cpp"
-    "Engine/Graphics/GraphicsBackends/Vulkan/VulkanBindingGroups.cpp"
-    "Engine/Graphics/GraphicsBackends/GraphicsBackends.cpp"
- "Engine/Graphics/TestRenderer.cpp" "Engine/Graphics/UniformArena.cpp" "Engine/Graphics/GraphicsBackends/stb_image.h"  "Engine/Graphics/RingStagingBuffer.cpp")
-  
-if (WIN32)
-    target_compile_definitions(VoxelEngine PRIVATE VK_USE_PLATFORM_WIN32_KHR)
-    target_compile_definitions(VoxelEngine PRIVATE PLATFORM_WINDOWS)
-elseif (ANDROID)
-    target_compile_definitions(VoxelEngine PRIVATE VK_USE_PLATFORM_ANDROID_KHR)
-    target_compile_definitions(VoxelEngine PRIVATE PLATFORM_ANDROID)
-endif()
-
-if (MSVC)
-    target_compile_options(VoxelEngine PRIVATE
-        $<$<CONFIG:Debug>:
-            /permissive-
-            /sdl
-            /analyze
-            /we4700
-            /RTC1
-        >
-    )
-endif()
-
-target_link_libraries(VoxelEngine PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:ws2_32>)
-target_link_libraries(VoxelEngine PRIVATE glm::glm)
-
-# 4. Link Vulkan to your project
-# Use the modern imported target Vulkan::Vulkan
-target_link_libraries(VoxelEngine PRIVATE Vulkan::Vulkan)
-compile_shader(VoxelEngine "test_triangle.frag")
-compile_shader(VoxelEngine "test_triangle.vert")
-compile_shader(VoxelEngine "test_cube.frag")
-compile_shader(VoxelEngine "test_cube.vert")
-compile_shader(VoxelEngine "test_cube_textured.frag")
-compile_shader(VoxelEngine "test_cube_textured.vert")
-
-add_custom_command(TARGET VoxelEngine POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        ${CMAKE_SOURCE_DIR}/assets
-        $<TARGET_FILE_DIR:VoxelEngine>/assets
-)
+add_subdirectory(3rdparty)
+add_subdirectory(Engine)
+add_subdirectory(OneGame)
