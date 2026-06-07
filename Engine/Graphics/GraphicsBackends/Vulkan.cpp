@@ -107,22 +107,28 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 	uint32_t VulkanBackend::MaxUniformBufferSize() const
 	{
-		return 65536; // Example value, should query from device limits
+		VkPhysicalDeviceProperties props{};
+		vkGetPhysicalDeviceProperties(m_device.physicalDevice, &props);
+
+		return static_cast<uint32_t>(props.limits.maxUniformBufferRange);
 	}
 
 	uint32_t VulkanBackend::UniformBufferAlignment() const
 	{
-		return 256; // Example value, should query from device limits
+		VkPhysicalDeviceProperties props{};
+		vkGetPhysicalDeviceProperties(m_device.physicalDevice, &props);
+
+		return static_cast<uint32_t>(props.limits.minUniformBufferOffsetAlignment);
 	}
 
 	uint32_t VulkanBackend::FramesInFlight() const
 	{
-		return 2; // Example value, can be configurable
+		return MAX_FRAMES_IN_FLIGHT;
 	}
 
 	uint32_t VulkanBackend::CurrentFrameIndex() const
 	{
-		return 0; // Placeholder, should return the actual current frame index
+		return m_frameIndex;
 	}
 
 	float VulkanBackend::SwapchainAspect() const

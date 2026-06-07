@@ -465,11 +465,25 @@ namespace OneGame::Engine::Graphics
         int dynamicBufferMask;
     };
 
+    struct BindingGroupBufferDesc
+    {
+        GPUBufferHandle gpuBuffer;
+        uint32_t stride = 0;
+
+        BindingGroupBufferDesc(GPUBufferHandle gpuBuffer) : gpuBuffer(gpuBuffer), stride(0)
+        {
+        }
+
+        BindingGroupBufferDesc(GPUBufferHandle gpuBuffer, uint32_t stride) : gpuBuffer(gpuBuffer), stride(stride)
+        {
+        }
+    };
+
     struct BindingGroupDesc
     {
         GPUBindingGroupLayoutHandle layout;
         std::vector<GPUTextureHandle> textures;
-        std::vector<GPUBufferHandle> buffers;
+        std::vector<BindingGroupBufferDesc> buffers;
     };
 
     class ICommandList
@@ -583,7 +597,7 @@ namespace OneGame::Engine::Graphics
         virtual void Submit(std::unique_ptr<ICommandList>) = 0;
 
         // ----- Buffers -----
-        virtual GPUBufferHandle CreateBuffer(const BufferDesc&) = 0;
+        virtual GPUBufferHandle CreateBuffer(const BufferDesc&, void** = nullptr) = 0;
         virtual void DestroyBuffer(GPUBufferHandle) = 0;
 
         // ----- Textures -----

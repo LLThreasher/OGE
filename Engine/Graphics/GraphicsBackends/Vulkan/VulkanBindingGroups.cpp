@@ -12,6 +12,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         VulkanBackend::CreateBindingGroupLayout(const BindingGroupLayoutDesc& desc)
     {
         VulkanBindingGroupLayout layout{};
+        layout.dynamicBufferMask = desc.dynamicBufferMask;
 
         std::vector<VkDescriptorSetLayoutBinding> bindings;
 
@@ -152,20 +153,23 @@ namespace OneGame::Engine::Graphics::Vulkan
         //
         // Buffers
         //
-        for (auto bufHandle : desc.buffers)
+        for (size_t i = 0; i < desc.buffers.size(); ++i)
         {
-            auto& buf = m_buffers.Get(bufHandle);
+            auto& bufHandle = desc.buffers[i];
+            auto& buf = m_buffers.Get(bufHandle.gpuBuffer);
 
             VkDescriptorBufferInfo bufferInfo{};
             bufferInfo.buffer = buf.buffer;
             bufferInfo.offset = 0;
-            bufferInfo.range = VK_WHOLE_SIZE;
+            bufferInfo.range = bufHandle.stride == 0 ? VK_WHOLE_SIZE : bufHandle.stride;
 
             VkWriteDescriptorSet write{};
             write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             write.dstSet = group.descriptorSet;
             write.dstBinding = bindingIndex++;
             write.descriptorType =
+                (layout.dynamicBufferMask & (1 << i)) != 0 ?
+                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             write.descriptorCount = 1;
             write.pBufferInfo = &bufferInfo;

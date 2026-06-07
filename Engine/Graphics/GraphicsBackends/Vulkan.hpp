@@ -431,7 +431,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         void Submit(std::unique_ptr<ICommandList>) override;
 
         // ----- Buffers -----
-        GPUBufferHandle CreateBuffer(const BufferDesc&) override;
+        GPUBufferHandle CreateBuffer(const BufferDesc&, void** stagingMemory = nullptr) override;
         void DestroyBuffer(GPUBufferHandle) override;
 
         // ----- Textures -----

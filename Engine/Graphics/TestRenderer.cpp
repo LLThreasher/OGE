@@ -1,4 +1,5 @@
 #include <cmath>
+#include "UniformArena.hpp"
 #include "TestRenderer.hpp"
 
 namespace OneGame::Engine::Graphics
@@ -76,6 +77,7 @@ namespace OneGame::Engine::Graphics
     {
         BindingGroupLayoutDesc layout{};
         layout.bufferCount = 1;
+        layout.dynamicBufferMask = 1;
         bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
 
         {
@@ -105,24 +107,34 @@ namespace OneGame::Engine::Graphics
         iBuf.size = indices.size() * sizeof(uint32_t);
         indexBuffer = backend->CreateBuffer(iBuf);
 
-        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
-        {
-            BufferDesc uBuf{};
-            uBuf.usage = BufferUsage::Uniform | BufferUsage::TransferDst;
-            uBuf.memory = MemoryUsage::GPUOnly;
-            uBuf.size = sizeof(UBO);
-            uniformBufferPerFrame[i] = backend->CreateBuffer(uBuf);
+        //uniformBufferPerFrame.resize(backend->FramesInFlight());
+        //bindingGroupPerFrame.resize(backend->FramesInFlight());
+        //for (size_t i = 0; i < backend->FramesInFlight(); ++i)
+        //{
+        //    BufferDesc uBuf{};
+        //    uBuf.usage = BufferUsage::Uniform | BufferUsage::TransferDst;
+        //    uBuf.memory = MemoryUsage::GPUOnly;
+        //    uBuf.size = sizeof(UBO);
+        //    uniformBufferPerFrame[i] = backend->CreateBuffer(uBuf);
 
-            BindingGroupDesc desc{};
-            desc.layout = bindingGroupLayout;
-            desc.buffers.push_back(uniformBufferPerFrame[i]);
-            bindingGroupPerFrame[i] = backend->CreateBindingGroup(desc);
+        //    BindingGroupDesc desc{};
+        //    desc.layout = bindingGroupLayout;
+        //    desc.buffers.push_back(uniformBufferPerFrame[i]);
+        //    bindingGroupPerFrame[i] = backend->CreateBindingGroup(desc);
+        //}
+        uniformArena.Initialize(backend, sizeof(UBO));
+
+        {
+              BindingGroupDesc desc{};
+              desc.layout = bindingGroupLayout;
+              desc.buffers.push_back(BindingGroupBufferDesc { uniformArena.GetGPUBuffer(), sizeof(UBO) });
+              bindingGroup = backend->CreateBindingGroup(desc);
         }
     }
 
     void TestRendererCubeWithMVP::Render(IGraphicsBackend* backend, float dt)
     {
-        m_Frame = (m_Frame + 1) % MAX_FRAMES_IN_FLIGHT;
+        auto frame = backend->CurrentFrameIndex();
         m_Time += dt;
         UBO ubo{};
         ubo.model = math::rotate(math::mat4(1.0f),
@@ -150,8 +162,11 @@ namespace OneGame::Engine::Graphics
             cmd->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
             isFirstFrame = false;
         }
-        cmd->UpdateBuffer(uniformBufferPerFrame[m_Frame], 0, sizeof(UBO), &ubo);
-        cmd->BufferBarrier(uniformBufferPerFrame[m_Frame], BufferUsage::Uniform | BufferUsage::TransferDst, BufferUsage::Uniform);
+
+        auto uniformMemory = uniformArena.Allocate(sizeof(UBO));
+        std::memcpy(uniformMemory.cpuPtr, &ubo, sizeof(UBO));
+
+        uint32_t offset[1] = { uniformMemory.offset };
 
         ClearValues values{};
         values.colorClears[0] = { 0.1f, 0.2f, 0.4f, 1.0f };
@@ -161,11 +176,13 @@ namespace OneGame::Engine::Graphics
         cmd->BindGraphicsPipeline(pipeline);
         cmd->BindVertexBuffer(vertexBuffer);
         cmd->BindIndexBuffer(indexBuffer);
-        cmd->BindBindingGroup(bindingGroupPerFrame[m_Frame], 0);
+        cmd->BindBindingGroup(bindingGroup, 0, offset);
         cmd->DrawIndexed(indices.size(), 1, 0, 0, 0);
         cmd->EndRenderPass();
         cmd->End();
 
         backend->Submit(std::move(cmd));
+
+        uniformArena.AdvanceFrame();
     }
 }

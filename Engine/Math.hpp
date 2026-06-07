@@ -110,4 +110,9 @@ namespace OneGame::Engine::math
             nearPlane,
             farPlane);
     }
+
+    inline unsigned int align(unsigned int size, unsigned int alignment)
+    {
+        return (size + alignment - 1) & ~(alignment - 1);
+    }
 }

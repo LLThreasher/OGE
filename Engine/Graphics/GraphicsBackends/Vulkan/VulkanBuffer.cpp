@@ -11,7 +11,8 @@
 namespace OneGame::Engine::Graphics::Vulkan
 {
     GPUBufferHandle VulkanBackend::CreateBuffer(
-        const BufferDesc& desc)
+        const BufferDesc& desc,
+        void** stagingMemory)
     {
         VulkanBuffer result{};
         result.size = desc.size;
@@ -66,7 +67,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 		if (allocInfo.flags & VMA_ALLOCATION_CREATE_MAPPED_BIT)
 		{
-			result.mappedData = allocationInfo.pMappedData;
+            assert(stagingMemory != nullptr && "need to provide stagingMemory");
+            *stagingMemory = allocationInfo.pMappedData;
 		}
 
         return m_buffers.Create(result);
@@ -84,7 +86,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 
             buffer.buffer = VK_NULL_HANDLE;
             buffer.allocation = nullptr;
-            buffer.mappedData = nullptr;
             buffer.size = 0;
         }
         m_buffers.Destroy(handle);

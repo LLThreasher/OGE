@@ -1,5 +1,6 @@
 #pragma once
 
+#include "UniformArena.hpp"
 #include "IGraphicsBackend.hpp"
 #include "../Math.hpp"
 
@@ -47,15 +48,16 @@ namespace OneGame::Engine::Graphics
         void Render(IGraphicsBackend* backend, float deltaTime);
 
     private:
-        uint32_t m_Frame = 0;
         float m_Time = 0.0f;
         float angle = 0.0f;
         GPUPipelineHandle pipeline;
         GPUBindingGroupLayoutHandle bindingGroupLayout;
-        std::array<GPUBindingGroupHandle, MAX_FRAMES_IN_FLIGHT> bindingGroupPerFrame;
         GPUBufferHandle vertexBuffer;
         GPUBufferHandle indexBuffer;
-        std::array<GPUBufferHandle, MAX_FRAMES_IN_FLIGHT> uniformBufferPerFrame;
+        //std::vector<GPUBindingGroupHandle> bindingGroupPerFrame;
+        //std::vector<GPUBufferHandle> uniformBufferPerFrame;
+        UniformArena uniformArena;
+        GPUBindingGroupHandle bindingGroup;
 
         bool isFirstFrame = true;
 

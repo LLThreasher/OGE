@@ -15,8 +15,6 @@ namespace OneGame::Engine::Graphics::Vulkan
         VmaAllocation   allocation = nullptr;
 
         VkDeviceSize    size = 0;
-
-        void* mappedData = nullptr;   // optional persistent mapping
     };
 
 }
