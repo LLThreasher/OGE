@@ -10,7 +10,9 @@
 #include "../ResourcePool.hpp"
 
 #define VK_CHECK_RESULT(expr) do { VkResult res = (expr); if (res != VK_SUCCESS) { throw std::runtime_error("Vulkan error: " + std::to_string(res)); } } while(0)
-
+#ifdef _DEBUG
+#define VULKAN_VALIDATION
+#endif
 
 // Forward declarations (avoid including vulkan.h here)
 struct VkInstance_T;
@@ -200,6 +202,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 			return VK_PIPELINE_STAGE_TRANSFER_BIT;
 		case TextureState::Present:
 			return VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+        case TextureState::Undefined:
+            return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 		default:
 			return 0;
 		}
@@ -476,7 +480,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         std::vector<VkSemaphore>    m_imagesFinishRender;
 
         VkDescriptorPool            m_descriptorPool = {};
-#ifdef _DEBUG
+#ifdef VULKAN_VALIDATION
         VkDebugUtilsMessengerEXT    m_debugMessenger = {};
 #endif
         ResourcePool<GPUBuffer, VulkanBuffer> m_buffers;

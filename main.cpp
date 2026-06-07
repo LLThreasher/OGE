@@ -69,7 +69,7 @@ int main() {
         handle.hInstance = GetModuleHandle(nullptr);
         handle.hwnd = hwnd;
         backend->Resize(width, height);
-        backend->Initialize(BackendDesc{ &handle });
+        backend->Initialize(BackendDesc{ &handle, FrameTimePreference::VSync });
     }
     catch (const std::exception& e)
     {
@@ -84,7 +84,8 @@ int main() {
 
     //auto testRenderer = TestRenderer();
     //auto testRenderer = TestRendererRotateTriangle();
-    auto testRenderer = TestRendererCubeWithMVP();
+    //auto testRenderer = TestRendererCubeWithMVP();
+    auto testRenderer = TestRendererCubeTextured();
     try
     {
         //bool stepFrame = false;
@@ -96,18 +97,20 @@ int main() {
         return -1;
     }
 
-    double frameTime = 0.0;
-    int frameCount = 0;
-    double cumTime = 0.0;
+    float timeAccumulator = 0.0f;
+    unsigned long frameCount = 0;
     auto lastTime = std::chrono::high_resolution_clock::now();
     while (msg.message != WM_QUIT)
     {
-
         auto now = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = now - lastTime;
         lastTime = now;
 
         float deltaTime = static_cast<float>(elapsed.count());
+
+        // Accumulate timing
+        timeAccumulator += deltaTime;
+        frameCount++;
 
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
@@ -117,16 +120,6 @@ int main() {
                 break;
             }
 
-            //if (msg.message == WM_KEYDOWN && msg.wParam == VK_SPACE)
-            //{
-            //    bool wasDown = (msg.lParam & (1 << 30)) != 0;
-
-            //    if (!wasDown)
-            //    {
-            //        stepFrame = true;
-            //    }
-            //}
-
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
@@ -134,19 +127,21 @@ int main() {
         if (!running)
             break;
 
-        //if (stepFrame)
-        //{
-        //    backend->BeginFrame();
-        //    testRenderer.Render(backend.get(), 0.f);
-        //    backend->EndFrame();
-
-        //    stepFrame = false;  // consume the press
-        //}
         backend->BeginFrame();
-        
         testRenderer.Render(backend.get(), deltaTime);
-
         backend->EndFrame();
+
+        // Every 5 seconds
+        if (timeAccumulator >= 2.0)
+        {
+            double avgFrameTime = timeAccumulator / frameCount;
+            double fps = 1.0 / avgFrameTime;
+
+            LOG_INFO("Avg frame time: {} ms | FPS: {}", avgFrameTime * 1000.0, fps);
+
+            timeAccumulator = 0.0;
+            frameCount = 0;
+        }
     }
     backend->Shutdown();
 }

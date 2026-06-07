@@ -122,6 +122,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         //
         // 2️⃣ Write descriptors
         //
+        std::vector<VkDescriptorImageInfo> imageInfos;
         std::vector<VkWriteDescriptorSet> writes;
 
         uint32_t bindingIndex = 0;
@@ -137,6 +138,7 @@ namespace OneGame::Engine::Graphics::Vulkan
             imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
             imageInfo.imageView = tex.view;
             imageInfo.sampler = tex.sampler;
+            imageInfos.push_back(imageInfo);
 
             VkWriteDescriptorSet write{};
             write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -145,11 +147,12 @@ namespace OneGame::Engine::Graphics::Vulkan
             write.descriptorType =
                 VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             write.descriptorCount = 1;
-            write.pImageInfo = &imageInfo;
+            write.pImageInfo = &imageInfos.back();
 
             writes.push_back(write);
         }
 
+        std::vector<VkDescriptorBufferInfo> bufferInfos;
         //
         // Buffers
         //
@@ -162,6 +165,7 @@ namespace OneGame::Engine::Graphics::Vulkan
             bufferInfo.buffer = buf.buffer;
             bufferInfo.offset = 0;
             bufferInfo.range = bufHandle.stride == 0 ? VK_WHOLE_SIZE : bufHandle.stride;
+            bufferInfos.push_back(bufferInfo);
 
             VkWriteDescriptorSet write{};
             write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -172,7 +176,7 @@ namespace OneGame::Engine::Graphics::Vulkan
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             write.descriptorCount = 1;
-            write.pBufferInfo = &bufferInfo;
+            write.pBufferInfo = &bufferInfos.back();
 
             writes.push_back(write);
         }

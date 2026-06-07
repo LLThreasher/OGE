@@ -107,27 +107,12 @@ namespace OneGame::Engine::Graphics
         iBuf.size = indices.size() * sizeof(uint32_t);
         indexBuffer = backend->CreateBuffer(iBuf);
 
-        //uniformBufferPerFrame.resize(backend->FramesInFlight());
-        //bindingGroupPerFrame.resize(backend->FramesInFlight());
-        //for (size_t i = 0; i < backend->FramesInFlight(); ++i)
-        //{
-        //    BufferDesc uBuf{};
-        //    uBuf.usage = BufferUsage::Uniform | BufferUsage::TransferDst;
-        //    uBuf.memory = MemoryUsage::GPUOnly;
-        //    uBuf.size = sizeof(UBO);
-        //    uniformBufferPerFrame[i] = backend->CreateBuffer(uBuf);
-
-        //    BindingGroupDesc desc{};
-        //    desc.layout = bindingGroupLayout;
-        //    desc.buffers.push_back(uniformBufferPerFrame[i]);
-        //    bindingGroupPerFrame[i] = backend->CreateBindingGroup(desc);
-        //}
         uniformArena.Initialize(backend, sizeof(UBO));
 
         {
               BindingGroupDesc desc{};
               desc.layout = bindingGroupLayout;
-              desc.buffers.push_back(BindingGroupBufferDesc { uniformArena.GetGPUBuffer(), sizeof(UBO) });
+              desc.buffers.push_back(BindingGroupBufferDesc { uniformArena.GetBuffer(), sizeof(UBO) });
               bindingGroup = backend->CreateBindingGroup(desc);
         }
     }
@@ -160,6 +145,125 @@ namespace OneGame::Engine::Graphics
             cmd->UpdateBuffer(indexBuffer, 0, indices.size() * sizeof(uint32_t), indices.data());
             cmd->BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
             cmd->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
+            isFirstFrame = false;
+        }
+
+        auto uniformMemory = uniformArena.Allocate(sizeof(UBO));
+        std::memcpy(uniformMemory.cpuPtr, &ubo, sizeof(UBO));
+
+        uint32_t offset[1] = { uniformMemory.offset };
+
+        ClearValues values{};
+        values.colorClears[0] = { 0.1f, 0.2f, 0.4f, 1.0f };
+        values.depthClear = 1.0f;
+        values.stencilClear = 0.f;
+        cmd->BeginRenderPass(backend->GetCurrentRenderPass(), backend->GetCurrentFrameBuffer(), values);
+        cmd->BindGraphicsPipeline(pipeline);
+        cmd->BindVertexBuffer(vertexBuffer);
+        cmd->BindIndexBuffer(indexBuffer);
+        cmd->BindBindingGroup(bindingGroup, 0, offset);
+        cmd->DrawIndexed(indices.size(), 1, 0, 0, 0);
+        cmd->EndRenderPass();
+        cmd->End();
+
+        backend->Submit(std::move(cmd));
+
+        uniformArena.AdvanceFrame();
+    }
+
+
+    void TestRendererCubeTextured::Initialize(IGraphicsBackend* backend)
+    {
+        BindingGroupLayoutDesc layout{};
+        layout.textureCount = 1;
+        layout.bufferCount = 1;
+        layout.dynamicBufferMask = 1;
+        bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
+
+        {
+            GraphicsPipelineDesc desc{};
+            LoadShaderBinary("test_cube_textured.vert.spv", desc.vertexShader);
+            LoadShaderBinary("test_cube_textured.frag.spv", desc.fragmentShader);
+            // position
+            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
+            // color
+            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
+            // uv
+            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x2);
+
+            desc.bindingGroupLayouts.push_back(bindingGroupLayout);
+            desc.depthTest = true;
+            desc.writeDepth = true;
+            desc.depthCompareOp = DepthCompareOp::Less;
+            pipeline = backend->CreateGraphicsPipeline(desc);
+        }
+
+        BufferDesc vBuf{};
+        vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
+        vBuf.memory = MemoryUsage::GPUOnly;
+        vBuf.size = vertices.size() * sizeof(Vertex);
+        vertexBuffer = backend->CreateBuffer(vBuf);
+
+        BufferDesc iBuf{};
+        iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
+        iBuf.memory = MemoryUsage::GPUOnly;
+        iBuf.size = indices.size() * sizeof(uint32_t);
+        indexBuffer = backend->CreateBuffer(iBuf);
+
+        uniformArena.Initialize(backend, sizeof(UBO));
+        ringStagingBuffer.Initialize(backend, 1024 * 1024 * 16);
+
+        {
+            int width, height;
+            LoadPNG("assets/blocks.png", width, height);
+            TextureDesc texDesc{};
+            texDesc.width = width;
+            texDesc.height = height;
+            texDesc.format = TextureFormat::RGBA8Unorm;
+            texDesc.usage = TextureUsage::TransferDst | TextureUsage::Sampled;
+            textureBuffer = ringStagingBuffer.Allocate(width * height * sizeof(char) * 4, backend->UniformBufferAlignment());
+            LoadPNG("assets/blocks.png", width, height, &textureBuffer.cpuPtr);
+            texture = backend->CreateTexture(texDesc);
+            
+            BindingGroupDesc desc{};
+            desc.layout = bindingGroupLayout;
+            desc.buffers.push_back(BindingGroupBufferDesc{ uniformArena.GetBuffer(), sizeof(UBO) });
+            desc.textures.push_back(texture);
+            bindingGroup = backend->CreateBindingGroup(desc);
+        }
+    }
+
+    void TestRendererCubeTextured::Render(IGraphicsBackend* backend, float dt)
+    {
+        auto frame = backend->CurrentFrameIndex();
+        m_Time += dt;
+        UBO ubo{};
+        ubo.model = math::rotate(math::mat4(1.0f),
+            m_Time * math::radians(90.0f),
+            { 0,1,0 });
+
+        ubo.view = math::lookAt(
+            math::vec3(2, 2, 2),
+            math::vec3(0, 0, 0),
+            math::vec3(0, 1, 0));
+
+        ubo.proj = math::perspective(
+            math::radians(45.0f),
+            backend->SwapchainAspect(),
+            0.1f,
+            10.0f);
+
+        auto cmd = backend->CreateCommandList(QueueType::Present);
+        cmd->Begin();
+        if (isFirstFrame)
+        {
+            cmd->UpdateBuffer(vertexBuffer, 0, vertices.size() * sizeof(Vertex), vertices.data());
+            cmd->UpdateBuffer(indexBuffer, 0, indices.size() * sizeof(uint32_t), indices.data());
+            cmd->BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
+            cmd->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
+            cmd->TextureBarrier(texture, TextureState::TransferDst);
+            cmd->CopyBufferToTexture(ringStagingBuffer.GetBuffer(), texture, textureBuffer.offset);
+            cmd->TextureBarrier(texture, TextureState::ShaderRead);
             isFirstFrame = false;
         }
 

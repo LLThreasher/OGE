@@ -50,7 +50,7 @@ add_executable(VoxelEngine
     "Engine/Graphics/GraphicsBackends/Vulkan/VulkanFrameBuffer.cpp"
     "Engine/Graphics/GraphicsBackends/Vulkan/VulkanBindingGroups.cpp"
     "Engine/Graphics/GraphicsBackends/GraphicsBackends.cpp"
- "Engine/Graphics/TestRenderer.cpp" "Engine/Graphics/UniformArena.cpp")
+ "Engine/Graphics/TestRenderer.cpp" "Engine/Graphics/UniformArena.cpp" "Engine/Graphics/GraphicsBackends/stb_image.h"  "Engine/Graphics/RingStagingBuffer.cpp")
   
 if (WIN32)
     target_compile_definitions(VoxelEngine PRIVATE VK_USE_PLATFORM_WIN32_KHR)
@@ -82,3 +82,11 @@ compile_shader(VoxelEngine "test_triangle.frag")
 compile_shader(VoxelEngine "test_triangle.vert")
 compile_shader(VoxelEngine "test_cube.frag")
 compile_shader(VoxelEngine "test_cube.vert")
+compile_shader(VoxelEngine "test_cube_textured.frag")
+compile_shader(VoxelEngine "test_cube_textured.vert")
+
+add_custom_command(TARGET VoxelEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        ${CMAKE_SOURCE_DIR}/assets
+        $<TARGET_FILE_DIR:VoxelEngine>/assets
+)

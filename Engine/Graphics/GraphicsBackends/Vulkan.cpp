@@ -19,6 +19,8 @@
 
 #include "../../PrintStackTrace.hpp"
 
+#define VALIDATION
+
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
@@ -317,7 +319,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 #else
 		std::vector<const char*> extensions;
 #endif
-#ifdef _DEBUG
+#ifdef VULKAN_VALIDATION
 		extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 #endif
 
@@ -336,7 +338,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			};
 			VkInstanceCreateInfo createInfo{};
 
-#ifdef _DEBUG
+#ifdef VULKAN_VALIDATION
 			if (!CheckValidationLayerSupport())
 				throw std::runtime_error("Validation layers not available");
 
@@ -370,7 +372,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			vkCreateInstance(&createInfo, nullptr, &m_device.instance);
 		}
 
-#ifdef _DEBUG
+#ifdef VULKAN_VALIDATION
 		VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
 		debugCreateInfo.sType =
 			VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
@@ -484,7 +486,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 		for (auto& mode : swapchainSupport.presentModes)
 		{
-			if (mode == VK_PRESENT_MODE_FIFO_KHR)
+			if (mode == VK_PRESENT_MODE_FIFO_KHR && desc.frameTime == FrameTimePreference::VSync)
 			{
 				presentMode = mode;
 				break;
@@ -766,7 +768,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			m_device.surface = VK_NULL_HANDLE;
 		}
 
-#ifdef _DEBUG
+#ifdef VULKAN_VALIDATION
 		DestroyDebugUtilsMessengerEXT(
 			m_device.instance,
 			m_debugMessenger,

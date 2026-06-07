@@ -17,7 +17,7 @@ namespace OneGame::Engine::Graphics
 		m_gpuBuffer = backend->CreateBuffer(desc, &m_cpuBuffer);
 	}
 
-	GPUBufferHandle UniformArena::GetGPUBuffer()
+	GPUBufferHandle UniformArena::GetBuffer()
 	{
 		return m_gpuBuffer;
 	}
@@ -38,7 +38,6 @@ namespace OneGame::Engine::Graphics
 		assert(m_head + alignedSize <= frameEnd);
 
 		BufferRange result{};
-		result.buffer = m_gpuBuffer;
 		result.offset = m_head;
 		result.size = alignedSize;
 		result.cpuPtr = static_cast<uint8_t*>(m_cpuBuffer) + m_head;

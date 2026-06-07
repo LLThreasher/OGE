@@ -203,9 +203,16 @@ namespace OneGame::Engine::Graphics
 #endif
     };
 
+    enum class FrameTimePreference
+    {
+        VSync,
+        Unlimited,
+    };
+
     struct BackendDesc
     {
         WindowHandle* window;
+        FrameTimePreference frameTime = FrameTimePreference::VSync;
     };
 
     using GPUBufferHandle = ResourceHandle<GPUBuffer>;
@@ -265,6 +272,12 @@ namespace OneGame::Engine::Graphics
         TransferSrc = 1 << 4,
         TransferDst = 1 << 5,
     };
+
+    inline TextureUsage operator|(TextureUsage a, TextureUsage b)
+    {
+        return static_cast<TextureUsage>(
+            static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
+    }
 
     enum class TextureState
     {
@@ -522,6 +535,18 @@ namespace OneGame::Engine::Graphics
 			uint64_t size,
 			const void* data) = 0;
 
+        virtual void CopyBuffer(
+            GPUBufferHandle src,
+            GPUBufferHandle dst,
+            uint64_t size,
+            uint64_t srcOffset = 0,
+            uint64_t dstOffset = 0) = 0;
+
+        virtual void CopyBufferToTexture(
+            GPUBufferHandle src,
+            GPUTextureHandle dst,
+            uint32_t bufferOffset) = 0;
+
         // ----- Drawing -----
         virtual void Draw(
             uint32_t vertexCount,
@@ -634,5 +659,6 @@ namespace OneGame::Engine::Graphics
 
     std::unique_ptr<IGraphicsBackend> CreateBackend(BackendType type);
     void LoadShaderBinary(const char* filePath, std::vector<char>& output);
+    void LoadPNG(const char* filePath, int& width, int& height, void** result = nullptr);
 
 }

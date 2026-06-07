@@ -9,7 +9,6 @@ namespace OneGame::Engine::Graphics
 	public:
 		struct BufferRange
 		{
-			GPUBufferHandle buffer;
 			uint32_t offset;
 			uint32_t size;
 			void* cpuPtr;
@@ -17,7 +16,7 @@ namespace OneGame::Engine::Graphics
 		~UniformArena() = default;
 
 		void Initialize(IGraphicsBackend* backend, uint32_t capacityPerFrame);
-		GPUBufferHandle GetGPUBuffer();
+		GPUBufferHandle GetBuffer();
 
 		void AdvanceFrame();
 		BufferRange Allocate(uint32_t size);

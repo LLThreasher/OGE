@@ -1,0 +1,38 @@
+#pragma once
+#include <mutex>
+#include <cassert>
+#include <cstdint>
+#include "IGraphicsBackend.hpp"
+
+namespace OneGame::Engine::Graphics
+{
+    struct StagingAllocation
+    {
+        uint32_t offset;
+        uint32_t size;
+        void* cpuPtr;
+    };
+
+    class RingStagingBuffer
+    {
+    public:
+        void Initialize(IGraphicsBackend* backend, uint64_t size);
+
+        StagingAllocation Allocate(uint64_t size, uint64_t alignment);
+
+        void Free(uint64_t offset, uint64_t size);
+
+        GPUBufferHandle GetBuffer() const { return m_buffer; }
+
+    private:
+        GPUBufferHandle m_buffer;
+
+        void* m_mappedPtr = nullptr;
+
+        uint64_t m_capacity = 0;
+        uint64_t m_head = 0;
+        uint64_t m_tail = 0;
+
+        std::mutex m_mutex;
+    };
+}

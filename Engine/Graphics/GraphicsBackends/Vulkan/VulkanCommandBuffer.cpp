@@ -183,6 +183,62 @@ namespace OneGame::Engine::Graphics::Vulkan
             data);
     }
 
+    void VulkanCommandBuffer::CopyBuffer(
+        GPUBufferHandle srcHandle,
+        GPUBufferHandle dstHandle,
+        uint64_t size,
+        uint64_t srcOffset,
+        uint64_t dstOffset)
+    {
+        VulkanBuffer& src = m_backend->m_buffers.Get(srcHandle);
+        VulkanBuffer& dst = m_backend->m_buffers.Get(dstHandle);
+
+        VkBufferCopy copyRegion{};
+        copyRegion.srcOffset = srcOffset;
+        copyRegion.dstOffset = dstOffset;
+        copyRegion.size = size;
+
+        vkCmdCopyBuffer(
+            m_cmd,
+            src.buffer,
+            dst.buffer,
+            1,
+            &copyRegion
+        );
+    }
+
+    void VulkanCommandBuffer::CopyBufferToTexture(
+        GPUBufferHandle srcHandle,
+        GPUTextureHandle dstHandle,
+        uint32_t bufferOffset)
+    {
+        VulkanBuffer& src = m_backend->m_buffers.Get(srcHandle);
+        VulkanTexture& texture = m_backend->m_textures.Get(dstHandle);
+
+        VkBufferImageCopy region{};
+        region.bufferOffset = bufferOffset;
+        region.bufferRowLength = 0;
+        region.bufferImageHeight = 0;
+
+        region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        region.imageSubresource.mipLevel = 0;
+        region.imageSubresource.baseArrayLayer = 0;
+        region.imageSubresource.layerCount = 1;
+
+        region.imageExtent.width = texture.width;
+        region.imageExtent.height = texture.height;
+        region.imageExtent.depth = 1;
+
+        vkCmdCopyBufferToImage(
+            m_cmd,
+            src.buffer,
+            texture.image,
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1,
+            &region
+        );
+    }
+
     void VulkanCommandBuffer::Draw(
         uint32_t vertexCount,
         uint32_t instanceCount,
