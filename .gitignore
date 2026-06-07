@@ -39,6 +39,7 @@ build.ninja
 *.sln.docstates
 *.VC.db
 *.VC.opendb
+CMakePresets.json
 
 ############################################
 # VS Code
