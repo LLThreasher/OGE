@@ -185,6 +185,8 @@ namespace OneGame::Engine::Graphics::Vulkan
             vkDestroyRenderPass(m_device.device, pass.handle, nullptr);
             pass.handle = VK_NULL_HANDLE;
         }
+
+        m_renderPasses.Destroy(handle);
     }
 
     GPUFrameBufferHandle VulkanBackend::CreateFrameBuffer(
@@ -322,5 +324,6 @@ namespace OneGame::Engine::Graphics::Vulkan
             vkDestroyFramebuffer(m_device.device, fb.handle, nullptr);
             fb.handle = VK_NULL_HANDLE;
         }
+        m_frameBuffers.Destroy(handle);
     }
 }

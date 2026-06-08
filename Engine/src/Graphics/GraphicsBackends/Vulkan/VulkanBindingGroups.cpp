@@ -196,11 +196,12 @@ namespace OneGame::Engine::Graphics::Vulkan
     {
         auto& group = m_bindingGroups.Get(handle);
 
-        vkFreeDescriptorSets(
-            m_device.device,
-            m_descriptorPool,
-            1,
-            &group.descriptorSet);
+        // we use destroy descriptor pool
+        //vkFreeDescriptorSets(
+        //    m_device.device,
+        //    m_descriptorPool,
+        //    1,
+        //    &group.descriptorSet);
 
         group = {};
         m_bindingGroups.Destroy(handle);

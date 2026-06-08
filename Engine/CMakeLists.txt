@@ -41,6 +41,13 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
     )
 endif()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_definitions(Engine
+    PRIVATE
+        VULKAN_VALIDATION
+    )
+endif()
+
 if (MSVC)
     target_compile_options(Engine PRIVATE
         $<$<CONFIG:Debug>:

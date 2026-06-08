@@ -102,6 +102,7 @@ int main() {
     float timeAccumulator = 0.0f;
     unsigned long frameCount = 0;
     auto lastTime = std::chrono::high_resolution_clock::now();
+    LOG_INFO("enter main loop");
     while (msg.message != WM_QUIT)
     {
         auto now = std::chrono::high_resolution_clock::now();
@@ -134,7 +135,7 @@ int main() {
         backend->EndFrame();
 
         // Every 5 seconds
-        if (timeAccumulator >= 2.0)
+        if (timeAccumulator >= 5.0)
         {
             double avgFrameTime = timeAccumulator / frameCount;
             double fps = 1.0 / avgFrameTime;
@@ -145,6 +146,7 @@ int main() {
             frameCount = 0;
         }
     }
+    LOG_INFO("exit main loop");
     backend->Shutdown();
 }
 

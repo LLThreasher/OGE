@@ -19,8 +19,6 @@
 
 #include "Engine/PrintStackTrace.hpp"
 
-#define VALIDATION
-
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
@@ -302,6 +300,93 @@ namespace OneGame::Engine::Graphics::Vulkan
 		return { bestDevice, bestSwapchainSupport, bestQueueIndices };
 	}
 
+	static const char* DeviceTypeToString(VkPhysicalDeviceType type)
+	{
+		switch (type)
+		{
+		case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:   return "Discrete GPU";
+		case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU: return "Integrated GPU";
+		case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:    return "Virtual GPU";
+		case VK_PHYSICAL_DEVICE_TYPE_CPU:            return "CPU";
+		default:                                     return "Other";
+		}
+	}
+
+	static void PrintPhysicalDeviceInfo(VkPhysicalDevice physicalDevice)
+	{
+		VkPhysicalDeviceProperties props{};
+		VkPhysicalDeviceFeatures features{};
+		VkPhysicalDeviceMemoryProperties memoryProps{};
+
+		vkGetPhysicalDeviceProperties(physicalDevice, &props);
+		vkGetPhysicalDeviceFeatures(physicalDevice, &features);
+		vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memoryProps);
+
+		uint32_t apiVersion = props.apiVersion;
+
+		LOG_INFO("========== GPU ==========");
+		LOG_INFO("Name: {}", props.deviceName);
+		LOG_INFO("Type: {}", DeviceTypeToString(props.deviceType));
+		LOG_INFO("API Version: {}.{}.{}",
+			VK_VERSION_MAJOR(apiVersion),
+			VK_VERSION_MINOR(apiVersion),
+			VK_VERSION_PATCH(apiVersion));
+		LOG_INFO("Driver Version: {}", props.driverVersion);
+		LOG_INFO("Vendor ID: {}", props.vendorID);
+		LOG_INFO("Device ID: {}", props.deviceID);
+
+		// ---------------- Memory ----------------
+		LOG_INFO("---- Memory Heaps ----");
+		for (uint32_t i = 0; i < memoryProps.memoryHeapCount; ++i)
+		{
+			const auto& heap = memoryProps.memoryHeaps[i];
+			double sizeGB = heap.size / (1024.0 * 1024.0 * 1024.0);
+
+			LOG_INFO("Heap {}: {:.2f} GB{}",
+				i,
+				sizeGB,
+				(heap.flags & VK_MEMORY_HEAP_DEVICE_LOCAL_BIT) ? " (Device Local)" : "");
+		}
+
+		// ---------------- Queues ----------------
+		uint32_t queueCount = 0;
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, nullptr);
+
+		std::vector<VkQueueFamilyProperties> queues(queueCount);
+		vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, queues.data());
+
+		LOG_INFO("---- Queue Families ----");
+		for (uint32_t i = 0; i < queueCount; ++i)
+		{
+			const auto& q = queues[i];
+
+			std::string flags;
+
+			if (q.queueFlags & VK_QUEUE_GRAPHICS_BIT) flags += "Graphics ";
+			if (q.queueFlags & VK_QUEUE_COMPUTE_BIT)  flags += "Compute ";
+			if (q.queueFlags & VK_QUEUE_TRANSFER_BIT) flags += "Transfer ";
+			if (q.queueFlags & VK_QUEUE_SPARSE_BINDING_BIT) flags += "Sparse ";
+
+			LOG_INFO("Queue {}: Count={} | {}", i, q.queueCount, flags);
+		}
+
+		// ---------------- Important Limits ----------------
+		LOG_INFO("---- Limits ----");
+		LOG_INFO("Max Image Dimension 2D: {}", props.limits.maxImageDimension2D);
+		LOG_INFO("Max Uniform Buffer Range: {}", props.limits.maxUniformBufferRange);
+		LOG_INFO("Max Push Constants Size: {}", props.limits.maxPushConstantsSize);
+		LOG_INFO("Max Bound Descriptor Sets: {}", props.limits.maxBoundDescriptorSets);
+
+		// ---------------- Features ----------------
+		LOG_INFO("---- Features ----");
+		LOG_INFO("Geometry Shader: {}", features.geometryShader ? "Yes" : "No");
+		LOG_INFO("Tessellation Shader: {}", features.tessellationShader ? "Yes" : "No");
+		LOG_INFO("Multi Draw Indirect: {}", features.multiDrawIndirect ? "Yes" : "No");
+		LOG_INFO("Sampler Anisotropy: {}", features.samplerAnisotropy ? "Yes" : "No");
+
+		LOG_INFO("========================");
+	}
+
 	void VulkanBackend::Initialize(const BackendDesc& desc)
 	{
 #if defined(PLATFORM_WINDOWS)
@@ -419,6 +504,9 @@ namespace OneGame::Engine::Graphics::Vulkan
 		std::vector deviceExtensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 		auto [physicalDevice, swapchainSupport, queueIndices] = SelectPhysicalDevice(m_device.instance, m_device.surface, deviceExtensions);
 		m_device.physicalDevice = physicalDevice;
+
+		PrintPhysicalDeviceInfo(physicalDevice);
+
 		{
 			float queuePriority = 1.0f;
 			std::set<uint32_t> uniqueQueueFamilies =
@@ -595,6 +683,12 @@ namespace OneGame::Engine::Graphics::Vulkan
 				capabilities.maxImageExtent.height);
 		}
 
+		LOG_DEBUG("Recreate swapchain with requested extend ({}, {}), actual extend ({}, {})",
+			m_swapchain.nextExtent.width, m_swapchain.nextExtent.height,
+			m_swapchain.extent.width, m_swapchain.extent.height
+		);
+		m_swapchain.nextExtent = m_swapchain.extent;
+
 		uint32_t imageCount = capabilities.minImageCount + 1;
 		if (capabilities.maxImageCount > 0 &&
 			imageCount > capabilities.maxImageCount)
@@ -708,33 +802,44 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 	void VulkanBackend::Shutdown()
 	{
+		LOG_DEBUG("suhtdown wait device");
 		vkDeviceWaitIdle(m_device.device);
 
+		LOG_DEBUG("suhtdown destroy swapchain");
 		DestroySwapchain(m_swapchain.swapchain);
 
+		LOG_DEBUG("suhtdown pool frame buffers");
 		while (m_frameBuffers.Size() > 0)
 			DestroyFrameBuffer(m_frameBuffers.Poll());
+		LOG_DEBUG("suhtdown pool render passes");
 		while (m_renderPasses.Size() > 0)
 			DestroyRenderPass(m_renderPasses.Poll());
+		LOG_DEBUG("suhtdown pool pipelines");
 		while (m_pipelines.Size() > 0)
 			DestroyPipeline(m_pipelines.Poll());
 
+		LOG_DEBUG("suhtdown pool binding groups");
 		while (m_bindingGroups.Size() > 0)
 			DestroyBindingGroup(m_bindingGroups.Poll());
 		while (m_bindingGroupLayouts.Size() > 0)
 			DestroyBindingGroupLayout(m_bindingGroupLayouts.Poll());
 		vkDestroyDescriptorPool(m_device.device, m_descriptorPool, nullptr);
 
+		LOG_DEBUG("suhtdown pool fences");
 		while (m_fences.Size() > 0)
 		{
 			auto handle = m_fences.Poll();
 			vkDestroyFence(m_device.device, m_fences.Get(handle).fence, nullptr);
+			m_fences.Destroy(handle);
 		}
+
+		LOG_DEBUG("suhtdown pool textures");
 		while (m_textures.Size() > 0)
 			DestroyTexture(m_textures.Poll());
 		while (m_buffers.Size() > 0)
 			DestroyBuffer(m_buffers.Poll());
 
+		LOG_DEBUG("suhtdown frame data");
 		for (auto& frame : m_frames)
 		{
 			vkDestroyCommandPool(m_device.device, frame.pool, nullptr);
@@ -747,18 +852,21 @@ namespace OneGame::Engine::Graphics::Vulkan
 			vkDestroySemaphore(m_device.device, semaphore, nullptr);
 		}
 
+		LOG_DEBUG("suhtdown allocator");
 		if (m_device.m_allocator != nullptr)
 		{
 			vmaDestroyAllocator(m_device.m_allocator);
 			m_device.m_allocator = nullptr;
 		}
 
+		LOG_DEBUG("suhtdown device");
 		if (m_device.device != VK_NULL_HANDLE)
 		{
 			vkDestroyDevice(m_device.device, nullptr);
 			m_device.device = VK_NULL_HANDLE;
 		}
 
+		LOG_DEBUG("suhtdown surface");
 		if (m_device.surface != VK_NULL_HANDLE)
 		{
 			vkDestroySurfaceKHR(
@@ -769,6 +877,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		}
 
 #ifdef VULKAN_VALIDATION
+		LOG_DEBUG("suhtdown debug messenger");
 		DestroyDebugUtilsMessengerEXT(
 			m_device.instance,
 			m_debugMessenger,
@@ -777,9 +886,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 		if (m_device.instance != VK_NULL_HANDLE)
 		{
+			LOG_DEBUG("suhtdown device");
 			vkDestroyInstance(m_device.instance, nullptr);
 			m_device.instance = VK_NULL_HANDLE;
 		}
+		LOG_DEBUG("suhtdown finished");
 	}
 
 #undef max
@@ -805,11 +916,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 			&frame.inFlightFence,
 			VK_TRUE,
 			UINT64_MAX);
-
-		vkResetFences(
-			m_device.device,
-			1,
-			&frame.inFlightFence);
 
 		VkDevice& device = m_device.device;
 		VkSwapchainKHR& swapchain = m_swapchain.swapchain;
@@ -846,6 +952,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 				UINT64_MAX);
 			m_imagesInFlight[m_imageIndex] = VK_NULL_HANDLE;
 		}
+
+		vkResetFences(
+			m_device.device,
+			1,
+			&frame.inFlightFence);
 
 		// 3️⃣ Reset command pool
 		vkResetCommandPool(device, frame.pool, 0);

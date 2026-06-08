@@ -10,9 +10,7 @@
 #include "Engine/Graphics/ResourcePool.hpp"
 
 #define VK_CHECK_RESULT(expr) do { VkResult res = (expr); if (res != VK_SUCCESS) { throw std::runtime_error("Vulkan error: " + std::to_string(res)); } } while(0)
-#ifdef _DEBUG
-#define VULKAN_VALIDATION
-#endif
+
 
 // Forward declarations (avoid including vulkan.h here)
 struct VkInstance_T;
