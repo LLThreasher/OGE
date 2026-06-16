@@ -3,6 +3,9 @@
 #include "VulkanBindingGroups.hpp"
 #include "VulkanFrameBuffer.hpp"
 
+#define LOGGER_NAME "Vulkan"
+#include "Engine/Logger.hpp"
+
 namespace OneGame::Engine::Graphics::Vulkan
 {
     VkShaderModule VulkanBackend::CreateShaderModule(
@@ -28,13 +31,16 @@ namespace OneGame::Engine::Graphics::Vulkan
 
     GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDesc& desc)
     {
+        LOG_DEBUG("begin create pipeline");
         VulkanPipeline pipeline{};
 
         //
         // --- Shader stages
         //
         VkShaderModule vertModule = CreateShaderModule(desc.vertexShader);
+        LOG_DEBUG("vk vertex shader created");
         VkShaderModule fragModule = CreateShaderModule(desc.fragmentShader);
+        LOG_DEBUG("vk fragment shader created");
 
         VkPipelineShaderStageCreateInfo vertStage{};
         vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -221,7 +227,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         layoutInfo.pSetLayouts = vkLayouts.data();
 
         layoutInfo.pushConstantRangeCount = static_cast<uint32_t>(vkRanges.size());
-        layoutInfo.pPushConstantRanges = vkRanges.empty() ? nullptr : vkRanges.data();
+        layoutInfo.pPushConstantRanges = vkRanges.empty() ? VK_NULL_HANDLE : vkRanges.data();
 
         if (vkCreatePipelineLayout(
             m_device.device,

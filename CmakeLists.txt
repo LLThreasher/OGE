@@ -29,7 +29,7 @@ endif()
 endfunction()
 
 
-function(compile_shaders TARGET SHADER_DIR)
+function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
 
     # Collect all shader files
     file(GLOB_RECURSE SHADER_FILES
@@ -47,13 +47,13 @@ function(compile_shaders TARGET SHADER_DIR)
     foreach(SHADER ${SHADER_FILES})
 
         get_filename_component(FILE_NAME ${SHADER} NAME)
-        set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/assets/${FILE_NAME}.spv")
+        set(SPIRV "${ASSET_TARGET_DIR}/${FILE_NAME}.spv")
 
         add_custom_command(
             OUTPUT ${SPIRV}
             COMMAND ${CMAKE_COMMAND} -E make_directory
-                    ${CMAKE_CURRENT_BINARY_DIR}/assets
-            COMMAND Vulkan::glslc ${SHADER} -o ${SPIRV}
+                    ${ASSET_TARGET_DIR}
+            COMMAND glslc ${SHADER} -o ${SPIRV}
             DEPENDS ${SHADER}
             COMMENT "Compiling shader ${FILE_NAME}"
             VERBATIM
@@ -67,12 +67,12 @@ function(compile_shaders TARGET SHADER_DIR)
 
 endfunction()
 
-function(copy_assets TARGET ASSET_DIR)
+function(copy_assets TARGET ASSET_DIR ASSET_TARGET_DIR)
 
 add_custom_command(TARGET ${TARGET} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         ${CMAKE_CURRENT_SOURCE_DIR}/${ASSET_DIR}
-        $<TARGET_FILE_DIR:${TARGET}>/assets)
+        ${ASSET_TARGET_DIR})
 
 endfunction()
 
@@ -131,3 +131,5 @@ add_subdirectory(3rdparty)
 add_subdirectory(Engine)
 add_subdirectory(OneGame)
 endif()
+
+

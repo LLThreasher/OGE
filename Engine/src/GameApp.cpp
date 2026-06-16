@@ -15,7 +15,9 @@ namespace OneGame::Engine
 	{
 		backend = CreateBackend(BackendType::Vulkan);
 		backend->Initialize(BackendDesc{ handle, FrameTimePreference::VSync });
+		LOG_DEBUG("Backend created");
 		renderer.Initialize(backend.get(), assetManager);
+		LOG_DEBUG("Renderer created");
 		gpuInfo = backend->GetGPUInfo();
 		auto gpuInfoEntity = world.create();
 		auto& gpuInfoText = world.emplace<DebugInfoPass::ComponentDebugText>(gpuInfoEntity);

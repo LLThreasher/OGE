@@ -10,15 +10,19 @@ namespace OneGame::Engine::Graphics
 
     void DebugInfoPass::Initialize(IGraphicsBackend* backend, InitContext& ctx)
     {
+        LOG_DEBUG("begin initialize debug info pass");
         BindingGroupLayoutDesc layout{};
         layout.textureCount = 0;
         layout.bufferCount = 0;
         layout.dynamicBufferMask = 0;
         bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
+        LOG_DEBUG("binding group layout created");
         {
             GraphicsPipelineDesc desc{};
-            ctx.assets.LoadShader("debug.vert.spv", desc.vertexShader);
-            ctx.assets.LoadShader("debug.frag.spv", desc.fragmentShader);
+            if (!ctx.assets.LoadShader("debug.vert.spv", desc.vertexShader))
+                throw std::runtime_error("failed to load vertex shader");
+            if (!ctx.assets.LoadShader("debug.frag.spv", desc.fragmentShader))
+                throw std::runtime_error("failed to load fragment shader");
             // position
             desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
             // color
@@ -27,9 +31,6 @@ namespace OneGame::Engine::Graphics
             desc.bindingGroupLayouts.push_back(bindingGroupLayout);
             desc.writeDepth = false;
             desc.blending = true;
-            desc.depthTest = true;
-            desc.writeDepth = true;
-            desc.depthCompareOp = DepthCompareOp::Less;
             desc.cullMode = CullMode::Back;
 
             PushConstantRangeDesc cDesc{};
@@ -39,6 +40,7 @@ namespace OneGame::Engine::Graphics
             desc.pushConstants.push_back(cDesc);
 
             pipeline = backend->CreateGraphicsPipeline(desc);
+            LOG_DEBUG("debug pipeline created");
         }
 
         BufferDesc vBuf{};
@@ -46,12 +48,14 @@ namespace OneGame::Engine::Graphics
         vBuf.memory = MemoryUsage::GPUOnly;
         vBuf.size = NUM_DEBUG_VERTICES * sizeof(Vertex);
         vertexBuffer = backend->CreateBuffer(vBuf);
+        LOG_DEBUG("debug vbuff created");
 
         BufferDesc iBuf{};
         iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
         iBuf.memory = MemoryUsage::GPUOnly;
         iBuf.size = NUM_DEBUG_INDICES * sizeof(uint16_t);
         indexBuffer = backend->CreateBuffer(iBuf);
+        LOG_DEBUG("debug ibuff created");
     }
 
     void DebugInfoPass::Shutdown(IGraphicsBackend* backend)
@@ -69,7 +73,22 @@ namespace OneGame::Engine::Graphics
 
         std::string s = ss.str();
         const char* cs = s.c_str();
-        numQuads = stb_easy_font_print(0.f, 0.f, const_cast<char*>(cs), NULL, vertices, NUM_DEBUG_VERTICES * sizeof(Vertex));
+        // draw background
+        if (s.size() > 0)
+        {
+            auto width = stb_easy_font_width(const_cast<char*>(cs));
+            auto height = stb_easy_font_height(const_cast<char*>(cs));
+
+            vertices[0] = { {5.f, 55.f, 0.f}, {0, 0, 0, 128} };
+            vertices[1] = { {15.f + width, 55.f, 0.f}, {0, 0, 0, 128} };
+            vertices[2] = { {15.f + width, 65.f + height, 0.01f}, {0, 0, 0, 128} };
+            vertices[3] = { {5.f, 65.f + height, 0.f}, {0, 0, 0, 128} };
+
+            numQuads = 1;
+        }
+
+        numQuads += stb_easy_font_print(10.f, 60.f, const_cast<char*>(cs), NULL, &vertices[4], (NUM_DEBUG_VERTICES - 4) * sizeof(Vertex));
+
         uint16_t* iptr = indices;
         for (size_t i = 0; i < numQuads; i++)
         {

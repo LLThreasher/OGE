@@ -8,7 +8,7 @@
 
 namespace OneGame::Engine::Graphics
 {
-	constexpr size_t NUM_DEBUG_VERTICES = 4096;
+	constexpr size_t NUM_DEBUG_VERTICES = 2048;
 	constexpr size_t NUM_DEBUG_INDICES = NUM_DEBUG_VERTICES / 4 * 6;
 
 	class DebugInfoPass : public IPass

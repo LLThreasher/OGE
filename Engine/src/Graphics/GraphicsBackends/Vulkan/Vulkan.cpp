@@ -212,12 +212,14 @@ namespace OneGame::Engine::Graphics::Vulkan
 	{
 		std::vector<VkSurfaceFormatKHR> formats;
 		std::vector<VkPresentModeKHR> presentModes;
+		VkCompositeAlphaFlagsKHR compositAlphaFlags;
 	};
 
 	static void QuerySwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface, SwapchainSupport& swapchainSupport)
 	{
 		VkSurfaceCapabilitiesKHR capabilities;
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(device, surface, &capabilities);
+		swapchainSupport.compositAlphaFlags = capabilities.supportedCompositeAlpha;
 		uint32_t formatCount;
 		vkGetPhysicalDeviceSurfaceFormatsKHR(device, surface, &formatCount, nullptr);
 		swapchainSupport.formats.resize(formatCount);
@@ -540,6 +542,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			VK_CHECK_RESULT(vkCreateAndroidSurfaceKHR(m_device.instance, &createInfo, nullptr, &m_device.surface));
 		}
 #endif
+		LOG_DEBUG("surface created");
 
 		std::vector deviceExtensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 		auto [physicalDevice, swapchainSupport, queueIndices] = SelectPhysicalDevice(m_device.instance, m_device.surface, deviceExtensions);
@@ -646,6 +649,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		int swapImageCount;
 		RecreateSwapchain(swapImageCount);
 		CreateSyncObjects(queueIndices, swapImageCount);
+		LOG_DEBUG("Sync objects created");
 	}
 
 	void VulkanBackend::CreateSwapchainRenderPass()
@@ -737,6 +741,19 @@ namespace OneGame::Engine::Graphics::Vulkan
 		}
 		swapImageCount = imageCount;
 
+		VkCompositeAlphaFlagBitsKHR compositeAlpha;
+
+		if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR)
+			compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+		else if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR)
+			compositeAlpha = VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR;
+		else if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR)
+			compositeAlpha = VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR;
+		else if (capabilities.supportedCompositeAlpha & VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR)
+			compositeAlpha = VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR;
+		else
+			throw std::runtime_error("No supported composite alpha mode");
+
 		{
 			vkDeviceWaitIdle(m_device.device);
 			VkSwapchainKHR oldSwapchain = m_swapchain.swapchain;
@@ -753,7 +770,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 			createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 			createInfo.preTransform = capabilities.currentTransform;
-			createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+			createInfo.compositeAlpha = compositeAlpha;
 			createInfo.presentMode = m_device.presentMode;
 			createInfo.clipped = VK_TRUE;
 			createInfo.oldSwapchain = oldSwapchain;
@@ -764,6 +781,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 				DestroySwapchain(oldSwapchain);
 			}
 		}
+
+		LOG_DEBUG("swapchain created with format {}, color space {}", static_cast<uint32_t>(m_device.surfaceFormat.format), static_cast<uint32_t>(m_device.surfaceFormat.colorSpace));
 
 		uint32_t swapchainImageCount;
 		vkGetSwapchainImagesKHR(
@@ -801,6 +820,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 			vkCreateImageView(m_device.device, &viewInfo, nullptr, &views[i]);
 		}
+		LOG_DEBUG("swapchain images created");
 
 		m_swapchain.colorTextures.resize(images.size());
 		for (size_t i = 0; i < images.size(); ++i)
@@ -830,9 +850,12 @@ namespace OneGame::Engine::Graphics::Vulkan
 			);
 			m_swapchain.depthTextures[i] = m_textures.Create(depthTexture);
 		}
+		LOG_DEBUG("swapchain depth image created");
 
 		CreateSwapchainRenderPass();
+		LOG_DEBUG("swapchain render pass created");
 		CreateSwapchainFrameBuffers();
+		LOG_DEBUG("swapchain frame buffer created");
 	}
 
 	void VulkanBackend::Resize(uint32_t windowWidth, uint32_t windowHeight)

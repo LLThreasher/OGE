@@ -34,6 +34,7 @@ namespace OneGame::Engine
 
     SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
     {
+        LOG_INFO("SDL3 GameWindow Created");
         // 1. Initialize SDL
         SDL_Init(SDL_INIT_VIDEO);
 

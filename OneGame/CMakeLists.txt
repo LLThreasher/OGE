@@ -4,5 +4,5 @@ add_executable(OneGame
 
 target_link_libraries(OneGame PRIVATE Engine)
 
-copy_assets(OneGame ../assets)
-compile_shaders(OneGame ../shaders)
+compile_shaders(OneGame ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets")
+copy_assets(OneGame ../assets "${CMAKE_CURRENT_BINARY_DIR}/assets")

@@ -1,16 +1,23 @@
 #include "Engine/Graphics/Renderer.hpp"
 #include "stb_easy_font.h"
 
+#define LOGGER_NAME "Engine"
+#include "Engine/Logger.hpp"
+
 namespace OneGame::Engine::Graphics
 {
 
     void Renderer::Initialize(IGraphicsBackend* backend, AssetManager& assets)
     {
-        uniformArena.Initialize(backend, backend->MaxUniformBufferSize());
+        uniformArena.Initialize(backend, backend->MaxUniformBufferSize() > 1024*1024*16 ? 1024*1024*16 : backend->MaxUniformBufferSize());
+        LOG_DEBUG("uniform arena created");
         ringStagingBuffer.Initialize(backend, 1024 * 1024 * 16);
+        LOG_DEBUG("staging buffer created");
         InitContext ctx { assets, uniformArena, ringStagingBuffer };
         debugInfoPass.Initialize(backend, ctx);
+        LOG_DEBUG("debug info pass created");
         testPass.Initialize(backend, ctx);
+        LOG_DEBUG("test pass created");
         //uiPass.Initialize(backend, appCtxt);
     }
 
@@ -52,8 +59,8 @@ namespace OneGame::Engine::Graphics
             transferCmd.get(),
         };
 
-        debugInfoPass.Draw(drawCtxt);
         testPass.Draw(drawCtxt);
+        debugInfoPass.Draw(drawCtxt);
 
         cmd->EndRenderPass();
         cmd->End();

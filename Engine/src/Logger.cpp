@@ -18,6 +18,7 @@ namespace OneGame::Engine
 
         auto logger = std::make_shared<spdlog::logger>(loggerName, sink);
         logger->set_level(spdlog::level::trace);
+        logger->flush_on(spdlog::level::trace);
 
         spdlog::register_logger(logger);
 
