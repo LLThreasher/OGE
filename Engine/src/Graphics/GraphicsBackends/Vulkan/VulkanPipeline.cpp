@@ -216,7 +216,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         std::vector<VkDescriptorSetLayout> vkLayouts(desc.bindingGroupLayouts.size());
         for (int i = 0; i < desc.bindingGroupLayouts.size(); i++)
         {
-            vkLayouts[i] = m_bindingGroupLayouts.Get(desc.bindingGroupLayouts[i]).layout;
+            vkLayouts[i] = m_bindingGroupLayouts.Get(desc.bindingGroupLayouts[i])->layout;
         }
         layoutInfo.pSetLayouts = vkLayouts.data();
 
@@ -251,7 +251,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         pipelineInfo.pColorBlendState = &colorBlending;
         pipelineInfo.pDynamicState = &dynamicState;
         pipelineInfo.layout = pipeline.layout;
-        pipelineInfo.renderPass = m_renderPasses.Get(m_swapchain.renderPass).handle;
+        pipelineInfo.renderPass = m_renderPasses.Get(m_swapchain.renderPass)->handle;
         pipelineInfo.subpass = 0;
 
         if (vkCreateGraphicsPipelines(
@@ -290,7 +290,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         std::vector<VkDescriptorSetLayout> vkLayouts(desc.bindingGroupLayouts.size());
         for (int i = 0; i < desc.bindingGroupLayouts.size(); i++)
         {
-            vkLayouts[i] = m_bindingGroupLayouts.Get(desc.bindingGroupLayouts[i]).layout;
+            vkLayouts[i] = m_bindingGroupLayouts.Get(desc.bindingGroupLayouts[i])->layout;
         }
         layoutInfo.pSetLayouts = vkLayouts.data();
 
@@ -341,16 +341,16 @@ namespace OneGame::Engine::Graphics::Vulkan
 
     void VulkanBackend::DestroyPipeline(GPUPipelineHandle handle)
     {
-        VulkanPipeline& pipeline = m_pipelines.Get(handle);
+        VulkanPipeline* pipeline = m_pipelines.Get(handle);
 
-        if (pipeline.pipeline != VK_NULL_HANDLE)
+        if (pipeline->pipeline != VK_NULL_HANDLE)
         {
-            vkDestroyPipeline(m_device.device, pipeline.pipeline, nullptr);
+            vkDestroyPipeline(m_device.device, pipeline->pipeline, nullptr);
         }
 
-        if (pipeline.layout != VK_NULL_HANDLE)
+        if (pipeline->layout != VK_NULL_HANDLE)
         {
-            vkDestroyPipelineLayout(m_device.device, pipeline.layout, nullptr);
+            vkDestroyPipelineLayout(m_device.device, pipeline->layout, nullptr);
         }
 
         pipeline = {};

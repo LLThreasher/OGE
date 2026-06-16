@@ -17,8 +17,9 @@ namespace OneGame::Engine::Graphics
     {
     public:
         void Initialize(IGraphicsBackend* backend, uint64_t size);
+        void Shutdown(IGraphicsBackend* backend);
 
-        StagingAllocation Allocate(uint64_t size, uint64_t alignment);
+        StagingAllocation Allocate(uint64_t size);
 
         void Free(uint64_t offset, uint64_t size);
 
@@ -32,6 +33,7 @@ namespace OneGame::Engine::Graphics
         uint64_t m_capacity = 0;
         uint64_t m_head = 0;
         uint64_t m_tail = 0;
+        uint64_t m_alignment;
 
         std::mutex m_mutex;
     };

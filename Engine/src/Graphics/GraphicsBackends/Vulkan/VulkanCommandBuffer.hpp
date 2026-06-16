@@ -26,7 +26,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         void BindComputePipeline(GPUPipelineHandle) override;
 
         void BindVertexBuffer(GPUBufferHandle, uint64_t offset = 0) override;
-        void BindIndexBuffer(GPUBufferHandle, uint64_t offset = 0) override;
+        void BindIndexBuffer(GPUBufferHandle, uint64_t offset = 0, IndexFormat indexFormat = IndexFormat::Uint32) override;
 
         void BindBindingGroup(
             GPUBindingGroupHandle,

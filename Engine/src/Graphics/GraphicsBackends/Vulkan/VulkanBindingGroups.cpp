@@ -1,5 +1,3 @@
-#pragma once
-
 #include <vulkan/vulkan.h>
 #include "Vulkan.hpp"
 #include "VulkanBindingGroups.hpp"
@@ -78,13 +76,13 @@ namespace OneGame::Engine::Graphics::Vulkan
     void VulkanBackend::DestroyBindingGroupLayout(
         GPUBindingGroupLayoutHandle handle)
     {
-        auto& layout = m_bindingGroupLayouts.Get(handle);
+        auto layout = m_bindingGroupLayouts.Get(handle);
 
-        if (layout.layout != VK_NULL_HANDLE)
+        if (layout->layout != VK_NULL_HANDLE)
         {
             vkDestroyDescriptorSetLayout(
                 m_device.device,
-                layout.layout,
+                layout->layout,
                 nullptr);
         }
 
@@ -98,7 +96,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         VulkanBindingGroup group{};
         group.layoutHandle = desc.layout;
 
-        auto& layout =
+        auto layout =
             m_bindingGroupLayouts.Get(desc.layout);
 
         //
@@ -109,7 +107,7 @@ namespace OneGame::Engine::Graphics::Vulkan
             VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = m_descriptorPool;
         allocInfo.descriptorSetCount = 1;
-        allocInfo.pSetLayouts = &layout.layout;
+        allocInfo.pSetLayouts = &layout->layout;
 
         if (vkAllocateDescriptorSets(
             m_device.device,
@@ -132,25 +130,25 @@ namespace OneGame::Engine::Graphics::Vulkan
         //
         for (auto texHandle : desc.textures)
         {
-            auto& tex = m_textures.Get(texHandle);
+            auto tex = m_textures.Get(texHandle);
 
             VkDescriptorImageInfo imageInfo{};
             imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = tex.view;
-            imageInfo.sampler = tex.sampler;
+            imageInfo.imageView = tex->view;
+            imageInfo.sampler = tex->sampler;
             imageInfos.push_back(imageInfo);
-
-            VkWriteDescriptorSet write{};
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = group.descriptorSet;
-            write.dstBinding = bindingIndex++;
-            write.descriptorType =
-                VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            write.descriptorCount = 1;
-            write.pImageInfo = &imageInfos.back();
-
-            writes.push_back(write);
         }
+
+        VkWriteDescriptorSet write{};
+        write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        write.dstSet = group.descriptorSet;
+        write.dstBinding = bindingIndex++;
+        write.descriptorType =
+            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        write.descriptorCount = imageInfos.size();
+        write.pImageInfo = imageInfos.data();
+
+        writes.push_back(write);
 
         std::vector<VkDescriptorBufferInfo> bufferInfos;
         //
@@ -159,10 +157,10 @@ namespace OneGame::Engine::Graphics::Vulkan
         for (size_t i = 0; i < desc.buffers.size(); ++i)
         {
             auto& bufHandle = desc.buffers[i];
-            auto& buf = m_buffers.Get(bufHandle.gpuBuffer);
+            auto buf = m_buffers.Get(bufHandle.gpuBuffer);
 
             VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = buf.buffer;
+            bufferInfo.buffer = buf->buffer;
             bufferInfo.offset = 0;
             bufferInfo.range = bufHandle.stride == 0 ? VK_WHOLE_SIZE : bufHandle.stride;
             bufferInfos.push_back(bufferInfo);
@@ -172,7 +170,7 @@ namespace OneGame::Engine::Graphics::Vulkan
             write.dstSet = group.descriptorSet;
             write.dstBinding = bindingIndex++;
             write.descriptorType =
-                (layout.dynamicBufferMask & (1 << i)) != 0 ?
+                (layout->dynamicBufferMask & (1 << i)) != 0 ?
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             write.descriptorCount = 1;
@@ -194,7 +192,7 @@ namespace OneGame::Engine::Graphics::Vulkan
     void VulkanBackend::DestroyBindingGroup(
         GPUBindingGroupHandle handle)
     {
-        auto& group = m_bindingGroups.Get(handle);
+        auto group = m_bindingGroups.Get(handle);
 
         // we use destroy descriptor pool
         //vkFreeDescriptorSets(
@@ -203,7 +201,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         //    1,
         //    &group.descriptorSet);
 
-        group = {};
+        *group = {};
         m_bindingGroups.Destroy(handle);
     }
 }

@@ -1,294 +1,290 @@
-#include <cmath>
-#include "TestRenderer.hpp"
-
-namespace OneGame
-{
-    void TestRenderer::Initialize(IGraphicsBackend* backend)
-    {
-    }
-
-    void TestRenderer::Render(IGraphicsBackend* backend, float dt)
-    {
-        m_Time += dt;
-
-        float r = float((sin(m_Time) + 1.0) * 0.5);
-        float g = float((sin(m_Time + 2.0) + 1.0) * 0.5);
-        float b = float((sin(m_Time + 4.0) + 1.0) * 0.5);
-
-        auto cmd = backend->CreateCommandList(QueueType::Present);
-
-        cmd->Begin();
-
-        ClearValues values{};
-        values.colorClears[0] = { r, g, b, 1.0f };
-        cmd->BeginRenderPass(backend->GetCurrentRenderPass(), backend->GetCurrentFrameBuffer(), values);
-        cmd->EndRenderPass();
-
-        cmd->End();
-
-        backend->Submit(std::move(cmd));
-    }
-
-    void TestRendererRotateTriangle::Initialize(IGraphicsBackend* backend)
-    {
-        GraphicsPipelineDesc desc{};
-        LoadShaderBinary("shaders/test_triangle.vert.spv", desc.vertexShader);
-        LoadShaderBinary("shaders/test_triangle.frag.spv", desc.fragmentShader);
-
-        PushConstantRangeDesc pc{};
-        pc.offset = 0;
-        pc.size = sizeof(float);
-        pc.stageFlags = ShaderStage::Vertex;
-        desc.pushConstants.push_back(pc);
-
-        pipeline = backend->CreateGraphicsPipeline(desc);
-    }
-
-    void TestRendererRotateTriangle::Render(IGraphicsBackend* backend, float dt)
-    {
-        m_Time += dt;
-
-        float rotationSpeed = 0.5f; // radians per second
-        angle += rotationSpeed * dt;
-
-        float r = float((sin(m_Time) + 1.0) * 0.5);
-        float g = float((sin(m_Time + 2.0) + 1.0) * 0.5);
-        float b = float((sin(m_Time + 4.0) + 1.0) * 0.5);
-
-        auto cmd = backend->CreateCommandList(QueueType::Present);
-
-        cmd->Begin();
-
-        ClearValues values{};
-        values.colorClears[0] = { r, g, b, 1.0f };
-        cmd->BeginRenderPass(backend->GetCurrentRenderPass(), backend->GetCurrentFrameBuffer(), values);
-        cmd->BindGraphicsPipeline(pipeline);
-        cmd->PushConstants(ShaderStage::Vertex, &angle, sizeof(float));
-        cmd->Draw(3, 1, 0, 0);
-        cmd->EndRenderPass();
-        cmd->End();
-
-        backend->Submit(std::move(cmd));
-    }
-
-
-    void TestRendererCubeWithMVP::Initialize(IGraphicsBackend* backend)
-    {
-        BindingGroupLayoutDesc layout{};
-        layout.bufferCount = 1;
-        layout.dynamicBufferMask = 1;
-        bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
-
-        {
-            GraphicsPipelineDesc desc{};
-            LoadShaderBinary("shaders/test_cube.vert.spv", desc.vertexShader);
-            LoadShaderBinary("shaders/test_cube.frag.spv", desc.fragmentShader);
-            // position
-            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
-            // color
-            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
-            desc.bindingGroupLayouts.push_back(bindingGroupLayout);
-            desc.depthTest = true;
-            desc.writeDepth = true;
-            desc.depthCompareOp = DepthCompareOp::Less;
-            pipeline = backend->CreateGraphicsPipeline(desc);
-        }
-
-        BufferDesc vBuf{};
-        vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
-        vBuf.memory = MemoryUsage::GPUOnly;
-        vBuf.size = vertices.size() * sizeof(Vertex);
-        vertexBuffer = backend->CreateBuffer(vBuf);
-
-        BufferDesc iBuf{};
-        iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
-        iBuf.memory = MemoryUsage::GPUOnly;
-        iBuf.size = indices.size() * sizeof(uint32_t);
-        indexBuffer = backend->CreateBuffer(iBuf);
-
-        uniformArena.Initialize(backend, sizeof(UBO));
-
-        {
-              BindingGroupDesc desc{};
-              desc.layout = bindingGroupLayout;
-              desc.buffers.push_back(BindingGroupBufferDesc { uniformArena.GetBuffer(), sizeof(UBO) });
-              bindingGroup = backend->CreateBindingGroup(desc);
-        }
-    }
-
-    void TestRendererCubeWithMVP::Render(IGraphicsBackend* backend, float dt)
-    {
-        auto frame = backend->CurrentFrameIndex();
-        m_Time += dt;
-        UBO ubo{};
-        ubo.model = math::rotate(math::mat4(1.0f),
-            m_Time * math::radians(90.0f),
-            { 0,1,0 });
-
-        ubo.view = math::lookAt(
-            math::vec3(2, 2, 2),
-            math::vec3(0, 0, 0),
-            math::vec3(0, 1, 0));
-
-        ubo.proj = math::perspective(
-            math::radians(45.0f),
-            backend->SwapchainAspect(),
-            0.1f,
-            10.0f);
-
-        auto cmd = backend->CreateCommandList(QueueType::Present);
-        cmd->Begin();
-        if (isFirstFrame)
-        {
-            cmd->UpdateBuffer(vertexBuffer, 0, vertices.size() * sizeof(Vertex), vertices.data());
-            cmd->UpdateBuffer(indexBuffer, 0, indices.size() * sizeof(uint32_t), indices.data());
-            cmd->BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
-            cmd->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
-            isFirstFrame = false;
-        }
-
-        auto uniformMemory = uniformArena.Allocate(sizeof(UBO));
-        std::memcpy(uniformMemory.cpuPtr, &ubo, sizeof(UBO));
-
-        uint32_t offset[1] = { uniformMemory.offset };
-
-        ClearValues values{};
-        values.colorClears[0] = { 0.1f, 0.2f, 0.4f, 1.0f };
-        values.depthClear = 1.0f;
-        values.stencilClear = 0.f;
-        cmd->BeginRenderPass(backend->GetCurrentRenderPass(), backend->GetCurrentFrameBuffer(), values);
-        cmd->BindGraphicsPipeline(pipeline);
-        cmd->BindVertexBuffer(vertexBuffer);
-        cmd->BindIndexBuffer(indexBuffer);
-        cmd->BindBindingGroup(bindingGroup, 0, offset);
-        cmd->DrawIndexed(indices.size(), 1, 0, 0, 0);
-        cmd->EndRenderPass();
-        cmd->End();
-
-        backend->Submit(std::move(cmd));
-
-        uniformArena.AdvanceFrame();
-    }
-
-
-    void TestRendererCubeTextured::Initialize(IGraphicsBackend* backend)
-    {
-        BindingGroupLayoutDesc layout{};
-        layout.textureCount = 1;
-        layout.bufferCount = 1;
-        layout.dynamicBufferMask = 1;
-        bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
-
-        {
-            GraphicsPipelineDesc desc{};
-            LoadShaderBinary("shaders/test_cube_textured.vert.spv", desc.vertexShader);
-            LoadShaderBinary("shaders/test_cube_textured.frag.spv", desc.fragmentShader);
-            // position
-            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
-            // color
-            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
-            // uv
-            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x2);
-
-            desc.bindingGroupLayouts.push_back(bindingGroupLayout);
-            desc.writeDepth = false;
-            desc.blending = true;
-            desc.depthTest = true;
-            desc.writeDepth = true;
-            desc.depthCompareOp = DepthCompareOp::Less;
-            desc.cullMode = CullMode::Back;
-            pipeline = backend->CreateGraphicsPipeline(desc);
-        }
-
-        BufferDesc vBuf{};
-        vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
-        vBuf.memory = MemoryUsage::GPUOnly;
-        vBuf.size = vertices.size() * sizeof(Vertex);
-        vertexBuffer = backend->CreateBuffer(vBuf);
-
-        BufferDesc iBuf{};
-        iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
-        iBuf.memory = MemoryUsage::GPUOnly;
-        iBuf.size = indices.size() * sizeof(uint32_t);
-        indexBuffer = backend->CreateBuffer(iBuf);
-
-        uniformArena.Initialize(backend, sizeof(UBO));
-        ringStagingBuffer.Initialize(backend, 1024 * 1024 * 16);
-
-        {
-            int width, height;
-            LoadPNG("assets/blocks.png", width, height);
-            TextureDesc texDesc{};
-            texDesc.width = width;
-            texDesc.height = height;
-            texDesc.format = TextureFormat::RGBA8Unorm;
-            texDesc.usage = TextureUsage::TransferDst | TextureUsage::Sampled;
-            textureBuffer = ringStagingBuffer.Allocate(width * height * sizeof(char) * 4, backend->UniformBufferAlignment());
-            LoadPNG("assets/blocks.png", width, height, &textureBuffer.cpuPtr);
-            texture = backend->CreateTexture(texDesc);
-            
-            BindingGroupDesc desc{};
-            desc.layout = bindingGroupLayout;
-            desc.buffers.push_back(BindingGroupBufferDesc{ uniformArena.GetBuffer(), sizeof(UBO) });
-            desc.textures.push_back(texture);
-            bindingGroup = backend->CreateBindingGroup(desc);
-        }
-    }
-
-    void TestRendererCubeTextured::Render(IGraphicsBackend* backend, float dt)
-    {
-        auto frame = backend->CurrentFrameIndex();
-        m_Time += dt;
-        UBO ubo{};
-        ubo.model = math::rotate(math::mat4(1.0f),
-            m_Time * math::radians(90.0f),
-            { 0,1,0 });
-
-        ubo.view = math::lookAt(
-            math::vec3(2, 2, 2),
-            math::vec3(0, 0, 0),
-            math::vec3(0, 1, 0));
-
-        ubo.proj = math::perspective(
-            math::radians(45.0f),
-            backend->SwapchainAspect(),
-            0.1f,
-            10.0f);
-
-        auto cmd = backend->CreateCommandList(QueueType::Present);
-        cmd->Begin();
-        if (isFirstFrame)
-        {
-            cmd->UpdateBuffer(vertexBuffer, 0, vertices.size() * sizeof(Vertex), vertices.data());
-            cmd->UpdateBuffer(indexBuffer, 0, indices.size() * sizeof(uint32_t), indices.data());
-            cmd->BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
-            cmd->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
-            cmd->TextureBarrier(texture, TextureState::TransferDst);
-            cmd->CopyBufferToTexture(ringStagingBuffer.GetBuffer(), texture, textureBuffer.offset);
-            cmd->TextureBarrier(texture, TextureState::ShaderRead);
-            isFirstFrame = false;
-        }
-
-        auto uniformMemory = uniformArena.Allocate(sizeof(UBO));
-        std::memcpy(uniformMemory.cpuPtr, &ubo, sizeof(UBO));
-
-        uint32_t offset[1] = { uniformMemory.offset };
-
-        ClearValues values{};
-        values.colorClears[0] = { 0.1f, 0.2f, 0.4f, 1.0f };
-        values.depthClear = 1.0f;
-        values.stencilClear = 0.f;
-        cmd->BeginRenderPass(backend->GetCurrentRenderPass(), backend->GetCurrentFrameBuffer(), values);
-        cmd->BindGraphicsPipeline(pipeline);
-        cmd->BindVertexBuffer(vertexBuffer);
-        cmd->BindIndexBuffer(indexBuffer);
-        cmd->BindBindingGroup(bindingGroup, 0, offset);
-        cmd->DrawIndexed(indices.size(), 1, 0, 0, 0);
-        cmd->EndRenderPass();
-        cmd->End();
-
-        backend->Submit(std::move(cmd));
-
-        uniformArena.AdvanceFrame();
-    }
-}
+//#include <cmath>
+//#include "TestRenderer.hpp"
+//
+//namespace OneGame
+//{
+//    void TestRenderer::Initialize(IGraphicsBackend* backend)
+//    {
+//    }
+//
+//    void TestRenderer::Render(IGraphicsBackend* backend, float dt)
+//    {
+//        m_Time += dt;
+//
+//        float r = float((sin(m_Time) + 1.0) * 0.5);
+//        float g = float((sin(m_Time + 2.0) + 1.0) * 0.5);
+//        float b = float((sin(m_Time + 4.0) + 1.0) * 0.5);
+//
+//        auto cmd = backend->CreateCommandList(QueueType::Present);
+//
+//        cmd->Begin();
+//
+//        ClearValues values{};
+//        values.colorClears[0] = { r, g, b, 1.0f };
+//        cmd->BeginRenderPass(backend->GetCurrentRenderPass(), backend->GetCurrentFrameBuffer(), values);
+//        cmd->EndRenderPass();
+//
+//        cmd->End();
+//    }
+//
+//    void TestRendererRotateTriangle::Initialize(IGraphicsBackend* backend)
+//    {
+//        GraphicsPipelineDesc desc{};
+//        TryLoadShaderBinary("shaders/test_triangle.vert.spv", desc.vertexShader);
+//        TryLoadShaderBinary("shaders/test_triangle.frag.spv", desc.fragmentShader);
+//
+//        PushConstantRangeDesc pc{};
+//        pc.offset = 0;
+//        pc.size = sizeof(float);
+//        pc.stageFlags = ShaderStage::Vertex;
+//        desc.pushConstants.push_back(pc);
+//
+//        pipeline = backend->CreateGraphicsPipeline(desc);
+//    }
+//
+//    void TestRendererRotateTriangle::Render(IGraphicsBackend* backend, float dt)
+//    {
+//        m_Time += dt;
+//
+//        float rotationSpeed = 0.5f; // radians per second
+//        angle += rotationSpeed * dt;
+//
+//        float r = float((sin(m_Time) + 1.0) * 0.5);
+//        float g = float((sin(m_Time + 2.0) + 1.0) * 0.5);
+//        float b = float((sin(m_Time + 4.0) + 1.0) * 0.5);
+//
+//        auto cmd = backend->CreateCommandList(QueueType::Present);
+//
+//        cmd->Begin();
+//
+//        ClearValues values{};
+//        values.colorClears[0] = { r, g, b, 1.0f };
+//        cmd->BeginRenderPass(backend->GetCurrentRenderPass(), backend->GetCurrentFrameBuffer(), values);
+//        cmd->BindGraphicsPipeline(pipeline);
+//        cmd->PushConstants(ShaderStage::Vertex, &angle, sizeof(float));
+//        cmd->Draw(3, 1, 0, 0);
+//        cmd->EndRenderPass();
+//        cmd->End();
+//    }
+//
+//
+//    void TestRendererCubeWithMVP::Initialize(IGraphicsBackend* backend)
+//    {
+//        BindingGroupLayoutDesc layout{};
+//        layout.bufferCount = 1;
+//        layout.dynamicBufferMask = 1;
+//        bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
+//
+//        {
+//            GraphicsPipelineDesc desc{};
+//            TryLoadShaderBinary("shaders/test_cube.vert.spv", desc.vertexShader);
+//            TryLoadShaderBinary("shaders/test_cube.frag.spv", desc.fragmentShader);
+//            // position
+//            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
+//            // color
+//            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
+//            desc.bindingGroupLayouts.push_back(bindingGroupLayout);
+//            desc.depthTest = true;
+//            desc.writeDepth = true;
+//            desc.depthCompareOp = DepthCompareOp::Less;
+//            pipeline = backend->CreateGraphicsPipeline(desc);
+//        }
+//
+//        BufferDesc vBuf{};
+//        vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
+//        vBuf.memory = MemoryUsage::GPUOnly;
+//        vBuf.size = vertices.size() * sizeof(Vertex);
+//        vertexBuffer = backend->CreateBuffer(vBuf);
+//
+//        BufferDesc iBuf{};
+//        iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
+//        iBuf.memory = MemoryUsage::GPUOnly;
+//        iBuf.size = indices.size() * sizeof(uint32_t);
+//        indexBuffer = backend->CreateBuffer(iBuf);
+//
+//        uniformArena.Initialize(backend, sizeof(UBO));
+//
+//        {
+//              BindingGroupDesc desc{};
+//              desc.layout = bindingGroupLayout;
+//              desc.buffers.push_back(BindingGroupBufferDesc { uniformArena.GetBuffer(), sizeof(UBO) });
+//              bindingGroup = backend->CreateBindingGroup(desc);
+//        }
+//    }
+//
+//    void TestRendererCubeWithMVP::Render(IGraphicsBackend* backend, float dt)
+//    {
+//        auto frame = backend->CurrentFrameIndex();
+//        m_Time += dt;
+//        UBO ubo{};
+//        ubo.model = math::rotate(math::mat4(1.0f),
+//            m_Time * math::radians(90.0f),
+//            { 0,1,0 });
+//
+//        ubo.view = math::lookAt(
+//            math::vec3(2, 2, 2),
+//            math::vec3(0, 0, 0),
+//            math::vec3(0, 1, 0));
+//
+//        ubo.proj = math::perspective(
+//            math::radians(45.0f),
+//            backend->SwapchainAspect(),
+//            0.1f,
+//            10.0f);
+//
+//        auto cmd = backend->CreateCommandList(QueueType::Present);
+//        cmd->Begin();
+//        if (isFirstFrame)
+//        {
+//            cmd->UpdateBuffer(vertexBuffer, 0, vertices.size() * sizeof(Vertex), vertices.data());
+//            cmd->UpdateBuffer(indexBuffer, 0, indices.size() * sizeof(uint32_t), indices.data());
+//            cmd->BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
+//            cmd->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
+//            isFirstFrame = false;
+//        }
+//
+//        auto uniformMemory = uniformArena.Allocate(sizeof(UBO));
+//        std::memcpy(uniformMemory.cpuPtr, &ubo, sizeof(UBO));
+//
+//        uint32_t offset[1] = { uniformMemory.offset };
+//
+//        ClearValues values{};
+//        values.colorClears[0] = { 0.1f, 0.2f, 0.4f, 1.0f };
+//        values.depthClear = 1.0f;
+//        values.stencilClear = 0.f;
+//        cmd->BeginRenderPass(backend->GetCurrentRenderPass(), backend->GetCurrentFrameBuffer(), values);
+//        cmd->BindGraphicsPipeline(pipeline);
+//        cmd->BindVertexBuffer(vertexBuffer);
+//        cmd->BindIndexBuffer(indexBuffer);
+//        cmd->BindBindingGroup(bindingGroup, 0, offset);
+//        cmd->DrawIndexed(indices.size(), 1, 0, 0, 0);
+//        cmd->EndRenderPass();
+//        cmd->End();
+//
+//        uniformArena.AdvanceFrame();
+//    }
+//
+//
+//    void TestRendererCubeTextured::Initialize(IGraphicsBackend* backend)
+//    {
+//        BindingGroupLayoutDesc layout{};
+//        layout.textureCount = 1;
+//        layout.bufferCount = 1;
+//        layout.dynamicBufferMask = 1;
+//        bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
+//
+//        {
+//            GraphicsPipelineDesc desc{};
+//            TryLoadShaderBinary("shaders/test_cube_textured.vert.spv", desc.vertexShader);
+//            TryLoadShaderBinary("shaders/test_cube_textured.frag.spv", desc.fragmentShader);
+//            // position
+//            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
+//            // color
+//            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
+//            // uv
+//            desc.vertexLayout.push_back(VertexAttributeFormat::Float32x2);
+//
+//            desc.bindingGroupLayouts.push_back(bindingGroupLayout);
+//            desc.writeDepth = false;
+//            desc.blending = true;
+//            desc.depthTest = true;
+//            desc.writeDepth = true;
+//            desc.depthCompareOp = DepthCompareOp::Less;
+//            desc.cullMode = CullMode::Back;
+//            pipeline = backend->CreateGraphicsPipeline(desc);
+//        }
+//
+//        BufferDesc vBuf{};
+//        vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
+//        vBuf.memory = MemoryUsage::GPUOnly;
+//        vBuf.size = vertices.size() * sizeof(Vertex);
+//        vertexBuffer = backend->CreateBuffer(vBuf);
+//
+//        BufferDesc iBuf{};
+//        iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
+//        iBuf.memory = MemoryUsage::GPUOnly;
+//        iBuf.size = indices.size() * sizeof(uint32_t);
+//        indexBuffer = backend->CreateBuffer(iBuf);
+//
+//        uniformArena.Initialize(backend, sizeof(UBO));
+//        ringStagingBuffer.Initialize(backend, 1024 * 1024 * 16);
+//
+//        {
+//            int width, height;
+//            TryLoadPNG("assets/blocks.png", width, height);
+//            TextureDesc texDesc{};
+//            texDesc.width = width;
+//            texDesc.height = height;
+//            texDesc.format = TextureFormat::RGBA8Unorm;
+//            texDesc.usage = TextureUsage::TransferDst | TextureUsage::Sampled;
+//            textureBuffer = ringStagingBuffer.Allocate(width * height * sizeof(char) * 4);
+//            TryLoadPNG("assets/blocks.png", width, height, &textureBuffer.cpuPtr);
+//            texture = backend->CreateTexture(texDesc);
+//            
+//            BindingGroupDesc desc{};
+//            desc.layout = bindingGroupLayout;
+//            desc.buffers.push_back(BindingGroupBufferDesc{ uniformArena.GetBuffer(), sizeof(UBO) });
+//            desc.textures.push_back(texture);
+//            bindingGroup = backend->CreateBindingGroup(desc);
+//        }
+//    }
+//
+//    void TestRendererCubeTextured::Render(IGraphicsBackend* backend, float dt)
+//    {
+//        auto frame = backend->CurrentFrameIndex();
+//        m_Time += dt;
+//        UBO ubo{};
+//        ubo.model = math::rotate(math::mat4(1.0f),
+//            m_Time * math::radians(90.0f),
+//            { 0,1,0 });
+//
+//        ubo.view = math::lookAt(
+//            math::vec3(2, 2, 2),
+//            math::vec3(0, 0, 0),
+//            math::vec3(0, 1, 0));
+//
+//        ubo.proj = math::perspective(
+//            math::radians(45.0f),
+//            backend->SwapchainAspect(),
+//            0.1f,
+//            10.0f);
+//
+//        auto cmd = backend->CreateCommandList(QueueType::Present);
+//        cmd->Begin();
+//        if (isFirstFrame)
+//        {
+//            auto cmd2 = backend->CreateCommandList(QueueType::Transfer);
+//            cmd2->Begin();
+//            cmd2->UpdateBuffer(vertexBuffer, 0, vertices.size() * sizeof(Vertex), vertices.data());
+//            cmd2->UpdateBuffer(indexBuffer, 0, indices.size() * sizeof(uint32_t), indices.data());
+//            cmd2->BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
+//            cmd2->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
+//            cmd2->TextureBarrier(texture, TextureState::TransferDst);
+//            cmd2->CopyBufferToTexture(ringStagingBuffer.GetBuffer(), texture, textureBuffer.offset);
+//            cmd2->TextureBarrier(texture, TextureState::ShaderRead);
+//            cmd2->End();
+//            ringStagingBuffer.Free(textureBuffer.offset, textureBuffer.size);
+//            isFirstFrame = false;
+//        }
+//
+//        auto uniformMemory = uniformArena.Allocate(sizeof(UBO));
+//        std::memcpy(uniformMemory.cpuPtr, &ubo, sizeof(UBO));
+//
+//        uint32_t offset[1] = { uniformMemory.offset };
+//
+//        ClearValues values{};
+//        values.colorClears[0] = { 0.1f, 0.2f, 0.4f, 1.0f };
+//        values.depthClear = 1.0f;
+//        values.stencilClear = 0.f;
+//        cmd->BeginRenderPass(backend->GetCurrentRenderPass(), backend->GetCurrentFrameBuffer(), values);
+//        cmd->BindGraphicsPipeline(pipeline);
+//        cmd->BindVertexBuffer(vertexBuffer);
+//        cmd->BindIndexBuffer(indexBuffer);
+//        cmd->BindBindingGroup(bindingGroup, 0, offset);
+//        cmd->DrawIndexed(indices.size(), 1, 0, 0, 0);
+//        cmd->EndRenderPass();
+//        cmd->End();
+//
+//        uniformArena.AdvanceFrame();
+//    }
+//}

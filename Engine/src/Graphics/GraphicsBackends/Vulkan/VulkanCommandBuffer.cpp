@@ -42,23 +42,23 @@ namespace OneGame::Engine::Graphics::Vulkan
 #undef max
     void VulkanCommandBuffer::BeginRenderPass(const GPURenderPassHandle renderPass, const GPUFrameBufferHandle frameBuffer, const ClearValues& clearValues)
     {
-        VulkanRenderPass& rp = m_backend->m_renderPasses.Get(renderPass);
-        VulkanFrameBuffer& fb = m_backend->m_frameBuffers.Get(frameBuffer);
+        VulkanRenderPass* rp = m_backend->m_renderPasses.Get(renderPass);
+        VulkanFrameBuffer* fb = m_backend->m_frameBuffers.Get(frameBuffer);
 
         VkRenderPassBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-        beginInfo.renderPass = rp.handle;
-        beginInfo.framebuffer = fb.handle;
+        beginInfo.renderPass = rp->handle;
+        beginInfo.framebuffer = fb->handle;
         beginInfo.renderArea.offset = { 0, 0 };
-        beginInfo.renderArea.extent = { fb.width, fb.height };
+        beginInfo.renderArea.extent = { fb->width, fb->height };
 
         int clearCount = 0;
-        std::array<VkClearValue, 5> tmpClearValues;
-		for (; clearCount < rp.desc.colorCount; clearCount++)
+        std::array<VkClearValue, 5> tmpClearValues{};
+		for (; clearCount < rp->desc.colorCount; clearCount++)
 		{
 			std::memcpy(&tmpClearValues[clearCount].color.float32, &clearValues.colorClears[clearCount], sizeof(float) * 4);
 		}
-		if (rp.desc.hasDepth)
+		if (rp->desc.hasDepth)
 		{
             tmpClearValues[clearCount].depthStencil.depth = clearValues.depthClear;
             tmpClearValues[clearCount].depthStencil.stencil = clearValues.stencilClear;
@@ -78,27 +78,27 @@ namespace OneGame::Engine::Graphics::Vulkan
 
     void VulkanCommandBuffer::BindGraphicsPipeline(GPUPipelineHandle handle)
     {
-        VulkanPipeline& pipeline = m_backend->m_pipelines.Get(handle);
+        VulkanPipeline* pipeline = m_backend->m_pipelines.Get(handle);
 
         vkCmdBindPipeline(
             m_cmd,
             VK_PIPELINE_BIND_POINT_GRAPHICS,
-            pipeline.pipeline);
+            pipeline->pipeline);
 
-        m_currentPipelineLayout = pipeline.layout;
+        m_currentPipelineLayout = pipeline->layout;
         m_currentBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     }
 
     void VulkanCommandBuffer::BindComputePipeline(GPUPipelineHandle handle)
     {
-        VulkanPipeline& pipeline = m_backend->m_pipelines.Get(handle);
+        VulkanPipeline* pipeline = m_backend->m_pipelines.Get(handle);
 
         vkCmdBindPipeline(
             m_cmd,
             VK_PIPELINE_BIND_POINT_COMPUTE,
-            pipeline.pipeline);
+            pipeline->pipeline);
 
-        m_currentPipelineLayout = pipeline.layout;
+        m_currentPipelineLayout = pipeline->layout;
         m_currentBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
     }
 
@@ -106,9 +106,9 @@ namespace OneGame::Engine::Graphics::Vulkan
         GPUBufferHandle handle,
         uint64_t offset)
     {
-        VulkanBuffer& buffer = m_backend->m_buffers.Get(handle);
+        VulkanBuffer* buffer = m_backend->m_buffers.Get(handle);
 
-        VkBuffer vkBuffer = buffer.buffer;
+        VkBuffer vkBuffer = buffer->buffer;
         VkDeviceSize vkOffset = offset;
 
         vkCmdBindVertexBuffers(
@@ -121,15 +121,16 @@ namespace OneGame::Engine::Graphics::Vulkan
 
     void VulkanCommandBuffer::BindIndexBuffer(
         GPUBufferHandle handle,
-        uint64_t offset)
+        uint64_t offset,
+        IndexFormat indexFormat)
     {
-        VulkanBuffer& buffer = m_backend->m_buffers.Get(handle);
+        VulkanBuffer* buffer = m_backend->m_buffers.Get(handle);
 
         vkCmdBindIndexBuffer(
             m_cmd,
-            buffer.buffer,
+            buffer->buffer,
             offset,
-            VK_INDEX_TYPE_UINT32); // or stored in buffer metadata
+            indexFormat == IndexFormat::Uint32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
     }
 
     void VulkanCommandBuffer::BindBindingGroup(
@@ -137,8 +138,8 @@ namespace OneGame::Engine::Graphics::Vulkan
         uint32_t setIndex,
         std::span<const uint32_t> dynamicOffsets)
     {
-        assert(m_currentPipelineLayout != nullptr && "cannot call bind binding group before bind pipeline");
-        VulkanBindingGroup& group = m_backend->m_bindingGroups.Get(handle);
+        assert(m_currentPipelineLayout != VK_NULL_HANDLE && "cannot call bind binding group before bind pipeline");
+        VulkanBindingGroup* group = m_backend->m_bindingGroups.Get(handle);
 
         vkCmdBindDescriptorSets(
             m_cmd,
@@ -146,7 +147,7 @@ namespace OneGame::Engine::Graphics::Vulkan
             m_currentPipelineLayout,
             setIndex,
             1,
-            &group.descriptorSet,
+            &group->descriptorSet,
             static_cast<uint32_t>(dynamicOffsets.size()),
             dynamicOffsets.data());
     }
@@ -173,11 +174,11 @@ namespace OneGame::Engine::Graphics::Vulkan
         uint64_t size,
         const void* data)
     {
-        VulkanBuffer& buffer = m_backend->m_buffers.Get(handle);
+        VulkanBuffer* buffer = m_backend->m_buffers.Get(handle);
 
         vkCmdUpdateBuffer(
             m_cmd,
-            buffer.buffer,
+            buffer->buffer,
             offset,
             size,
             data);
@@ -190,8 +191,8 @@ namespace OneGame::Engine::Graphics::Vulkan
         uint64_t srcOffset,
         uint64_t dstOffset)
     {
-        VulkanBuffer& src = m_backend->m_buffers.Get(srcHandle);
-        VulkanBuffer& dst = m_backend->m_buffers.Get(dstHandle);
+        VulkanBuffer* src = m_backend->m_buffers.Get(srcHandle);
+        VulkanBuffer* dst = m_backend->m_buffers.Get(dstHandle);
 
         VkBufferCopy copyRegion{};
         copyRegion.srcOffset = srcOffset;
@@ -200,8 +201,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 
         vkCmdCopyBuffer(
             m_cmd,
-            src.buffer,
-            dst.buffer,
+            src->buffer,
+            dst->buffer,
             1,
             &copyRegion
         );
@@ -212,8 +213,8 @@ namespace OneGame::Engine::Graphics::Vulkan
         GPUTextureHandle dstHandle,
         uint32_t bufferOffset)
     {
-        VulkanBuffer& src = m_backend->m_buffers.Get(srcHandle);
-        VulkanTexture& texture = m_backend->m_textures.Get(dstHandle);
+        VulkanBuffer* src = m_backend->m_buffers.Get(srcHandle);
+        VulkanTexture* texture = m_backend->m_textures.Get(dstHandle);
 
         VkBufferImageCopy region{};
         region.bufferOffset = bufferOffset;
@@ -225,14 +226,14 @@ namespace OneGame::Engine::Graphics::Vulkan
         region.imageSubresource.baseArrayLayer = 0;
         region.imageSubresource.layerCount = 1;
 
-        region.imageExtent.width = texture.width;
-        region.imageExtent.height = texture.height;
+        region.imageExtent.width = texture->width;
+        region.imageExtent.height = texture->height;
         region.imageExtent.depth = 1;
 
         vkCmdCopyBufferToImage(
             m_cmd,
-            src.buffer,
-            texture.image,
+            src->buffer,
+            texture->image,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
             1,
             &region
@@ -275,7 +276,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         uint32_t drawCount,
         uint32_t stride)
     {
-        VulkanBuffer& buffer =
+        VulkanBuffer* buffer =
             m_backend->m_buffers.Get(indirectBuffer);
 
         assert(m_currentBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS);
@@ -283,7 +284,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 
         vkCmdDrawIndirect(
             m_cmd,
-            buffer.buffer,
+            buffer->buffer,
             offset,
             drawCount,
             stride);
@@ -295,7 +296,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         uint32_t drawCount,
         uint32_t stride)
     {
-        VulkanBuffer& buffer =
+        VulkanBuffer* buffer =
             m_backend->m_buffers.Get(indirectBuffer);
 
         assert(m_currentBindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS);
@@ -303,7 +304,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 
         vkCmdDrawIndexedIndirect(
             m_cmd,
-            buffer.buffer,
+            buffer->buffer,
             offset,
             drawCount,
             stride);
@@ -321,7 +322,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         GPUBufferHandle handle,
         uint64_t offset)
     {
-        VulkanBuffer& buffer =
+        VulkanBuffer* buffer =
             m_backend->m_buffers.Get(handle);
 
         // Ensure compute pipeline bind point is active
@@ -329,7 +330,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 
         vkCmdDispatchIndirect(
             m_cmd,
-            buffer.buffer,
+            buffer->buffer,
             offset);
     }
 
@@ -338,7 +339,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         BufferUsage before,
         BufferUsage after)
     {
-        VulkanBuffer& buffer = m_backend->m_buffers.Get(handle);
+        VulkanBuffer* buffer = m_backend->m_buffers.Get(handle);
 
         VkBufferMemoryBarrier barrier{};
         barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
@@ -346,7 +347,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         barrier.dstAccessMask = ConvertAccessMask(after);
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        barrier.buffer = buffer.buffer;
+        barrier.buffer = buffer->buffer;
         barrier.offset = 0;
         barrier.size = VK_WHOLE_SIZE;
 
@@ -364,10 +365,10 @@ namespace OneGame::Engine::Graphics::Vulkan
         GPUTextureHandle handle,
         TextureState newState)
     {
-        VulkanTexture& texture =
+        VulkanTexture* texture =
             m_backend->m_textures.Get(handle);
 
-        TextureState oldState = texture.currentState;
+        TextureState oldState = texture->currentState;
 
         if (oldState == newState)
             return; // no transition needed
@@ -384,11 +385,11 @@ namespace OneGame::Engine::Graphics::Vulkan
         barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 
-        barrier.image = texture.image;
+        barrier.image = texture->image;
 
-        barrier.subresourceRange.aspectMask = texture.aspect;
+        barrier.subresourceRange.aspectMask = texture->aspect;
         barrier.subresourceRange.baseMipLevel = 0;
-        barrier.subresourceRange.levelCount = texture.mipLevels;
+        barrier.subresourceRange.levelCount = texture->mipLevels;
         barrier.subresourceRange.baseArrayLayer = 0;
         barrier.subresourceRange.layerCount = 1;
 
@@ -401,6 +402,6 @@ namespace OneGame::Engine::Graphics::Vulkan
             0, nullptr,
             1, &barrier);
 
-        texture.currentState = newState;
+        texture->currentState = newState;
     }
 }

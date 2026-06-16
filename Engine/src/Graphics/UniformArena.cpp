@@ -12,9 +12,15 @@ namespace OneGame::Engine::Graphics
 
 		BufferDesc desc{};
 		desc.memory = MemoryUsage::CPUToGPU;
-		desc.usage = BufferUsage::Uniform;
+		desc.usage = BufferUsage::Uniform | BufferUsage::TransferDst;
 		desc.size = m_capacityPerFrame * backend->FramesInFlight();
 		m_gpuBuffer = backend->CreateBuffer(desc, &m_cpuBuffer);
+	}
+
+	void UniformArena::Shutdown(IGraphicsBackend* backend)
+	{
+		backend->DestroyBuffer(m_gpuBuffer);
+		m_cpuBuffer = nullptr;
 	}
 
 	GPUBufferHandle UniformArena::GetBuffer()

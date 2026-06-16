@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include "Engine/ObjectType.hpp"
 
 namespace OneGame::Engine::Graphics::Vulkan
 {

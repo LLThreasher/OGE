@@ -178,12 +178,12 @@ namespace OneGame::Engine::Graphics::Vulkan
 
     void VulkanBackend::DestroyRenderPass(GPURenderPassHandle handle)
     {
-        auto& pass = m_renderPasses.Get(handle);
+        auto pass = m_renderPasses.Get(handle);
 
-        if (pass.handle != VK_NULL_HANDLE)
+        if (pass->handle != VK_NULL_HANDLE)
         {
-            vkDestroyRenderPass(m_device.device, pass.handle, nullptr);
-            pass.handle = VK_NULL_HANDLE;
+            vkDestroyRenderPass(m_device.device, pass->handle, nullptr);
+            pass->handle = VK_NULL_HANDLE;
         }
 
         m_renderPasses.Destroy(handle);
@@ -193,7 +193,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         GPURenderPassHandle passHandle,
         const FrameBufferDesc& desc)
     {
-        auto& pass = m_renderPasses.Get(passHandle);
+        auto pass = m_renderPasses.Get(passHandle);
 
         std::vector<VkImageView> attachments;
 
@@ -205,8 +205,8 @@ namespace OneGame::Engine::Graphics::Vulkan
         // --------------------------------------------------
 
         size_t expectedAttachmentCount =
-            pass.desc.colorCount +
-            (pass.desc.hasDepth ? 1 : 0);
+            pass->desc.colorCount +
+            (pass->desc.hasDepth ? 1 : 0);
 
         size_t providedAttachmentCount =
             desc.colorCount +
@@ -225,10 +225,10 @@ namespace OneGame::Engine::Graphics::Vulkan
         for (size_t i = 0; i < desc.colorCount; ++i)
         {
             auto texHandle = desc.colors[i];
-            VulkanTexture& tex = m_textures.Get(texHandle);
+            VulkanTexture* tex = m_textures.Get(texHandle);
 
             // Validate format
-            if (pass.desc.renderTextures[i].format != tex.format)
+            if (pass->desc.renderTextures[i].format != tex->format)
             {
                 throw std::runtime_error(
                     "Framebuffer color format mismatch with render pass");
@@ -236,19 +236,19 @@ namespace OneGame::Engine::Graphics::Vulkan
 
             if (i == 0)
             {
-                width = tex.width;
-                height = tex.height;
+                width = tex->width;
+                height = tex->height;
             }
             else
             {
-                if (tex.width != width || tex.height != height)
+                if (tex->width != width || tex->height != height)
                 {
                     throw std::runtime_error(
                         "Framebuffer color attachment size mismatch");
                 }
             }
 
-            attachments.push_back(tex.view);
+            attachments.push_back(tex->view);
         }
 
         // --------------------------------------------------
@@ -257,27 +257,27 @@ namespace OneGame::Engine::Graphics::Vulkan
 
         if (desc.hasDepth)
         {
-            VulkanTexture& tex = m_textures.Get(desc.depth);
+            VulkanTexture* tex = m_textures.Get(desc.depth);
 
-            if (!pass.desc.hasDepth)
+            if (!pass->desc.hasDepth)
             {
                 throw std::runtime_error(
                     "Framebuffer has depth but render pass does not");
             }
 
-            if (pass.desc.renderTextures[MaxColorAttachments].format != tex.format)
+            if (pass->desc.renderTextures[MaxColorAttachments].format != tex->format)
             {
                 throw std::runtime_error(
                     "Framebuffer depth format mismatch");
             }
 
-            if (tex.width != width || tex.height != height)
+            if (tex->width != width || tex->height != height)
             {
                 throw std::runtime_error(
                     "Framebuffer depth size mismatch");
             }
 
-            attachments.push_back(tex.view);
+            attachments.push_back(tex->view);
         }
 
         // --------------------------------------------------
@@ -286,7 +286,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 
         VkFramebufferCreateInfo info{};
         info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        info.renderPass = pass.handle;
+        info.renderPass = pass->handle;
         info.attachmentCount =
             static_cast<uint32_t>(attachments.size());
         info.pAttachments = attachments.data();
@@ -307,7 +307,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 
         VulkanFrameBuffer vkFB{};
         vkFB.handle = framebuffer;
-        vkFB.renderPass = pass.handle;
+        vkFB.renderPass = pass->handle;
         vkFB.width = width;
         vkFB.height = height;
 
@@ -317,12 +317,12 @@ namespace OneGame::Engine::Graphics::Vulkan
     void VulkanBackend::DestroyFrameBuffer(
         GPUFrameBufferHandle handle)
     {
-        auto& fb = m_frameBuffers.Get(handle);
+        auto fb = m_frameBuffers.Get(handle);
 
-        if (fb.handle != VK_NULL_HANDLE)
+        if (fb->handle != VK_NULL_HANDLE)
         {
-            vkDestroyFramebuffer(m_device.device, fb.handle, nullptr);
-            fb.handle = VK_NULL_HANDLE;
+            vkDestroyFramebuffer(m_device.device, fb->handle, nullptr);
+            fb->handle = VK_NULL_HANDLE;
         }
         m_frameBuffers.Destroy(handle);
     }

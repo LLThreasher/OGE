@@ -1,7 +1,10 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "vk_mem_alloc.h"
+
+
+struct VmaAllocation_T;
+using VmaAllocation = VmaAllocation_T*;
 
 namespace OneGame::Engine::Graphics::Vulkan
 {

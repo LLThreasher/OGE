@@ -8,7 +8,19 @@ target_include_directories(vma PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
 target_link_libraries(vma
     PRIVATE
         Vulkan::Vulkan
 )
+else()
+
+target_compile_definitions(vma PRIVATE
+    VMA_VULKAN_VERSION=1001000
+)
+
+target_link_libraries(vma
+    PRIVATE
+        vulkan
+)
+endif()

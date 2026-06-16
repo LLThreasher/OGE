@@ -16,6 +16,7 @@ namespace OneGame::Engine::Graphics
 		~UniformArena() = default;
 
 		void Initialize(IGraphicsBackend* backend, uint32_t capacityPerFrame);
+		void Shutdown(IGraphicsBackend* backend);
 		GPUBufferHandle GetBuffer();
 
 		void AdvanceFrame();

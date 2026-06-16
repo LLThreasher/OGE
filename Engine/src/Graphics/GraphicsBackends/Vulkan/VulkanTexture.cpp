@@ -4,6 +4,9 @@
 #include "Vulkan.hpp"
 #include "VulkanTexture.hpp"
 
+extern "C" {
+#include "vk_mem_alloc.h"
+}
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
@@ -174,8 +177,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 
     void VulkanBackend::DestroyTexture(GPUTextureHandle handle)
     {
-		VulkanTexture& texture = m_textures.Get(handle);
-		DestroyTextureInternal(texture);
+		auto texture = m_textures.Get(handle);
+		DestroyTextureInternal(*texture);
 		m_textures.Destroy(handle);
     }
 }

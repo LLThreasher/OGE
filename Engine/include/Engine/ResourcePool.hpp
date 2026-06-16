@@ -1,13 +1,18 @@
 #pragma once
 #include <vector>
 #include <cassert>
+#include <cstdint>
+#include <new>
+#include <type_traits>
+#include <utility>
+#include <memory>
 
-#include "ObjectType.hpp"
+#include "Engine/ObjectType.hpp"
 
 
 namespace OneGame::Engine
 {
-    template<ObjectType Tag, typename Resource>
+    template<auto Tag, typename Resource>
     class ResourcePool
     {
     public:
@@ -16,9 +21,14 @@ namespace OneGame::Engine
     private:
         struct Entry
         {
-            Resource resource;
+            alignas(Resource) std::byte storage[sizeof(Resource)];
             uint32_t generation = 1;
             bool alive = false;
+
+            Resource* Get()
+            {
+                return std::launder(reinterpret_cast<Resource*>(storage));
+            }
         };
 
         std::vector<Entry>     m_entries;
@@ -30,6 +40,7 @@ namespace OneGame::Engine
         // Create
         // ----------------------------
         template<typename... Args>
+        requires std::constructible_from<Resource, Args...>
         Handle Create(Args&&... args)
         {
             uint32_t index;
@@ -47,7 +58,11 @@ namespace OneGame::Engine
 
             Entry& entry = m_entries[index];
 
-            entry.resource = Resource(std::forward<Args>(args)...);
+            std::construct_at(
+                entry.Get(),
+                std::forward<Args>(args)...
+            );
+
             entry.alive = true;
 
             return Handle{ index + 1, entry.generation };
@@ -63,25 +78,29 @@ namespace OneGame::Engine
             auto index = handle.index - 1;
             Entry& entry = m_entries[index];
 
+            std::destroy_at(entry.Get());
+
             entry.alive = false;
-            entry.generation++;           // invalidate old handles
+            entry.generation++;
+
             m_freeList.push_back(index);
         }
 
         // ----------------------------
         // Access
         // ----------------------------
-        Resource& Get(Handle handle)
+        Resource* Get(Handle handle)
         {
-            assert(IsAlive(handle));
-            return m_entries[handle.index - 1].resource;
+            if (!IsAlive(handle))
+                return nullptr;
+            return m_entries[handle.index - 1].Get();
         }
 
-        const Resource& Get(Handle handle) const
-        {
-            assert(IsAlive(handle));
-            return m_entries[handle.index - 1].resource;
-        }
+        //const Resource& Get(Handle handle) const
+        //{
+        //    assert(IsAlive(handle));
+        //    return *m_entries[handle.index - 1].Get();
+        //}
 
         // ----------------------------
         // Validation
@@ -129,6 +148,7 @@ namespace OneGame::Engine
                 if (entry.alive)
                     return Handle{ i + 1, entry.generation };
             }
+            return Handle::InvalidHandle();
         }
     };
 }

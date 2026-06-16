@@ -8,13 +8,14 @@ namespace OneGame::Engine::Graphics
         uint64_t size)
     {
         m_capacity = size;
+        m_alignment = 4;
 
         // Create buffer
         {
             BufferDesc desc;
             desc.size = size;
             desc.memory = MemoryUsage::CPUToGPU;
-            desc.usage = BufferUsage::TransferSrc;
+            desc.usage = BufferUsage::TransferSrc | BufferUsage::TransferDst;
             m_buffer = backend->CreateBuffer(desc, &m_mappedPtr);
         }
 
@@ -22,13 +23,17 @@ namespace OneGame::Engine::Graphics
         m_tail = 0;
     }
 
+    void RingStagingBuffer::Shutdown(IGraphicsBackend* backend)
+    {
+        backend->DestroyBuffer(m_buffer);
+    }
+
     StagingAllocation RingStagingBuffer::Allocate(
-        uint64_t size,
-        uint64_t alignment)
+        uint64_t size)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
 
-        size = math::align(size, alignment);
+        size = math::align(size, m_alignment);
 
         // Wrap if needed
         if (m_head + size > m_capacity)

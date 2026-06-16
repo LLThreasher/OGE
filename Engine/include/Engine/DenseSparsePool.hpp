@@ -6,8 +6,13 @@
 using Entity = uint32_t;
 static constexpr Entity INVALID_ENTITY = std::numeric_limits<Entity>::max();
 
+struct IPool
+{
+    virtual ~IPool() = default;
+};
+
 template<typename T>
-class DenseSparsePool {
+class DenseSparsePool : IPool {
 public:
     void insert(Entity e, const T& component);
     void remove(Entity e);

@@ -1,0 +1,72 @@
+#pragma once
+
+#include <cinttypes>
+
+namespace OneGame::Engine
+{
+	struct ColorRGBA8
+	{
+		uint8_t r, g, b, a;
+
+		uint32_t AsInt32()
+		{
+			return
+				(uint32_t(r) << 0) |
+				(uint32_t(g) << 8) |
+				(uint32_t(b) << 16) |
+				(uint32_t(a) << 24);
+		}
+	};
+
+	constexpr ColorRGBA8 COLOR_WHITE = { 255, 255, 255, 255 };
+
+	enum class GPUObjectType : uint32_t
+	{
+		Buffer,
+		Texture,
+		Pipeline,
+		BindingGroupLayout,
+		BindingGroup,
+		Fence,
+		QueryPool,
+		RenderPass,
+		FrameBuffer,
+	};
+
+	enum class AssetType : uint32_t
+	{
+		// CPU side
+		Texture,
+		Shader,
+		Material,
+		Mesh,
+	};
+
+	template<auto Tag>
+	struct ResourceHandle
+	{
+		uint32_t index = 0;
+		uint32_t generation = 0;
+
+		constexpr bool IsValid() const noexcept { return index != 0; }
+
+		static ResourceHandle<Tag> InvalidHandle()
+		{
+			return ResourceHandle<Tag>{ 0, 0 };
+		}
+	};
+
+	using GPUBufferHandle = ResourceHandle<GPUObjectType::Buffer>;
+	using GPUTextureHandle = ResourceHandle<GPUObjectType::Texture>;
+	using GPUPipelineHandle = ResourceHandle<GPUObjectType::Pipeline>;
+	using GPUBindingGroupHandle = ResourceHandle<GPUObjectType::BindingGroup>;
+	using GPUBindingGroupLayoutHandle = ResourceHandle<GPUObjectType::BindingGroupLayout>;
+	using GPUFenceHandle = ResourceHandle<GPUObjectType::Fence>;
+	using GPURenderPassHandle = ResourceHandle<GPUObjectType::RenderPass>;
+	using GPUFrameBufferHandle = ResourceHandle<GPUObjectType::FrameBuffer>;
+	using GPUQueryPoolHandle = ResourceHandle<GPUObjectType::QueryPool>;
+
+	using TextureHandle = ResourceHandle<AssetType::Texture>;
+	using ShaderHandle = ResourceHandle<AssetType::Shader>;
+	using MeshHandle = ResourceHandle<AssetType::Mesh>;
+}

@@ -22,14 +22,14 @@ namespace OneGame::Engine::Graphics
 		}
 	}
 
-	void LoadShaderBinary(const char* filePath, std::vector<char>& output)
+	bool TryLoadShaderBinary(const char* filePath, std::vector<char>& output)
 	{
 		std::ifstream file(filePath, std::ios::ate | std::ios::binary);
 
 		if (!file.is_open())
 		{
 			LOG_ERROR("Failed to open file {}", filePath);
-			return;
+			return false;
 		}
 
 		// 2. Get the file size and allocate the vector buffer
@@ -39,18 +39,20 @@ namespace OneGame::Engine::Graphics
 		// 3. Move the file pointer back to the beginning and read the data
 		file.seekg(0, std::ios::beg);
 		file.read(output.data(), size);
+		return true;
 	}
 
-	void LoadPNG(const char* filePath, int& width, int& height, void** result)
+	bool TryLoadPNG(const char* filePath, int& width, int& height, void** result)
 	{
 		int texChannels;
 		if (result == nullptr)
 		{
 			if (!stbi_info(filePath, &width, &height, &texChannels))
 			{
-				throw std::runtime_error("Failed to read image info");
+				LOG_ERROR("Failed to read image info! {}", filePath);
+				return false;
 			}
-			return;
+			return true;
 		}
 
 		stbi_uc* pixels = stbi_load(
@@ -63,11 +65,13 @@ namespace OneGame::Engine::Graphics
 
 		if (!pixels)
 		{
-			throw std::runtime_error("Failed to load texture!");
+			LOG_ERROR("Failed to load texture! {}", filePath);
+			return false;
 		}
 
 		std::memcpy(*result, pixels, width* height * sizeof(char) * 4);
 
 		stbi_image_free(pixels);
+		return true;
 	}
 }

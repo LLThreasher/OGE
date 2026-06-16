@@ -6,8 +6,9 @@
 #include "Vulkan.hpp"
 #include "VulkanBuffer.hpp"
 
+extern "C" {
 #include "vk_mem_alloc.h"
-
+}
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
@@ -78,16 +79,16 @@ namespace OneGame::Engine::Graphics::Vulkan
     void VulkanBackend::DestroyBuffer(GPUBufferHandle handle)
     {
         auto buffer = m_buffers.Get(handle);
-        if (buffer.buffer != VK_NULL_HANDLE)
+        if (buffer->buffer != VK_NULL_HANDLE)
         {
             vmaDestroyBuffer(
                 m_device.m_allocator,
-                buffer.buffer,
-                buffer.allocation);
+                buffer->buffer,
+                buffer->allocation);
 
-            buffer.buffer = VK_NULL_HANDLE;
-            buffer.allocation = nullptr;
-            buffer.size = 0;
+            buffer->buffer = VK_NULL_HANDLE;
+            buffer->allocation = nullptr;
+            buffer->size = 0;
         }
         m_buffers.Destroy(handle);
     }

@@ -1,4 +1,3 @@
-#pragma once
 #include <cstdarg>
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
@@ -12,7 +11,7 @@ namespace OneGame::Engine
             return existing.get();
 
 #if defined(__ANDROID__)
-        auto sink = std::make_shared<spdlog::sinks::android_sink_mt>(name);
+        auto sink = std::make_shared<spdlog::sinks::android_sink_mt>();
 #else
         auto sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
 #endif

@@ -5,8 +5,10 @@
 #include <array>
 #include <vector>
 #include <memory>
+#include <string>
 
-#include "ObjectType.hpp"
+#include "Engine/ObjectType.hpp"
+#include "Engine/Math.hpp"
 
 /*
 ================================================================================
@@ -215,16 +217,6 @@ namespace OneGame::Engine::Graphics
         FrameTimePreference frameTime = FrameTimePreference::VSync;
     };
 
-    using GPUBufferHandle = ResourceHandle<GPUBuffer>;
-    using GPUTextureHandle = ResourceHandle<GPUTexture>;
-    using GPUPipelineHandle = ResourceHandle<GPUPipeline>;
-    using GPUBindingGroupHandle = ResourceHandle<GPUBindingGroup>;
-    using GPUBindingGroupLayoutHandle = ResourceHandle<GPUBindingGroupLayout>;
-    using GPUFenceHandle = ResourceHandle<GPUFence>;
-	using GPURenderPassHandle = ResourceHandle<GPURenderPass>;
-	using GPUFrameBufferHandle = ResourceHandle<GPUFrameBuffer>;
-    using GPUQueryPoolHandle = ResourceHandle<GPUQueryPool>;
-
     enum class BufferUsage : uint32_t
     {
         None = 0,
@@ -351,8 +343,20 @@ namespace OneGame::Engine::Graphics
 		Uint32,
 		Uint32x2,
 		Uint32x3,
-		Uint32x4
+		Uint32x4,
+        Uint16,
+        Uint16x2,
+        Uint8,
+        UniformUint16,
+        UniformUint16x2,
+        UniformUint8x4,
 	};
+
+    enum class IndexFormat
+    {
+        Uint32,
+        Uint16,
+    };
 
     enum class DepthCompareOp
     {
@@ -391,6 +395,7 @@ namespace OneGame::Engine::Graphics
         std::vector<char> vertexShader;
         std::vector<char> fragmentShader;
         std::vector<VertexAttributeFormat> vertexLayout;
+        VertexAttributeFormat indexFormat;
         bool depthTest;
         bool writeDepth;
         DepthCompareOp depthCompareOp;
@@ -408,12 +413,12 @@ namespace OneGame::Engine::Graphics
         std::vector<GPUBindingGroupLayoutHandle> bindingGroupLayouts;
     };
 
-	enum class QueueType
+	enum class QueueType : uint32_t
 	{
-		Graphics,
-		Compute,
-		Transfer,
-		Present,
+        Present = 0,
+        Transfer = 1,
+		Graphics = 2,
+		Compute = 3
 	};
 
     enum class LoadOp
@@ -516,7 +521,7 @@ namespace OneGame::Engine::Graphics
         virtual void BindComputePipeline(GPUPipelineHandle) = 0;
 
         virtual void BindVertexBuffer(GPUBufferHandle, uint64_t offset = 0) = 0;
-        virtual void BindIndexBuffer(GPUBufferHandle, uint64_t offset = 0) = 0;
+        virtual void BindIndexBuffer(GPUBufferHandle, uint64_t offset = 0, IndexFormat indexFormat = IndexFormat::Uint32) = 0;
 
         virtual void BindBindingGroup(
             GPUBindingGroupHandle,
@@ -598,6 +603,18 @@ namespace OneGame::Engine::Graphics
         Vulkan,
     };
 
+    struct GPUInfo
+    {
+        std::string name;
+        int heapCount;
+    };
+
+    struct GPUMemoryUsage
+    {
+        std::array<uint32_t, 16> heapUsage;
+        std::array<uint32_t, 16> heapBudget;
+    };
+
     class IGraphicsBackend
     {
     public:
@@ -610,6 +627,13 @@ namespace OneGame::Engine::Graphics
         virtual uint32_t CurrentFrameIndex() const = 0;
 
         virtual float SwapchainAspect() const = 0;
+        virtual math::vec2 SwapchainExtend() const = 0;
+
+        virtual GPURenderPassHandle GetCurrentRenderPass() const = 0;
+        virtual GPUFrameBufferHandle GetCurrentFrameBuffer() const = 0;
+
+        virtual GPUInfo GetGPUInfo() const = 0;
+        virtual GPUMemoryUsage GetGPUMemoryUsage() const = 0;
 
         virtual void Initialize(const BackendDesc&) = 0;
         virtual void Resize(uint32_t width, uint32_t height) = 0;
@@ -619,7 +643,6 @@ namespace OneGame::Engine::Graphics
         virtual void EndFrame() = 0;
 
         virtual std::unique_ptr<ICommandList> CreateCommandList(QueueType) = 0;
-        virtual void Submit(std::unique_ptr<ICommandList>) = 0;
 
         // ----- Buffers -----
         virtual GPUBufferHandle CreateBuffer(const BufferDesc&, void** = nullptr) = 0;
@@ -652,13 +675,7 @@ namespace OneGame::Engine::Graphics
 
 		virtual GPUFrameBufferHandle CreateFrameBuffer(GPURenderPassHandle passHandle, const FrameBufferDesc&) = 0;
 		virtual void DestroyFrameBuffer(GPUFrameBufferHandle) = 0;
-
-        virtual GPURenderPassHandle GetCurrentRenderPass() = 0;
-		virtual GPUFrameBufferHandle GetCurrentFrameBuffer() = 0;
     };
 
     std::unique_ptr<IGraphicsBackend> CreateBackend(BackendType type);
-    void LoadShaderBinary(const char* filePath, std::vector<char>& output);
-    void LoadPNG(const char* filePath, int& width, int& height, void** result = nullptr);
-
 }

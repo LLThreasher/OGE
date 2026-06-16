@@ -7,7 +7,8 @@
 #include <vulkan/vulkan.h>
 
 #include "Engine/Graphics/IGraphicsBackend.hpp"
-#include "Engine/Graphics/ResourcePool.hpp"
+#include "Engine/ResourcePool.hpp"
+#include "Engine/Math.hpp"
 
 #define VK_CHECK_RESULT(expr) do { VkResult res = (expr); if (res != VK_SUCCESS) { throw std::runtime_error("Vulkan error: " + std::to_string(res)); } } while(0)
 
@@ -27,10 +28,12 @@ namespace OneGame::Engine::Graphics::Vulkan
     struct FrameData
     {
         VkCommandPool pool;
-        std::vector<VkCommandBuffer> commandBuffers;
-        uint32_t usedCount = 0;
+        std::array<uint32_t, 4> cmdUsedCount = {};
+        std::array<std::vector<VkCommandBuffer>, 4> cmdBuffers = {};
+        std::vector<ICommandList> absCmdBuffers = {};
+        uint32_t usedAbsCmdBuffers = 0;
 
-        VkSemaphore imageAvailable;
+        VkSemaphore imageAvailableAndTransferComplete[2];
         VkSemaphore renderFinished;
         VkFence inFlightFence;
     };
@@ -245,6 +248,12 @@ namespace OneGame::Engine::Graphics::Vulkan
         case VertexAttributeFormat::Uint32x2:  return { VK_FORMAT_R32G32_UINT, 8 };
         case VertexAttributeFormat::Uint32x3:  return { VK_FORMAT_R32G32B32_UINT, 12 };
         case VertexAttributeFormat::Uint32x4:  return { VK_FORMAT_R32G32B32A32_UINT, 16 };
+        case VertexAttributeFormat::Uint16:  return { VK_FORMAT_R16_UINT, 2 };
+        case VertexAttributeFormat::Uint16x2:  return { VK_FORMAT_R16G16_UINT, 4 };
+        case VertexAttributeFormat::Uint8:  return { VK_FORMAT_R8_UINT, 1 };
+        case VertexAttributeFormat::UniformUint16: return { VK_FORMAT_R16_UNORM, 2 };
+        case VertexAttributeFormat::UniformUint16x2: return { VK_FORMAT_R16G16_UNORM, 4 };
+        case VertexAttributeFormat::UniformUint8x4: return { VK_FORMAT_R8G8B8A8_UNORM, 4 };
         }
 
         assert(false);
@@ -421,6 +430,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         uint32_t CurrentFrameIndex() const override;
 
         float SwapchainAspect() const override;
+        math::vec2 SwapchainExtend() const override;
 
         void Initialize(const BackendDesc&) override;
         void Resize(uint32_t width, uint32_t height) override;
@@ -430,7 +440,6 @@ namespace OneGame::Engine::Graphics::Vulkan
         void EndFrame() override;
 
         std::unique_ptr<ICommandList> CreateCommandList(QueueType) override;
-        void Submit(std::unique_ptr<ICommandList>) override;
 
         // ----- Buffers -----
         GPUBufferHandle CreateBuffer(const BufferDesc&, void** stagingMemory = nullptr) override;
@@ -464,8 +473,11 @@ namespace OneGame::Engine::Graphics::Vulkan
         GPUFrameBufferHandle CreateFrameBuffer(GPURenderPassHandle passHandle, const FrameBufferDesc&) override;
         void DestroyFrameBuffer(GPUFrameBufferHandle) override;
 
-		GPURenderPassHandle GetCurrentRenderPass() override;
-        GPUFrameBufferHandle GetCurrentFrameBuffer() override;
+		GPURenderPassHandle GetCurrentRenderPass() const override;
+        GPUFrameBufferHandle GetCurrentFrameBuffer() const override;
+
+        GPUInfo GetGPUInfo() const override;
+        GPUMemoryUsage GetGPUMemoryUsage() const override;
 
     private:
         VulkanDevice                m_device = {};
@@ -481,14 +493,14 @@ namespace OneGame::Engine::Graphics::Vulkan
 #ifdef VULKAN_VALIDATION
         VkDebugUtilsMessengerEXT    m_debugMessenger = {};
 #endif
-        ResourcePool<GPUBuffer, VulkanBuffer> m_buffers;
-        ResourcePool<GPUTexture, VulkanTexture> m_textures;
-        ResourcePool<GPUPipeline, VulkanPipeline> m_pipelines;
-        ResourcePool<GPUBindingGroupLayout, VulkanBindingGroupLayout> m_bindingGroupLayouts;
-        ResourcePool<GPUBindingGroup, VulkanBindingGroup> m_bindingGroups;
-        ResourcePool<GPUFence, VulkanFence> m_fences;
-        ResourcePool<GPURenderPass, VulkanRenderPass> m_renderPasses;
-        ResourcePool<GPUFrameBuffer, VulkanFrameBuffer> m_frameBuffers;
+        ResourcePool<GPUObjectType::Buffer, VulkanBuffer> m_buffers;
+        ResourcePool<GPUObjectType::Texture, VulkanTexture> m_textures;
+        ResourcePool<GPUObjectType::Pipeline, VulkanPipeline> m_pipelines;
+        ResourcePool<GPUObjectType::BindingGroupLayout, VulkanBindingGroupLayout> m_bindingGroupLayouts;
+        ResourcePool<GPUObjectType::BindingGroup, VulkanBindingGroup> m_bindingGroups;
+        ResourcePool<GPUObjectType::Fence, VulkanFence> m_fences;
+        ResourcePool<GPUObjectType::RenderPass, VulkanRenderPass> m_renderPasses;
+        ResourcePool<GPUObjectType::FrameBuffer, VulkanFrameBuffer> m_frameBuffers;
 
         VulkanRenderPass CreateRenderPassInternal(VulkanRenderPassDesc&);
         void CreateSyncObjects(QueueIndices&, int);

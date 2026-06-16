@@ -5,9 +5,16 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
-# 2. Find the Vulkan SDK
+option(ENABLE_ASAN "Enable AddressSanitizer")
+option(BUILD_ANDROID "Build Android APK")
+
+# Find the Vulkan SDK
 # This sets variables like Vulkan_INCLUDE_DIRS and Vulkan_LIBRARIES
-find_package(Vulkan REQUIRED)
+if (NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+    find_package(Vulkan REQUIRED)
+else()
+    unset(BUILD_ANDROID)
+endif()
 
 function(fetch_file FILE_NAME URL)
 if(NOT EXISTS ${FILE_NAME})
@@ -40,12 +47,12 @@ function(compile_shaders TARGET SHADER_DIR)
     foreach(SHADER ${SHADER_FILES})
 
         get_filename_component(FILE_NAME ${SHADER} NAME)
-        set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/shaders/${FILE_NAME}.spv")
+        set(SPIRV "${CMAKE_CURRENT_BINARY_DIR}/assets/${FILE_NAME}.spv")
 
         add_custom_command(
             OUTPUT ${SPIRV}
             COMMAND ${CMAKE_COMMAND} -E make_directory
-                    ${CMAKE_CURRENT_BINARY_DIR}/shaders
+                    ${CMAKE_CURRENT_BINARY_DIR}/assets
             COMMAND Vulkan::glslc ${SHADER} -o ${SPIRV}
             DEPENDS ${SHADER}
             COMMENT "Compiling shader ${FILE_NAME}"
@@ -69,19 +76,58 @@ add_custom_command(TARGET ${TARGET} POST_BUILD
 
 endfunction()
 
-option(ENABLE_ASAN "Enable AddressSanitizer")
-
 if(ENABLE_ASAN)
-    if(MSVC)
-        add_compile_options(/fsanitize=address)
-        add_link_options(/fsanitize=address)
-    else()
-        add_compile_options(-fsanitize=address -fno-omit-frame-pointer -g)
-        add_link_options(-fsanitize=address)
-    endif()
+    add_compile_options(-fsanitize=address -fno-omit-frame-pointer -g)
+    add_link_options(-fsanitize=address)
 endif()
 
+set(SDL_VULKAN OFF CACHE BOOL "Disable Vulkan support in SDL" FORCE)
+set(SDL_OPENGL OFF CACHE BOOL "Disable OpenGL support in SDL" FORCE)
+set(SDL_GPU OFF CACHE BOOL "Disable SDL_GPU support" FORCE)
+set(SDL_AUDIO OFF CACHE BOOL "Disable SDL_AUDIO support" FORCE)
+set(SDL_RENDERER OFF CACHE BOOL "Disable SDL_RENDERER support" FORCE)
+set(SDL_CAMERA OFF CACHE BOOL "Disable SDL_CAMERA support" FORCE)
+set(SDL_TEST OFF CACHE BOOL "Disable SDL_TEST support" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "Disable SDL_TESTS support" FORCE)
 
+if (BUILD_ANDROID)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+	    set(GRADLEW_COMMAND gradlew.bat)
+    else()
+	    set(GRADLEW_COMMAND gradlew)
+    endif()
+
+    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_custom_command(
+	    PRE_BUILD
+	    OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/debug/app-debug.apk"
+	    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/${GRADLEW_COMMAND}" ARGS "assembleDebug" "--info"
+	    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid"
+    )
+    add_custom_target(
+	    build_apk ALL
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/debug/app-debug.apk" "${CMAKE_BINARY_DIR}/Android-Debug.apk" 
+	    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/debug/app-debug.apk"
+    )
+    elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
+    add_custom_command(
+	    PRE_BUILD
+	    OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/release/app-release.apk"
+	    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/${GRADLEW_COMMAND}" ARGS "assembleRelease" "--info"
+	    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid"
+    )
+    add_custom_target(
+	    build_apk ALL
+        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/release/app-release.apk" "${CMAKE_BINARY_DIR}/Android-Release.apk" 
+	    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/debug/app-release.apk"
+    )
+    endif()
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
+add_subdirectory(3rdparty)
+add_subdirectory(Engine)
+add_subdirectory(OneGameAndroid)
+else()
 add_subdirectory(3rdparty)
 add_subdirectory(Engine)
 add_subdirectory(OneGame)
+endif()

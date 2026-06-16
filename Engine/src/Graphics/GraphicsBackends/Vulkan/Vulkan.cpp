@@ -12,12 +12,15 @@
 #include "VulkanFrameBuffer.hpp"
 #include "VulkanCommandBuffer.hpp"
 
+extern "C" {
 #include "vk_mem_alloc.h"
+}
 
 #define LOGGER_NAME "Vulkan"
 #include "Engine/Logger.hpp"
 
 #include "Engine/PrintStackTrace.hpp"
+#include "Engine/Math.hpp"
 
 
 namespace OneGame::Engine::Graphics::Vulkan
@@ -50,7 +53,9 @@ namespace OneGame::Engine::Graphics::Vulkan
 		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 		{
 			LOG_ERROR(message);
+#ifndef PLATFORM_ANDROID
 			PrintStackTrace();
+#endif
  		}
 		else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 		{
@@ -134,6 +139,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 	float VulkanBackend::SwapchainAspect() const
 	{
 		return (float)m_swapchain.extent.width / (float)m_swapchain.extent.height;
+	}
+
+	math::vec2 VulkanBackend::SwapchainExtend() const
+	{
+		return { m_swapchain.extent.width, m_swapchain.extent.height };
 	}
 
 	struct QueueIndices
@@ -387,6 +397,36 @@ namespace OneGame::Engine::Graphics::Vulkan
 		LOG_INFO("========================");
 	}
 
+	GPUInfo VulkanBackend::GetGPUInfo() const
+	{
+		VkPhysicalDeviceProperties props{};
+		VkPhysicalDeviceMemoryProperties memoryProps{};
+
+		vkGetPhysicalDeviceProperties(m_device.physicalDevice, &props);
+		vkGetPhysicalDeviceMemoryProperties(m_device.physicalDevice, &memoryProps);
+
+		GPUInfo result{};
+		result.name = props.deviceName;
+		result.heapCount = memoryProps.memoryHeapCount;
+		return result;
+	}
+
+	GPUMemoryUsage VulkanBackend::GetGPUMemoryUsage() const
+	{
+		GPUMemoryUsage result{};
+
+		VmaBudget budgets[VK_MAX_MEMORY_HEAPS];
+		vmaGetHeapBudgets(m_device.m_allocator, budgets);
+
+		for (size_t i = 0; i < 16; ++i)
+		{
+			result.heapUsage[i] = budgets[i].usage;
+			result.heapBudget[i] = budgets[i].budget;
+		}
+
+		return result;
+	}
+
 	void VulkanBackend::Initialize(const BackendDesc& desc)
 	{
 #if defined(PLATFORM_WINDOWS)
@@ -496,8 +536,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 		{
 			VkAndroidSurfaceCreateInfoKHR createInfo{};
 			createInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
-			createInfo.window = static_cast<ANativeWindow*>(desc.window->hwnd);
-			VK_CHECK_RESULT(vkCreateAndroidSurfaceKHR(instance, &createInfo, nullptr, &surface));
+			createInfo.window = static_cast<ANativeWindow*>(desc.window->nativeWindow);
+			VK_CHECK_RESULT(vkCreateAndroidSurfaceKHR(m_device.instance, &createInfo, nullptr, &m_device.surface));
 		}
 #endif
 
@@ -652,7 +692,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		}
 		for (auto handle : m_swapchain.colorTextures)
 		{
-			vkDestroyImageView(m_device.device, m_textures.Get(handle).view, nullptr);
+			vkDestroyImageView(m_device.device, m_textures.Get(handle)->view, nullptr);
 			m_textures.Destroy(handle);
 		}
 		DestroyRenderPass(m_swapchain.renderPass);
@@ -829,7 +869,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		while (m_fences.Size() > 0)
 		{
 			auto handle = m_fences.Poll();
-			vkDestroyFence(m_device.device, m_fences.Get(handle).fence, nullptr);
+			vkDestroyFence(m_device.device, m_fences.Get(handle)->fence, nullptr);
 			m_fences.Destroy(handle);
 		}
 
@@ -844,7 +884,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 		{
 			vkDestroyCommandPool(m_device.device, frame.pool, nullptr);
 			vkDestroyFence(m_device.device, frame.inFlightFence, nullptr);
-			vkDestroySemaphore(m_device.device, frame.imageAvailable, nullptr);
+			vkDestroySemaphore(m_device.device, frame.imageAvailableAndTransferComplete[0], nullptr);
+			vkDestroySemaphore(m_device.device, frame.imageAvailableAndTransferComplete[1], nullptr);
 			vkDestroySemaphore(m_device.device, frame.renderFinished, nullptr);
 		}
 		for (auto& semaphore : m_imagesFinishRender)
@@ -895,12 +936,12 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 #undef max
 
-	GPUFrameBufferHandle VulkanBackend::GetCurrentFrameBuffer()
+	GPUFrameBufferHandle VulkanBackend::GetCurrentFrameBuffer() const
 	{
 		return m_swapchain.framebuffers[m_imageIndex];
 	}
 
-	GPURenderPassHandle VulkanBackend::GetCurrentRenderPass()
+	GPURenderPassHandle VulkanBackend::GetCurrentRenderPass() const
 	{
 		return m_swapchain.renderPass;
 	}
@@ -925,7 +966,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			device,
 			swapchain,
 			UINT64_MAX,
-			frame.imageAvailable,
+			frame.imageAvailableAndTransferComplete[0],
 			VK_NULL_HANDLE,
 			&m_imageIndex);
 
@@ -960,7 +1001,10 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 		// 3️⃣ Reset command pool
 		vkResetCommandPool(device, frame.pool, 0);
-		frame.usedCount = 0;
+		frame.cmdUsedCount[0] = 0;
+		frame.cmdUsedCount[1] = 0;
+		frame.cmdUsedCount[2] = 0;
+		frame.cmdUsedCount[3] = 0;
 
 		m_imagesInFlight[m_imageIndex] = frame.inFlightFence;
 	}
@@ -969,6 +1013,44 @@ namespace OneGame::Engine::Graphics::Vulkan
 	{
 		FrameData& frame = m_frames[m_frameIndex];
 		VkSwapchainKHR& swapchain = m_swapchain.swapchain;
+
+		{
+			VkSubmitInfo submitInfo{};
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+			auto queueIdx = static_cast<uint32_t>(QueueType::Transfer);
+			auto& transferCmdBuffers = frame.cmdBuffers[queueIdx];
+			auto& frame = m_frames[m_frameIndex];
+			submitInfo.waitSemaphoreCount = 0;
+			submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
+			submitInfo.pWaitDstStageMask = VK_NULL_HANDLE;
+			submitInfo.signalSemaphoreCount = 1;
+			submitInfo.pSignalSemaphores = &frame.imageAvailableAndTransferComplete[1];
+			submitInfo.commandBufferCount = frame.cmdUsedCount[queueIdx];
+			submitInfo.pCommandBuffers = transferCmdBuffers.data();
+
+			vkQueueSubmit(m_device.m_transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
+		}
+
+		{
+			VkSubmitInfo submitInfo{};
+			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+			auto queueIdx = static_cast<uint32_t>(QueueType::Present);
+			auto& presentCmdBuffers = frame.cmdBuffers[queueIdx];
+			auto& frame = m_frames[m_frameIndex];
+			static VkPipelineStageFlags waitStage[2] =
+				{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
+			submitInfo.waitSemaphoreCount = 2;
+			submitInfo.pWaitSemaphores = frame.imageAvailableAndTransferComplete;
+			submitInfo.pWaitDstStageMask = waitStage;
+			submitInfo.signalSemaphoreCount = 1;
+			submitInfo.pSignalSemaphores = &m_imagesFinishRender[m_imageIndex];
+			submitInfo.commandBufferCount = frame.cmdUsedCount[queueIdx];
+			submitInfo.pCommandBuffers = presentCmdBuffers.data();
+
+			vkQueueSubmit(m_device.m_presentQueue, 1, &submitInfo, frame.inFlightFence);
+		}
 
 		// Present
 		VkPresentInfoKHR presentInfo{};
@@ -1027,7 +1109,16 @@ namespace OneGame::Engine::Graphics::Vulkan
 				m_device.device,
 				&semaphoreInfo,
 				nullptr,
-				&m_frames[i].imageAvailable) != VK_SUCCESS)
+				&m_frames[i].imageAvailableAndTransferComplete[0]) != VK_SUCCESS)
+			{
+				throw std::runtime_error("Failed to create imageAvailable semaphore");
+			}
+
+			if (vkCreateSemaphore(
+				m_device.device,
+				&semaphoreInfo,
+				nullptr,
+				&m_frames[i].imageAvailableAndTransferComplete[1]) != VK_SUCCESS)
 			{
 				throw std::runtime_error("Failed to create imageAvailable semaphore");
 			}
@@ -1069,14 +1160,15 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 	std::unique_ptr<ICommandList> VulkanBackend::CreateCommandList(QueueType queueType)
 	{
-		assert(queueType == QueueType::Present);
+		assert(queueType == QueueType::Present || queueType == QueueType::Transfer);
 		FrameData& frame = m_frames[m_frameIndex];
 
+		uint32_t queueIndex = static_cast<uint32_t>(queueType);
 		VkCommandBuffer cmd;
 
-		if (frame.usedCount < frame.commandBuffers.size())
+		if (frame.cmdUsedCount[queueIndex] < frame.cmdBuffers[queueIndex].size())
 		{
-			cmd = frame.commandBuffers[frame.usedCount];
+			cmd = frame.cmdBuffers[queueIndex][frame.cmdUsedCount[queueIndex]];
 		}
 		else
 		{
@@ -1089,55 +1181,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 			alloc.commandBufferCount = 1;
 
 			vkAllocateCommandBuffers(m_device.device, &alloc, &cmd);
-			frame.commandBuffers.push_back(cmd);
+			frame.cmdBuffers[queueIndex].push_back(cmd);
 		}
 
-		frame.usedCount++;
+		frame.cmdUsedCount[queueIndex]++;
 
 		return std::unique_ptr<ICommandList>(new VulkanCommandBuffer(queueType, m_device.device, cmd, this));
-	}
-
-	void VulkanBackend::Submit(std::unique_ptr<ICommandList> list)
-	{
-		auto* cmd = static_cast<VulkanCommandBuffer*>(list.get());
-
-		VkCommandBuffer vkCmd = cmd->GetVulkanCommandBuffer();
-
-		VkSubmitInfo submitInfo{};
-		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-
-		auto& frame = m_frames[m_frameIndex];
-		VkPipelineStageFlags waitStage =
-			VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &frame.imageAvailable;
-		submitInfo.pWaitDstStageMask = &waitStage;
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &m_imagesFinishRender[m_imageIndex];
-		submitInfo.commandBufferCount = 1;
-		submitInfo.pCommandBuffers = &vkCmd;
-
-
-		VkQueue queue{};
-		switch (cmd->GetQueueType())
-		{
-		case QueueType::Graphics:
-			queue = m_device.m_graphicsQueue;
-			break;
-		case QueueType::Compute:
-			queue = m_device.m_computeQueue;
-			break;
-		case QueueType::Transfer:
-			queue = m_device.m_transferQueue;
-			break;
-		case QueueType::Present:
-			queue = m_device.m_presentQueue;
-			break;
-		default:
-			std::runtime_error("unknown queue type");
-			break;
-		}
-
-		vkQueueSubmit(queue, 1, &submitInfo, frame.inFlightFence);
 	}
 }
