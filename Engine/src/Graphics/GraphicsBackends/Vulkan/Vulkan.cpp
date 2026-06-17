@@ -128,7 +128,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 	uint32_t VulkanBackend::FramesInFlight() const
 	{
-		return MAX_FRAMES_IN_FLIGHT;
+		return m_frames.size();
 	}
 
 	uint32_t VulkanBackend::CurrentFrameIndex() const
@@ -138,12 +138,23 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 	float VulkanBackend::SwapchainAspect() const
 	{
-		return (float)m_swapchain.extent.width / (float)m_swapchain.extent.height;
+		auto extend = SwapchainExtend();
+		return extend.x / extend.y;
 	}
 
 	math::vec2 VulkanBackend::SwapchainExtend() const
 	{
 		return { m_swapchain.extent.width, m_swapchain.extent.height };
+	}
+
+	math::Orientation VulkanBackend::SwapchainPretransform() const
+	{
+		return m_swapchain.currentTransform;
+	}
+
+	bool VulkanBackend::SwapchainRecreated() const
+	{
+		return m_swapchain.isDirty;
 	}
 
 	struct QueueIndices
@@ -213,6 +224,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		std::vector<VkSurfaceFormatKHR> formats;
 		std::vector<VkPresentModeKHR> presentModes;
 		VkCompositeAlphaFlagsKHR compositAlphaFlags;
+		uint32_t framesInFlight;
 	};
 
 	static void QuerySwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface, SwapchainSupport& swapchainSupport)
@@ -228,6 +240,13 @@ namespace OneGame::Engine::Graphics::Vulkan
 		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, nullptr);
 		swapchainSupport.presentModes.resize(presentModeCount);
 		vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, swapchainSupport.presentModes.data());
+
+		swapchainSupport.framesInFlight = capabilities.minImageCount + 1;
+		if (capabilities.maxImageCount > 0 &&
+			swapchainSupport.framesInFlight > capabilities.maxImageCount)
+		{
+			swapchainSupport.framesInFlight = capabilities.maxImageCount;
+		}
 	}
 
 	static bool IsDeviceSuitable(VkPhysicalDevice device, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions, SwapchainSupport& swapchainSupport, QueueIndices& queueIndices)
@@ -526,23 +545,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		}
 #endif
 
-#ifdef PLATFORM_WINDOWS
-		{
-			VkWin32SurfaceCreateInfoKHR createInfo{};
-			createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-			createInfo.hwnd = static_cast<HWND>(desc.window->hwnd);
-			createInfo.hinstance = static_cast<HINSTANCE>(desc.window->hInstance);
-			VK_CHECK_RESULT(vkCreateWin32SurfaceKHR(m_device.instance, &createInfo, nullptr, &m_device.surface));
-		}
-#elif defined(PLATFORM_ANDROID)
-		{
-			VkAndroidSurfaceCreateInfoKHR createInfo{};
-			createInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
-			createInfo.window = static_cast<ANativeWindow*>(desc.window->nativeWindow);
-			VK_CHECK_RESULT(vkCreateAndroidSurfaceKHR(m_device.instance, &createInfo, nullptr, &m_device.surface));
-		}
-#endif
-		LOG_DEBUG("surface created");
+		RecreateSurface(desc.window);
 
 		std::vector deviceExtensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 		auto [physicalDevice, swapchainSupport, queueIndices] = SelectPhysicalDevice(m_device.instance, m_device.surface, deviceExtensions);
@@ -646,10 +649,51 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 		vkCreateDescriptorPool(m_device.device, &poolInfo, nullptr, &m_descriptorPool);
 
-		int swapImageCount;
-		RecreateSwapchain(swapImageCount);
-		CreateSyncObjects(queueIndices, swapImageCount);
-		LOG_DEBUG("Sync objects created");
+		m_frames.resize(swapchainSupport.framesInFlight > MAX_FRAMES_IN_FLIGHT ? MAX_FRAMES_IN_FLIGHT : swapchainSupport.framesInFlight);
+		LOG_INFO("chosen frames in flight: {}", m_frames.size());
+
+		for (auto& frame : m_frames)
+		{
+			VkCommandPoolCreateInfo createInfo{};
+			createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+			createInfo.queueFamilyIndex = queueIndices.graphics.value();
+			createInfo.flags =
+				VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+			vkCreateCommandPool(m_device.device, &createInfo, nullptr, &frame.pool);
+		}
+
+		RecreateSwapchain();
+	}
+
+	void VulkanBackend::RecreateSurface(WindowHandle* handle)
+	{
+		DestroySurface();
+		LOG_DEBUG("recreating surface");
+		VkResult res;
+#ifdef PLATFORM_WINDOWS
+		{
+			VkWin32SurfaceCreateInfoKHR createInfo{};
+			createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+			createInfo.hwnd = static_cast<HWND>(handle->hwnd);
+			createInfo.hinstance = static_cast<HINSTANCE>(handle->hInstance);
+			res = vkCreateWin32SurfaceKHR(m_device.instance, &createInfo, nullptr, &m_device.surface);
+		}
+#elif defined(PLATFORM_ANDROID)
+		{
+			VkAndroidSurfaceCreateInfoKHR createInfo{};
+			createInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
+			createInfo.window = static_cast<ANativeWindow*>(handle->nativeWindow);
+			res = vkCreateAndroidSurfaceKHR(m_device.instance, &createInfo, nullptr, &m_device.surface);
+		}
+#endif
+		if (res != VK_SUCCESS)
+		{
+			LOG_ERROR("error recreating surface {}", static_cast<uint32_t>(res));
+			throw std::runtime_error("vulkan err: " + std::to_string(res));
+		}
+		LOG_DEBUG("surface recreated");
+
+		RecreateSwapchain();
 	}
 
 	void VulkanBackend::CreateSwapchainRenderPass()
@@ -684,7 +728,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		}
 	}
 
-	void VulkanBackend::DestroySwapchain(VkSwapchainKHR oldSwapchain)
+	void VulkanBackend::DestroySwapchain(VkSwapchainKHR& oldSwapchain)
 	{
 		for (auto framebuffer : m_swapchain.framebuffers)
 		{
@@ -701,10 +745,33 @@ namespace OneGame::Engine::Graphics::Vulkan
 		}
 		DestroyRenderPass(m_swapchain.renderPass);
 		vkDestroySwapchainKHR(m_device.device, oldSwapchain, nullptr);
+		oldSwapchain = VK_NULL_HANDLE;
 	}
 
-	void VulkanBackend::RecreateSwapchain(int& swapImageCount)
+	void VulkanBackend::DestroySurface()
 	{
+		if (m_device.device != VK_NULL_HANDLE)
+		{
+			vkDeviceWaitIdle(m_device.device);
+			LOG_DEBUG("device idle");
+			if (m_device.surface != VK_NULL_HANDLE)
+			{
+				if (m_swapchain.swapchain != VK_NULL_HANDLE)
+				{
+					DestroySwapchain(m_swapchain.swapchain);
+				}
+				vkDestroySurfaceKHR(m_device.instance, m_device.surface, nullptr);
+				LOG_DEBUG("surface destroyed");
+				m_device.surface = VK_NULL_HANDLE;
+			}
+		}
+	}
+
+	void VulkanBackend::RecreateSwapchain()
+	{
+		if (m_device.physicalDevice == VK_NULL_HANDLE)
+			return;
+
 		// Handle swapchain recreation on window resize
 		VkSurfaceCapabilitiesKHR capabilities;
 		vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
@@ -731,6 +798,13 @@ namespace OneGame::Engine::Graphics::Vulkan
 			m_swapchain.nextExtent.width, m_swapchain.nextExtent.height,
 			m_swapchain.extent.width, m_swapchain.extent.height
 		);
+
+		if (m_swapchain.extent.width == 0 || m_swapchain.extent.height == 0)
+		{
+			LOG_DEBUG("abort RecreateSwapchain: (0, 0) extend");
+			return;
+		}
+
 		m_swapchain.nextExtent = m_swapchain.extent;
 
 		uint32_t imageCount = capabilities.minImageCount + 1;
@@ -739,7 +813,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 		{
 			imageCount = capabilities.maxImageCount;
 		}
-		swapImageCount = imageCount;
 
 		VkCompositeAlphaFlagBitsKHR compositeAlpha;
 
@@ -775,6 +848,18 @@ namespace OneGame::Engine::Graphics::Vulkan
 			createInfo.clipped = VK_TRUE;
 			createInfo.oldSwapchain = oldSwapchain;
 
+			if (createInfo.preTransform & VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR)
+				m_swapchain.currentTransform = math::Orientation::ROTATE_90;
+			else if (createInfo.preTransform & VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR)
+				m_swapchain.currentTransform = math::Orientation::ROTATE_270;
+			else if (createInfo.preTransform & VK_SURFACE_TRANSFORM_ROTATE_180_BIT_KHR)
+				m_swapchain.currentTransform = math::Orientation::ROTATE_180;
+			else
+				m_swapchain.currentTransform = math::Orientation::IDENTITY;
+
+			LOG_DEBUG("currentTransform {}", static_cast<uint32_t>(capabilities.currentTransform));
+			LOG_DEBUG("currentAspect {}", SwapchainAspect());
+
 			VK_CHECK_RESULT(vkCreateSwapchainKHR(m_device.device, &createInfo, nullptr, &m_swapchain.swapchain));
 			if (oldSwapchain != VK_NULL_HANDLE)
 			{
@@ -782,6 +867,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			}
 		}
 
+		m_swapchain.isDirty = true;
 		LOG_DEBUG("swapchain created with format {}, color space {}", static_cast<uint32_t>(m_device.surfaceFormat.format), static_cast<uint32_t>(m_device.surfaceFormat.colorSpace));
 
 		uint32_t swapchainImageCount;
@@ -843,7 +929,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 				m_swapchain.extent.height,
 				1,
 				1,
-				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+				VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
 				m_device.depthFormat,
 				VK_IMAGE_ASPECT_DEPTH_BIT,
 				depthTexture
@@ -856,6 +942,8 @@ namespace OneGame::Engine::Graphics::Vulkan
 		LOG_DEBUG("swapchain render pass created");
 		CreateSwapchainFrameBuffers();
 		LOG_DEBUG("swapchain frame buffer created");
+		CreateSyncObjects(imageCount);
+		LOG_DEBUG("Sync objects created");
 	}
 
 	void VulkanBackend::Resize(uint32_t windowWidth, uint32_t windowHeight)
@@ -969,7 +1057,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		return m_swapchain.renderPass;
 	}
 
-	void VulkanBackend::BeginFrame()
+	BeginFrameAction VulkanBackend::BeginFrame()
 	{
 		FrameData& frame = m_frames[m_frameIndex];
 
@@ -995,13 +1083,17 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 		if (result == VK_ERROR_OUT_OF_DATE_KHR)
 		{
-			int swapImageCnt;
-			RecreateSwapchain(swapImageCnt);
-			return;
+			LOG_DEBUG("recreating swapchain: VK_ERROR_OUT_OF_DATE_KHR");
+			RecreateSwapchain();
+			return BeginFrameAction::SkipFrame;
 		}
-
-		if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		else if (result == VK_ERROR_SURFACE_LOST_KHR)
 		{
+			return BeginFrameAction::RecreateSurface;
+		}
+		else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR)
+		{
+			LOG_ERROR("vkAcquireNextImageKHR error: {}", static_cast<uint32_t>(result));
 			throw std::runtime_error("Failed to acquire swapchain image");
 		}
 
@@ -1030,9 +1122,10 @@ namespace OneGame::Engine::Graphics::Vulkan
 		frame.cmdUsedCount[3] = 0;
 
 		m_imagesInFlight[m_imageIndex] = frame.inFlightFence;
+		return BeginFrameAction::Continue;
 	}
 
-	void VulkanBackend::EndFrame()
+	EndFrameAction VulkanBackend::EndFrame()
 	{
 		FrameData& frame = m_frames[m_frameIndex];
 		VkSwapchainKHR& swapchain = m_swapchain.swapchain;
@@ -1088,36 +1181,34 @@ namespace OneGame::Engine::Graphics::Vulkan
 
 		VkResult result = vkQueuePresentKHR(m_device.m_presentQueue, &presentInfo);
 
-		m_frameIndex = (m_frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+		m_frameIndex = (m_frameIndex + 1) % m_frames.size();
+		m_swapchain.isDirty = false;
 
-		if (result == VK_ERROR_OUT_OF_DATE_KHR ||
+		if (result == VK_ERROR_SURFACE_LOST_KHR)
+		{
+			DestroySurface();
+			return EndFrameAction::RecreateSurface;
+		}
+		else if (result == VK_ERROR_OUT_OF_DATE_KHR ||
 			result == VK_SUBOPTIMAL_KHR ||
 			m_swapchain.nextExtent.width != m_swapchain.extent.width ||
 			m_swapchain.nextExtent.height != m_swapchain.extent.height)
 		{
-			int swapImagCnt;
-			RecreateSwapchain(swapImagCnt);
+			LOG_DEBUG("recreating swapchain: VK_ERROR_OUT_OF_DATE_KHR={}, VK_SUBOPTIMAL_KHR={}, {}", result == VK_ERROR_OUT_OF_DATE_KHR, result == VK_SUBOPTIMAL_KHR, m_swapchain.nextExtent.width != m_swapchain.extent.width ||
+				m_swapchain.nextExtent.height != m_swapchain.extent.height);
+			RecreateSwapchain();
+			return EndFrameAction::RecreateSwapchain;
 		}
 		else if (result != VK_SUCCESS)
 		{
+			LOG_ERROR("vkQueuePresentKHR error: {}", static_cast<uint32_t>(result));
 			throw std::runtime_error("Failed to present swapchain image");
 		}
+		return EndFrameAction::Continue;
 	}
 
-	void VulkanBackend::CreateSyncObjects(QueueIndices& queueIndices, int swapImageCount)
+	void VulkanBackend::CreateSyncObjects(int swapImageCount)
 	{
-		m_frames.resize(MAX_FRAMES_IN_FLIGHT);
-
-		for (auto& frame : m_frames)
-		{
-			VkCommandPoolCreateInfo createInfo{};
-			createInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-			createInfo.queueFamilyIndex = queueIndices.graphics.value();
-			createInfo.flags =
-				VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-			vkCreateCommandPool(m_device.device, &createInfo, nullptr, &frame.pool);
-		}
-
 		VkSemaphoreCreateInfo semaphoreInfo{};
 		semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -1126,8 +1217,13 @@ namespace OneGame::Engine::Graphics::Vulkan
 		fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 		// Important: start signaled so first frame doesn't stall
 
-		for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+		for (uint32_t i = 0; i < m_frames.size(); i++)
 		{
+			if (m_frames[i].imageAvailableAndTransferComplete[0] != VK_NULL_HANDLE)
+			{
+				vkDestroySemaphore(m_device.device, m_frames[i].imageAvailableAndTransferComplete[0], nullptr);
+			}
+
 			if (vkCreateSemaphore(
 				m_device.device,
 				&semaphoreInfo,
@@ -1135,6 +1231,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 				&m_frames[i].imageAvailableAndTransferComplete[0]) != VK_SUCCESS)
 			{
 				throw std::runtime_error("Failed to create imageAvailable semaphore");
+			}
+
+			if (m_frames[i].imageAvailableAndTransferComplete[1] != VK_NULL_HANDLE)
+			{
+				vkDestroySemaphore(m_device.device, m_frames[i].imageAvailableAndTransferComplete[1], nullptr);
 			}
 
 			if (vkCreateSemaphore(
@@ -1146,6 +1247,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 				throw std::runtime_error("Failed to create imageAvailable semaphore");
 			}
 
+			if (m_frames[i].renderFinished != VK_NULL_HANDLE)
+			{
+				vkDestroySemaphore(m_device.device, m_frames[i].renderFinished, nullptr);
+			}
+
 			if (vkCreateSemaphore(
 				m_device.device,
 				&semaphoreInfo,
@@ -1153,6 +1259,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 				&m_frames[i].renderFinished) != VK_SUCCESS)
 			{
 				throw std::runtime_error("Failed to create renderFinished semaphore");
+			}
+
+			if (m_frames[i].inFlightFence != VK_NULL_HANDLE)
+			{
+				vkDestroyFence(m_device.device, m_frames[i].inFlightFence, nullptr);
 			}
 
 			if (vkCreateFence(
@@ -1169,6 +1280,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 		m_imagesFinishRender.resize(swapImageCount);
 		for (uint32_t i = 0; i < swapImageCount; ++i)
 		{
+			if (m_imagesFinishRender[i] != VK_NULL_HANDLE)
+			{
+				vkDestroySemaphore(m_device.device, m_imagesFinishRender[i], nullptr);
+			}
+
 			m_imagesInFlight[i] = VK_NULL_HANDLE;
 			if (vkCreateSemaphore(
 				m_device.device,

@@ -406,6 +406,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 
     struct VulkanSwapchain
     {
+        math::Orientation currentTransform = math::Orientation::IDENTITY;
         VkSwapchainKHR swapchain = VK_NULL_HANDLE;
         VkExtent2D extent;
         VkExtent2D nextExtent;
@@ -413,6 +414,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         std::vector<GPUTextureHandle> depthTextures;
 		GPURenderPassHandle renderPass;
 		std::vector<GPUFrameBufferHandle> framebuffers;
+        bool isDirty = false;
     };
 
     class VulkanBackend final : public IGraphicsBackend
@@ -431,13 +433,16 @@ namespace OneGame::Engine::Graphics::Vulkan
 
         float SwapchainAspect() const override;
         math::vec2 SwapchainExtend() const override;
+        math::Orientation SwapchainPretransform() const override;
+        bool SwapchainRecreated() const override;
 
         void Initialize(const BackendDesc&) override;
+        void RecreateSurface(WindowHandle* handle) override;
         void Resize(uint32_t width, uint32_t height) override;
         void Shutdown() override;
 
-        void BeginFrame() override;
-        void EndFrame() override;
+        BeginFrameAction BeginFrame() override;
+        EndFrameAction EndFrame() override;
 
         std::unique_ptr<ICommandList> CreateCommandList(QueueType) override;
 
@@ -503,9 +508,10 @@ namespace OneGame::Engine::Graphics::Vulkan
         ResourcePool<GPUObjectType::FrameBuffer, VulkanFrameBuffer> m_frameBuffers;
 
         VulkanRenderPass CreateRenderPassInternal(VulkanRenderPassDesc&);
-        void CreateSyncObjects(QueueIndices&, int);
-        void RecreateSwapchain(int&);
-        void DestroySwapchain(VkSwapchainKHR);
+        void CreateSyncObjects(int);
+        void RecreateSwapchain();
+        void DestroySwapchain(VkSwapchainKHR&);
+        void DestroySurface();
         VkShaderModule CreateShaderModule(const std::vector<char>& code);
         void CreateTextureInternal(
             uint32_t width,

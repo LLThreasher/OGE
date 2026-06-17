@@ -48,6 +48,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     )
 endif()
 
+target_compile_definitions(Engine
+    PRIVATE MAX_FRAMES_IN_FLIGHT=${MAX_FRAMES_IN_FLIGHT}
+)
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_compile_definitions(Engine
     PUBLIC

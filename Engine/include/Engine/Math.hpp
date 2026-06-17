@@ -40,6 +40,7 @@ namespace OneGame::Engine::math
     using vec3 = glm::vec3;
     using vec4 = glm::vec4;
 
+    using mat2 = glm::mat2;
     using mat4 = glm::mat4;
     using quat = glm::quat;
 
@@ -114,5 +115,72 @@ namespace OneGame::Engine::math
     inline unsigned int align(unsigned int size, unsigned int alignment)
     {
         return (size + alignment - 1) & ~(alignment - 1);
+    }
+
+    enum class Orientation : uint32_t
+    {
+        IDENTITY = 0,
+        ROTATE_90 = 1,
+        ROTATE_270 = 2,
+        ROTATE_180 = 3,
+    };
+
+    inline void get_screen_affine(Orientation ori, float width, float height, mat2& outTransform, vec2& outOffset)
+    {
+        switch (ori)
+        {
+        case Orientation::IDENTITY:
+            outTransform = mat2(2.f / width, 0, 0, 2.f / height);
+            outOffset = vec2(-1.f, -1.f);
+            break;
+        case Orientation::ROTATE_90:
+            outTransform = mat2(0.f, 2.f / width, -2.f / height, 0.f);
+            outOffset = vec2(1.f, -1.f);
+            break;
+        case Orientation::ROTATE_270:
+            outTransform = mat2(0.f, -2.f / width, 2.f / height, 0.f);
+            outOffset = vec2(-1.f, 1.f);
+            break;
+        case Orientation::ROTATE_180:
+            outTransform = mat2(0.f, -2.f / width, -2.f / height, 0.f);
+            outOffset = vec2(1.f, 1.f);
+            break;
+        }
+    }
+
+    inline mat4 get_perspective_rot(Orientation ori)
+    {
+        switch (ori)
+        {
+        case Orientation::IDENTITY:
+            return mat4(
+                -1, 0, 0, 0,
+                0, -1, 0, 0,
+                0, 0, 1, 0,
+                0, 0, 0, 1
+            );
+        case Orientation::ROTATE_90:
+            return mat4(
+                0, -1, 0, 0,
+                1, 0, 0, 0,
+                0, 0, 1, 0,
+                0, 0, 0, 1
+            );
+        case Orientation::ROTATE_270:
+            return mat4(
+                0, 1, 0, 0,
+                -1, 0, 0, 0,
+                0, 0, 1, 0,
+                0, 0, 0, 1
+            );
+        case Orientation::ROTATE_180:
+            return mat4(
+                1, 0, 0, 0,
+                0, 1, 0, 0,
+                0, 0, 1, 0,
+                0, 0, 0, 1
+            );
+        }
+        return mat4(1.f);
     }
 }

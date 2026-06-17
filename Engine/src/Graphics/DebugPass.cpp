@@ -35,7 +35,7 @@ namespace OneGame::Engine::Graphics
 
             PushConstantRangeDesc cDesc{};
             cDesc.offset = 0;
-            cDesc.size = sizeof(math::vec2);
+            cDesc.size = sizeof(PushConstant);
             cDesc.stageFlags = ShaderStage::Vertex;
             desc.pushConstants.push_back(cDesc);
 
@@ -117,12 +117,14 @@ namespace OneGame::Engine::Graphics
         tCmd->UpdateBuffer(indexBuffer, 0, numQuads * 6 * sizeof(uint16_t), indices);
         tCmd->BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
         tCmd->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
-        auto extend = context.backend->SwapchainExtend();
-        extend.x = 2 / extend.x;
-        extend.y = 2 / extend.y;
-        
+
         cmd->BindGraphicsPipeline(pipeline);
-        cmd->PushConstants(ShaderStage::Vertex, &extend, sizeof(math::vec2));
+        if (context.backend->SwapchainRecreated())
+        {
+            auto extent = context.backend->SwapchainExtend();
+            math::get_screen_affine(context.backend->SwapchainPretransform(), extent.x, extent.y, pushConstant.transform, pushConstant.offset);
+        }
+        cmd->PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
         cmd->BindVertexBuffer(vertexBuffer);
         cmd->BindIndexBuffer(indexBuffer, 0, IndexFormat::Uint16);
         cmd->DrawIndexed(numQuads * 6, 1, 0, 0, 0);
@@ -201,7 +203,7 @@ namespace OneGame::Engine::Graphics
             math::vec3(0, 0, 0),
             math::vec3(0, 1, 0));
 
-        ubo.proj = math::perspective(
+        ubo.proj = math::get_perspective_rot(context.backend->SwapchainPretransform()) * math::perspective(
             math::radians(45.0f),
             context.backend->SwapchainAspect(),
             0.1f,

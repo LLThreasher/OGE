@@ -16,6 +16,9 @@ extern "C" {
 	int main(int argc, char* argv[]) {
 		(void)argc;
 		(void)argv;
+
+		SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
+
 		auto window = CreateGameWindow("OneGame", 0, 0);
 		auto app = GameApp();
 

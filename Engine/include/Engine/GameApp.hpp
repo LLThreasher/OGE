@@ -39,6 +39,12 @@ namespace OneGame::Engine
         InputSystem& input;
     };
 
+    enum class AppFrameAction
+    {
+        Continue,
+        RecreateSufrace,
+    };
+
     class GameApp
     {
     public:
@@ -47,8 +53,9 @@ namespace OneGame::Engine
         void Initialize(Graphics::WindowHandle*);
         void Shutdown();
 
-        void Update(float dt);
+        AppFrameAction Update(float dt);
 
+        void OnWindowRecreate(Graphics::WindowHandle*);
         void OnResize(int width, int height);
     private:
         std::unique_ptr<Graphics::IGraphicsBackend> backend;

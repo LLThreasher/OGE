@@ -130,7 +130,8 @@ int main() {
         if (!running)
             break;
 
-        backend->BeginFrame();
+        if (backend->BeginFrame() == BeginFrameAction::SkipFrame)
+            continue;
         testRenderer.Render(backend.get(), deltaTime);
         backend->EndFrame();
 

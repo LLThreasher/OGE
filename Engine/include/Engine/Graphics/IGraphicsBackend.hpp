@@ -190,9 +190,12 @@ This scales with chunk count and removes per-chunk CPU submission cost.
 ================================================================================
 */
 
+#ifndef MAX_FRAMES_IN_FLIGHT
+#define MAX_FRAMES_IN_FLIGHT 3
+#endif
+
 namespace OneGame::Engine::Graphics
 {
-    static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
     static constexpr size_t MaxColorAttachments = 4;
 
     struct WindowHandle
@@ -615,6 +618,21 @@ namespace OneGame::Engine::Graphics
         std::array<uint32_t, 16> heapBudget;
     };
 
+    enum class BeginFrameAction : uint32_t
+    {
+        Continue,
+        SkipFrame,
+        RecreateSwapchain,
+        RecreateSurface,
+    };
+
+    enum class EndFrameAction : uint32_t
+    {
+        Continue,
+        RecreateSwapchain,
+        RecreateSurface,
+    };
+
     class IGraphicsBackend
     {
     public:
@@ -628,6 +646,8 @@ namespace OneGame::Engine::Graphics
 
         virtual float SwapchainAspect() const = 0;
         virtual math::vec2 SwapchainExtend() const = 0;
+        virtual math::Orientation SwapchainPretransform() const = 0;
+        virtual bool SwapchainRecreated() const = 0;
 
         virtual GPURenderPassHandle GetCurrentRenderPass() const = 0;
         virtual GPUFrameBufferHandle GetCurrentFrameBuffer() const = 0;
@@ -636,11 +656,12 @@ namespace OneGame::Engine::Graphics
         virtual GPUMemoryUsage GetGPUMemoryUsage() const = 0;
 
         virtual void Initialize(const BackendDesc&) = 0;
+        virtual void RecreateSurface(WindowHandle* handle) = 0;
         virtual void Resize(uint32_t width, uint32_t height) = 0;
         virtual void Shutdown() = 0;
 
-        virtual void BeginFrame() = 0;
-        virtual void EndFrame() = 0;
+        virtual BeginFrameAction BeginFrame() = 0;
+        virtual EndFrameAction EndFrame() = 0;
 
         virtual std::unique_ptr<ICommandList> CreateCommandList(QueueType) = 0;
 

@@ -13,6 +13,12 @@ namespace OneGame::Engine::Graphics
 
 	class DebugInfoPass : public IPass
 	{
+		struct PushConstant
+		{
+			math::mat2 transform;
+			math::vec2 offset;
+		};
+
 		struct Vertex
 		{
 			math::vec3 pos;
@@ -34,6 +40,7 @@ namespace OneGame::Engine::Graphics
 		Vertex vertices[NUM_DEBUG_VERTICES];
 		uint16_t indices[NUM_DEBUG_INDICES];
 		size_t numQuads;
+		PushConstant pushConstant;
 
 		GPUPipelineHandle pipeline;
 		GPUBindingGroupLayoutHandle bindingGroupLayout;

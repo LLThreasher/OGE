@@ -26,6 +26,7 @@ namespace OneGame::Engine
         void Run(GameApp&) override;
     private:
         void PollEvents();
+        WindowHandle GetCurrentWindow();
 
         SDL_Window* m_window;
         Timer m_timer;
@@ -36,15 +37,14 @@ namespace OneGame::Engine
     {
         LOG_INFO("SDL3 GameWindow Created");
         // 1. Initialize SDL
-        SDL_Init(SDL_INIT_VIDEO);
+        SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
         // 2. Create window with SDL_WINDOW_VULKAN flag
         m_window = SDL_CreateWindow(name.c_str(), width, height, 0);
     }
 
-    void SDL3GameWindow::Run(GameApp& app)
+    WindowHandle SDL3GameWindow::GetCurrentWindow()
     {
-        SDL_ShowWindow(m_window);
         Graphics::WindowHandle handle{};
 #ifdef PLATFORM_WINDOWS
         SDL_PropertiesID props = SDL_GetWindowProperties(m_window);
@@ -60,8 +60,15 @@ namespace OneGame::Engine
         );
         handle.nativeWindow = nativeWindow;
 #endif
+        return handle;
+    }
+
+    void SDL3GameWindow::Run(GameApp& app)
+    {
+        SDL_ShowWindow(m_window);
         try
         {
+            auto handle = GetCurrentWindow();
             app.Initialize(&handle);
         }
         catch (const std::exception& e)
@@ -73,6 +80,7 @@ namespace OneGame::Engine
         }
 
         bool readyToClose = false;
+        bool waitingSurface = false;
         SDL_Event event;
 
         double timeAccumulator = 0.0f;
@@ -85,10 +93,18 @@ namespace OneGame::Engine
                 case SDL_EVENT_QUIT:
                     readyToClose = true;
                     break;
+                case SDL_EVENT_WINDOW_RESTORED:
+                    auto handle = GetCurrentWindow();
+                    app.OnWindowRecreate(&handle);
+                    waitingSurface = false;
+                    break;
                 }
             }
 
-            app.Update(m_timer.Tick());
+            if (waitingSurface || app.Update(m_timer.Tick()) == AppFrameAction::RecreateSufrace)
+            {
+                waitingSurface = true;
+            }
         }
 
         app.Shutdown();

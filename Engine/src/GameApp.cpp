@@ -32,8 +32,14 @@ namespace OneGame::Engine
 		backend->Shutdown();
 	}
 
-	void GameApp::Update(float dt)
+	AppFrameAction GameApp::Update(float dt)
 	{
+		auto res = backend->BeginFrame();
+		if (res == BeginFrameAction::RecreateSurface)
+			return AppFrameAction::RecreateSufrace;
+		if (res != BeginFrameAction::Continue)
+			return AppFrameAction::Continue;
+
 		if (accumTime >= 1.f)
 		{
 			currentFPS = 1 / (accumTime / frameCount);
@@ -43,20 +49,29 @@ namespace OneGame::Engine
 		auto memUsage = backend->GetGPUMemoryUsage();
 		world.get<DebugInfoPass::ComponentDebugText>(debugInfoEntity).text = std::format("FPS {}\nGPU Heap 0: {} MB / {} MB\nGPU Heap 1: {} MB / {} MB", currentFPS, memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024, memUsage.heapUsage[1] / 1024 / 1024, memUsage.heapBudget[1] / 1024 / 1024);
 
-		backend->BeginFrame();
 		renderer.Prepare(&world);
 		auto tcmd = backend->CreateCommandList(QueueType::Transfer);
 		tcmd->Begin();
 		assetManager.StageUpload(backend.get(), renderer.GetStagingBuffer(), tcmd.get());
 		tcmd->End();
 		renderer.Render(backend.get(), dt);
-		backend->EndFrame();
+		auto endRes = backend->EndFrame();
+		if (endRes == EndFrameAction::RecreateSurface)
+			return AppFrameAction::RecreateSufrace;
+
 		++frameCount;
 		accumTime += dt;
+
+		return AppFrameAction::Continue;
 	}
 
 	void GameApp::OnResize(int width, int height)
 	{
 		backend->Resize(width, height);
+	}
+
+	void GameApp::OnWindowRecreate(Graphics::WindowHandle* handle)
+	{
+		backend->RecreateSurface(handle);
 	}
 }

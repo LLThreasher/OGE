@@ -7,12 +7,13 @@ layout(location = 0) out vec4 fragColor;
 
 layout(push_constant) uniform Push
 {
-    vec2 ndcScale;   // = 2.0 / screenSize
+    mat2 transform;  // rotation * ndc scale
+    vec2 offset;     // offset
 } pc;
 
 void main()
 {
-    vec2 pos = inPosition.xy * pc.ndcScale - 1.0;
+    vec2 pos = pc.transform * inPosition.xy + pc.offset;
     fragColor = inColor;
     gl_Position = vec4(pos, 0.0, 1.0);
 }
