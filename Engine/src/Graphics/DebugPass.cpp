@@ -159,17 +159,7 @@ namespace OneGame::Engine::Graphics
             pipeline = backend->CreateGraphicsPipeline(desc);
         }
 
-        BufferDesc vBuf{};
-        vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
-        vBuf.memory = MemoryUsage::GPUOnly;
-        vBuf.size = vertices.size() * sizeof(Vertex);
-        vertexBuffer = backend->CreateBuffer(vBuf);
-
-        BufferDesc iBuf{};
-        iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
-        iBuf.memory = MemoryUsage::GPUOnly;
-        iBuf.size = indices.size() * sizeof(uint32_t);
-        indexBuffer = backend->CreateBuffer(iBuf);
+        ctx.assets.LoadMesh("test_cube.obj", ctx.ringStagingBuffer, backend, testCubeMesh);
 
         {
             ctx.assets.LoadTexture("blocks.png", ctx.ringStagingBuffer, backend, texture);
@@ -194,12 +184,12 @@ namespace OneGame::Engine::Graphics
 	{
         m_Time += context.deltaTime;
         UBO ubo{};
-        ubo.model = math::rotate(math::mat4(1.0f),
+        ubo.model = math::rotate(math::translate(math::mat4(1.0f), math::vec3(-2, 0, 2)),
             m_Time * math::radians(90.0f),
             { 0,1,0 });
 
         ubo.view = math::lookAt(
-            math::vec3(2, 2, 2),
+            math::vec3(5, 5, 5),
             math::vec3(0, 0, 0),
             math::vec3(0, 1, 0));
 
@@ -211,14 +201,6 @@ namespace OneGame::Engine::Graphics
 
         auto tCmd = context.transferCmd;
         auto cmd = context.drawCmd;
-        if (isFirstFrame)
-        {
-            tCmd->UpdateBuffer(vertexBuffer, 0, vertices.size() * sizeof(Vertex), vertices.data());
-            tCmd->UpdateBuffer(indexBuffer, 0, indices.size() * sizeof(uint32_t), indices.data());
-            tCmd->BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
-            tCmd->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
-            isFirstFrame = false;
-        }
 
         auto uniformMemory = context.uniformArena->Allocate(sizeof(UBO));
         std::memcpy(uniformMemory.cpuPtr, &ubo, sizeof(UBO));
@@ -226,9 +208,9 @@ namespace OneGame::Engine::Graphics
         uint32_t offset[1] = { uniformMemory.offset };
 
         cmd->BindGraphicsPipeline(pipeline);
-        cmd->BindVertexBuffer(vertexBuffer);
-        cmd->BindIndexBuffer(indexBuffer);
+        cmd->BindVertexBuffer(testCubeMesh.vertexBuffer);
+        cmd->BindIndexBuffer(testCubeMesh.indexBuffer, 0, IndexFormat::Uint32);
         cmd->BindBindingGroup(bindingGroup, 0, offset);
-        cmd->DrawIndexed(indices.size(), 1, 0, 0, 0);
+        cmd->DrawIndexed(testCubeMesh.indexCount, 1, 0, 0, 0);
 	}
 }
