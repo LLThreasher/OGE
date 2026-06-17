@@ -10,12 +10,6 @@
 
 namespace OneGame::Engine
 {
-    void JobSystem::JobHandle::cancel()
-    {
-        if (cancelled)
-            cancelled->store(true, std::memory_order_relaxed);
-    }
-
     JobSystem::JobSystem(size_t workerCount)
         : stop(false)
     {
@@ -28,16 +22,20 @@ namespace OneGame::Engine
         shutdown();
     }
 
-    JobSystem::JobHandle JobSystem::submit(std::function<void(std::atomic<bool>&)> job) {
-        auto cancelFlag = std::make_shared<std::atomic<bool>>(false);
+    JobHandle JobSystem::submit(std::function<void(std::atomic<bool>*)> job) {
+        JobHandle res;
+        {
+            std::lock_guard lock(cancelMutex);
+            res = cancelFlags.Create(false);
+        }
 
         {
-            std::unique_lock<std::mutex> lock(queueMutex);
-            jobs.push({ job, cancelFlag });
+            std::lock_guard lock(queueMutex);
+            jobs.push({ std::move(job), res });
         }
 
         condition.notify_one();
-        return JobHandle{ cancelFlag };
+        return res;
     }
 
     void JobSystem::shutdown() {
@@ -54,26 +52,26 @@ namespace OneGame::Engine
     }
 
     void JobSystem::workerLoop() {
-        while (true) {
-            JobItem item;
+        while (true)
+        {
+            JobItem job;
 
             {
-                std::unique_lock<std::mutex> lock(queueMutex);
-                condition.wait(lock, [this]() {
+                std::unique_lock lock(queueMutex);
+                condition.wait(lock, [this] {
                     return stop || !jobs.empty();
                     });
 
                 if (stop && jobs.empty())
                     return;
 
-                item = std::move(jobs.front());
+                job = std::move(jobs.front());
                 jobs.pop();
             }
 
-            // Skip if cancelled before execution
-            if (!item.cancelFlag->load(std::memory_order_relaxed)) {
-                item.func(*item.cancelFlag);
-            }
+            auto flag = cancelFlags.Get(job.cancelHandle);
+            job.func(flag);
+            cancelFlags.Destroy(job.cancelHandle);
         }
     }
 }

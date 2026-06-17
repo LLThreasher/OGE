@@ -10,9 +10,8 @@
 namespace OneGame::Engine::Graphics
 {
 	struct InitContext {
-		AssetManager& assets;
+		AssetBundleWriter* assets;
 		UniformArena& uniformArena;
-		RingStagingBuffer& ringStagingBuffer;
 	};
 
 	struct DrawContext

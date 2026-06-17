@@ -19,9 +19,9 @@ namespace OneGame::Engine::Graphics
         LOG_DEBUG("binding group layout created");
         {
             GraphicsPipelineDesc desc{};
-            if (!ctx.assets.LoadShader("debug.vert.spv", desc.vertexShader))
+            if (!ctx.assets->LoadShader("debug.vert.spv", desc.vertexShader))
                 throw std::runtime_error("failed to load vertex shader");
-            if (!ctx.assets.LoadShader("debug.frag.spv", desc.fragmentShader))
+            if (!ctx.assets->LoadShader("debug.frag.spv", desc.fragmentShader))
                 throw std::runtime_error("failed to load fragment shader");
             // position
             desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
@@ -140,8 +140,8 @@ namespace OneGame::Engine::Graphics
 
         {
             GraphicsPipelineDesc desc{};
-            ctx.assets.LoadShader("test_cube_textured.vert.spv", desc.vertexShader);
-            ctx.assets.LoadShader("test_cube_textured.frag.spv", desc.fragmentShader);
+            ctx.assets->LoadShader("test_cube_textured.vert.spv", desc.vertexShader);
+            ctx.assets->LoadShader("test_cube_textured.frag.spv", desc.fragmentShader);
             // position
             desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
             // color
@@ -159,10 +159,10 @@ namespace OneGame::Engine::Graphics
             pipeline = backend->CreateGraphicsPipeline(desc);
         }
 
-        ctx.assets.LoadMesh("test_cube.obj", ctx.ringStagingBuffer, backend, testCubeMesh);
+        ctx.assets->LoadMesh("test_cube.obj", testCubeMesh);
 
         {
-            ctx.assets.LoadTexture("blocks.png", ctx.ringStagingBuffer, backend, texture);
+            ctx.assets->LoadTexture("blocks.png", texture);
 
             BindingGroupDesc desc{};
             desc.layout = bindingGroupLayout;

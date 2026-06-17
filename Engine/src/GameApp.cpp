@@ -16,7 +16,9 @@ namespace OneGame::Engine
 		backend = CreateBackend(BackendType::Vulkan);
 		backend->Initialize(BackendDesc{ handle, FrameTimePreference::VSync });
 		LOG_DEBUG("Backend created");
-		renderer.Initialize(backend.get(), assetManager);
+		streamingManager.Initialize(backend.get());
+		LOG_DEBUG("StreamingManager created");
+		renderer.Initialize(backend.get(), assetManager, streamingManager);
 		LOG_DEBUG("Renderer created");
 		gpuInfo = backend->GetGPUInfo();
 		auto gpuInfoEntity = world.create();
@@ -29,6 +31,7 @@ namespace OneGame::Engine
 	void GameApp::Shutdown()
 	{
 		renderer.Shutdown(backend.get());
+		streamingManager.Shutdown(backend.get());
 		backend->Shutdown();
 	}
 
@@ -52,7 +55,7 @@ namespace OneGame::Engine
 		renderer.Prepare(&world);
 		auto tcmd = backend->CreateCommandList(QueueType::Transfer);
 		tcmd->Begin();
-		assetManager.StageUpload(backend.get(), renderer.GetStagingBuffer(), tcmd.get());
+		streamingManager.RunUploadStep(backend.get(), tcmd.get(), &dispatcher);
 		tcmd->End();
 		renderer.Render(backend.get(), dt);
 		auto endRes = backend->EndFrame();

@@ -60,6 +60,8 @@ namespace OneGame::Engine
     private:
         std::unique_ptr<Graphics::IGraphicsBackend> backend;
         entt::registry world;
+        entt::dispatcher dispatcher;
+        StreamingManager streamingManager;
         AssetManager assetManager;
         Renderer renderer;
 

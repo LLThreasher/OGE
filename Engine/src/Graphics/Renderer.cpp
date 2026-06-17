@@ -7,13 +7,15 @@
 namespace OneGame::Engine::Graphics
 {
 
-    void Renderer::Initialize(IGraphicsBackend* backend, AssetManager& assets)
+    void Renderer::Initialize(IGraphicsBackend* backend, AssetManager& assets, StreamingManager& streaming)
     {
         uniformArena.Initialize(backend, backend->MaxUniformBufferSize() > 1024*1024*16 ? 1024*1024*16 : backend->MaxUniformBufferSize());
         LOG_DEBUG("uniform arena created");
         ringStagingBuffer.Initialize(backend, 1024 * 1024 * 16);
         LOG_DEBUG("staging buffer created");
-        InitContext ctx { assets, uniformArena, ringStagingBuffer };
+
+        auto bundle = assets.CreateAssetBundle(&streaming, backend);
+        InitContext ctx { bundle.get(), uniformArena};
         debugInfoPass.Initialize(backend, ctx);
         LOG_DEBUG("debug info pass created");
         testPass.Initialize(backend, ctx);

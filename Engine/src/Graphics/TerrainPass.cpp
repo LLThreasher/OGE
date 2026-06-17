@@ -22,8 +22,8 @@ namespace OneGame::Engine::Graphics
 
 		{
 			GraphicsPipelineDesc desc{};
-			ctxt.assets.LoadShader("terrain.vert.spv", desc.vertexShader);
-			ctxt.assets.LoadShader("terrain.frag.spv", desc.fragmentShader);
+			ctxt.assets->LoadShader("terrain.vert.spv", desc.vertexShader);
+			ctxt.assets->LoadShader("terrain.frag.spv", desc.fragmentShader);
 			// packed xyz
 			desc.vertexLayout.push_back(VertexAttributeFormat::Uint16);
 			// packed light and color

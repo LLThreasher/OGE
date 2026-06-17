@@ -42,6 +42,12 @@ namespace OneGame::Engine
 		Mesh,
 	};
 
+	enum class TempItem : uint32_t
+	{
+		Job,
+		StreamingDoneEvent,
+	};
+
 	template<auto Tag>
 	struct ResourceHandle
 	{
@@ -69,4 +75,7 @@ namespace OneGame::Engine
 	using TextureHandle = ResourceHandle<AssetType::Texture>;
 	using ShaderHandle = ResourceHandle<AssetType::Shader>;
 	using MeshHandle = ResourceHandle<AssetType::Mesh>;
+
+	using JobHandle = ResourceHandle<TempItem::Job>;
+	using StreamingDoneEventHandle = ResourceHandle<TempItem::StreamingDoneEvent>;
 }

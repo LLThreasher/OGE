@@ -17,7 +17,7 @@ namespace OneGame::Engine::Graphics
     {
     public:
         virtual ~Renderer() = default;
-        void Initialize(IGraphicsBackend* backend, AssetManager& assets);
+        void Initialize(IGraphicsBackend* backend, AssetManager& assets, StreamingManager& streaming);
         void Shutdown(IGraphicsBackend* backend);
         void Prepare(entt::registry* world);
         void Render(IGraphicsBackend* backend, float deltaTime);

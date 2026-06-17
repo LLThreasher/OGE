@@ -25,7 +25,10 @@ target_sources(Engine PRIVATE
  "src/Platform/Win32GameWindow.cpp"
  "src/Platform/Win32AssetLoader.cpp"
  "src/GameApp.cpp"
- "src/Graphics/DebugPass.cpp" "src/Platform/SDL3AssetLoader.cpp" "src/AssetManager.cpp")
+ "src/Graphics/DebugPass.cpp"
+ "src/Platform/SDL3AssetLoader.cpp"
+ "src/AssetManager.cpp"
+ "src/StreamingManager.cpp" )
 
 target_include_directories(Engine
     PUBLIC

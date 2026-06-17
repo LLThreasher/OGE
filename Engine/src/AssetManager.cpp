@@ -6,43 +6,10 @@ namespace OneGame::Engine
 {
 	using namespace Graphics;
 
-	void AssetManager::StageUpload(const Graphics::IGraphicsBackend* backend, Graphics::RingStagingBuffer& stagingBuffer, Graphics::ICommandList* transferCmd)
+	bool AssetBundleWriter::LoadTexture(const std::string_view& id, GPUTextureHandle& outTexture)
 	{
-		auto fidx = backend->CurrentFrameIndex();
-		while (!m_stagingBuffersToFree[fidx].empty())
-		{
-			auto& buffer = m_stagingBuffersToFree[fidx].back();
-			stagingBuffer.Free(buffer.offset, buffer.size);
-			m_stagingBuffersToFree[fidx].pop();
-		}
-		while (!m_texturesToUpload.empty())
-		{
-			auto& [gpuHandle, cpuTex] = m_texturesToUpload.back();
-			transferCmd->TextureBarrier(gpuHandle, Graphics::TextureState::TransferDst);
-			transferCmd->CopyBufferToTexture(stagingBuffer.GetBuffer(), gpuHandle, cpuTex.data.offset);
-			transferCmd->TextureBarrier(gpuHandle, Graphics::TextureState::ShaderRead);
-
-			m_stagingBuffersToFree[fidx].push(cpuTex.data);
-			m_texturesToUpload.pop();
-		}
-		while (!m_meshesToUpload.empty())
-		{
-			auto& [mesh, cpuMesh] = m_meshesToUpload.back();
-			transferCmd->CopyBuffer(stagingBuffer.GetBuffer(), mesh.vertexBuffer, cpuMesh.vertexBufSize, cpuMesh.vertexData.offset);
-			transferCmd->CopyBuffer(stagingBuffer.GetBuffer(), mesh.indexBuffer, cpuMesh.indexBufSize, cpuMesh.indexData.offset);
-			transferCmd->BufferBarrier(mesh.vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
-			transferCmd->BufferBarrier(mesh.indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
-
-			m_stagingBuffersToFree[fidx].push(cpuMesh.vertexData);
-			m_stagingBuffersToFree[fidx].push(cpuMesh.indexData);
-			m_meshesToUpload.pop();
-		}
-	}
-
-	bool AssetManager::LoadTexture(const std::string_view& id, Graphics::RingStagingBuffer& stagingBuffer, Graphics::IGraphicsBackend* backend, GPUTextureHandle& outTexture)
-	{
-		auto it = m_textures.find(std::string(id));
-		if (it != m_textures.end())
+		auto it = m_assetManager->m_textures.find(std::string(id));
+		if (it != m_assetManager->m_textures.end())
 		{
 			outTexture = it->second;
 			return true;
@@ -52,7 +19,7 @@ namespace OneGame::Engine
 		assert(TryLoadBlob(id, blob));
 		CPUTexture result;
 		TryLoadPNG(blob, result.width, result.height, nullptr);
-		result.data = stagingBuffer.Allocate(result.width * result.height * sizeof(char) * 4 * 2);
+		result.data = m_streamingManager->GetStagingBuffer()->Allocate(result.width * result.height * sizeof(char) * 4 * 2);
 		TryLoadPNG(blob, result.width, result.height, result.data.cpuPtr);
 
 		Graphics::TextureDesc texDesc{};
@@ -60,15 +27,20 @@ namespace OneGame::Engine
 		texDesc.height = result.height;
 		texDesc.format = Graphics::TextureFormat::RGBA8Unorm;
 		texDesc.usage = Graphics::TextureUsage::TransferDst | Graphics::TextureUsage::Sampled;
-		auto texture = backend->CreateTexture(texDesc);
+		auto texture = m_backend->CreateTexture(texDesc);
 
-		m_textures.emplace(id, texture);
-		m_texturesToUpload.push({ texture, result });
+		m_assetManager->m_textures.emplace(id, texture);
+		TextureUploadDesc desc{};
+		desc.bundleEvent = m_event;
+		desc.gpuBuffer = texture;
+		desc.gpuBufferOffset = 0;
+		desc.stagingAlloc = result.data;
+		m_streamingManager->ScheduleTextureUpload(desc, m_event == nullptr ? UploadType::Immediate : UploadType::Async);
 		outTexture = texture;
 		return true;
 	}
 
-	bool AssetManager::LoadShader(const std::string_view& id, std::vector<char>& outShader)
+	bool AssetBundleWriter::LoadShader(const std::string_view& id, std::vector<char>& outShader)
 	{
 		return TryLoadBlob(id, outShader);
 	}
@@ -144,10 +116,10 @@ namespace OneGame::Engine
 		20,21,22, 22,23,20   // bottom
 	};
 
-	bool AssetManager::LoadMesh(const std::string_view& id, Graphics::RingStagingBuffer& stagingBuffer, Graphics::IGraphicsBackend* backend, Mesh& outMesh)
+	bool AssetBundleWriter::LoadMesh(const std::string_view& id, Mesh& outMesh)
 	{
-		auto it = m_meshes.find(std::string(id));
-		if (it != m_meshes.end())
+		auto it = m_assetManager->m_meshes.find(std::string(id));
+		if (it != m_assetManager->m_meshes.end())
 		{
 			outMesh = it->second;
 			return true;
@@ -156,26 +128,46 @@ namespace OneGame::Engine
 		if (id == "test_cube.obj")
 		{
 			outMesh.indexCount = test_indices.size();
-			auto res = LoadMesh(stagingBuffer, backend, test_vertices.data(), test_vertices.size() * sizeof(TestPassVertex), test_indices.data(), test_indices.size() * sizeof(uint32_t), outMesh);
-			m_meshes.emplace(id, outMesh);
+			auto res = LoadMesh(test_vertices.data(), test_vertices.size() * sizeof(TestPassVertex), test_indices.data(), test_indices.size() * sizeof(uint32_t), outMesh);
+			m_assetManager->m_meshes.emplace(id, outMesh);
 			return true;
 		}
 		return false;
 	}
 
-	bool AssetManager::LoadMesh(Graphics::RingStagingBuffer& stagingBuffer, Graphics::IGraphicsBackend* backend, const void* vertices, const size_t vertexBufSize, const void* indices, const size_t indexBufSize, Mesh& outMesh)
+	bool AssetBundleWriter::LoadMesh(const void* vertices, const size_t vertexBufSize, const void* indices, const size_t indexBufSize, Mesh& outMesh)
 	{
+		auto stagingBuffer = m_streamingManager->GetStagingBuffer();
 		CPUMesh cpuMesh{};
-		cpuMesh.vertexData = stagingBuffer.Allocate(vertexBufSize);
+		cpuMesh.vertexData = stagingBuffer->Allocate(vertexBufSize);
 		cpuMesh.vertexBufSize = vertexBufSize;
-		cpuMesh.indexData = stagingBuffer.Allocate(indexBufSize);
+		cpuMesh.indexData = stagingBuffer->Allocate(indexBufSize);
 		cpuMesh.indexBufSize = indexBufSize;
 
 		memcpy(cpuMesh.vertexData.cpuPtr, vertices, vertexBufSize);
 		memcpy(cpuMesh.indexData.cpuPtr, indices, indexBufSize);
 
-		AllocateMesh(vertexBufSize, indexBufSize, backend, outMesh);
-		m_meshesToUpload.push({ outMesh, cpuMesh });
+		AllocateMesh(vertexBufSize, indexBufSize, m_backend, outMesh);
+		{
+			BufferUploadDesc vdesc{};
+			vdesc.bundleEvent = m_event;
+			vdesc.bufferUsage = BufferUsage::Vertex;
+			vdesc.effectiveBufferSize = vertexBufSize;
+			vdesc.gpuBuffer = outMesh.vertexBuffer;
+			vdesc.gpuBufferOffset = 0;
+			vdesc.stagingAlloc = cpuMesh.vertexData;
+			m_streamingManager->ScheduleBufferUpload(vdesc, m_event == nullptr ? UploadType::Immediate : UploadType::Async);
+		}
+		{
+			BufferUploadDesc idesc{};
+			idesc.bundleEvent = m_event;
+			idesc.bufferUsage = BufferUsage::Index;
+			idesc.effectiveBufferSize = indexBufSize;
+			idesc.gpuBuffer = outMesh.indexBuffer;
+			idesc.gpuBufferOffset = 0;
+			idesc.stagingAlloc = cpuMesh.indexData;
+			m_streamingManager->ScheduleBufferUpload(idesc, m_event == nullptr ? UploadType::Immediate : UploadType::Async);
+		}
 		return true;
 	}
 
@@ -211,5 +203,15 @@ namespace OneGame::Engine
 
 		stbi_image_free(pixels);
 		return true;
+	}
+
+	std::unique_ptr<AssetBundleWriter> AssetManager::CreateAssetBundle(StreamingManager* streamingManager, Graphics::IGraphicsBackend* backend)
+	{
+		return std::unique_ptr<AssetBundleWriter>(new AssetBundleWriter(this, streamingManager, backend, false));
+	}
+
+	std::unique_ptr<AssetBundleWriter> AssetManager::CreateAssetBundleAsync(StreamingManager* streamingManager, Graphics::IGraphicsBackend* backend)
+	{
+		return std::unique_ptr<AssetBundleWriter>(new AssetBundleWriter(this, streamingManager, backend, true));
 	}
 }
