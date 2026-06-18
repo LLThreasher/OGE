@@ -5,6 +5,8 @@
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
 
+#define TEST_TERRAIN_0
+
 namespace OneGame::Engine
 {
 	using namespace Graphics;
@@ -26,10 +28,18 @@ namespace OneGame::Engine
 		gpuInfoText.text = gpuInfo.name;
 		debugInfoEntity = world.create();
 		world.emplace<DebugInfoPass::ComponentDebugText>(debugInfoEntity);
+
+#ifdef TEST_TERRAIN_0
+		auto chunkEntity = world.create();
+		world.emplace<Terrain::ActiveChunkTag>(chunkEntity);
+		Terrain::ChunkMesh cm { 0, 0, 0, { 0, 36 } };
+		world.emplace<Terrain::ChunkMesh>(chunkEntity, cm);
+#endif
 	}
 
 	void GameApp::Shutdown()
 	{
+		backend->WaitDeviceIdle();
 		renderer.Shutdown(backend.get());
 		streamingManager.Shutdown(backend.get());
 		backend->Shutdown();
@@ -52,7 +62,7 @@ namespace OneGame::Engine
 		auto memUsage = backend->GetGPUMemoryUsage();
 		world.get<DebugInfoPass::ComponentDebugText>(debugInfoEntity).text = std::format("FPS {}\nGPU Heap 0: {} MB / {} MB\nGPU Heap 1: {} MB / {} MB", currentFPS, memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024, memUsage.heapUsage[1] / 1024 / 1024, memUsage.heapBudget[1] / 1024 / 1024);
 
-		renderer.Prepare(&world);
+		renderer.Prepare(&world, backend.get());
 		auto tcmd = backend->CreateCommandList(QueueType::Transfer);
 		tcmd->Begin();
 		streamingManager.RunUploadStep(backend.get(), tcmd.get(), &dispatcher);

@@ -65,7 +65,7 @@ namespace OneGame::Engine::Graphics
 	{
 	}
 
-	void UIPass::Prepare(entt::registry* world)
+	void UIPass::Prepare(PrepareContext& context)
 	{
 	}
 

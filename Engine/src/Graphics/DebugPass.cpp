@@ -62,13 +62,13 @@ namespace OneGame::Engine::Graphics
     {
     }
 
-    void DebugInfoPass::Prepare(entt::registry* world)
+    void DebugInfoPass::Prepare(PrepareContext& ctx)
     {
         std::stringstream ss;
-        auto view = world->view<ComponentDebugText>();
-        for (auto& entity : view)
+        auto view = ctx.world->view<ComponentDebugText>();
+        for (auto [_, dbgText] : view.each())
         {
-            ss << world->get<ComponentDebugText>(entity).text << std::endl;
+            ss << dbgText.text << std::endl;
         }
 
         std::string s = ss.str();
@@ -176,7 +176,7 @@ namespace OneGame::Engine::Graphics
 	{
 	}
 
-	void TestPass::Prepare(entt::registry* world)
+	void TestPass::Prepare(PrepareContext& context)
 	{
 	}
 

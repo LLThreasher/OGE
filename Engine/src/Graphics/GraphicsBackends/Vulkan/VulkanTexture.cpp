@@ -4,9 +4,9 @@
 #include "Vulkan.hpp"
 #include "VulkanTexture.hpp"
 
-extern "C" {
+//extern "C" {
 #include "vk_mem_alloc.h"
-}
+//}
 
 namespace OneGame::Engine::Graphics::Vulkan
 {

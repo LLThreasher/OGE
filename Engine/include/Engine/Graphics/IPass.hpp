@@ -16,11 +16,17 @@ namespace OneGame::Engine::Graphics
 
 	struct DrawContext
 	{
+		const IGraphicsBackend* backend;
 		float deltaTime;
 		UniformArena* uniformArena;
 		ICommandList* drawCmd;
-		const IGraphicsBackend* backend;
 		ICommandList* transferCmd;
+	};
+
+	struct PrepareContext
+	{
+		const IGraphicsBackend* backend;
+		entt::registry* world;
 	};
 	
 	struct AppContext;
@@ -32,7 +38,7 @@ namespace OneGame::Engine::Graphics
 
 		virtual void Initialize(IGraphicsBackend* backend, InitContext& ctx) = 0;
 		virtual void Shutdown(IGraphicsBackend* backend) = 0;
-		virtual void Prepare(entt::registry* world) = 0;
+		virtual void Prepare(PrepareContext& context) = 0;
 		virtual void Draw(DrawContext& context) = 0;
 	};
 }

@@ -109,7 +109,7 @@ namespace OneGame::Engine::Graphics
 
 		void Initialize(IGraphicsBackend* backend, InitContext& ctxt) override;
 		void Shutdown(IGraphicsBackend* backend) override;
-		void Prepare(entt::registry* world) override;
+		void Prepare(PrepareContext& ctx) override;
 		void Draw(DrawContext& context) override;
 
 	private:

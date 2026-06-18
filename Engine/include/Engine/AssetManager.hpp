@@ -38,6 +38,11 @@ namespace OneGame::Engine
 		GPUBufferHandle indexBuffer;
 	};
 
+	struct Material
+	{
+		GPUBufferHandle gpuBuffer;
+	};
+
 	struct CPUMesh
 	{
 		size_t vertexBufSize;
@@ -67,10 +72,12 @@ namespace OneGame::Engine
 		bool LoadTexture(const std::string_view& id, GPUTextureHandle& outTexture);
 		bool LoadMesh(const std::string_view& id, Mesh& outMesh);
 		bool LoadShader(const std::string_view& id, std::vector<char>& outShader);
+		bool LoadMaterial(const std::string_view& id, Material& outMaterial);
 
 		std::shared_ptr<ResourceBundleEvent> GetOnLoadedEvent() { return m_event; }
 	private:
-		bool LoadMesh(const void* vertices, const size_t vertexBufSize, const void* indices, const size_t indexBufSize, Mesh& outMesh);
+		void LoadCpuMesh(const void* vertices, const size_t vertexBufSize, const void* indices, const size_t indexBufSize, CPUMesh& outMesh);
+		bool LoadMesh(CPUMesh& cpuMesh, Mesh& outMesh);
 
 		std::shared_ptr<ResourceBundleEvent> m_event = nullptr;
 		AssetManager* m_assetManager;
@@ -82,6 +89,12 @@ namespace OneGame::Engine
 	{
 		friend class AssetBundleWriter;
 	public:
+		void AddMesh(const std::string& id, Mesh& mesh)
+		{
+			assert(m_meshes.find(id) == m_meshes.end());
+			m_meshes.emplace(id, mesh);
+		}
+
 		std::unique_ptr<AssetBundleWriter> CreateAssetBundle(StreamingManager* streamingManager, Graphics::IGraphicsBackend* backend);
 		std::unique_ptr<AssetBundleWriter> CreateAssetBundleAsync(StreamingManager* streamingManager, Graphics::IGraphicsBackend* backend);
 

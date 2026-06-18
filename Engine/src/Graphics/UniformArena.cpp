@@ -1,6 +1,9 @@
 #include "Engine/Graphics/UniformArena.hpp"
 #include "Engine/Math.hpp"
 
+#define LOGGER_NAME "Engine"
+#include "Engine/Logger.hpp"
+
 namespace OneGame::Engine::Graphics
 {
 	void UniformArena::Initialize(IGraphicsBackend* backend, uint32_t capacity)

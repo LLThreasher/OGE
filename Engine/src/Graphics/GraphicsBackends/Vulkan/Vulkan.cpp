@@ -12,9 +12,9 @@
 #include "VulkanFrameBuffer.hpp"
 #include "VulkanCommandBuffer.hpp"
 
-extern "C" {
+//extern "C" {
 #include "vk_mem_alloc.h"
-}
+//}
 
 #define LOGGER_NAME "Vulkan"
 #include "Engine/Logger.hpp"
@@ -949,6 +949,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 	void VulkanBackend::Resize(uint32_t windowWidth, uint32_t windowHeight)
 	{
 		m_swapchain.nextExtent = { windowWidth, windowHeight };
+	}
+
+	void VulkanBackend::WaitDeviceIdle()
+	{
+		vkDeviceWaitIdle(m_device.device);
 	}
 
 	void VulkanBackend::Shutdown()

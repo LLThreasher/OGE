@@ -439,6 +439,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         void Initialize(const BackendDesc&) override;
         void RecreateSurface(WindowHandle* handle) override;
         void Resize(uint32_t width, uint32_t height) override;
+        void WaitDeviceIdle() override;
         void Shutdown() override;
 
         BeginFrameAction BeginFrame() override;

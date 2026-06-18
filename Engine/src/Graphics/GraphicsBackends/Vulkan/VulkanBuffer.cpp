@@ -6,9 +6,9 @@
 #include "Vulkan.hpp"
 #include "VulkanBuffer.hpp"
 
-extern "C" {
+//extern "C" {
 #include "vk_mem_alloc.h"
-}
+//}
 
 namespace OneGame::Engine::Graphics::Vulkan
 {

@@ -1,10 +1,16 @@
 #include "Engine/AssetManager.hpp"
 #include "stb_image.h"
+#include "Engine/Terrain/TerrainVertexFormat.hpp"
 
 
 namespace OneGame::Engine
 {
 	using namespace Graphics;
+
+	//GPUBufferHandle AssetBundleWriter::GetStagingBuffer()
+	//{
+	//	return m_streamingManager->GetStagingBuffer()->GetBuffer();
+	//}
 
 	bool AssetBundleWriter::LoadTexture(const std::string_view& id, GPUTextureHandle& outTexture)
 	{
@@ -116,6 +122,60 @@ namespace OneGame::Engine
 		20,21,22, 22,23,20   // bottom
 	};
 
+	const std::vector<Terrain::Vertex> chunk_zero_vertices =
+	{
+		// FRONT (+Z)
+		{ 0, 0, 1, 0, 0xF, 0, 0,  0  },
+		{ 1, 0, 1, 0, 0xF, 0, 15, 0  },
+		{ 1, 1, 1, 0, 0xF, 0, 15, 15 },
+		{ 0, 1, 1, 0, 0xF, 0, 0,  15 },
+
+		// BACK (-Z)
+		{ 1, 0, 0, 0, 0xF, 0, 0,  0  },
+		{ 0, 0, 0, 0, 0xF, 0, 15, 0  },
+		{ 0, 1, 0, 0, 0xF, 0, 15, 15 },
+		{ 1, 1, 0, 0, 0xF, 0, 0,  15 },
+
+		// LEFT (-X)
+		{ 0, 0, 0, 0, 0xF, 0, 0,  0  },
+		{ 0, 0, 1, 0, 0xF, 0, 15, 0  },
+		{ 0, 1, 1, 0, 0xF, 0, 15, 15 },
+		{ 0, 1, 0, 0, 0xF, 0, 0,  15 },
+
+		// RIGHT (+X)
+		{ 1, 0, 1, 0, 0xF, 0, 0,  0  },
+		{ 1, 0, 0, 0, 0xF, 0, 15, 0  },
+		{ 1, 1, 0, 0, 0xF, 0, 15, 15 },
+		{ 1, 1, 1, 0, 0xF, 0, 0,  15 },
+
+		// TOP (+Y)
+		{ 0, 1, 1, 0, 0xF, 0, 0,  0  },
+		{ 1, 1, 1, 0, 0xF, 0, 15, 0  },
+		{ 1, 1, 0, 0, 0xF, 0, 15, 15 },
+		{ 0, 1, 0, 0, 0xF, 0, 0,  15 },
+
+		// BOTTOM (-Y)
+		{ 0, 0, 0, 0, 0xF, 0, 0,  0  },
+		{ 1, 0, 0, 0, 0xF, 0, 15, 0  },
+		{ 1, 0, 1, 0, 0xF, 0, 15, 15 },
+		{ 0, 0, 1, 0, 0xF, 0, 0,  15 },
+	};
+
+	//const std::vector<uint16_t> chunk_zero_indices =
+	//{
+	//	0,1,2, 2,3,0,        // front
+	//};
+
+	const std::vector<uint16_t> chunk_zero_indices =
+	{
+		0,1,2, 2,3,0,        // front
+		4,5,6, 6,7,4,        // back
+		8,9,10, 10,11,8,     // left
+		12,13,14, 14,15,12,  // right
+		16,17,18, 18,19,16,  // top
+		20,21,22, 22,23,20   // bottom
+	};
+
 	bool AssetBundleWriter::LoadMesh(const std::string_view& id, Mesh& outMesh)
 	{
 		auto it = m_assetManager->m_meshes.find(std::string(id));
@@ -128,17 +188,42 @@ namespace OneGame::Engine
 		if (id == "test_cube.obj")
 		{
 			outMesh.indexCount = test_indices.size();
-			auto res = LoadMesh(test_vertices.data(), test_vertices.size() * sizeof(TestPassVertex), test_indices.data(), test_indices.size() * sizeof(uint32_t), outMesh);
+			CPUMesh cpuMesh{};
+			LoadCpuMesh(test_vertices.data(), test_vertices.size() * sizeof(TestPassVertex), test_indices.data(), test_indices.size() * sizeof(uint32_t), cpuMesh);
+			AllocateMesh(cpuMesh.vertexBufSize, cpuMesh.indexBufSize, m_backend, outMesh);
+			if (LoadMesh(cpuMesh, outMesh))
+			{
+				m_assetManager->m_meshes.emplace(id, outMesh);
+				return true;
+			}
+			else
+			{
+				m_streamingManager->GetStagingBuffer()->Free(cpuMesh.vertexData.offset, cpuMesh.vertexData.size);
+				m_streamingManager->GetStagingBuffer()->Free(cpuMesh.indexData.offset, cpuMesh.indexData.size);
+			}
+		}
+		else if (id == "terrainMesh")
+		{
+			AllocateMesh(64 * 1024, 48 * 1024, m_backend, outMesh);
+			CPUMesh cpuMesh{};
+			outMesh.indexCount = chunk_zero_indices.size();
+			LoadCpuMesh(
+				chunk_zero_vertices.data(),
+				chunk_zero_vertices.size() * sizeof(Terrain::Vertex),
+				chunk_zero_indices.data(),
+				chunk_zero_indices.size() * sizeof(uint16_t),
+				cpuMesh
+			);
+			LoadMesh(cpuMesh, outMesh);
 			m_assetManager->m_meshes.emplace(id, outMesh);
 			return true;
 		}
 		return false;
 	}
 
-	bool AssetBundleWriter::LoadMesh(const void* vertices, const size_t vertexBufSize, const void* indices, const size_t indexBufSize, Mesh& outMesh)
+	void AssetBundleWriter::LoadCpuMesh(const void* vertices, const size_t vertexBufSize, const void* indices, const size_t indexBufSize, CPUMesh& cpuMesh)
 	{
 		auto stagingBuffer = m_streamingManager->GetStagingBuffer();
-		CPUMesh cpuMesh{};
 		cpuMesh.vertexData = stagingBuffer->Allocate(vertexBufSize);
 		cpuMesh.vertexBufSize = vertexBufSize;
 		cpuMesh.indexData = stagingBuffer->Allocate(indexBufSize);
@@ -146,13 +231,15 @@ namespace OneGame::Engine
 
 		memcpy(cpuMesh.vertexData.cpuPtr, vertices, vertexBufSize);
 		memcpy(cpuMesh.indexData.cpuPtr, indices, indexBufSize);
+	}
 
-		AllocateMesh(vertexBufSize, indexBufSize, m_backend, outMesh);
+	bool AssetBundleWriter::LoadMesh(CPUMesh& cpuMesh, Mesh& outMesh)
+	{
 		{
 			BufferUploadDesc vdesc{};
 			vdesc.bundleEvent = m_event;
 			vdesc.bufferUsage = BufferUsage::Vertex;
-			vdesc.effectiveBufferSize = vertexBufSize;
+			vdesc.effectiveBufferSize = cpuMesh.vertexBufSize;
 			vdesc.gpuBuffer = outMesh.vertexBuffer;
 			vdesc.gpuBufferOffset = 0;
 			vdesc.stagingAlloc = cpuMesh.vertexData;
@@ -162,7 +249,7 @@ namespace OneGame::Engine
 			BufferUploadDesc idesc{};
 			idesc.bundleEvent = m_event;
 			idesc.bufferUsage = BufferUsage::Index;
-			idesc.effectiveBufferSize = indexBufSize;
+			idesc.effectiveBufferSize = cpuMesh.indexBufSize;
 			idesc.gpuBuffer = outMesh.indexBuffer;
 			idesc.gpuBufferOffset = 0;
 			idesc.stagingAlloc = cpuMesh.indexData;

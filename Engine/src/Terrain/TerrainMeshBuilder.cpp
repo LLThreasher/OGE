@@ -6,8 +6,6 @@ namespace OneGame::Engine::Terrain
 {
 	static constexpr uint32_t MAX_STAGING_PER_FRAME = 6;
 	static constexpr uint32_t MAX_VISIBLE_CHUNK_NUM = 160;
-	static constexpr uint32_t CHUNK_VERTEX_BYTE_SIZE = 64 * 1024; // 64 kb
-	static constexpr uint32_t CHUNK_INDEX_BYTE_SIZE = 48 * 1024; // 48 kb
 
 	static constexpr uint32_t MAXIMUM_VERTEX_BYTE_SIZE = 16 * 16 * 16 / 2 * 4 * 6 * sizeof(Vertex); // 192 kb
 	static constexpr uint32_t MAXIMUM_INDEX_BYTE_SIZE = 16 * 16 * 16 / 2 * 6 * 6 * sizeof(uint16_t); // 144 kb

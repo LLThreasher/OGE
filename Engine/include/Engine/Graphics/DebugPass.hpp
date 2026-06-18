@@ -34,7 +34,7 @@ namespace OneGame::Engine::Graphics
 
 		void Initialize(IGraphicsBackend* backend, InitContext& ctx) override;
 		void Shutdown(IGraphicsBackend* backend) override;
-		void Prepare(entt::registry* world) override;
+		void Prepare(PrepareContext& context) override;
 		void Draw(DrawContext& context) override;
 	private:
 		Vertex vertices[NUM_DEBUG_VERTICES];
@@ -69,7 +69,7 @@ namespace OneGame::Engine::Graphics
 
 		void Initialize(IGraphicsBackend* backend, InitContext& ctx) override;
 		void Shutdown(IGraphicsBackend* backend) override;
-		void Prepare(entt::registry* world) override;
+		void Prepare(PrepareContext& context) override;
 		void Draw(DrawContext& context) override;
 
 	private:

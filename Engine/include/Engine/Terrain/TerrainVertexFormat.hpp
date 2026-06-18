@@ -18,6 +18,27 @@ namespace OneGame::Engine::Terrain
 	static constexpr char CYAN = 5;
 	static constexpr char MAGENTA = 6;
 
+	static constexpr uint32_t CHUNK_VERTEX_BYTE_SIZE = 64 * 1024; // 64 kb
+	static constexpr uint32_t CHUNK_INDEX_BYTE_SIZE = 48 * 1024; // 48 kb
+
+	struct ActiveChunkTag
+	{
+	};
+
+	struct ChunkSlot
+	{
+		uint32_t chunkSlot;
+		uint32_t indexCount;
+	};
+
+	struct ChunkMesh
+	{
+		int32_t chunkX;
+		int32_t chunkY;
+		int32_t chunkZ;
+		ChunkSlot meshSlot;
+	};
+
 	struct Vertex
 	{
 

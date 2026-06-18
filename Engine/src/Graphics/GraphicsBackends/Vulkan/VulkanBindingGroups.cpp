@@ -151,6 +151,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         writes.push_back(write);
 
         std::vector<VkDescriptorBufferInfo> bufferInfos;
+        bufferInfos.reserve(desc.buffers.size());
         //
         // Buffers
         //

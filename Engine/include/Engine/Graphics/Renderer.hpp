@@ -7,6 +7,7 @@
 #include "IGraphicsBackend.hpp"
 #include "UIPass.hpp"
 #include "DebugPass.hpp"
+#include "TerrainPass.hpp"
 
 #include "Engine/Math.hpp"
 
@@ -19,19 +20,15 @@ namespace OneGame::Engine::Graphics
         virtual ~Renderer() = default;
         void Initialize(IGraphicsBackend* backend, AssetManager& assets, StreamingManager& streaming);
         void Shutdown(IGraphicsBackend* backend);
-        void Prepare(entt::registry* world);
+        void Prepare(entt::registry* world, const IGraphicsBackend* backend);
         void Render(IGraphicsBackend* backend, float deltaTime);
-        RingStagingBuffer& GetStagingBuffer()
-        {
-            return ringStagingBuffer;
-        }
 
     private:
         UniformArena uniformArena;
-        RingStagingBuffer ringStagingBuffer;
         UIPass uiPass;
         TestPass testPass;
         DebugInfoPass debugInfoPass;
+        TerrainPass terrainPass;
 
         bool isFirstFrame = true;
     };

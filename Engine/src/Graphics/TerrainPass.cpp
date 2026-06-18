@@ -1,4 +1,5 @@
 #include "Engine/Graphics/TerrainPass.hpp"
+#include <entt/entt.hpp>
 
 namespace OneGame::Engine::Graphics
 {
@@ -6,18 +7,26 @@ namespace OneGame::Engine::Graphics
 	{
 		BindingGroupLayoutDesc layout{};
 		layout.textureCount = 1;
-		layout.bufferCount = 1;
-		layout.dynamicBufferMask = 1;
+		layout.bufferCount = 2;
+		layout.dynamicBufferMask = 1 << 1;
 		bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
 
-		{
-			//auto handle = ctxt.LoadTexture("blocks.png");
-		}
+		ctxt.assets->LoadMesh("terrainMesh", terrainMesh);
+		ctxt.assets->LoadTexture("blocks.png", blockTexture);
 
 		{
+			BufferDesc cpDesc{};
+			cpDesc.memory = MemoryUsage::CPUToGPU;
+			cpDesc.size = sizeof(ColorRGBA8) * 16;
+			cpDesc.usage = BufferUsage::Uniform | BufferUsage::TransferDst;
+			colorPaletteGpuBuffer = backend->CreateBuffer(cpDesc, &colorPaletteStagingBuffer);
+
 			BindingGroupDesc desc{};
 			desc.layout = bindingGroupLayout;
-			//desc.buffers.push_back()
+			desc.textures.push_back(blockTexture);
+			desc.buffers.push_back({ colorPaletteGpuBuffer, sizeof(ColorRGBA8) * 16 });
+			desc.buffers.push_back({ ctxt.uniformArena.GetBuffer(), sizeof(UBO) });
+			bindingGroup = backend->CreateBindingGroup(desc);
 		}
 
 		{
@@ -31,12 +40,6 @@ namespace OneGame::Engine::Graphics
 			// packed material id
 			desc.vertexLayout.push_back(VertexAttributeFormat::Uint8);
 
-			PushConstantRangeDesc cDesc{};
-			cDesc.size = sizeof(uint32_t) * 16;
-			cDesc.offset = 0;
-			cDesc.stageFlags = ShaderStage::Fragment;
-			desc.pushConstants.push_back(cDesc);
-
 			desc.bindingGroupLayouts.push_back(bindingGroupLayout);
 			desc.writeDepth = true;
 			desc.blending = false;
@@ -46,30 +49,88 @@ namespace OneGame::Engine::Graphics
 			pipelineHandle = backend->CreateGraphicsPipeline(desc);
 		}
 
-		for (size_t i = 0; i < 16; ++i)
-		{
-			colorPalette[i] = COLOR_WHITE;
-		}
+		ColorRGBA8 colors[16] = {
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE,
+			COLOR_WHITE
+		};
+		SetPalette(colors);
 	}
 
 	void TerrainPass::Shutdown(IGraphicsBackend* backend)
 	{
+		backend->DestroyBuffer(colorPaletteGpuBuffer);
 		backend->DestroyPipeline(pipelineHandle);
 		backend->DestroyBindingGroupLayout(bindingGroupLayout);
 	}
 
 	void TerrainPass::Draw(DrawContext& ctxt)
 	{
+		ctxt.drawCmd->BindGraphicsPipeline(pipelineHandle);
 
+		auto uniformMemory = ctxt.uniformArena->Allocate(sizeof(UBO) * ubos.size());
+		std::memcpy(uniformMemory.cpuPtr, ubos.data(), sizeof(UBO) * ubos.size());
+
+		for (uint32_t i = 0; i < ubos.size(); ++i)
+		{
+			uint32_t offset[1] = { static_cast<uint32_t>(uniformMemory.offset + i * sizeof(UBO)) };
+			ctxt.drawCmd->BindBindingGroup(bindingGroup, 0, offset);
+			ctxt.drawCmd->BindVertexBuffer(terrainMesh.vertexBuffer, activeChunkSlots[i].chunkSlot * Terrain::CHUNK_VERTEX_BYTE_SIZE);
+			ctxt.drawCmd->BindIndexBuffer(terrainMesh.indexBuffer, activeChunkSlots[i].chunkSlot * Terrain::CHUNK_INDEX_BYTE_SIZE, IndexFormat::Uint16);
+			ctxt.drawCmd->DrawIndexed(activeChunkSlots[i].indexCount);
+		}
 	}
 
-	void TerrainPass::Prepare(entt::registry* world)
+	void TerrainPass::Prepare(PrepareContext& context)
 	{
+		auto view = math::lookAt(
+			math::vec3(5, 5, 5),
+			math::vec3(0, 0, 0),
+			math::vec3(0, 1, 0));
 
+		auto proj = math::get_perspective_rot(context.backend->SwapchainPretransform()) * math::perspective(
+			math::radians(45.0f),
+			context.backend->SwapchainAspect(),
+			0.1f,
+			10.0f);
+
+		struct ComponentDebugText
+		{
+			std::string text;
+		};
+
+		activeChunkSlots.clear();
+		ubos.clear();
+		auto worldView = context.world->view<const Terrain::ActiveChunkTag, const Terrain::ChunkMesh>();
+		for (auto [_, mesh] : worldView.each())
+		{
+			activeChunkSlots.push_back(mesh.meshSlot);
+
+			auto model = math::translate(math::mat4(1.0f), math::vec3(mesh.chunkX, mesh.chunkY, mesh.chunkZ));
+
+			UBO ubo
+			{
+				proj * view * model
+			};
+			ubos.push_back(ubo);
+		}
 	}
 
 	void TerrainPass::SetPalette(ColorRGBA8 colors[16])
 	{
-
+		memcpy(colorPaletteStagingBuffer, colors, 16 * sizeof(ColorRGBA8));
 	}
 }
