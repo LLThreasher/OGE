@@ -10,6 +10,8 @@
 #include "Engine/ObjectType.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "Engine/Graphics/ChunkAllocator.hpp"
+#include "Engine/AssetManager.hpp"
+
 #include "BlockManager.hpp"
 
 namespace OneGame::Engine::Terrain
@@ -94,7 +96,7 @@ namespace OneGame::Engine::Terrain
 		PendingDestroy,
 	};
 
-	size_t GetBlockIndex(uint8_t x, uint8_t y, uint8_t z)
+	inline size_t GetBlockIndex(uint8_t x, uint8_t y, uint8_t z)
 	{
 		return (x << CHUNK_SHIFT_X) + (y << CHUNK_SHIFT_Y) + (z << CHUNK_SHIFT_Z);
 	}
@@ -116,6 +118,19 @@ namespace OneGame::Engine::Terrain
 	{
 		uint32_t index;
 		uint32_t size; // always 1, 2, 4
+
+		bool operator==(const AllocatedChunkSlot& other) const noexcept
+		{
+			return index == other.index && size == other.size;
+		}
+	};
+
+	struct AllocatedChunkSlotHasher
+	{
+		std::size_t operator()(const AllocatedChunkSlot& slot) const noexcept
+		{
+			return (static_cast<uint64_t>(slot.index) << 3) | slot.size;
+		}
 	};
 
 	struct ChunkData
@@ -183,33 +198,30 @@ namespace OneGame::Engine::Terrain
 	class TerrainMeshBuilder
 	{
 	public:
-		void Initialize(Graphics::IGraphicsBackend*, TerrainData& terrain);
-		void Shutdown(Graphics::IGraphicsBackend*);
+		TerrainMeshBuilder(TerrainData& terrain);
+
+		void Initialize(AssetBundleWriter* assets);
 		void BuildChunkMeshes(int vertexBudget);
 		void UploadChunkMeshes(int byteBudget, uint32_t frameIndex, Graphics::ICommandList* cmd);
-
-		std::tuple<GPUBufferHandle, GPUBufferHandle> GetGpuBuffers()
-		{
-			return {m_gpuVertexBuffer, m_gpuIndexBuffer};
-		}
 	private:
 		void ExecuteBuildChunkMesh(MeshingWorkerContextHandle);
 
 		TerrainData& m_terrain;
 		Graphics::ChunkAllocator m_gpuBufferAllocator;
-		GPUBufferHandle m_gpuVertexBuffer;
-		GPUBufferHandle m_gpuIndexBuffer;
-		Graphics::RingStagingBuffer m_gpuRingStagingBuffer;
-		std::vector<std::vector<ChunkHandle>> m_activeStagingDataPerFrame;
+		Mesh m_terrainMesh = {};
+		//GPUBufferHandle m_gpuVertexBuffer;
+		//GPUBufferHandle m_gpuIndexBuffer;
+		//Graphics::RingStagingBuffer m_gpuRingStagingBuffer;
+		//std::vector<std::vector<ChunkHandle>> m_activeStagingDataPerFrame;
 	};
 
 	class TerrainUpdateScheduler
 	{
 	public:
 		void UpdateAndCullChunks(float dt, Point3 chunkOrigin);
-		std::unordered_set<AllocatedChunkSlot>& GetCurrentVisibleChunks();
+		std::unordered_set<AllocatedChunkSlot, AllocatedChunkSlotHasher>& GetCurrentVisibleChunks();
 	private:
-		std::unordered_set<AllocatedChunkSlot> currentVisibleChunks;
+		std::unordered_set<AllocatedChunkSlot, AllocatedChunkSlotHasher> currentVisibleChunks;
 	};
 
 	struct TerrainGenerationDesc
@@ -225,32 +237,31 @@ namespace OneGame::Engine::Terrain
 	struct VisibleChunkMeshes
 	{
 		std::tuple<GPUBufferHandle, GPUBufferHandle> gpuBuffers;
-		std::unordered_set<AllocatedChunkSlot>& meshes;
+		std::unordered_set<AllocatedChunkSlot, AllocatedChunkSlotHasher>& meshes;
 	};
 
 	class TerrainService
 	{
 	public:
-		void Initialize(const TerrainGenerationDesc& desc, Graphics::IGraphicsBackend* backend);
-		void Shutdown(Graphics::IGraphicsBackend* backend);
+		TerrainService() : m_terrainMeshBuilder(m_terrainData)
+		{
+		}
+		~TerrainService() = default;
+
+		void Initialize(const TerrainGenerationDesc& desc, AssetBundleWriter* assets);
 		uint32_t GetBlock(int x, int y, int z);
 		void SetBlock(int x, int y, int z, uint32_t value);
 		ChunkData* GetChunkForRead(int chunkX, int chunkY, int chunkZ);
 		void Update(float dt, Point3 chunkOrigin);
 		void UploadBuiltChunks(Graphics::ICommandList* cmd);
-		// free stage buffers, destroyed chunk buffers
-		void GarbageCollect(Graphics::IGraphicsBackend* backend);
 
-		VisibleChunkMeshes GetVisibleChunkMeshes()
+		std::unordered_set<AllocatedChunkSlot, AllocatedChunkSlotHasher>& GetVisibleChunkMeshes()
 		{
-			return VisibleChunkMeshes {
-				m_terrainMeshBuilder.GetGpuBuffers(),
-				m_terrainUpdateScheduler.GetCurrentVisibleChunks(),
-			};
+			return m_terrainUpdateScheduler.GetCurrentVisibleChunks();
 		}
 	private:
 		TerrainData m_terrainData;
-		std::unique_ptr<ITerrainGenerator> m_terrainGenerator;
+		std::unique_ptr<ITerrainGenerator> m_terrainGenerator = nullptr;
 		TerrainMeshBuilder m_terrainMeshBuilder;
 		TerrainUpdateScheduler m_terrainUpdateScheduler;
 	};

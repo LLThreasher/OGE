@@ -46,33 +46,13 @@ namespace OneGame::Engine::Terrain
 
 	using namespace Graphics;
 
-	void TerrainMeshBuilder::Initialize(IGraphicsBackend* backend, TerrainData& terrain)
+	TerrainMeshBuilder::TerrainMeshBuilder(TerrainData& terrain) : m_terrain(terrain), m_gpuBufferAllocator(MAX_VISIBLE_CHUNK_NUM)
 	{
-		m_terrain = terrain;
-		m_gpuBufferAllocator = ChunkAllocator(MAX_VISIBLE_CHUNK_NUM);
-		{
-			BufferDesc desc{};
-			desc.memory = MemoryUsage::GPUOnly;
-			desc.usage = BufferUsage::Vertex;
-			desc.size = MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE;
-			m_gpuVertexBuffer = backend->CreateBuffer(desc);
-		}
-		{
-			BufferDesc desc{};
-			desc.memory = MemoryUsage::GPUOnly;
-			desc.usage = BufferUsage::Index;
-			desc.size = MAX_VISIBLE_CHUNK_NUM * CHUNK_INDEX_BYTE_SIZE;
-			m_gpuIndexBuffer = backend->CreateBuffer(desc);
-		}
-		m_gpuRingStagingBuffer.Initialize(backend, MAX_STAGING_PER_FRAME * (CHUNK_VERTEX_BYTE_SIZE + CHUNK_INDEX_BYTE_SIZE));
-		m_activeStagingDataPerFrame.resize(backend->FramesInFlight());
 	}
 
-	void TerrainMeshBuilder::Shutdown(IGraphicsBackend* backend)
+	void TerrainMeshBuilder::Initialize(AssetBundleWriter* assets)
 	{
-		backend->DestroyBuffer(m_gpuVertexBuffer);
-		backend->DestroyBuffer(m_gpuIndexBuffer);
-		m_gpuRingStagingBuffer.Shutdown(backend);
+		//assets->AllocateMesh("terrainMesh", MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE, MAX_VISIBLE_CHUNK_NUM * CHUNK_INDEX_BYTE_SIZE, m_terrainMesh);
 	}
 
 	static size_t MaskIndex(size_t z, size_t y)
@@ -403,50 +383,50 @@ namespace OneGame::Engine::Terrain
 	void TerrainMeshBuilder::UploadChunkMeshes(int byteBudget, uint32_t frameIndex, Graphics::ICommandList* cmd)
 	{
 		// free previous upload data and finish upload
-		for (auto& handle : m_activeStagingDataPerFrame[frameIndex])
-		{
-			auto chunk = m_terrain.chunkData.Get(handle);
-			auto stagingData = chunk->stagingBuffers.value();
-			m_gpuRingStagingBuffer.Free(stagingData.vertexStagingBuffer.offset, stagingData.vertexStagingBuffer.size);
-			m_gpuRingStagingBuffer.Free(stagingData.indexStagingBuffer.offset, stagingData.indexStagingBuffer.size);
-			m_terrain.builtChunkMeshes.Destroy(stagingData.builtMesh);
-			m_terrain.gpuAvailableChunkQueue.push(handle);
-		}
-		assert(byteBudget < MAX_STAGING_PER_FRAME * (CHUNK_VERTEX_BYTE_SIZE + CHUNK_INDEX_BYTE_SIZE));
-		size_t currentBytes = 0;
-		while (!m_terrain.uploadMeshQueue.empty() && currentBytes < byteBudget)
-		{
-			auto [chunkHandle, builtMeshHandle] = m_terrain.uploadMeshQueue.back();
-			m_terrain.uploadMeshQueue.pop();
-			auto builtMesh = m_terrain.builtChunkMeshes.Get(builtMeshHandle);
-			
-			auto vertSizeInBytes = sizeof(Vertex) * builtMesh->vertices.size();
-			auto indexSizeInBytes = sizeof(uint16_t) * builtMesh->indices.size();
-			auto vertStaging = m_gpuRingStagingBuffer.Allocate(vertSizeInBytes);
-			auto indexStaging = m_gpuRingStagingBuffer.Allocate(indexSizeInBytes);
+		//for (auto& handle : m_activeStagingDataPerFrame[frameIndex])
+		//{
+		//	auto chunk = m_terrain.chunkData.Get(handle);
+		//	auto stagingData = chunk->stagingBuffers.value();
+		//	m_gpuRingStagingBuffer.Free(stagingData.vertexStagingBuffer.offset, stagingData.vertexStagingBuffer.size);
+		//	m_gpuRingStagingBuffer.Free(stagingData.indexStagingBuffer.offset, stagingData.indexStagingBuffer.size);
+		//	m_terrain.builtChunkMeshes.Destroy(stagingData.builtMesh);
+		//	m_terrain.gpuAvailableChunkQueue.push(handle);
+		//}
+		//assert(byteBudget < MAX_STAGING_PER_FRAME * (CHUNK_VERTEX_BYTE_SIZE + CHUNK_INDEX_BYTE_SIZE));
+		//size_t currentBytes = 0;
+		//while (!m_terrain.uploadMeshQueue.empty() && currentBytes < byteBudget)
+		//{
+		//	auto [chunkHandle, builtMeshHandle] = m_terrain.uploadMeshQueue.back();
+		//	m_terrain.uploadMeshQueue.pop();
+		//	auto builtMesh = m_terrain.builtChunkMeshes.Get(builtMeshHandle);
+		//	
+		//	auto vertSizeInBytes = sizeof(Vertex) * builtMesh->vertices.size();
+		//	auto indexSizeInBytes = sizeof(uint16_t) * builtMesh->indices.size();
+		//	auto vertStaging = m_gpuRingStagingBuffer.Allocate(vertSizeInBytes);
+		//	auto indexStaging = m_gpuRingStagingBuffer.Allocate(indexSizeInBytes);
 
-			memcpy(vertStaging.cpuPtr, builtMesh->vertices.data(), vertSizeInBytes);
-			memcpy(indexStaging.cpuPtr, builtMesh->indices.data(), indexSizeInBytes);
+		//	memcpy(vertStaging.cpuPtr, builtMesh->vertices.data(), vertSizeInBytes);
+		//	memcpy(indexStaging.cpuPtr, builtMesh->indices.data(), indexSizeInBytes);
 
-			int chunkOffset;
-			if (vertSizeInBytes < CHUNK_VERTEX_BYTE_SIZE)
-				chunkOffset = m_gpuBufferAllocator.Allocate(1);
-			else if (vertSizeInBytes < CHUNK_VERTEX_BYTE_SIZE * 2)
-				chunkOffset = m_gpuBufferAllocator.Allocate(2);
-			else
-				chunkOffset = m_gpuBufferAllocator.Allocate(4);
-			
-			cmd->CopyBuffer(m_gpuRingStagingBuffer.GetBuffer(), m_gpuVertexBuffer, vertSizeInBytes, vertStaging.offset, chunkOffset * CHUNK_VERTEX_BYTE_SIZE);
-			cmd->CopyBuffer(m_gpuRingStagingBuffer.GetBuffer(), m_gpuIndexBuffer, indexSizeInBytes, indexStaging.offset, chunkOffset * CHUNK_INDEX_BYTE_SIZE);
+		//	int chunkOffset;
+		//	if (vertSizeInBytes < CHUNK_VERTEX_BYTE_SIZE)
+		//		chunkOffset = m_gpuBufferAllocator.Allocate(1);
+		//	else if (vertSizeInBytes < CHUNK_VERTEX_BYTE_SIZE * 2)
+		//		chunkOffset = m_gpuBufferAllocator.Allocate(2);
+		//	else
+		//		chunkOffset = m_gpuBufferAllocator.Allocate(4);
+		//	
+		//	cmd->CopyBuffer(m_gpuRingStagingBuffer.GetBuffer(), m_gpuVertexBuffer, vertSizeInBytes, vertStaging.offset, chunkOffset * CHUNK_VERTEX_BYTE_SIZE);
+		//	cmd->CopyBuffer(m_gpuRingStagingBuffer.GetBuffer(), m_gpuIndexBuffer, indexSizeInBytes, indexStaging.offset, chunkOffset * CHUNK_INDEX_BYTE_SIZE);
 
-			auto chunk = m_terrain.chunkData.Get(chunkHandle);
-			chunk->stagingBuffers = {
-				builtMeshHandle,
-				vertStaging,
-				indexStaging,
-			};
-			m_activeStagingDataPerFrame[frameIndex].push_back(chunkHandle);
-			currentBytes += vertSizeInBytes + indexSizeInBytes;
-		}
+		//	auto chunk = m_terrain.chunkData.Get(chunkHandle);
+		//	chunk->stagingBuffers = {
+		//		builtMeshHandle,
+		//		vertStaging,
+		//		indexStaging,
+		//	};
+		//	m_activeStagingDataPerFrame[frameIndex].push_back(chunkHandle);
+		//	currentBytes += vertSizeInBytes + indexSizeInBytes;
+		//}
 	}
 }

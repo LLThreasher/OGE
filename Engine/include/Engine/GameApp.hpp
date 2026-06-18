@@ -7,11 +7,12 @@
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/Input/InputSystem.hpp"
+#include "Engine/Terrain/TerrainMeshBuilder.hpp"
+#include "Engine/Scenes/IScene.hpp"
+#include "Engine/GameAppState.hpp"
 
 namespace OneGame::Engine
 {
-    using namespace Graphics;
-
     namespace Graphics
     {
         class WindowHandle;
@@ -23,52 +24,41 @@ namespace OneGame::Engine
     public:
         virtual void Initialize(const Graphics::WindowHandle&) = 0;
         virtual void Shutdown() = 0;
-
         virtual void Update(float dt) = 0;
-
         virtual void OnResize(int width, int height) = 0;
-    };
-
-    struct AppContext
-    {
-        entt::registry& world;
-        Renderer& renderer;
-        AssetManager& assets;
-        TickScheduler& tickScheduler;
-        entt::dispatcher& events;
-        InputSystem& input;
-    };
-
-    enum class AppFrameAction
-    {
-        Continue,
-        RecreateSufrace,
     };
 
     class GameApp
     {
     public:
+        GameApp();
         ~GameApp();
 
         void Initialize(Graphics::WindowHandle*);
         void Shutdown();
 
-        AppFrameAction Update(float dt);
+        AppFrameAction Update(float dt, InputSystem& input);
 
         void OnWindowRecreate(Graphics::WindowHandle*);
         void OnResize(int width, int height);
     private:
+        void TransferToScene(uint32_t nextScene);
+
         std::unique_ptr<Graphics::IGraphicsBackend> backend;
         entt::registry world;
         entt::dispatcher dispatcher;
         StreamingManager streamingManager;
         AssetManager assetManager;
-        Renderer renderer;
+        Graphics::Renderer renderer;
 
-        GPUInfo gpuInfo;
+        std::vector<std::unique_ptr<IScene>> allScenes;
+        IScene* nextScene = nullptr;
+        IScene* currentScene = nullptr;
+
+        Graphics::GPUInfo gpuInfo = {};
         entt::entity debugInfoEntity;
 
-        float currentFPS;
+        float currentFPS = 0.f;
         float accumTime = 0.f;
         uint64_t frameCount = 0;
     };

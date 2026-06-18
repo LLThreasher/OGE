@@ -26,11 +26,10 @@ namespace OneGame::Engine::Graphics
 	struct PrepareContext
 	{
 		const IGraphicsBackend* backend;
+		float deltaTime;
 		entt::registry* world;
 	};
 	
-	struct AppContext;
-
 	class IPass
 	{
 	public:

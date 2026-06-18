@@ -32,11 +32,12 @@ namespace OneGame::Engine::Graphics
         uniformArena.Shutdown(backend);
     }
 
-    void Renderer::Prepare(entt::registry* world, const IGraphicsBackend* backend)
+    void Renderer::Prepare(entt::registry* world, const IGraphicsBackend* backend, float deltaTime)
     {
         PrepareContext pc
         {
             backend,
+            deltaTime,
             world,
         };
         //uiPass.Prepare(world);
@@ -47,10 +48,8 @@ namespace OneGame::Engine::Graphics
 
     void Renderer::Render(IGraphicsBackend* backend, float deltaTime)
     {
-        auto transferCmd = backend->CreateCommandList(QueueType::Transfer);
+        auto tCmd = backend->CreateCommandList(QueueType::Transfer);
         auto cmd = backend->CreateCommandList(QueueType::Present);
-
-        transferCmd->Begin();
         cmd->Begin();
 
         ClearValues values{};
@@ -64,16 +63,17 @@ namespace OneGame::Engine::Graphics
             deltaTime,
             &uniformArena,
             cmd.get(),
-            transferCmd.get(),
+            tCmd.get(),
         };
 
+        tCmd->Begin();
         terrainPass.Draw(drawCtxt);
         testPass.Draw(drawCtxt);
         debugInfoPass.Draw(drawCtxt);
+        tCmd->End();
 
         cmd->EndRenderPass();
         cmd->End();
-        transferCmd->End();
 
         uniformArena.AdvanceFrame();
     }

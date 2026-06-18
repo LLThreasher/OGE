@@ -1,6 +1,7 @@
 #include "Engine/GameApp.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/Graphics/DebugPass.hpp"
+#include "Engine/Scenes/DebugScene.hpp"
 
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
@@ -10,6 +11,13 @@
 namespace OneGame::Engine
 {
 	using namespace Graphics;
+
+	constexpr uint32_t DEBUG_SCENE = 0;
+
+	GameApp::GameApp()
+	{
+		allScenes.push_back(std::unique_ptr<IScene>(new DebugScene()));
+	}
 
 	GameApp::~GameApp() = default;
 
@@ -29,12 +37,25 @@ namespace OneGame::Engine
 		debugInfoEntity = world.create();
 		world.emplace<DebugInfoPass::ComponentDebugText>(debugInfoEntity);
 
-#ifdef TEST_TERRAIN_0
-		auto chunkEntity = world.create();
-		world.emplace<Terrain::ActiveChunkTag>(chunkEntity);
-		Terrain::ChunkMesh cm { 0, 0, 0, { 0, 36 } };
-		world.emplace<Terrain::ChunkMesh>(chunkEntity, cm);
-#endif
+		for (auto& scene : allScenes)
+		{
+			auto assetBundle = assetManager.CreateAssetBundle(&streamingManager, backend.get());
+			AppInitContext appInitCtx
+			{
+				world,
+				renderer,
+				*assetBundle.get(),
+				dispatcher,
+			};
+			scene->Initialize(appInitCtx);
+		}
+		TransferToScene(DEBUG_SCENE);
+	}
+
+	void GameApp::TransferToScene(uint32_t scene)
+	{
+		assert(scene < allScenes.size());
+		nextScene = allScenes[scene].get();
 	}
 
 	void GameApp::Shutdown()
@@ -45,13 +66,14 @@ namespace OneGame::Engine
 		backend->Shutdown();
 	}
 
-	AppFrameAction GameApp::Update(float dt)
+	AppFrameAction GameApp::Update(float dt, InputSystem& input)
 	{
+		AppFrameAction appRes = AppFrameAction::None;
 		auto res = backend->BeginFrame();
 		if (res == BeginFrameAction::RecreateSurface)
-			return AppFrameAction::RecreateSufrace;
+			return appRes | AppFrameAction::WaitSurface;
 		if (res != BeginFrameAction::Continue)
-			return AppFrameAction::Continue;
+			return appRes | AppFrameAction::None;
 
 		if (accumTime >= 1.f)
 		{
@@ -62,20 +84,49 @@ namespace OneGame::Engine
 		auto memUsage = backend->GetGPUMemoryUsage();
 		world.get<DebugInfoPass::ComponentDebugText>(debugInfoEntity).text = std::format("FPS {}\nGPU Heap 0: {} MB / {} MB\nGPU Heap 1: {} MB / {} MB", currentFPS, memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024, memUsage.heapUsage[1] / 1024 / 1024, memUsage.heapBudget[1] / 1024 / 1024);
 
-		renderer.Prepare(&world, backend.get());
+		std::vector<SceneAction> outSceneActions;
+		auto interSceneBundle = assetManager.CreateAssetBundleAsync(&streamingManager, backend.get());
+		AppContext appCtx
+		{
+			world,
+			renderer,
+			interSceneBundle.get(),
+			dispatcher,
+			input,
+			outSceneActions,
+		};
+		if (nextScene != nullptr)
+		{
+			if (currentScene != nullptr)
+			{
+				currentScene->Exit(appCtx);
+				interSceneBundle = assetManager.CreateAssetBundleAsync(&streamingManager, backend.get());
+				appCtx.assets = interSceneBundle.get();
+			}
+			nextScene->Enter(appCtx);
+			interSceneBundle = assetManager.CreateAssetBundleAsync(&streamingManager, backend.get());
+			appCtx.assets = interSceneBundle.get();
+			currentScene = nextScene;
+			nextScene = nullptr;
+		}
+		assert(currentScene != nullptr);
+		currentScene->Update(appCtx, dt);
+
+		renderer.Prepare(&world, backend.get(), dt);
 		auto tcmd = backend->CreateCommandList(QueueType::Transfer);
 		tcmd->Begin();
 		streamingManager.RunUploadStep(backend.get(), tcmd.get(), &dispatcher);
 		tcmd->End();
+
 		renderer.Render(backend.get(), dt);
 		auto endRes = backend->EndFrame();
 		if (endRes == EndFrameAction::RecreateSurface)
-			return AppFrameAction::RecreateSufrace;
+			return appRes | AppFrameAction::WaitSurface;
 
 		++frameCount;
 		accumTime += dt;
 
-		return AppFrameAction::Continue;
+		return appRes;
 	}
 
 	void GameApp::OnResize(int width, int height)

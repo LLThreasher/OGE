@@ -58,7 +58,12 @@ namespace OneGame::Engine::math
 
     inline mat4 identity()
     {
-        return mat4(1.0f);
+        return glm::identity<mat4>();
+    }
+
+    inline quat identity_quat()
+    {
+        return glm::identity<quat>();
     }
 
     inline mat4 translate(const mat4& m, const vec3& v)

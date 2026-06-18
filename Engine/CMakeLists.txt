@@ -28,7 +28,9 @@ target_sources(Engine PRIVATE
  "src/Graphics/DebugPass.cpp"
  "src/Platform/SDL3AssetLoader.cpp"
  "src/AssetManager.cpp"
- "src/StreamingManager.cpp" )
+ "src/StreamingManager.cpp"
+ "src/Input/InputSystem.cpp"
+  "src/Scenes/DebugScene.cpp" "src/Terrain/TerrainService.cpp")
 
 target_include_directories(Engine
     PUBLIC

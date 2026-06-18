@@ -12,6 +12,10 @@ namespace OneGame::Engine::Graphics
 			math::mat4 mvp;
 		};
 	public:
+		TerrainPass() : orientation(math::identity_quat())
+		{
+		}
+
 		void Initialize(IGraphicsBackend* backend, InitContext& ctxt) override;
 		void Shutdown(IGraphicsBackend* backend) override;
 		void Prepare(PrepareContext& context) override;
@@ -31,5 +35,7 @@ namespace OneGame::Engine::Graphics
 		GPUBindingGroupLayoutHandle bindingGroupLayout;
 		GPUBindingGroupHandle bindingGroup;
 		GPUTextureHandle blockTexture;
+
+		math::quat orientation;
 	};
 }

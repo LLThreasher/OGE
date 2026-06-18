@@ -79,6 +79,9 @@ namespace OneGame::Engine::Graphics
 
 	void TerrainPass::Draw(DrawContext& ctxt)
 	{
+		if (activeChunkSlots.size() == 0)
+			return;
+
 		ctxt.drawCmd->BindGraphicsPipeline(pipelineHandle);
 
 		auto uniformMemory = ctxt.uniformArena->Allocate(sizeof(UBO) * ubos.size());
@@ -92,6 +95,17 @@ namespace OneGame::Engine::Graphics
 			ctxt.drawCmd->BindIndexBuffer(terrainMesh.indexBuffer, activeChunkSlots[i].chunkSlot * Terrain::CHUNK_INDEX_BYTE_SIZE, IndexFormat::Uint16);
 			ctxt.drawCmd->DrawIndexed(activeChunkSlots[i].indexCount);
 		}
+	}
+
+	math::mat4 ComputeModelTransform(float time)
+	{
+		float w1 = 1.0f;
+		float w2 = 1.41421356237f; // sqrt(2)
+
+		math::mat4 rx = math::rotate(math::mat4(1.0f), w1 * time, math::vec3(1, 0, 0));
+		math::mat4 ry = math::rotate(math::mat4(1.0f), w2 * time, math::vec3(0, 1, 0));
+
+		return ry * rx;
 	}
 
 	void TerrainPass::Prepare(PrepareContext& context)

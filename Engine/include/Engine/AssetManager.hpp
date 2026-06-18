@@ -11,6 +11,7 @@
 
 namespace OneGame::Engine
 {
+	using AssetLoadedEvent = std::shared_ptr<ResourceBundleEvent>;
 	using StagingAllocation = Graphics::StagingAllocation;
 
 	struct CPUTexture
@@ -73,11 +74,12 @@ namespace OneGame::Engine
 		bool LoadMesh(const std::string_view& id, Mesh& outMesh);
 		bool LoadShader(const std::string_view& id, std::vector<char>& outShader);
 		bool LoadMaterial(const std::string_view& id, Material& outMaterial);
+		void AllocateMesh(const std::string_view& id, const size_t vertBufSize, const size_t indexBufSize, Mesh& outMesh);
 
 		std::shared_ptr<ResourceBundleEvent> GetOnLoadedEvent() { return m_event; }
 	private:
 		void LoadCpuMesh(const void* vertices, const size_t vertexBufSize, const void* indices, const size_t indexBufSize, CPUMesh& outMesh);
-		bool LoadMesh(CPUMesh& cpuMesh, Mesh& outMesh);
+		void LoadMesh(CPUMesh& cpuMesh, Mesh& outMesh);
 
 		std::shared_ptr<ResourceBundleEvent> m_event = nullptr;
 		AssetManager* m_assetManager;

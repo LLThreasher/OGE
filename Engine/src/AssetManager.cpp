@@ -51,19 +51,21 @@ namespace OneGame::Engine
 		return TryLoadBlob(id, outShader);
 	}
 
-	void AllocateMesh(const size_t vertBufSize, const size_t indexBufSize, Graphics::IGraphicsBackend* backend, Mesh& m)
+	void AssetBundleWriter::AllocateMesh(const std::string_view& id, const size_t vertBufSize, const size_t indexBufSize, Mesh& outMesh)
 	{
+		assert(m_assetManager->m_meshes.find(std::string(id)) == m_assetManager->m_meshes.end());
 		BufferDesc vBuf{};
 		vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
 		vBuf.memory = MemoryUsage::GPUOnly;
 		vBuf.size = vertBufSize;
-		m.vertexBuffer = backend->CreateBuffer(vBuf);
+		outMesh.vertexBuffer = m_backend->CreateBuffer(vBuf);
 
 		BufferDesc iBuf{};
 		iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
 		iBuf.memory = MemoryUsage::GPUOnly;
 		iBuf.size = indexBufSize;
-		m.indexBuffer = backend->CreateBuffer(iBuf);
+		outMesh.indexBuffer = m_backend->CreateBuffer(iBuf);
+		m_assetManager->m_meshes.emplace(id, outMesh);
 	}
 
 	struct TestPassVertex
@@ -190,21 +192,13 @@ namespace OneGame::Engine
 			outMesh.indexCount = test_indices.size();
 			CPUMesh cpuMesh{};
 			LoadCpuMesh(test_vertices.data(), test_vertices.size() * sizeof(TestPassVertex), test_indices.data(), test_indices.size() * sizeof(uint32_t), cpuMesh);
-			AllocateMesh(cpuMesh.vertexBufSize, cpuMesh.indexBufSize, m_backend, outMesh);
-			if (LoadMesh(cpuMesh, outMesh))
-			{
-				m_assetManager->m_meshes.emplace(id, outMesh);
-				return true;
-			}
-			else
-			{
-				m_streamingManager->GetStagingBuffer()->Free(cpuMesh.vertexData.offset, cpuMesh.vertexData.size);
-				m_streamingManager->GetStagingBuffer()->Free(cpuMesh.indexData.offset, cpuMesh.indexData.size);
-			}
+			AllocateMesh(id, cpuMesh.vertexBufSize, cpuMesh.indexBufSize, outMesh);
+			LoadMesh(cpuMesh, outMesh);
+			return true;
 		}
 		else if (id == "terrainMesh")
 		{
-			AllocateMesh(64 * 1024, 48 * 1024, m_backend, outMesh);
+			AllocateMesh(id, 64 * 1024, 48 * 1024, outMesh);
 			CPUMesh cpuMesh{};
 			outMesh.indexCount = chunk_zero_indices.size();
 			LoadCpuMesh(
@@ -233,7 +227,7 @@ namespace OneGame::Engine
 		memcpy(cpuMesh.indexData.cpuPtr, indices, indexBufSize);
 	}
 
-	bool AssetBundleWriter::LoadMesh(CPUMesh& cpuMesh, Mesh& outMesh)
+	void AssetBundleWriter::LoadMesh(CPUMesh& cpuMesh, Mesh& outMesh)
 	{
 		{
 			BufferUploadDesc vdesc{};
@@ -255,7 +249,6 @@ namespace OneGame::Engine
 			idesc.stagingAlloc = cpuMesh.indexData;
 			m_streamingManager->ScheduleBufferUpload(idesc, m_event == nullptr ? UploadType::Immediate : UploadType::Async);
 		}
-		return true;
 	}
 
 	bool TryLoadPNG(std::vector<char> data, int& width, int& height, void* result)

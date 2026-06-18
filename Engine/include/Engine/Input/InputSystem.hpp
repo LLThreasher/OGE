@@ -32,8 +32,6 @@ namespace OneGame::Engine
         float GetMouseX() const;
         float GetMouseY() const;
 
-        
-
     private:
         std::array<bool, MaxKeys> m_currentKeys{};
         std::array<bool, MaxKeys> m_previousKeys{};

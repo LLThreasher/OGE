@@ -36,6 +36,7 @@ namespace OneGame::Engine
     private:
         void PollEvents();
 
+        InputSystem m_input;
         HWND m_hwnd;
         Timer m_timer;
         bool m_shouldClose = false;
@@ -94,7 +95,7 @@ namespace OneGame::Engine
 
             float dt = m_timer.Tick();
 
-            app.Update(dt);
+            app.Update(dt, m_input);
         }
 
         app.Shutdown();
