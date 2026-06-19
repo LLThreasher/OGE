@@ -1,6 +1,7 @@
 #pragma once
 #include "IPass.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
+#include "Engine/Graphics/PresentationObjects.hpp"
 
 namespace OneGame::Engine::Graphics
 {
@@ -28,7 +29,7 @@ namespace OneGame::Engine::Graphics
 		bool isColorPaletteDirty = true;
 
 		Mesh terrainMesh;
-		std::vector<Terrain::ChunkSlot> activeChunkSlots;
+		std::vector<PTerrainMesh> activeChunkSlots;
 		std::vector<UBO> ubos;
 
 		GPUPipelineHandle pipelineHandle;

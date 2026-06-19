@@ -68,16 +68,6 @@ namespace OneGame::Engine::ECS
 		float dx = ctx.input.GetMouseDX() * sens * dt;
 		float dy = -ctx.input.GetMouseDY() * sens * dt;
 
-		//float dx = 0;
-		//float dy = 0;
-		//if (ctx.input.IsKeyDown(KeyCode::KY_J))
-		//	dx -= dt * sens;
-		//if (ctx.input.IsKeyDown(KeyCode::KY_L))
-		//	dx += dt * sens;
-		//if (ctx.input.IsKeyDown(KeyCode::KY_I))
-		//	dy += dt * sens;
-		//if (ctx.input.IsKeyDown(KeyCode::KY_K))
-		//	dy -= dt * sens;
 		float dwx = 0;
 		float dwz = 0;
 		if (ctx.input.IsKeyDown(KeyCode::KY_A))

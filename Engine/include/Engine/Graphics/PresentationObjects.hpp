@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include "Engine/Math.hpp"
 
 namespace OneGame::Engine::Graphics
@@ -12,5 +13,12 @@ namespace OneGame::Engine::Graphics
 	struct PDebugText
 	{
 		std::string text;
+	};
+
+	struct PTerrainMesh
+	{
+		uint32_t chunkSlot;
+		uint32_t indexCount;
+		int chunkX, chunkY, chunkZ;
 	};
 }

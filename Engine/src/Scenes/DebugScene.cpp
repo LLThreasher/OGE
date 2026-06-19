@@ -1,6 +1,7 @@
 #include "Engine/Scenes/DebugScene.hpp"
 #include "Engine/Terrain/TerrainMeshBuilder.hpp"
 #include "Engine/Random.hpp"
+#include "Engine/Graphics/PresentationObjects.hpp"
 
 namespace OneGame::Engine
 {
@@ -37,30 +38,33 @@ namespace OneGame::Engine
 		auto handle = terrainData.chunkData.Create();
 		auto chunk = terrainData.chunkData.Get(handle);
 		chunk->Coords = { 0, 0, 0 };
-		//for (size_t i = 0; i < 200; ++i)
-		//{
-		//	auto x = Random::RandInt(0, 15);
-		//	auto y = Random::RandInt(0, 15);
-		//	auto z = Random::RandInt(0, 15);
-		//	assert(x < 16);
-		//	assert(y < 16);
-		//	assert(z < 16);
-
-		//	auto idx = Terrain::GetBlockIndex(x, y, z);
-		//	assert(idx < 16 * 16 * 16);
-		//	chunk->data[idx] = 256;
-		//}
-		for (size_t x = 0; x < 16; ++x)
+		for (size_t i = 0; i < 200; ++i)
 		{
-			for (size_t y = 0; y < 16; ++y)
-			{
-				for (size_t z = 0; z < 16; ++z)
-				{
-					auto idx = Terrain::GetBlockIndex(x, y, z);
-					chunk->data[idx] = 256;
-				}
-			}
+			auto x = Random::RandInt(0, 15);
+			auto y = Random::RandInt(0, 15);
+			auto z = Random::RandInt(0, 15);
+			assert(x < 16);
+			assert(y < 16);
+			assert(z < 16);
+
+			auto idx = Terrain::GetBlockIndex(x, y, z);
+			assert(idx < 16 * 16 * 16);
+			chunk->data[idx] = 256;
 		}
+		//for (size_t x = 0; x < 16; ++x)
+		//{
+		//	for (size_t y = 0; y < 16; ++y)
+		//	{
+		//		for (size_t z = 0; z < 16; ++z)
+		//		{
+		//			if (x == 1 || x == 2 || x == 3 || x == 4)
+		//			{
+		//				auto idx = Terrain::GetBlockIndex(x, y, z);
+		//				chunk->data[idx] = 256;
+		//			}
+		//		}
+		//	}
+		//}
 		terrainData.coordToChunks[{0, 0, 0}] = handle;
 		{
 			auto nhandle = terrainData.chunkData.Create();
@@ -104,9 +108,7 @@ namespace OneGame::Engine
 	{
 		auto& world = context.world;
 		auto chunkEntity = world.create();
-		world.emplace<Terrain::ActiveChunkTag>(chunkEntity);
-		Terrain::ChunkMesh cm{ 0, 0, 0, testSlot };
-		world.emplace<Terrain::ChunkMesh>(chunkEntity, cm);
+		world.emplace<Graphics::PTerrainMesh>(chunkEntity, testSlot.chunkSlot, testSlot.indexCount, 0, 0, 0);
 
 		if (wrappingEnabled)
 			gameWorld.Update(context, dt);

@@ -82,17 +82,17 @@ namespace OneGame::Engine::Terrain
 					int bx = __builtin_ctz(bits);
 					bits &= bits - 1;
 
-					int x = 15 - (bx - 1);
+					int x = bx - 1;
 					int wy = y - 1;
 					int wz = z - 1;
 
 					uint16_t base = (uint16_t)context->vertices.size();
-
-					// +X face
-					context->vertices.emplace_back(x + 1, wy, wz + 1, 0, 15, 0, 0, 0);
-					context->vertices.emplace_back(x + 1, wy, wz, 0, 15, 0, 0, 0);
-					context->vertices.emplace_back(x + 1, wy + 1, wz, 0, 15, 0, 0, 0);
-					context->vertices.emplace_back(x + 1, wy + 1, wz + 1, 0, 15, 0, 0, 0);
+					
+					// -X face
+					context->vertices.emplace_back(x, wy,   wz,   0, 15, 0, 0x0, 0x0);
+					context->vertices.emplace_back(x, wy,   wz+1, 0, 15, 0, 0xF, 0x0);
+					context->vertices.emplace_back(x, wy+1, wz+1, 0, 15, 0, 0xF, 0xF);
+					context->vertices.emplace_back(x, wy+1, wz,   0, 15, 0, 0x0, 0xF);
 
 					size_t oldSize = context->indices.size();
 					context->indices.resize(oldSize + 6);
@@ -111,17 +111,17 @@ namespace OneGame::Engine::Terrain
 					int bx = __builtin_ctz(bits);
 					bits &= bits - 1;
 
-					int x = 15 - (bx - 1);
+					int x = bx - 1;
 					int wy = y - 1;
 					int wz = z - 1;
 
 					uint16_t base = (uint16_t)context->vertices.size();
 
-					// -X face
-					context->vertices.emplace_back(x, wy,   wz,   0, 15, 0, 0x0, 0x0);
-					context->vertices.emplace_back(x, wy,   wz+1, 0, 15, 0, 0xF, 0x0);
-					context->vertices.emplace_back(x, wy+1, wz+1, 0, 15, 0, 0xF, 0xF);
-					context->vertices.emplace_back(x, wy+1, wz,   0, 15, 0, 0x0, 0xF);
+					// +X face
+					context->vertices.emplace_back(x + 1, wy, wz + 1, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy, wz, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy + 1, wz, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy + 1, wz + 1, 0, 15, 0, 0, 0);
 
 					size_t oldSize = context->indices.size();
 					context->indices.resize(oldSize + 6);

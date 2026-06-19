@@ -1,6 +1,5 @@
 #include "Engine/Graphics/TerrainPass.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
-#include "Engine/Graphics/PresentationObjects.hpp"
 #include <entt/entt.hpp>
 
 namespace OneGame::Engine::Graphics
@@ -138,10 +137,10 @@ namespace OneGame::Engine::Graphics
 
 		activeChunkSlots.clear();
 		ubos.clear();
-		auto worldView = context.world->view<const Terrain::ActiveChunkTag, const Terrain::ChunkMesh>();
+		auto worldView = context.world->view<const PTerrainMesh>();
 		for (auto [_, mesh] : worldView.each())
 		{
-			activeChunkSlots.push_back(mesh.meshSlot);
+			activeChunkSlots.push_back(mesh);
 
 			auto model = math::translate(math::mat4(1.0f), math::vec3(mesh.chunkX, mesh.chunkY, mesh.chunkZ));
 
