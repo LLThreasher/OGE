@@ -114,6 +114,11 @@ namespace OneGame::Engine::Graphics
 
     void DebugInfoPass::Draw(DrawContext& context)
     {
+        if (context.backend->SwapchainRecreated())
+        {
+            auto extent = context.backend->SwapchainExtend();
+            math::get_screen_affine(context.backend->SwapchainPretransform(), extent.x, extent.y, pushConstant.transform, pushConstant.offset);
+        }
         if (numQuads == 0)
             return;
 
@@ -125,11 +130,6 @@ namespace OneGame::Engine::Graphics
         tCmd->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
 
         cmd->BindGraphicsPipeline(pipeline);
-        if (context.backend->SwapchainRecreated())
-        {
-            auto extent = context.backend->SwapchainExtend();
-            math::get_screen_affine(context.backend->SwapchainPretransform(), extent.x, extent.y, pushConstant.transform, pushConstant.offset);
-        }
         cmd->PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
         cmd->BindVertexBuffer(vertexBuffer);
         cmd->BindIndexBuffer(indexBuffer, 0, IndexFormat::Uint16);

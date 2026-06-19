@@ -166,7 +166,7 @@ namespace OneGame::Engine::Terrain
 	struct ChunkMeshingWorkerContext
 	{
 		// 1296 bytes
-		uint32_t opaqueMasks[(CHUNK_SIZE_Y + 2) * (CHUNK_SHIFT_Z + 2)];
+		uint32_t opaqueMasks[(CHUNK_SIZE_Y + 2) * (CHUNK_SIZE_Z + 2)];
 		// 8192 bytes
 		BlockMetadata blockMetadata[CHUNK_SIZE_TOTAL];
 		ChunkHandle chunkHandle;

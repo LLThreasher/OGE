@@ -8,6 +8,8 @@ namespace OneGame::Engine
         m_previousKeys = m_currentKeys;
         m_previousMouse = m_currentMouse;
         m_previousTouch = m_currentTouch;
+        m_mouseDX = 0;
+        m_mouseDY = 0;
     }
 
     void InputSystem::SetKey(KeyCode key, bool down)
@@ -20,10 +22,16 @@ namespace OneGame::Engine
         m_currentMouse[static_cast<uint32_t>(button)] = down;
     }
 
+    void InputSystem::SetMouseDelta(float dx, float dy)
+    {
+        m_mouseDX = dx;
+        m_mouseDY = dy;
+        m_mouseX = m_mouseX + dx;
+        m_mouseY = m_mouseY + dy;
+    }
+
     void InputSystem::SetMousePosition(float x, float y)
     {
-        m_mouseDX = x - m_mouseX;
-        m_mouseDY = y - m_mouseY;
         m_mouseX = x;
         m_mouseY = y;
     }

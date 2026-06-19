@@ -28,6 +28,17 @@ namespace OneGame::Engine::ECS
 			forward.z = cos(pitch) * cos(yaw);
 			forward = math::normalize(forward);
 
+			glm::vec3 worldUp = { 0, 1, 0 };
+
+			// Horizontal movement direction
+			//glm::vec3 flatForward = forward;
+			//flatForward.y = 0.0f;
+			//flatForward = glm::normalize(flatForward);
+
+			//glm::vec3 right = glm::normalize(glm::cross(flatForward, worldUp));
+
+			//position += dwx * right + dwz * flatForward;
+
 			glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
 
 			position += dwx * math::cross(forward, glm::vec3(0, 1, 0)) + dwz * forward;
@@ -54,18 +65,19 @@ namespace OneGame::Engine::ECS
 		static float speed = 10.f;
 		auto cameraEntity = m_gameWorld.view<ComponentCamera>().front();
 		auto& camera = m_gameWorld.get<ComponentCamera>(cameraEntity);
-		//auto dx = ctx.input.GetMouseDX() * sens;
-		//auto dy = ctx.input.GetMouseDY() * sens;
-		float dx = 0;
-		float dy = 0;
-		if (ctx.input.IsKeyDown(KeyCode::KY_J))
-			dx -= dt * sens;
-		if (ctx.input.IsKeyDown(KeyCode::KY_L))
-			dx += dt * sens;
-		if (ctx.input.IsKeyDown(KeyCode::KY_I))
-			dy += dt * sens;
-		if (ctx.input.IsKeyDown(KeyCode::KY_K))
-			dy -= dt * sens;
+		float dx = ctx.input.GetMouseDX() * sens * dt;
+		float dy = -ctx.input.GetMouseDY() * sens * dt;
+
+		//float dx = 0;
+		//float dy = 0;
+		//if (ctx.input.IsKeyDown(KeyCode::KY_J))
+		//	dx -= dt * sens;
+		//if (ctx.input.IsKeyDown(KeyCode::KY_L))
+		//	dx += dt * sens;
+		//if (ctx.input.IsKeyDown(KeyCode::KY_I))
+		//	dy += dt * sens;
+		//if (ctx.input.IsKeyDown(KeyCode::KY_K))
+		//	dy -= dt * sens;
 		float dwx = 0;
 		float dwz = 0;
 		if (ctx.input.IsKeyDown(KeyCode::KY_A))

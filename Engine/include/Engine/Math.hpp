@@ -46,6 +46,18 @@ namespace OneGame::Engine::math
 
     const float pi = glm::pi<float>();
 
+    template<typename T>
+    inline float dist(T a, T b)
+    {
+        return glm::distance(a, b);
+    }
+
+    template<typename T>
+    inline float dist_sq(T a, T b)
+    {
+        return glm::distance2(a, b);
+    }
+
     inline float clamp(float val, float low, float high)
     {
         return glm::clamp(val, low, high);

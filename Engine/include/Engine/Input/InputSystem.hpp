@@ -19,6 +19,7 @@ namespace OneGame::Engine
 
         void SetKey(KeyCode key, bool down);
         void SetMouseButton(MouseButton button, bool down);
+        void SetMouseDelta(float dx, float dy);
         void SetMousePosition(float x, float y);
 
         bool IsKeyDown(KeyCode key) const;

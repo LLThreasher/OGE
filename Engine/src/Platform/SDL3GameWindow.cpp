@@ -137,6 +137,7 @@ namespace OneGame::Engine
         double timeAccumulator = 0.0f;
         while (!readyToClose)
         {
+            m_input.NewFrame();
             while (SDL_PollEvent(&event))
             {
                 switch (event.type)
@@ -158,6 +159,7 @@ namespace OneGame::Engine
                     m_input.SetKey(GetEngineKey(event.key.key), false);
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
+                    m_input.SetMouseDelta(event.motion.xrel, event.motion.yrel);
                     m_input.SetMousePosition(event.motion.x, event.motion.y);
                     break;
                 }

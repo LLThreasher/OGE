@@ -108,6 +108,22 @@ namespace OneGame::Engine
 		renderer.Render(backend.get(), dt);
 		auto endRes = backend->EndFrame();
 		world.clear();
+
+		for (auto& action : appCtx.outSceneActions)
+		{
+			if (action.type == SceneActionType::SetMouseWarpping)
+			{
+				if (action.setMouseWarpping.enabled)
+				{
+					appRes = appRes | AppFrameAction::WrapMouse;
+				}
+				else
+				{
+					appRes = appRes | AppFrameAction::UnwrapMouse;
+				}
+			}
+		}
+
 		if (endRes == EndFrameAction::RecreateSurface)
 			return appRes | AppFrameAction::WaitSurface;
 

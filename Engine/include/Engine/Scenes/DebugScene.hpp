@@ -99,5 +99,7 @@ namespace OneGame::Engine
 		Terrain::TerrainMeshBuilder meshBuilder;
 
 		ECS::GameWorld gameWorld;
+
+		bool wrappingEnabled = false;
 	};
 }

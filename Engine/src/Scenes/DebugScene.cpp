@@ -37,18 +37,29 @@ namespace OneGame::Engine
 		auto handle = terrainData.chunkData.Create();
 		auto chunk = terrainData.chunkData.Get(handle);
 		chunk->Coords = { 0, 0, 0 };
-		for (size_t i = 0; i < 200; ++i)
-		{
-			auto x = Random::RandInt(0, 15);
-			auto y = Random::RandInt(0, 15);
-			auto z = Random::RandInt(0, 15);
-			assert(x < 16);
-			assert(y < 16);
-			assert(z < 16);
+		//for (size_t i = 0; i < 200; ++i)
+		//{
+		//	auto x = Random::RandInt(0, 15);
+		//	auto y = Random::RandInt(0, 15);
+		//	auto z = Random::RandInt(0, 15);
+		//	assert(x < 16);
+		//	assert(y < 16);
+		//	assert(z < 16);
 
-			auto idx = Terrain::GetBlockIndex(x, y, z);
-			assert(idx < 16 * 16 * 16);
-			chunk->data[idx] = 256;
+		//	auto idx = Terrain::GetBlockIndex(x, y, z);
+		//	assert(idx < 16 * 16 * 16);
+		//	chunk->data[idx] = 256;
+		//}
+		for (size_t x = 0; x < 16; ++x)
+		{
+			for (size_t y = 0; y < 16; ++y)
+			{
+				for (size_t z = 0; z < 16; ++z)
+				{
+					auto idx = Terrain::GetBlockIndex(x, y, z);
+					chunk->data[idx] = 256;
+				}
+			}
 		}
 		terrainData.coordToChunks[{0, 0, 0}] = handle;
 		{
@@ -96,6 +107,25 @@ namespace OneGame::Engine
 		world.emplace<Terrain::ActiveChunkTag>(chunkEntity);
 		Terrain::ChunkMesh cm{ 0, 0, 0, testSlot };
 		world.emplace<Terrain::ChunkMesh>(chunkEntity, cm);
-		gameWorld.Update(context, dt);
+
+		if (wrappingEnabled)
+			gameWorld.Update(context, dt);
+
+		if (context.input.IsKeyDown(KeyCode::KY_G))
+		{
+			SceneAction a{};
+			a.type = SceneActionType::SetMouseWarpping;
+			a.setMouseWarpping.enabled = true;
+			context.outSceneActions.emplace_back(a);
+			wrappingEnabled = true;
+		}
+		else if (context.input.IsKeyDown(KeyCode::KY_ESCAPE))
+		{
+			SceneAction a{};
+			a.type = SceneActionType::SetMouseWarpping;
+			a.setMouseWarpping.enabled = false;
+			context.outSceneActions.emplace_back(a);
+			wrappingEnabled = false;
+		}
 	}
 }
