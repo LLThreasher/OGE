@@ -34,6 +34,7 @@ namespace OneGame::Engine::Graphics
         TestPass testPass;
         DebugInfoPass debugInfoPass;
         TerrainPass terrainPass;
+        entt::entity cameraEntity;
 
         bool isFirstFrame = true;
     };

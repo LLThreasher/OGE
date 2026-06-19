@@ -1,5 +1,3 @@
-#pragma once
-
 #include "VulkanCommandBuffer.hpp"
 #include "VulkanPipeline.hpp"
 #include "VulkanFrameBuffer.hpp"

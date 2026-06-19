@@ -46,6 +46,21 @@ namespace OneGame::Engine::math
 
     const float pi = glm::pi<float>();
 
+    inline float clamp(float val, float low, float high)
+    {
+        return glm::clamp(val, low, high);
+    }
+
+    inline vec3 normalize(vec3 val)
+    {
+        return glm::normalize(val);
+    }
+
+    inline vec3 cross(vec3 a, vec3 b)
+    {
+        return glm::cross(a, b);
+    }
+
     inline float radians(float degrees)
     {
         return glm::radians(degrees);
@@ -74,6 +89,16 @@ namespace OneGame::Engine::math
     inline mat4 rotate(const mat4& m, float angleRadians, const vec3& axis)
     {
         return glm::rotate(m, angleRadians, axis);
+    }
+
+    inline mat4 rotate(const quat& q)
+    {
+        return glm::mat4_cast(q);
+    }
+
+    inline quat conjugate(const quat& q)
+    {
+        return glm::conjugate(q);
     }
 
     inline mat4 scale(const mat4& m, const vec3& v)

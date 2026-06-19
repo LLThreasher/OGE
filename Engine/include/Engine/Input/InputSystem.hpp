@@ -31,6 +31,8 @@ namespace OneGame::Engine
 
         float GetMouseX() const;
         float GetMouseY() const;
+        float GetMouseDX() const;
+        float GetMouseDY() const;
 
     private:
         std::array<bool, MaxKeys> m_currentKeys{};
@@ -42,6 +44,8 @@ namespace OneGame::Engine
         std::array<TouchPoint, MaxTouches> m_currentTouch{};
         std::array<TouchPoint, MaxTouches> m_previousTouch{};
 
+        float m_mouseDX = 0.0f;
+        float m_mouseDY = 0.0f;
         float m_mouseX = 0.0f;
         float m_mouseY = 0.0f;
     };

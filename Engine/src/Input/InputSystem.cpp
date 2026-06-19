@@ -22,6 +22,8 @@ namespace OneGame::Engine
 
     void InputSystem::SetMousePosition(float x, float y)
     {
+        m_mouseDX = x - m_mouseX;
+        m_mouseDY = y - m_mouseY;
         m_mouseX = x;
         m_mouseY = y;
     }
@@ -58,5 +60,7 @@ namespace OneGame::Engine
 
     float InputSystem::GetMouseX() const { return m_mouseX; }
     float InputSystem::GetMouseY() const { return m_mouseY; }
+    float InputSystem::GetMouseDX() const { return m_mouseDX; }
+    float InputSystem::GetMouseDY() const { return m_mouseDY; }
 
 }

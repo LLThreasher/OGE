@@ -14,8 +14,8 @@ namespace OneGame::Engine::Graphics::Vulkan
         }
         virtual ~VulkanCommandBuffer() = default;
 
-        void Begin();
-        void End();
+        void Begin() override;
+        void End() override;
 
         // ----- Render pass -----
         void BeginRenderPass(const GPURenderPassHandle renderPass, const GPUFrameBufferHandle frameBuffer, const ClearValues& clearValues) override;

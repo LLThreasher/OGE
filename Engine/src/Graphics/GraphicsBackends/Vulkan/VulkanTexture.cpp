@@ -1,5 +1,3 @@
-#pragma once
-
 #include <cassert>
 #include "Vulkan.hpp"
 #include "VulkanTexture.hpp"

@@ -1,5 +1,8 @@
 #pragma once
 #include <cassert>
+#include <cinttypes>
+#include <array>
+#include "Engine/ObjectType.hpp"
 
 namespace OneGame::Engine::Terrain
 {
@@ -18,8 +21,19 @@ namespace OneGame::Engine::Terrain
 	static constexpr char CYAN = 5;
 	static constexpr char MAGENTA = 6;
 
+	constexpr int CHUNK_SIZE_X = 16;
+	constexpr int CHUNK_SIZE_Y = 16;
+	constexpr int CHUNK_SIZE_Z = 16;
+	constexpr int CHUNK_SIZE_TOTAL = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;
+	constexpr int CHUNK_SHIFT_X = 0;
+	constexpr int CHUNK_SHIFT_Y = 4;
+	constexpr int CHUNK_SHIFT_Z = 8;
+
 	static constexpr uint32_t CHUNK_VERTEX_BYTE_SIZE = 64 * 1024; // 64 kb
 	static constexpr uint32_t CHUNK_INDEX_BYTE_SIZE = 48 * 1024; // 48 kb
+
+	static constexpr uint32_t MAX_STAGING_PER_FRAME = 6;
+	static constexpr uint32_t MAX_VISIBLE_CHUNK_NUM = 160;
 
 	struct ActiveChunkTag
 	{
@@ -42,22 +56,26 @@ namespace OneGame::Engine::Terrain
 	struct Vertex
 	{
 
-		uint16_t PackedXYZColor;
+		uint16_t PackedXYZ;
 		uint8_t PackedLightAndAO; // 2 extra bit here
 		uint8_t PackedUV;
 
-		Vertex(uint8_t x, uint8_t y, uint8_t z, uint8_t color, uint8_t light, uint8_t ao, uint8_t u, uint8_t v)
+		Vertex(int x, int y, int z, uint8_t color, uint8_t light, uint8_t ao, uint8_t u, uint8_t v)
 		{
-			assert(x < 16 && y < 16 && z < 16);
+			//if (!(x < 32 && y < 32 && z < 32 && x >= 0 && y >= 0 && z >= 0))
+			//{
+			//	throw std::runtime_error("wrong");
+			//}
+
+			assert(x < 32 && y < 32 && z < 32);
 			assert(color < 16);
 			assert(light < 16 && ao < 4);
 			assert(u < 16 && v < 16);
 
-			PackedXYZColor = (uint16_t)(
-				(x & 0xF) |
-				((y & 0xF) << 4) |
-				((z & 0xF) << 8) |
-				((color & 0xF) << 12)
+			PackedXYZ = (uint16_t)(
+				(x & 0x1F) |
+				((y & 0x1F) << 5) |
+				((z & 0x1F) << 10)
 				);
 
 			PackedLightAndAO =
@@ -65,6 +83,39 @@ namespace OneGame::Engine::Terrain
 					((ao & 0x3) << 4));
 
 			PackedUV = (uint8_t)((u & 0xF) | ((v & 0xF) << 4));
+		}
+	};
+
+	static constexpr uint32_t MAXIMUM_VERTEX_BYTE_SIZE = 16 * 16 * 16 / 2 * 4 * 6 * sizeof(Vertex); // 192 kb
+	static constexpr uint32_t MAXIMUM_INDEX_BYTE_SIZE = 16 * 16 * 16 / 2 * 6 * 6 * sizeof(uint16_t); // 144 kb
+
+	struct TexturedQuad
+	{
+		//uint16_t PackedXYZFace;		// xyz = 3*4 & face (0-5) 3 bit =>  1 extra bit
+		//uint16_t PackedLights;		// light per vertex = 4 * 4 = 16 bits
+		//uint16_t Color;				// color tint R5G5B5
+		//uint8_t TextureSlot;			// texture slot on a 16 * 16 atlas
+		//uint8_t PackedAO;				// AO for 4 corners = 2 * 4 = 8 bits
+		uint64_t data = 0u;
+
+		TexturedQuad(uint8_t x, uint8_t y, uint8_t z, uint8_t face, uint8_t textureSlot, ColorRGBA8 color, std::array<uint8_t, 4> lights, std::array<uint8_t, 4> AOs) :
+			data(x & 0xF |
+				(((uint64_t)y & 0xF) << 4) |
+				(((uint64_t)z & 0xF) << 8) |
+				(((uint64_t)face & 0x7) << 12) |
+				(((uint64_t)lights[0] & 0xF) << 16) | (((uint64_t)lights[1] & 0xF) << 20) |
+				(((uint64_t)lights[2] & 0xF) << 24) | (((uint64_t)lights[3] & 0xF) << 28) |
+				(((uint64_t)(color.r >> 3) & 0x1F) << 32) | (((uint64_t)(color.g >> 3) & 0x1F) << 37) |
+				(((uint64_t)(color.b >> 3) & 0x1F) << 42) |
+				(((uint64_t)textureSlot) << 48) |
+				(((uint64_t)AOs[0] & 0x3) << 56) | (((uint64_t)AOs[1] & 0x3) << 58) |
+				(((uint64_t)AOs[2] & 0x3) << 60) | (((uint64_t)AOs[3] & 0x3) << 62)
+			)
+		{
+			assert(x < 16 && y < 16 && z < 16);
+			assert(face < 6);
+			assert(lights[0] < 16 && lights[1] < 16 && lights[2] < 16 && lights[3] < 16);
+			assert(AOs[0] < 4 && AOs[1] < 4 && AOs[2] < 4 && AOs[3] < 4);
 		}
 	};
 }

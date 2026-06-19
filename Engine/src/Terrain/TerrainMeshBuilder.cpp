@@ -1,15 +1,11 @@
 #include "Engine/Terrain/TerrainMeshBuilder.hpp"
 #include "Engine/Terrain/BlockManager.hpp"
 
+#define LOGGER_NAME "Engine"
+#include "Engine/Logger.hpp"
 
 namespace OneGame::Engine::Terrain
 {
-	static constexpr uint32_t MAX_STAGING_PER_FRAME = 6;
-	static constexpr uint32_t MAX_VISIBLE_CHUNK_NUM = 160;
-
-	static constexpr uint32_t MAXIMUM_VERTEX_BYTE_SIZE = 16 * 16 * 16 / 2 * 4 * 6 * sizeof(Vertex); // 192 kb
-	static constexpr uint32_t MAXIMUM_INDEX_BYTE_SIZE = 16 * 16 * 16 / 2 * 6 * 6 * sizeof(uint16_t); // 144 kb
-
 	constexpr Point3 perFaceOffset[6] = {
 		{0, 0, 1},
 		{0, 0, -1},
@@ -52,19 +48,19 @@ namespace OneGame::Engine::Terrain
 
 	void TerrainMeshBuilder::Initialize(AssetBundleWriter* assets)
 	{
-		//assets->AllocateMesh("terrainMesh", MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE, MAX_VISIBLE_CHUNK_NUM * CHUNK_INDEX_BYTE_SIZE, m_terrainMesh);
+		assets->LoadMesh("terrainMesh", m_terrainMesh);
 	}
 
 	static size_t MaskIndex(size_t z, size_t y)
 	{
-		return (z << 4) + y;
+		assert(0 <= y && y < 18);
+		assert(0 <= z && z < 18);
+		return (z * 18) + y;
 	}
 
-	void TerrainMeshBuilder::ExecuteBuildChunkMesh(MeshingWorkerContextHandle handle)
+	void ExecuteBuildChunkMeshJob(const ChunkMeshingWorkerContext* _context, BuiltChunkMesh* context)
 	{
-		auto _context = m_terrain.meshingWorkerContexts.Get(handle);
-		auto context = m_terrain.builtChunkMeshes.Get(_context->chunkMeshHandle);
-		uint32_t* masks = _context->opaqueMasks;
+		const uint32_t* masks = _context->opaqueMasks;
 		for (size_t z = 1; z < CHUNK_SIZE_Z + 1; ++z)
 		{
 			for (size_t y = 1; y < CHUNK_SIZE_Y + 1; ++y)
@@ -73,14 +69,14 @@ namespace OneGame::Engine::Terrain
 				uint32_t posX = row & ~(row << 1);
 				uint32_t negX = row & ~(row >> 1);
 
-				uint32_t posZ = row & ~masks[MaskIndex(z+1, y)];
-				uint32_t negZ = row & ~masks[MaskIndex(z-1, y)];
+				uint32_t posZ = row & ~masks[MaskIndex(z + 1, y)];
+				uint32_t negZ = row & ~masks[MaskIndex(z - 1, y)];
 
-				uint32_t posY = row & ~masks[MaskIndex(z, y+1)];
-				uint32_t negY = row & ~masks[MaskIndex(z, y-1)];
-				
+				uint32_t posY = row & ~masks[MaskIndex(z, y + 1)];
+				uint32_t negY = row & ~masks[MaskIndex(z, y - 1)];
+
 				uint32_t bits;
-				bits = posX;
+				bits = posX & 0x1FFFE;
 				while (bits)
 				{
 					int bx = __builtin_ctz(bits);
@@ -93,23 +89,23 @@ namespace OneGame::Engine::Terrain
 					uint16_t base = (uint16_t)context->vertices.size();
 
 					// +X face
-					context->vertices.emplace_back(x+1, wy,   wz+1,  0,15,0,0,0);
-					context->vertices.emplace_back(x+1, wy,   wz,    0,15,0,0,0);
-					context->vertices.emplace_back(x+1, wy+1, wz,    0,15,0,0,0);
-					context->vertices.emplace_back(x+1, wy+1, wz+1,  0,15,0,0,0);
+					context->vertices.emplace_back(x + 1, wy, wz + 1, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy, wz, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy + 1, wz, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy + 1, wz + 1, 0, 15, 0, 0, 0);
 
 					size_t oldSize = context->indices.size();
 					context->indices.resize(oldSize + 6);
 					uint16_t* dst = context->indices.data() + oldSize;
-					dst[0] = base+0;
-					dst[1] = base+1;
-					dst[2] = base+2;
-					dst[3] = base+2;
-					dst[4] = base+3;
-					dst[5] = base+0;
+					dst[0] = base + 0;
+					dst[1] = base + 1;
+					dst[2] = base + 2;
+					dst[3] = base + 2;
+					dst[4] = base + 3;
+					dst[5] = base + 0;
 				}
 
-				bits = negX;
+				bits = negX & 0x1FFFE;
 				while (bits)
 				{
 					int bx = __builtin_ctz(bits);
@@ -122,23 +118,23 @@ namespace OneGame::Engine::Terrain
 					uint16_t base = (uint16_t)context->vertices.size();
 
 					// -X face
-					context->vertices.emplace_back(x, wy,   wz,    0,15,0,0,0);
-					context->vertices.emplace_back(x, wy,   wz+1,  0,15,0,0,0);
-					context->vertices.emplace_back(x, wy+1, wz+1,  0,15,0,0,0);
-					context->vertices.emplace_back(x, wy+1, wz,    0,15,0,0,0);
-					
+					context->vertices.emplace_back(x, wy, wz, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x, wy, wz + 1, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x, wy + 1, wz + 1, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x, wy + 1, wz, 0, 15, 0, 0, 0);
+
 					size_t oldSize = context->indices.size();
 					context->indices.resize(oldSize + 6);
 					uint16_t* dst = context->indices.data() + oldSize;
-					dst[0] = base+0;
-					dst[1] = base+1;
-					dst[2] = base+2;
-					dst[3] = base+2;
-					dst[4] = base+3;
-					dst[5] = base+0;
+					dst[0] = base + 0;
+					dst[1] = base + 1;
+					dst[2] = base + 2;
+					dst[3] = base + 2;
+					dst[4] = base + 3;
+					dst[5] = base + 0;
 				}
 
-				bits = posY;
+				bits = posY & 0x1FFFE;
 				while (bits)
 				{
 					int bx = __builtin_ctz(bits);
@@ -151,23 +147,23 @@ namespace OneGame::Engine::Terrain
 					uint16_t base = (uint16_t)context->vertices.size();
 
 					// +Y face
-					context->vertices.emplace_back(x,   wy+1, wz+1,  0,15,0,0,0);
-					context->vertices.emplace_back(x+1, wy+1, wz+1,  0,15,0,0,0);
-					context->vertices.emplace_back(x+1, wy+1, wz,    0,15,0,0,0);
-					context->vertices.emplace_back(x,   wy+1, wz,    0,15,0,0,0);
-					
+					context->vertices.emplace_back(x, wy + 1, wz + 1, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy + 1, wz + 1, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy + 1, wz, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x, wy + 1, wz, 0, 15, 0, 0, 0);
+
 					size_t oldSize = context->indices.size();
 					context->indices.resize(oldSize + 6);
 					uint16_t* dst = context->indices.data() + oldSize;
-					dst[0] = base+0;
-					dst[1] = base+1;
-					dst[2] = base+2;
-					dst[3] = base+2;
-					dst[4] = base+3;
-					dst[5] = base+0;
+					dst[0] = base + 0;
+					dst[1] = base + 1;
+					dst[2] = base + 2;
+					dst[3] = base + 2;
+					dst[4] = base + 3;
+					dst[5] = base + 0;
 				}
-				
-				bits = negY;
+
+				bits = negY & 0x1FFFE;
 				while (bits)
 				{
 					int bx = __builtin_ctz(bits);
@@ -180,23 +176,23 @@ namespace OneGame::Engine::Terrain
 					uint16_t base = (uint16_t)context->vertices.size();
 
 					// -Y face
-					context->vertices.emplace_back(x,   wy, wz,    0,15,0,0,0);
-					context->vertices.emplace_back(x+1, wy, wz,    0,15,0,0,0);
-					context->vertices.emplace_back(x+1, wy, wz+1,  0,15,0,0,0);
-					context->vertices.emplace_back(x,   wy, wz+1,  0,15,0,0,0);
-					
+					context->vertices.emplace_back(x, wy, wz, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy, wz, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy, wz + 1, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x, wy, wz + 1, 0, 15, 0, 0, 0);
+
 					size_t oldSize = context->indices.size();
 					context->indices.resize(oldSize + 6);
 					uint16_t* dst = context->indices.data() + oldSize;
-					dst[0] = base+0;
-					dst[1] = base+1;
-					dst[2] = base+2;
-					dst[3] = base+2;
-					dst[4] = base+3;
-					dst[5] = base+0;
+					dst[0] = base + 0;
+					dst[1] = base + 1;
+					dst[2] = base + 2;
+					dst[3] = base + 2;
+					dst[4] = base + 3;
+					dst[5] = base + 0;
 				}
-				
-				bits = posZ;
+
+				bits = posZ & 0x1FFFE;
 				while (bits)
 				{
 					int bx = __builtin_ctz(bits);
@@ -209,23 +205,23 @@ namespace OneGame::Engine::Terrain
 					uint16_t base = (uint16_t)context->vertices.size();
 
 					// +Z face
-					context->vertices.emplace_back(x,   wy,   wz+1,  0,15,0,0,0);
-					context->vertices.emplace_back(x+1, wy,   wz+1,  0,15,0,0,0);
-					context->vertices.emplace_back(x+1, wy+1, wz+1,  0,15,0,0,0);
-					context->vertices.emplace_back(x,   wy+1, wz+1,  0,15,0,0,0);
-					
+					context->vertices.emplace_back(x, wy, wz + 1, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy, wz + 1, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x + 1, wy + 1, wz + 1, 0, 15, 0, 0, 0);
+					context->vertices.emplace_back(x, wy + 1, wz + 1, 0, 15, 0, 0, 0);
+
 					size_t oldSize = context->indices.size();
 					context->indices.resize(oldSize + 6);
 					uint16_t* dst = context->indices.data() + oldSize;
-					dst[0] = base+0;
-					dst[1] = base+1;
-					dst[2] = base+2;
-					dst[3] = base+2;
-					dst[4] = base+3;
-					dst[5] = base+0;
+					dst[0] = base + 0;
+					dst[1] = base + 1;
+					dst[2] = base + 2;
+					dst[3] = base + 2;
+					dst[4] = base + 3;
+					dst[5] = base + 0;
 				}
-				
-				bits = negZ;
+
+				bits = negZ & 0x1FFFE;
 				while (bits)
 				{
 					int bx = __builtin_ctz(bits);
@@ -238,23 +234,30 @@ namespace OneGame::Engine::Terrain
 					uint16_t base = (uint16_t)context->vertices.size();
 
 					// -Z face
-					context->vertices.emplace_back(x+1, wy,   wz,  0,15,0,0,0);
-					context->vertices.emplace_back(x,   wy,   wz,  0,15,0,0,0);
-					context->vertices.emplace_back(x,   wy+1, wz,  0,15,0,0,0);
-					context->vertices.emplace_back(x+1, wy+1, wz,  0,15,0,0,0);
-					
+					context->vertices.emplace_back(x+1, wy,   wz, 0, 0xF, 0, 0x0, 0x0);
+					context->vertices.emplace_back(x,	wy,	  wz, 0, 0xF, 0, 0xF, 0x0);
+					context->vertices.emplace_back(x,	wy+1, wz, 0, 0xF, 0, 0xF, 0xF);
+					context->vertices.emplace_back(x+1, wy+1, wz, 0, 0xF, 0, 0x0, 0xF);
+
 					size_t oldSize = context->indices.size();
 					context->indices.resize(oldSize + 6);
 					uint16_t* dst = context->indices.data() + oldSize;
-					dst[0] = base+0;
-					dst[1] = base+1;
-					dst[2] = base+2;
-					dst[3] = base+2;
-					dst[4] = base+3;
-					dst[5] = base+0;
+					dst[0] = base + 0;
+					dst[1] = base + 1;
+					dst[2] = base + 2;
+					dst[3] = base + 2;
+					dst[4] = base + 3;
+					dst[5] = base + 0;
 				}
 			}
 		}
+	}
+
+	void TerrainMeshBuilder::ExecuteBuildChunkMesh(MeshingWorkerContextHandle handle)
+	{
+		auto _context = m_terrain.meshingWorkerContexts.Get(handle);
+		auto context = m_terrain.builtChunkMeshes.Get(_context->chunkMeshHandle);
+		ExecuteBuildChunkMeshJob(_context, context);
 		m_terrain.uploadMeshQueue.push(std::make_tuple(_context->chunkHandle, _context->chunkMeshHandle));
 		m_terrain.meshingWorkerContexts.Destroy(handle);
 	}
@@ -264,7 +267,7 @@ namespace OneGame::Engine::Terrain
 		uint32_t runningVertexCount = m_terrain.meshingWorkerContexts.Size() * CHUNK_VERTEX_BYTE_SIZE;
 		static_assert(std::is_default_constructible_v<ChunkMeshingWorkerContext>);
 		auto contextHandle = m_terrain.meshingWorkerContexts.Create();
-		while (runningVertexCount < vertexBudget)
+		while (runningVertexCount < vertexBudget && !m_terrain.buildMeshQueue.empty())
 		{
 			auto context = m_terrain.meshingWorkerContexts.Get(contextHandle);
 			while (!m_terrain.buildMeshQueue.empty())
@@ -278,8 +281,11 @@ namespace OneGame::Engine::Terrain
 				ChunkHandle neighbors[6] = {};
 				for (size_t i = 0; i < 6; ++i)
 				{
-					auto it = m_terrain.coordToChunks.find(perFaceOffset[i] + data->Coords);
-					if (it == m_terrain.coordToChunks.end() && !(i == FACE_DOWN && data->Coords.y == 0))
+					if (i == FACE_DOWN && data->Coords.y == 0)
+						continue;
+					auto pos = perFaceOffset[i] + data->Coords;
+					auto it = m_terrain.coordToChunks.find(pos);
+					if (it == m_terrain.coordToChunks.end())
 					{
 						incompleteNeighbors = true;
 						break;
@@ -296,7 +302,10 @@ namespace OneGame::Engine::Terrain
 					{
 						for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
 						{
-							context->opaqueMasks[((z + 1) << 4) + (y + 1)] |= IsOpaque(data->data[GetBlockIndex(x+1, y+1, z+1)]) << (x + 1);
+							size_t blkIdx = GetBlockIndex(x, y, z);
+							assert(blkIdx < CHUNK_SIZE_TOTAL);
+							uint32_t opaque = IsOpaque(data->data[blkIdx]);
+							context->opaqueMasks[MaskIndex(z + 1, y + 1)] |= opaque << (x + 1);
 						}
 					}
 				}
@@ -312,7 +321,7 @@ namespace OneGame::Engine::Terrain
 						{
 							uint8_t extendedX = i == 0 ? 17 : 0;
 							uint8_t neighborX = i == 0 ? 0 : 15;
-							context->opaqueMasks[((z + 1) << 4) + (y + 1)] |= IsOpaque(neighborData[GetBlockIndex(neighborX, y, z)]) << extendedX;
+							context->opaqueMasks[MaskIndex(z + 1, y + 1)] |= IsOpaque(neighborData[GetBlockIndex(neighborX, y, z)]) << extendedX;
 						}
 					}
 				}
@@ -321,14 +330,14 @@ namespace OneGame::Engine::Terrain
 				for (size_t i = 0; i < 2; ++i)
 				{
 					// bottom of world
-					if (i == 0 && data->Coords.y == 0)
+					if (i == 1 && data->Coords.y == 0)
 					{
 						for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
 						{
 							for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
 							{
 								uint8_t extendedY = 0;
-								context->opaqueMasks[((z + 1) << 4) + extendedY] |= 1 << (x + 1);
+								context->opaqueMasks[MaskIndex(z + 1, extendedY)] |= 1 << (x + 1);
 							}
 						}
 						continue;
@@ -340,7 +349,7 @@ namespace OneGame::Engine::Terrain
 						{
 							uint8_t extendedY = i == 0 ? 17 : 0;
 							uint8_t neighborY = i == 0 ? 0 : 15;
-							context->opaqueMasks[((z + 1) << 4) + extendedY] |= IsOpaque(neighborData[GetBlockIndex(x, neighborY, z)]) << (x + 1);
+							context->opaqueMasks[MaskIndex(z + 1, extendedY)] |= IsOpaque(neighborData[GetBlockIndex(x, neighborY, z)]) << (x + 1);
 						}
 					}
 				}
@@ -355,7 +364,7 @@ namespace OneGame::Engine::Terrain
 						{
 							uint8_t extendedZ = i == 0 ? 17 : 0;
 							uint8_t neighborZ = i == 0 ? 0 : 15;
-							context->opaqueMasks[(extendedZ << 4) + (y + 1)] |= IsOpaque(neighborData[GetBlockIndex(x, y, neighborZ)]) << (x + 1);
+							context->opaqueMasks[MaskIndex(extendedZ, y + 1)] |= IsOpaque(neighborData[GetBlockIndex(x, y, neighborZ)]) << (x + 1);
 						}
 					}
 				}

@@ -1,8 +1,12 @@
 #include "Engine/Graphics/TerrainPass.hpp"
+#include "Engine/Terrain/TerrainVertexFormat.hpp"
+#include "Engine/Graphics/PresentationObjects.hpp"
 #include <entt/entt.hpp>
 
 namespace OneGame::Engine::Graphics
 {
+	using namespace Terrain;
+
 	void TerrainPass::Initialize(IGraphicsBackend* backend, InitContext& ctxt)
 	{
 		BindingGroupLayoutDesc layout{};
@@ -11,7 +15,7 @@ namespace OneGame::Engine::Graphics
 		layout.dynamicBufferMask = 1 << 1;
 		bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
 
-		ctxt.assets->LoadMesh("terrainMesh", terrainMesh);
+		ctxt.assets->AllocateMesh("terrainMesh", MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE, MAX_VISIBLE_CHUNK_NUM * CHUNK_INDEX_BYTE_SIZE, terrainMesh);
 		ctxt.assets->LoadTexture("blocks.png", blockTexture);
 
 		{
@@ -110,21 +114,27 @@ namespace OneGame::Engine::Graphics
 
 	void TerrainPass::Prepare(PrepareContext& context)
 	{
-		auto view = math::lookAt(
-			math::vec3(5, 5, 5),
-			math::vec3(0, 0, 0),
-			math::vec3(0, 1, 0));
+		math::mat4 view;
+		{
+			auto views = context.world->view<PViewTransform>();
+			if (views.empty())
+			{
+				view = math::lookAt(
+					math::vec3(20, 20, 20),
+					math::vec3(0, 0, 0),
+					math::vec3(0, 1, 0));
+			}
+			else
+			{
+				view = context.world->get<PViewTransform>(views.front()).view;
+			}
+		}
 
 		auto proj = math::get_perspective_rot(context.backend->SwapchainPretransform()) * math::perspective(
 			math::radians(45.0f),
 			context.backend->SwapchainAspect(),
 			0.1f,
-			10.0f);
-
-		struct ComponentDebugText
-		{
-			std::string text;
-		};
+			100.f);
 
 		activeChunkSlots.clear();
 		ubos.clear();

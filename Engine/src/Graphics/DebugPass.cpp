@@ -1,6 +1,7 @@
 #include <sstream>
 #include "Engine/Graphics/DebugPass.hpp"
 #include "stb_easy_font.h"
+#include "Engine/Graphics/PresentationObjects.hpp"
 
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
@@ -65,7 +66,7 @@ namespace OneGame::Engine::Graphics
     void DebugInfoPass::Prepare(PrepareContext& ctx)
     {
         std::stringstream ss;
-        auto view = ctx.world->view<ComponentDebugText>();
+        auto view = ctx.world->view<PDebugText>();
         for (auto [_, dbgText] : view.each())
         {
             ss << dbgText.text << std::endl;
@@ -85,6 +86,11 @@ namespace OneGame::Engine::Graphics
             vertices[3] = { {5.f, 65.f + height, 0.f}, {0, 0, 0, 128} };
 
             numQuads = 1;
+        }
+        else
+        {
+            numQuads = 0;
+            return;
         }
 
         numQuads += stb_easy_font_print(10.f, 60.f, const_cast<char*>(cs), NULL, &vertices[4], (NUM_DEBUG_VERTICES - 4) * sizeof(Vertex));

@@ -124,60 +124,6 @@ namespace OneGame::Engine
 		20,21,22, 22,23,20   // bottom
 	};
 
-	const std::vector<Terrain::Vertex> chunk_zero_vertices =
-	{
-		// FRONT (+Z)
-		{ 0, 0, 1, 0, 0xF, 0, 0,  0  },
-		{ 1, 0, 1, 0, 0xF, 0, 15, 0  },
-		{ 1, 1, 1, 0, 0xF, 0, 15, 15 },
-		{ 0, 1, 1, 0, 0xF, 0, 0,  15 },
-
-		// BACK (-Z)
-		{ 1, 0, 0, 0, 0xF, 0, 0,  0  },
-		{ 0, 0, 0, 0, 0xF, 0, 15, 0  },
-		{ 0, 1, 0, 0, 0xF, 0, 15, 15 },
-		{ 1, 1, 0, 0, 0xF, 0, 0,  15 },
-
-		// LEFT (-X)
-		{ 0, 0, 0, 0, 0xF, 0, 0,  0  },
-		{ 0, 0, 1, 0, 0xF, 0, 15, 0  },
-		{ 0, 1, 1, 0, 0xF, 0, 15, 15 },
-		{ 0, 1, 0, 0, 0xF, 0, 0,  15 },
-
-		// RIGHT (+X)
-		{ 1, 0, 1, 0, 0xF, 0, 0,  0  },
-		{ 1, 0, 0, 0, 0xF, 0, 15, 0  },
-		{ 1, 1, 0, 0, 0xF, 0, 15, 15 },
-		{ 1, 1, 1, 0, 0xF, 0, 0,  15 },
-
-		// TOP (+Y)
-		{ 0, 1, 1, 0, 0xF, 0, 0,  0  },
-		{ 1, 1, 1, 0, 0xF, 0, 15, 0  },
-		{ 1, 1, 0, 0, 0xF, 0, 15, 15 },
-		{ 0, 1, 0, 0, 0xF, 0, 0,  15 },
-
-		// BOTTOM (-Y)
-		{ 0, 0, 0, 0, 0xF, 0, 0,  0  },
-		{ 1, 0, 0, 0, 0xF, 0, 15, 0  },
-		{ 1, 0, 1, 0, 0xF, 0, 15, 15 },
-		{ 0, 0, 1, 0, 0xF, 0, 0,  15 },
-	};
-
-	//const std::vector<uint16_t> chunk_zero_indices =
-	//{
-	//	0,1,2, 2,3,0,        // front
-	//};
-
-	const std::vector<uint16_t> chunk_zero_indices =
-	{
-		0,1,2, 2,3,0,        // front
-		4,5,6, 6,7,4,        // back
-		8,9,10, 10,11,8,     // left
-		12,13,14, 14,15,12,  // right
-		16,17,18, 18,19,16,  // top
-		20,21,22, 22,23,20   // bottom
-	};
-
 	bool AssetBundleWriter::LoadMesh(const std::string_view& id, Mesh& outMesh)
 	{
 		auto it = m_assetManager->m_meshes.find(std::string(id));
@@ -198,19 +144,20 @@ namespace OneGame::Engine
 		}
 		else if (id == "terrainMesh")
 		{
-			AllocateMesh(id, 64 * 1024, 48 * 1024, outMesh);
-			CPUMesh cpuMesh{};
-			outMesh.indexCount = chunk_zero_indices.size();
-			LoadCpuMesh(
-				chunk_zero_vertices.data(),
-				chunk_zero_vertices.size() * sizeof(Terrain::Vertex),
-				chunk_zero_indices.data(),
-				chunk_zero_indices.size() * sizeof(uint16_t),
-				cpuMesh
-			);
-			LoadMesh(cpuMesh, outMesh);
-			m_assetManager->m_meshes.emplace(id, outMesh);
-			return true;
+			assert(false);
+			//AllocateMesh(id, 64 * 1024, 48 * 1024, outMesh);
+			//CPUMesh cpuMesh{};
+			//outMesh.indexCount = chunk_zero_indices.size();
+			//LoadCpuMesh(
+			//	chunk_zero_vertices.data(),
+			//	chunk_zero_vertices.size() * sizeof(Terrain::Vertex),
+			//	chunk_zero_indices.data(),
+			//	chunk_zero_indices.size() * sizeof(uint16_t),
+			//	cpuMesh
+			//);
+			//LoadMesh(cpuMesh, outMesh);
+			//m_assetManager->m_meshes.emplace(id, outMesh);
+			//return true;
 		}
 		return false;
 	}
@@ -227,7 +174,7 @@ namespace OneGame::Engine
 		memcpy(cpuMesh.indexData.cpuPtr, indices, indexBufSize);
 	}
 
-	void AssetBundleWriter::LoadMesh(CPUMesh& cpuMesh, Mesh& outMesh)
+	void AssetBundleWriter::LoadMesh(const CPUMesh& cpuMesh, const Mesh& outMesh)
 	{
 		{
 			BufferUploadDesc vdesc{};

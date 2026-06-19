@@ -13,10 +13,13 @@ namespace OneGame::Engine
 	using namespace Graphics;
 
 	constexpr uint32_t DEBUG_SCENE = 0;
+	constexpr uint32_t DEBUG_SCENE2 = 1;
 
 	GameApp::GameApp()
 	{
 		allScenes.push_back(std::unique_ptr<IScene>(new DebugScene()));
+		allScenes.push_back(std::unique_ptr<IScene>(new DebugScene2()));
+		TransferToScene(DEBUG_SCENE2);
 	}
 
 	GameApp::~GameApp() = default;
@@ -30,26 +33,19 @@ namespace OneGame::Engine
 		LOG_DEBUG("StreamingManager created");
 		renderer.Initialize(backend.get(), assetManager, streamingManager);
 		LOG_DEBUG("Renderer created");
-		gpuInfo = backend->GetGPUInfo();
-		auto gpuInfoEntity = world.create();
-		auto& gpuInfoText = world.emplace<DebugInfoPass::ComponentDebugText>(gpuInfoEntity);
-		gpuInfoText.text = gpuInfo.name;
-		debugInfoEntity = world.create();
-		world.emplace<DebugInfoPass::ComponentDebugText>(debugInfoEntity);
 
 		for (auto& scene : allScenes)
 		{
 			auto assetBundle = assetManager.CreateAssetBundle(&streamingManager, backend.get());
 			AppInitContext appInitCtx
 			{
+				backend.get(),
 				world,
-				renderer,
 				*assetBundle.get(),
 				dispatcher,
 			};
 			scene->Initialize(appInitCtx);
 		}
-		TransferToScene(DEBUG_SCENE);
 	}
 
 	void GameApp::TransferToScene(uint32_t scene)
@@ -75,21 +71,12 @@ namespace OneGame::Engine
 		if (res != BeginFrameAction::Continue)
 			return appRes | AppFrameAction::None;
 
-		if (accumTime >= 1.f)
-		{
-			currentFPS = 1 / (accumTime / frameCount);
-			accumTime = 0;
-			frameCount = 0;
-		}
-		auto memUsage = backend->GetGPUMemoryUsage();
-		world.get<DebugInfoPass::ComponentDebugText>(debugInfoEntity).text = std::format("FPS {}\nGPU Heap 0: {} MB / {} MB\nGPU Heap 1: {} MB / {} MB", currentFPS, memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024, memUsage.heapUsage[1] / 1024 / 1024, memUsage.heapBudget[1] / 1024 / 1024);
-
 		std::vector<SceneAction> outSceneActions;
 		auto interSceneBundle = assetManager.CreateAssetBundleAsync(&streamingManager, backend.get());
 		AppContext appCtx
 		{
+			backend.get(),
 			world,
-			renderer,
 			interSceneBundle.get(),
 			dispatcher,
 			input,
@@ -120,11 +107,9 @@ namespace OneGame::Engine
 
 		renderer.Render(backend.get(), dt);
 		auto endRes = backend->EndFrame();
+		world.clear();
 		if (endRes == EndFrameAction::RecreateSurface)
 			return appRes | AppFrameAction::WaitSurface;
-
-		++frameCount;
-		accumTime += dt;
 
 		return appRes;
 	}

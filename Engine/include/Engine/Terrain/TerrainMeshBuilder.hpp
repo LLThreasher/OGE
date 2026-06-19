@@ -16,14 +16,6 @@
 
 namespace OneGame::Engine::Terrain
 {
-	constexpr int CHUNK_SIZE_X = 16;
-	constexpr int CHUNK_SIZE_Y = 16;
-	constexpr int CHUNK_SIZE_Z = 16;
-	constexpr int CHUNK_SIZE_TOTAL = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;
-	constexpr int CHUNK_SHIFT_X = 0;
-	constexpr int CHUNK_SHIFT_Y = 4;
-	constexpr int CHUNK_SHIFT_Z = 8;
-
 	enum class TerrainObject
 	{
 		Chunk,
@@ -98,7 +90,7 @@ namespace OneGame::Engine::Terrain
 
 	inline size_t GetBlockIndex(uint8_t x, uint8_t y, uint8_t z)
 	{
-		return (x << CHUNK_SHIFT_X) + (y << CHUNK_SHIFT_Y) + (z << CHUNK_SHIFT_Z);
+		return ((size_t)x << CHUNK_SHIFT_X) + ((size_t)y << CHUNK_SHIFT_Y) + ((size_t)z << CHUNK_SHIFT_Z);
 	}
 
 	struct BuiltChunkMesh
@@ -194,6 +186,8 @@ namespace OneGame::Engine::Terrain
 		ResourcePool<TerrainObject::BuiltChunkMesh, BuiltChunkMesh> builtChunkMeshes;
 		ResourcePool<TerrainObject::MeshingWorkerContext, ChunkMeshingWorkerContext> meshingWorkerContexts;
 	};
+
+	void ExecuteBuildChunkMeshJob(const ChunkMeshingWorkerContext* _context, BuiltChunkMesh* context);
 
 	class TerrainMeshBuilder
 	{

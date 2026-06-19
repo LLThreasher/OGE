@@ -26,12 +26,6 @@ namespace OneGame::Engine::Graphics
 		};
 
 	public:
-		// always drawn on top left corner
-		struct ComponentDebugText
-		{
-			std::string text;
-		};
-
 		void Initialize(IGraphicsBackend* backend, InitContext& ctx) override;
 		void Shutdown(IGraphicsBackend* backend) override;
 		void Prepare(PrepareContext& context) override;

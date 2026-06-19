@@ -1,36 +1,42 @@
 add_library(Engine STATIC)
 
+message(STATUS "Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
 
-target_sources(Engine PRIVATE
- "src/JobSystem.cpp"
- "src/Logger.cpp"
- "src/Graphics/RingStagingBuffer.cpp"
- "src/Graphics/UIPass.cpp"
- "src/Graphics/UniformArena.cpp"
- "src/Graphics/GraphicsBackends/GraphicsBackends.cpp"
- "src/Graphics/GraphicsBackends/Vulkan/Vulkan.cpp"
- "src/Graphics/GraphicsBackends/Vulkan/VulkanBindingGroups.cpp"
- "src/Graphics/GraphicsBackends/Vulkan/VulkanBuffer.cpp"
- "src/Graphics/GraphicsBackends/Vulkan/VulkanCommandBuffer.cpp"
- "src/Graphics/GraphicsBackends/Vulkan/VulkanFence.cpp"
- "src/Graphics/GraphicsBackends/Vulkan/VulkanFrameBuffer.cpp"
- "src/Graphics/GraphicsBackends/Vulkan/VulkanPipeline.cpp"
- "src/Graphics/GraphicsBackends/Vulkan/VulkanTexture.cpp"
- "src/Graphics/Renderer.cpp"
- "src/Graphics/TerrainPass.cpp"
- "src/Graphics/MeshBuilder.cpp"
- "src/Terrain/TerrainMeshBuilder.cpp"
- "src/Platform/SDL3GameWindow.cpp"
- "src/Platform/SDL3AssetLoader.cpp"
- "src/Platform/Win32GameWindow.cpp"
- "src/Platform/Win32AssetLoader.cpp"
- "src/GameApp.cpp"
- "src/Graphics/DebugPass.cpp"
- "src/Platform/SDL3AssetLoader.cpp"
- "src/AssetManager.cpp"
- "src/StreamingManager.cpp"
- "src/Input/InputSystem.cpp"
-  "src/Scenes/DebugScene.cpp" "src/Terrain/TerrainService.cpp")
+target_sources(Engine
+PRIVATE
+    "src/JobSystem.cpp"
+    "src/Logger.cpp"
+    "src/Graphics/RingStagingBuffer.cpp"
+    "src/Graphics/UIPass.cpp"
+    "src/Graphics/UniformArena.cpp"
+    "src/Graphics/GraphicsBackends/GraphicsBackends.cpp"
+    "src/Graphics/GraphicsBackends/Vulkan/Vulkan.cpp"
+    "src/Graphics/GraphicsBackends/Vulkan/VulkanBindingGroups.cpp"
+    "src/Graphics/GraphicsBackends/Vulkan/VulkanBuffer.cpp"
+    "src/Graphics/GraphicsBackends/Vulkan/VulkanCommandBuffer.cpp"
+    "src/Graphics/GraphicsBackends/Vulkan/VulkanFence.cpp"
+    "src/Graphics/GraphicsBackends/Vulkan/VulkanFrameBuffer.cpp"
+    "src/Graphics/GraphicsBackends/Vulkan/VulkanPipeline.cpp"
+    "src/Graphics/GraphicsBackends/Vulkan/VulkanTexture.cpp"
+    "src/Graphics/Renderer.cpp"
+    "src/Graphics/TerrainPass.cpp"
+    "src/Graphics/MeshBuilder.cpp"
+    "src/Terrain/TerrainMeshBuilder.cpp"
+    "src/Platform/SDL3GameWindow.cpp"
+    "src/Platform/SDL3AssetLoader.cpp"
+    "src/Platform/Win32GameWindow.cpp"
+    "src/Platform/Win32AssetLoader.cpp"
+    "src/GameApp.cpp"
+    "src/Graphics/DebugPass.cpp"
+    "src/Platform/SDL3AssetLoader.cpp"
+    "src/AssetManager.cpp"
+    "src/StreamingManager.cpp"
+    "src/Input/InputSystem.cpp"
+    "src/Scenes/DebugScene.cpp"
+    "src/Terrain/TerrainService.cpp"
+    "src/ECS/SubsystemCamera.cpp"
+  "src/ECS/SubsystemDebugInfo.cpp")
 
 target_include_directories(Engine
     PUBLIC

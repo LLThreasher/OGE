@@ -1,7 +1,6 @@
 #pragma once
 
 #include <entt/entt.hpp>
-#include "Engine/Graphics/Renderer.hpp"
 #include "Engine/AssetManager.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/Input/InputSystem.hpp"
@@ -49,16 +48,16 @@ namespace OneGame::Engine
 
     struct AppInitContext
     {
+        Graphics::IGraphicsBackend* backend;
         entt::registry& world;
-        Graphics::Renderer& renderer;
         AssetBundleWriter& assets;
         entt::dispatcher& events;
     };
 
     struct AppContext
     {
+        Graphics::IGraphicsBackend* backend;
         entt::registry& world;
-        Graphics::Renderer& renderer;
         AssetBundleWriter* assets;
         entt::dispatcher& events;
         InputSystem& input;

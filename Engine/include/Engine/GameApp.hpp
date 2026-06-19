@@ -54,12 +54,5 @@ namespace OneGame::Engine
         std::vector<std::unique_ptr<IScene>> allScenes;
         IScene* nextScene = nullptr;
         IScene* currentScene = nullptr;
-
-        Graphics::GPUInfo gpuInfo = {};
-        entt::entity debugInfoEntity;
-
-        float currentFPS = 0.f;
-        float accumTime = 0.f;
-        uint64_t frameCount = 0;
     };
 }

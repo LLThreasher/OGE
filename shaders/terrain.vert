@@ -15,10 +15,11 @@ layout(set = 0, binding = 2) uniform ObjectBlock
 
 void main()
 {
-    uint x =  aPackedPosition        & 15u;
-    uint y = (aPackedPosition >> 4u) & 15u;
-    uint z = (aPackedPosition >> 8u)& 15u;
-    uint aColor = (aPackedPosition >> 12u) & 15u;
+    uint x =  aPackedPosition        & 31u;
+    uint y = (aPackedPosition >> 5u) & 31u;
+    uint z = (aPackedPosition >> 10u) & 31u;
+    // uint aColor = (aPackedPosition >> 12u) & 15u;
+    uint aColor = 0;
 
     vec3 aPosition = vec3(x, y, z);
 

@@ -13,7 +13,7 @@ namespace OneGame::Engine::Terrain
 
     inline bool IsOpaque(uint32_t blockValue)
     {
-        return (blockValue & BLOCK_ID_MASK) < OPAQUE_BLOCK_START;
+        return (blockValue & BLOCK_ID_MASK) >= OPAQUE_BLOCK_START;
     }
 
     inline uint8_t GetTextureSlot(uint32_t blockValue)

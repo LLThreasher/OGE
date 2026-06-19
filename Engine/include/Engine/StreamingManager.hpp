@@ -51,9 +51,9 @@ namespace OneGame::Engine
 		StreamingManager(size_t uploadByteBudget = 4 * 1024 * 1024) : m_uploadByteBudget(uploadByteBudget)
 		{
 		}
+		Graphics::RingStagingBuffer* GetStagingBuffer();
 		void Initialize(Graphics::IGraphicsBackend*);
 		void Shutdown(Graphics::IGraphicsBackend*);
-		Graphics::RingStagingBuffer* GetStagingBuffer();
 		std::shared_ptr<ResourceBundleEvent> CreateResourceBundle();
 		void ScheduleBufferUpload(const BufferUploadDesc& desc, UploadType uploadType);
 		void ScheduleTextureUpload(const TextureUploadDesc& desc, UploadType uploadType);

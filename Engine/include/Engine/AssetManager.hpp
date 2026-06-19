@@ -76,10 +76,18 @@ namespace OneGame::Engine
 		bool LoadMaterial(const std::string_view& id, Material& outMaterial);
 		void AllocateMesh(const std::string_view& id, const size_t vertBufSize, const size_t indexBufSize, Mesh& outMesh);
 
+		template <typename TVertex, typename TIndex>
+		void UpdateMesh(const std::vector<TVertex>& vertices, const std::vector<TIndex>& indices, const size_t gpuBufOffset, Mesh& outMesh)
+		{
+			CPUMesh cpuMesh;
+			LoadCpuMesh(vertices.data(), vertices.size() * sizeof(TVertex), indices.data(), indices.size() * sizeof(TIndex), cpuMesh);
+			LoadMesh(cpuMesh, outMesh);
+		}
+
 		std::shared_ptr<ResourceBundleEvent> GetOnLoadedEvent() { return m_event; }
 	private:
 		void LoadCpuMesh(const void* vertices, const size_t vertexBufSize, const void* indices, const size_t indexBufSize, CPUMesh& outMesh);
-		void LoadMesh(CPUMesh& cpuMesh, Mesh& outMesh);
+		void LoadMesh(const CPUMesh& cpuMesh, const Mesh& outMesh);
 
 		std::shared_ptr<ResourceBundleEvent> m_event = nullptr;
 		AssetManager* m_assetManager;
