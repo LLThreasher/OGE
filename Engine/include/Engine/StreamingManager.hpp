@@ -57,16 +57,14 @@ namespace OneGame::Engine
 
 	class StreamingManager
 	{
-		friend class ResourceBundle;
-
 	public:
 		// 4 MB per frame budget by default
 		StreamingManager(size_t uploadByteBudget = 4 * 1024 * 1024) : m_uploadByteBudget(uploadByteBudget)
 		{
 		}
-		Graphics::RingStagingBuffer* GetStagingBuffer();
-		void Initialize(Graphics::IGraphicsBackend*);
-		void Shutdown(Graphics::IGraphicsBackend*);
+		Graphics::RingStagingBuffer& GetStagingBuffer();
+		void Initialize(Graphics::IGraphicsBackend&);
+		void Shutdown(Graphics::IGraphicsBackend&);
 
 		ResourceBundleHandle CreateResourceBundle();
 
@@ -76,51 +74,31 @@ namespace OneGame::Engine
 		template<UploadType uploadType = UploadType::Immediate>
 		void ScheduleTextureUpload(const TextureUploadDesc& desc);
 
+		template<UploadType uploadType, BufferUsage usage>
+		size_t UploadBuffer(const std::span<const std::byte> data, const GPUBufferHandle handle, const size_t gpuOffset = 0, ResourceBundleHandle resBundle = {});
+
 		template<UploadType uploadType, BufferUsage usage, typename TData>
-		size_t UploadBuffer(const std::vector<TData> data, const GPUBufferHandle handle, const size_t gpuOffset = 0, ResourceBundleHandle resBundle = {})
+		size_t UploadBuffer(const std::vector<TData>& data, const GPUBufferHandle handle, const size_t gpuOffset = 0, ResourceBundleHandle resBundle = {})
 		{
-			return UploadBuffer<uploadType, usage, TData>(data, handle, gpuOffset, resBundle);
+			return UploadBuffer<uploadType, usage>(std::as_bytes(std::span(data)), handle, gpuOffset, resBundle);
 		}
 
-		template<UploadType uploadType, BufferUsage usage, typename TData, size_t extend>
-		size_t UploadBuffer(const std::span<TData, extend> data, const GPUBufferHandle handle, const size_t gpuOffset = 0, ResourceBundleHandle resBundle = {})
+		template<UploadType uploadType>
+		size_t UploadTexture(const std::span<const std::byte> data, const GPUTextureHandle handle, const size_t gpuOffset = 0, ResourceBundleHandle resBundle = {});
+
+		template<UploadType uploadType>
+		size_t UploadTexture(const std::vector<char>& data, const GPUTextureHandle handle, const size_t gpuOffset = 0, ResourceBundleHandle resBundle = {})
 		{
-			size_t dataSizeInBytes = data.size() * sizeof(TData);
-			StagingAllocation alloc = m_ringStagingBuffer.Allocate(dataSizeInBytes);
-			memcpy(alloc.cpuPtr, data.data(), dataSizeInBytes);
-			BufferUploadDesc desc{};
-			desc.bundle = resBundle;
-			desc.effectiveBufferSize = dataSizeInBytes;
-			desc.gpuBuffer = handle;
-			desc.gpuBufferOffset = gpuOffset;
-			desc.stagingAlloc = alloc;
-			desc.bufferUsage = usage;
-			ScheduleBufferUpload<uploadType>(desc);
-			return dataSizeInBytes;
+			return UploadTexture<uploadType>(std::as_bytes(std::span(data)), handle, gpuOffset, resBundle);
 		}
 
-		template<UploadType uploadType, typename TData, size_t extend>
-		size_t UploadTexture(const std::span<TData, extend> data, const GPUTextureHandle handle, const size_t gpuOffset = 0, ResourceBundleHandle resBundle = {})
-		{
-			size_t dataSizeInBytes = data.size() * sizeof(TData);
-			StagingAllocation alloc = m_ringStagingBuffer.Allocate(dataSizeInBytes);
-			memcpy(alloc.cpuPtr, data.data(), dataSizeInBytes);
-			TextureUploadDesc desc{};
-			desc.bundle = resBundle;
-			desc.gpuBuffer = handle;
-			desc.gpuBufferOffset = gpuOffset;
-			desc.stagingAlloc = alloc;
-			ScheduleTextureUpload<uploadType>(desc);
-			return dataSizeInBytes;
-		}
-
-		void RunUploadStep(const Graphics::IGraphicsBackend*, Graphics::ICommandList*);
+		void RunUploadStep(const Graphics::IGraphicsBackend&, Graphics::ICommandList&);
 		void SetCallback(ResourceBundleHandle handle, std::function<void()> callback);
 		void ExecuteCallbacks();
 
 	private:
-		void UploadBuffer(uint32_t fidx, BufferUploadDesc& desc, Graphics::ICommandList* transferCmd);
-		void UploadTexture(uint32_t fidx, TextureUploadDesc& desc, Graphics::ICommandList* transferCmd);
+		void UploadBuffer(uint32_t fidx, BufferUploadDesc& desc, Graphics::ICommandList& transferCmd);
+		void UploadTexture(uint32_t fidx, TextureUploadDesc& desc, Graphics::ICommandList& transferCmd);
 
 		Graphics::RingStagingBuffer m_ringStagingBuffer;
 		size_t m_uploadByteBudget;

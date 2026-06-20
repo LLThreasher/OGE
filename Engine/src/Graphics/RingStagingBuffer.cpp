@@ -1,10 +1,11 @@
 #include "Engine/Graphics/RingStagingBuffer.hpp"
 #include "Engine/Math.hpp"
+#include "Engine/Graphics/IGraphicsBackend.hpp"
 
 namespace OneGame::Engine::Graphics
 {
     void RingStagingBuffer::Initialize(
-        IGraphicsBackend* backend,
+        IGraphicsBackend& backend,
         uint64_t size)
     {
         m_capacity = size;
@@ -16,16 +17,16 @@ namespace OneGame::Engine::Graphics
             desc.size = size;
             desc.memory = MemoryUsage::CPUToGPU;
             desc.usage = BufferUsage::TransferSrc | BufferUsage::TransferDst;
-            m_buffer = backend->CreateBuffer(desc, &m_mappedPtr);
+            m_buffer = backend.CreateBuffer(desc, &m_mappedPtr);
         }
 
         m_head = 0;
         m_tail = 0;
     }
 
-    void RingStagingBuffer::Shutdown(IGraphicsBackend* backend)
+    void RingStagingBuffer::Shutdown(IGraphicsBackend& backend)
     {
-        backend->DestroyBuffer(m_buffer);
+        backend.DestroyBuffer(m_buffer);
     }
 
     StagingAllocation RingStagingBuffer::Allocate(

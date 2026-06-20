@@ -78,4 +78,13 @@ namespace OneGame::Engine
 
 	using JobHandle = ResourceHandle<TempItem::Job>;
 	using StreamingDoneEventHandle = ResourceHandle<TempItem::StreamingDoneEvent>;
+
+	struct Mesh
+	{
+		size_t indexCount;
+		GPUBufferHandle vertexBuffer;
+		size_t vOffset;
+		GPUBufferHandle indexBuffer;
+		size_t iOffset;
+	};
 }

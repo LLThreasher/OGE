@@ -91,7 +91,8 @@ namespace OneGame::Engine
         SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
         // 2. Create window with SDL_WINDOW_VULKAN flag
-        m_window = SDL_CreateWindow(name.c_str(), width, height, 0);
+        //m_window = SDL_CreateWindow(name.c_str(), 0, 0, SDL_WINDOW_FULLSCREEN);
+        m_window = SDL_CreateWindow(name.c_str(), 1920, 1080, SDL_WINDOW_RESIZABLE);
     }
 
     Graphics::WindowHandle SDL3GameWindow::GetCurrentWindow()
@@ -161,6 +162,19 @@ namespace OneGame::Engine
                 case SDL_EVENT_MOUSE_MOTION:
                     m_input.SetMouseDelta(event.motion.xrel, event.motion.yrel);
                     m_input.SetMousePosition(event.motion.x, event.motion.y);
+                    break;
+                case SDL_EVENT_FINGER_DOWN:
+                    m_input.SetTouchDown(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                    //LOG_DEBUG("finger down {}", event.tfinger.fingerID);
+                    break;
+                case SDL_EVENT_FINGER_MOTION:
+                    m_input.SetTouchUpdate(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                    //LOG_DEBUG("finger move {}", event.tfinger.fingerID);
+                    break;
+                case SDL_EVENT_FINGER_UP:
+                case SDL_EVENT_FINGER_CANCELED:
+                    m_input.SetTouchUp(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                    //LOG_DEBUG("finger up {}", event.tfinger.fingerID);
                     break;
                 }
             }

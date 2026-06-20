@@ -6,6 +6,7 @@
 #include <type_traits>
 #include <utility>
 #include <memory>
+#include <stdexcept>
 
 #include "Engine/ObjectType.hpp"
 
@@ -108,8 +109,9 @@ namespace OneGame::Engine
         bool IsAlive(Handle handle) const
         {
             if (handle.index == 0)
-                //assert(false && "using nullptr handle");
                 throw std::runtime_error("using nullptr handle");
+            if (handle.index == 0)
+                return false;
             auto index = handle.index - 1;
             if (index >= m_entries.size())
                 return false;

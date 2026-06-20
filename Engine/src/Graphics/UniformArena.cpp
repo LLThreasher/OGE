@@ -1,4 +1,5 @@
 #include "Engine/Graphics/UniformArena.hpp"
+#include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/Math.hpp"
 
 #define LOGGER_NAME "Engine"
@@ -6,23 +7,23 @@
 
 namespace OneGame::Engine::Graphics
 {
-	void UniformArena::Initialize(IGraphicsBackend* backend, uint32_t capacity)
+	void UniformArena::Initialize(IGraphicsBackend& backend, uint32_t capacity)
 	{
 		m_capacityPerFrame = capacity;
-		m_framesInFlight = backend->FramesInFlight();
-		m_alignment = backend->UniformBufferAlignment();
+		m_framesInFlight = backend.FramesInFlight();
+		m_alignment = backend.UniformBufferAlignment();
 		m_alignedCapacityPerFrame = math::align(m_capacityPerFrame, m_alignment);
 
 		BufferDesc desc{};
 		desc.memory = MemoryUsage::CPUToGPU;
 		desc.usage = BufferUsage::Uniform | BufferUsage::TransferDst;
-		desc.size = m_capacityPerFrame * backend->FramesInFlight();
-		m_gpuBuffer = backend->CreateBuffer(desc, &m_cpuBuffer);
+		desc.size = m_capacityPerFrame * backend.FramesInFlight();
+		m_gpuBuffer = backend.CreateBuffer(desc, &m_cpuBuffer);
 	}
 
-	void UniformArena::Shutdown(IGraphicsBackend* backend)
+	void UniformArena::Shutdown(IGraphicsBackend& backend)
 	{
-		backend->DestroyBuffer(m_gpuBuffer);
+		backend.DestroyBuffer(m_gpuBuffer);
 		m_cpuBuffer = nullptr;
 	}
 

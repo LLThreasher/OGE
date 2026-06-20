@@ -1,5 +1,6 @@
 #pragma once
 #include <functional>
+#include "Engine/GameAppState.hpp"
 
 class TickScheduler
 {
@@ -8,6 +9,8 @@ public:
 
     void Tick(float frameDelta,
         const std::function<void(float)>& fixedUpdate);
+
+    void Update();
 
     float GetAlpha() const;
 

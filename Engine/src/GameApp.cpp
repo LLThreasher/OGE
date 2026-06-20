@@ -15,7 +15,7 @@ namespace OneGame::Engine
 	constexpr uint32_t DEBUG_SCENE = 0;
 	constexpr uint32_t DEBUG_SCENE2 = 1;
 
-	GameApp::GameApp() : assetManager(asyncDispatcher, jobSystem)
+	GameApp::GameApp()
 	{
 		allScenes.push_back(std::unique_ptr<IScene>(new DebugScene()));
 		allScenes.push_back(std::unique_ptr<IScene>(new DebugScene2()));
@@ -27,24 +27,35 @@ namespace OneGame::Engine
 	void GameApp::Initialize(WindowHandle* handle)
 	{
 		backend = CreateBackend(BackendType::Vulkan);
-		backend->Initialize(BackendDesc{ handle, FrameTimePreference::Unlimited });
+		backend->Initialize(BackendDesc{ handle, FrameTimePreference::VSync });
 		LOG_DEBUG("Backend created");
-		streamingManager.Initialize(backend.get());
+		streamingManager.Initialize(*backend);
 		LOG_DEBUG("StreamingManager created");
-		renderer.Initialize(backend.get(), assetManager, streamingManager);
+		renderer.Initialize(*backend, assetManager, streamingManager);
 		LOG_DEBUG("Renderer created");
+
+		AppContext appCtx
+		{
+			*backend,
+			assetManager,
+			streamingManager,
+			renderer,
+			dispatcher,
+		};
+
+		AppContext ctx
+		{
+			*backend,
+			assetManager,
+			streamingManager,
+			renderer,
+			dispatcher,
+		};
 
 		for (auto& scene : allScenes)
 		{
-			auto assetBundle = AssetBundleWriter<UploadType::Immediate>(&assetManager, &streamingManager, backend.get());
-			AppInitContext appInitCtx
-			{
-				backend.get(),
-				world,
-				assetBundle,
-				dispatcher,
-			};
-			scene->Initialize(appInitCtx);
+			auto assetBundle = AssetBundleWriter(assetManager, streamingManager, *backend);
+			scene->Initialize(ctx);
 		}
 	}
 
@@ -57,8 +68,8 @@ namespace OneGame::Engine
 	void GameApp::Shutdown()
 	{
 		backend->WaitDeviceIdle();
-		renderer.Shutdown(backend.get());
-		streamingManager.Shutdown(backend.get());
+		renderer.Shutdown(*backend);
+		streamingManager.Shutdown(*backend);
 		backend->Shutdown();
 	}
 
@@ -71,14 +82,19 @@ namespace OneGame::Engine
 		if (res != BeginFrameAction::Continue)
 			return appRes | AppFrameAction::None;
 
-		std::vector<SceneAction> outSceneActions;
-		auto interSceneBundle = AssetBundleWriter<UploadType::Async>(&assetManager, &streamingManager, backend.get());
 		AppContext appCtx
 		{
-			backend.get(),
-			world,
-			interSceneBundle,
+			*backend,
+			assetManager,
+			streamingManager,
+			renderer,
 			dispatcher,
+		};
+		std::vector<SceneAction> outSceneActions;
+		FrameContext frame
+		{
+			dt,
+			world,
 			input,
 			outSceneActions,
 		};
@@ -87,29 +103,25 @@ namespace OneGame::Engine
 			if (currentScene != nullptr)
 			{
 				currentScene->Exit(appCtx);
-				interSceneBundle = AssetBundleWriter<UploadType::Async>(&assetManager, &streamingManager, backend.get());
-				appCtx.assets = interSceneBundle;
 			}
 			nextScene->Enter(appCtx);
-			interSceneBundle = AssetBundleWriter<UploadType::Async>(&assetManager, &streamingManager, backend.get());
-			appCtx.assets = interSceneBundle;
 			currentScene = nextScene;
 			nextScene = nullptr;
 		}
 		assert(currentScene != nullptr);
-		currentScene->Update(appCtx, dt);
-
-		renderer.Prepare(&world, backend.get(), dt);
-		auto tcmd = backend->CreateCommandList(QueueType::Transfer);
-		tcmd->Begin();
-		streamingManager.RunUploadStep(backend.get(), tcmd.get());
-		tcmd->End();
-
-		renderer.Render(backend.get(), dt);
-		auto endRes = backend->EndFrame();
 		world.clear();
+		currentScene->Update(appCtx, frame);
 
-		for (auto& action : appCtx.outSceneActions)
+		renderer.Prepare(*backend, world, dt);
+		auto& tcmd = backend->CreateCommandList(QueueType::Transfer);
+		tcmd.Begin();
+		streamingManager.RunUploadStep(*backend, tcmd);
+		tcmd.End();
+
+		renderer.Render(*backend, dt);
+		auto endRes = backend->EndFrame();
+
+		for (auto& action : frame.outSceneActions)
 		{
 			if (action.type == SceneActionType::SetMouseWarpping)
 			{

@@ -11,7 +11,9 @@ namespace OneGame::Engine::Graphics
 	constexpr size_t NUM_DEBUG_VERTICES = 2048;
 	constexpr size_t NUM_DEBUG_INDICES = NUM_DEBUG_VERTICES / 4 * 6;
 
-	class DebugInfoPass : public IPass
+	class IGraphicsBackend;
+
+	class DebugInfoPass : public BasicPass
 	{
 		struct PushConstant
 		{
@@ -26,8 +28,8 @@ namespace OneGame::Engine::Graphics
 		};
 
 	public:
-		void Initialize(IGraphicsBackend* backend, InitContext& ctx) override;
-		void Shutdown(IGraphicsBackend* backend) override;
+		void Enable(IGraphicsBackend& backend, InitContext& ctx) override;
+		void Disable(IGraphicsBackend& backend) override;
 		void Prepare(PrepareContext& context) override;
 		void Draw(DrawContext& context) override;
 	private:
@@ -43,7 +45,7 @@ namespace OneGame::Engine::Graphics
 		GPUBindingGroupHandle bindingGroup;
 	};
 
-	class TestPass : public IPass
+	class TestPass : public BasicPass
 	{
 		struct UBO
 		{
@@ -61,8 +63,8 @@ namespace OneGame::Engine::Graphics
 
 	public:
 
-		void Initialize(IGraphicsBackend* backend, InitContext& ctx) override;
-		void Shutdown(IGraphicsBackend* backend) override;
+		void Enable(IGraphicsBackend& backend, InitContext& ctx) override;
+		void Disable(IGraphicsBackend& backend) override;
 		void Prepare(PrepareContext& context) override;
 		void Draw(DrawContext& context) override;
 
@@ -72,7 +74,6 @@ namespace OneGame::Engine::Graphics
 		GPUPipelineHandle pipeline;
 		GPUBindingGroupLayoutHandle bindingGroupLayout;
 		GPUBindingGroupHandle bindingGroup;
-		StagingAllocation textureBuffer;
 		GPUTextureHandle texture;
 
 		Mesh testCubeMesh;

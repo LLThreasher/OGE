@@ -200,7 +200,7 @@ namespace OneGame::Engine::Terrain
 	public:
 		TerrainMeshBuilder(TerrainData& terrain);
 		void BuildChunkMeshes(int vertexBudget);
-		void AllocateTerrainMesh(Graphics::IGraphicsBackend* backend);
+		void AllocateTerrainMesh(Graphics::IGraphicsBackend& backend);
 	private:
 		void ExecuteBuildChunkMesh(MeshingWorkerContextHandle);
 

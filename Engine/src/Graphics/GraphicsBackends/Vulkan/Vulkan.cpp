@@ -1141,7 +1141,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
 			auto queueIdx = static_cast<uint32_t>(QueueType::Transfer);
-			auto& transferCmdBuffers = frame.cmdBuffers[queueIdx];
+			auto& transferCmdBuffers = frame.vkCmdBuffers[queueIdx];
 			auto& frame = m_frames[m_frameIndex];
 			submitInfo.waitSemaphoreCount = 0;
 			submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
@@ -1159,7 +1159,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
 			auto queueIdx = static_cast<uint32_t>(QueueType::Present);
-			auto& presentCmdBuffers = frame.cmdBuffers[queueIdx];
+			auto& presentCmdBuffers = frame.vkCmdBuffers[queueIdx];
 			auto& frame = m_frames[m_frameIndex];
 			static VkPipelineStageFlags waitStage[2] =
 				{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT };
@@ -1303,17 +1303,18 @@ namespace OneGame::Engine::Graphics::Vulkan
 		}
 	}
 
-	std::unique_ptr<ICommandList> VulkanBackend::CreateCommandList(QueueType queueType)
+	ICommandList& VulkanBackend::CreateCommandList(QueueType queueType)
 	{
 		assert(queueType == QueueType::Present || queueType == QueueType::Transfer);
 		FrameData& frame = m_frames[m_frameIndex];
 
 		uint32_t queueIndex = static_cast<uint32_t>(queueType);
-		VkCommandBuffer cmd;
+		VulkanCommandBuffer* cmd;
 
 		if (frame.cmdUsedCount[queueIndex] < frame.cmdBuffers[queueIndex].size())
 		{
-			cmd = frame.cmdBuffers[queueIndex][frame.cmdUsedCount[queueIndex]];
+			cmd = &frame.cmdBuffers[queueIndex][frame.cmdUsedCount[queueIndex]];
+			cmd->Clear();
 		}
 		else
 		{
@@ -1325,12 +1326,14 @@ namespace OneGame::Engine::Graphics::Vulkan
 			alloc.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
 			alloc.commandBufferCount = 1;
 
-			vkAllocateCommandBuffers(m_device.device, &alloc, &cmd);
-			frame.cmdBuffers[queueIndex].push_back(cmd);
+			VkCommandBuffer vkCmd;
+			vkAllocateCommandBuffers(m_device.device, &alloc, &vkCmd);
+			frame.vkCmdBuffers[queueIndex].emplace_back(vkCmd);
+			cmd = &frame.cmdBuffers[queueIndex].emplace_back(queueType, m_device.device, vkCmd, this);
 		}
 
 		frame.cmdUsedCount[queueIndex]++;
 
-		return std::unique_ptr<ICommandList>(new VulkanCommandBuffer(queueType, m_device.device, cmd, this));
+		return *reinterpret_cast<ICommandList*>(cmd);
 	}
 }

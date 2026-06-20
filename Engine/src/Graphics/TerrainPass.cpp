@@ -1,42 +1,50 @@
 #include "Engine/Graphics/TerrainPass.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
+#include "Engine/Graphics/IGraphicsBackend.hpp"
 #include <entt/entt.hpp>
+
+#include "RendererInternals.hpp"
+#define LOGGER_NAME "Engine"
+#include "Engine/Logger.hpp"
 
 namespace OneGame::Engine::Graphics
 {
 	using namespace Terrain;
 
-	void TerrainPass::Initialize(IGraphicsBackend* backend, InitContext& ctxt)
+	void TerrainPass::Enable(IGraphicsBackend& backend, InitContext& ctxt, Mesh terrain)
 	{
 		BindingGroupLayoutDesc layout{};
 		layout.textureCount = 1;
 		layout.bufferCount = 2;
 		layout.dynamicBufferMask = 1 << 1;
-		bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
 
+		bindingGroupLayout = backend.CreateBindingGroupLayout(layout);
 		blockTexture = ctxt.assets.LoadTexture("blocks.png");
-		{
-			BindingGroupDesc desc{};
-			desc.layout = bindingGroupLayout;
-			desc.textures.push_back(blockTexture);
-			desc.buffers.push_back({ colorPaletteGpuBuffer, sizeof(ColorRGBA8) * 16 });
-			desc.buffers.push_back({ ctxt.uniformArena.GetBuffer(), sizeof(UBO) });
-			bindingGroup = backend->CreateBindingGroup(desc);
-		}
+		terrainMesh = terrain;
 
 		{
 			BufferDesc cpDesc{};
 			cpDesc.memory = MemoryUsage::CPUToGPU;
 			cpDesc.size = sizeof(ColorRGBA8) * 16;
 			cpDesc.usage = BufferUsage::Uniform | BufferUsage::TransferDst;
-			colorPaletteGpuBuffer = backend->CreateBuffer(cpDesc, &colorPaletteStagingBuffer);
+			colorPaletteGpuBuffer = backend.CreateBuffer(cpDesc, &colorPaletteStagingBuffer);
 
+			assert(blockTexture.IsValid());
+			assert(colorPaletteGpuBuffer.IsValid());
+			assert(ctxt.uniformArena.GetBuffer().IsValid());
+
+			BindingGroupDesc desc{};
+			desc.layout = bindingGroupLayout;
+			desc.textures.push_back(blockTexture);
+			desc.buffers.push_back({ colorPaletteGpuBuffer, sizeof(ColorRGBA8) * 16 });
+			desc.buffers.push_back({ ctxt.uniformArena.GetBuffer(), sizeof(UBO) });
+			bindingGroup = backend.CreateBindingGroup(desc);
 		}
 
 		{
 			GraphicsPipelineDesc desc{};
-			ctxt.assets.LoadShader("terrain.vert.spv", desc.vertexShader);
-			ctxt.assets.LoadShader("terrain.frag.spv", desc.fragmentShader);
+			ctxt.assets.LoadBlob("terrain.vert.spv", desc.vertexShader);
+			ctxt.assets.LoadBlob("terrain.frag.spv", desc.fragmentShader);
 			// packed xyz
 			desc.vertexLayout.push_back(VertexAttributeFormat::Uint16);
 			// packed light and color
@@ -50,7 +58,7 @@ namespace OneGame::Engine::Graphics
 			desc.depthTest = true;
 			desc.depthCompareOp = DepthCompareOp::Less;
 			desc.cullMode = CullMode::Back;
-			pipelineHandle = backend->CreateGraphicsPipeline(desc);
+			pipelineHandle = backend.CreateGraphicsPipeline(desc);
 		}
 
 		ColorRGBA8 colors[16] = {
@@ -74,11 +82,11 @@ namespace OneGame::Engine::Graphics
 		SetPalette(colors);
 	}
 
-	void TerrainPass::Shutdown(IGraphicsBackend* backend)
+	void TerrainPass::Disable(IGraphicsBackend& backend)
 	{
-		backend->DestroyBuffer(colorPaletteGpuBuffer);
-		backend->DestroyPipeline(pipelineHandle);
-		backend->DestroyBindingGroupLayout(bindingGroupLayout);
+		backend.DestroyBuffer(colorPaletteGpuBuffer);
+		backend.DestroyPipeline(pipelineHandle);
+		backend.DestroyBindingGroupLayout(bindingGroupLayout);
 	}
 
 	void TerrainPass::Draw(DrawContext& ctxt)
@@ -86,18 +94,18 @@ namespace OneGame::Engine::Graphics
 		if (activeChunkSlots.size() == 0)
 			return;
 
-		ctxt.drawCmd->BindGraphicsPipeline(pipelineHandle);
+		ctxt.drawCmd.BindGraphicsPipeline(pipelineHandle);
 
-		auto uniformMemory = ctxt.uniformArena->Allocate(sizeof(UBO) * ubos.size());
+		auto uniformMemory = ctxt.uniformArena.Allocate(sizeof(UBO) * ubos.size());
 		std::memcpy(uniformMemory.cpuPtr, ubos.data(), sizeof(UBO) * ubos.size());
 
 		for (uint32_t i = 0; i < ubos.size(); ++i)
 		{
 			uint32_t offset[1] = { static_cast<uint32_t>(uniformMemory.offset + i * sizeof(UBO)) };
-			ctxt.drawCmd->BindBindingGroup(bindingGroup, 0, offset);
-			ctxt.drawCmd->BindVertexBuffer(terrainMesh.vertexBuffer, activeChunkSlots[i].chunkSlot * Terrain::CHUNK_VERTEX_BYTE_SIZE);
-			ctxt.drawCmd->BindIndexBuffer(terrainMesh.indexBuffer, activeChunkSlots[i].chunkSlot * Terrain::CHUNK_INDEX_BYTE_SIZE, IndexFormat::Uint16);
-			ctxt.drawCmd->DrawIndexed(activeChunkSlots[i].indexCount);
+			ctxt.drawCmd.BindBindingGroup(bindingGroup, 0, offset);
+			ctxt.drawCmd.BindVertexBuffer(terrainMesh.vertexBuffer, activeChunkSlots[i].chunkSlot * Terrain::CHUNK_VERTEX_BYTE_SIZE);
+			ctxt.drawCmd.BindIndexBuffer(terrainMesh.indexBuffer, activeChunkSlots[i].chunkSlot * Terrain::CHUNK_INDEX_BYTE_SIZE, IndexFormat::Uint16);
+			ctxt.drawCmd.DrawIndexed(activeChunkSlots[i].indexCount);
 		}
 	}
 
@@ -116,7 +124,7 @@ namespace OneGame::Engine::Graphics
 	{
 		math::mat4 view;
 		{
-			auto views = context.world->view<PViewTransform>();
+			auto views = context.world.view<PViewTransform>();
 			if (views.empty())
 			{
 				view = math::lookAt(
@@ -126,24 +134,24 @@ namespace OneGame::Engine::Graphics
 			}
 			else
 			{
-				view = context.world->get<PViewTransform>(views.front()).view;
+				view = context.world.get<PViewTransform>(views.front()).view;
 			}
 		}
 
-		auto proj = math::get_perspective_rot(context.backend->SwapchainPretransform()) * math::perspective(
+		auto proj = math::get_perspective_rot(context.backend.SwapchainPretransform()) * math::perspective(
 			math::radians(45.0f),
-			context.backend->SwapchainAspect(),
+			context.backend.SwapchainAspect(),
 			0.1f,
 			100.f);
 
 		activeChunkSlots.clear();
 		ubos.clear();
-		auto worldView = context.world->view<const PTerrainMesh>();
+		auto worldView = context.world.view<const PTerrainMesh>();
 		for (auto [_, mesh] : worldView.each())
 		{
 			activeChunkSlots.push_back(mesh);
 
-			auto model = math::translate(math::mat4(1.0f), math::vec3(mesh.chunkX, mesh.chunkY, mesh.chunkZ));
+			auto model = math::translate(math::mat4(1.0f), math::vec3(mesh.chunkX * CHUNK_SIZE_X, mesh.chunkY * CHUNK_SIZE_Y, mesh.chunkZ * CHUNK_SIZE_Z));
 
 			UBO ubo
 			{
@@ -151,6 +159,7 @@ namespace OneGame::Engine::Graphics
 			};
 			ubos.push_back(ubo);
 		}
+		
 	}
 
 	void TerrainPass::SetPalette(ColorRGBA8 colors[16])
@@ -158,30 +167,22 @@ namespace OneGame::Engine::Graphics
 		memcpy(colorPaletteStagingBuffer, colors, 16 * sizeof(ColorRGBA8));
 	}
 
-	void TerrainPass2::Initialize(IGraphicsBackend* backend, InitContext& ctxt)
+	void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt, GPUBufferHandle terrain)
 	{
 		BindingGroupLayoutDesc layout{};
 		layout.textureCount = 1;
 		layout.bufferCount = 2;
 		layout.dynamicBufferMask = 0b11;
 		layout.storageBufferMask = 0b01;
-		bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
+		bindingGroupLayout = backend.CreateBindingGroupLayout(layout);
 
 		blockTexture = ctxt.assets.LoadTexture("blocks.png");
-
-		{
-			BindingGroupDesc desc{};
-			desc.layout = bindingGroupLayout;
-			desc.textures.push_back(blockTexture);
-			desc.buffers.push_back({ storageBuffer, CHUNK_VERTEX_BYTE_SIZE });
-			desc.buffers.push_back({ ctxt.uniformArena.GetBuffer(), sizeof(UBO) });
-			bindingGroup = backend->CreateBindingGroup(desc);
-		}
+		storageBuffer = terrain;
 
 		{
 			GraphicsPipelineDesc desc{};
-			ctxt.assets.LoadShader("terrain2.vert.spv", desc.vertexShader);
-			ctxt.assets.LoadShader("terrain2.frag.spv", desc.fragmentShader);
+			ctxt.assets.LoadBlob("terrain2.vert.spv", desc.vertexShader);
+			ctxt.assets.LoadBlob("terrain2.frag.spv", desc.fragmentShader);
 
 			desc.bindingGroupLayouts.push_back(bindingGroupLayout);
 			desc.writeDepth = true;
@@ -189,15 +190,23 @@ namespace OneGame::Engine::Graphics
 			desc.depthTest = true;
 			desc.depthCompareOp = DepthCompareOp::Less;
 			desc.cullMode = CullMode::Back;
-			pipelineHandle = backend->CreateGraphicsPipeline(desc);
+			pipelineHandle = backend.CreateGraphicsPipeline(desc);
+		}
+		{
+			BindingGroupDesc desc{};
+			desc.layout = bindingGroupLayout;
+			desc.textures.push_back(blockTexture);
+			desc.buffers.push_back({ storageBuffer, CHUNK_VERTEX_BYTE_SIZE });
+			desc.buffers.push_back({ ctxt.uniformArena.GetBuffer(), sizeof(UBO) });
+			bindingGroup = backend.CreateBindingGroup(desc);
 		}
 	}
 
-	void TerrainPass2::Shutdown(IGraphicsBackend* backend)
+	void TerrainPass2::Disable(IGraphicsBackend& backend)
 	{
-		backend->DestroyBuffer(storageBuffer);
-		backend->DestroyPipeline(pipelineHandle);
-		backend->DestroyBindingGroupLayout(bindingGroupLayout);
+		backend.DestroyBuffer(storageBuffer);
+		backend.DestroyPipeline(pipelineHandle);
+		backend.DestroyBindingGroupLayout(bindingGroupLayout);
 	}
 
 	void TerrainPass2::Draw(DrawContext& ctxt)
@@ -205,16 +214,16 @@ namespace OneGame::Engine::Graphics
 		if (activeChunkSlots.size() == 0)
 			return;
 
-		ctxt.drawCmd->BindGraphicsPipeline(pipelineHandle);
+		ctxt.drawCmd.BindGraphicsPipeline(pipelineHandle);
 
-		auto uniformMemory = ctxt.uniformArena->Allocate(sizeof(UBO) * ubos.size());
+		auto uniformMemory = ctxt.uniformArena.Allocate(sizeof(UBO) * ubos.size());
 		std::memcpy(uniformMemory.cpuPtr, ubos.data(), sizeof(UBO) * ubos.size());
 
 		for (uint32_t i = 0; i < ubos.size(); ++i)
 		{
 			uint32_t offset[2] = { CHUNK_VERTEX_BYTE_SIZE * activeChunkSlots[i].chunkSlot, static_cast<uint32_t>(uniformMemory.offset + i * sizeof(UBO))};
-			ctxt.drawCmd->BindBindingGroup(bindingGroup, 0, offset);
-			ctxt.drawCmd->Draw(activeChunkSlots[i].faceCount * 6);
+			ctxt.drawCmd.BindBindingGroup(bindingGroup, 0, offset);
+			ctxt.drawCmd.Draw(activeChunkSlots[i].faceCount * 6);
 		}
 	}
 
@@ -222,34 +231,34 @@ namespace OneGame::Engine::Graphics
 	{
 		math::mat4 view;
 		{
-			auto views = context.world->view<PViewTransform>();
+			auto views = context.world.view<PViewTransform>();
 			if (views.empty())
 			{
 				view = math::lookAt(
-					math::vec3(3, 3, 3),
+					math::vec3(20, 20, 20),
 					math::vec3(0, 0, 0),
 					math::vec3(0, 1, 0));
 			}
 			else
 			{
-				view = context.world->get<PViewTransform>(views.front()).view;
+				view = context.world.get<PViewTransform>(views.front()).view;
 			}
 		}
 
-		auto proj = math::get_perspective_rot(context.backend->SwapchainPretransform()) * math::perspective(
+		auto proj = math::get_perspective_rot(context.backend.SwapchainPretransform()) * math::perspective(
 			math::radians(45.0f),
-			context.backend->SwapchainAspect(),
+			context.backend.SwapchainAspect(),
 			0.1f,
 			100.f);
 
 		activeChunkSlots.clear();
 		ubos.clear();
-		auto worldView = context.world->view<const PTerrainMesh2>();
+		auto worldView = context.world.view<const PTerrainMesh2>();
 		for (auto [_, mesh] : worldView.each())
 		{
 			activeChunkSlots.push_back(mesh);
 
-			auto model = math::translate(math::mat4(1.0f), math::vec3(mesh.chunkX, mesh.chunkY, mesh.chunkZ));
+			auto model = math::translate(math::mat4(1.0f), math::vec3(mesh.chunkX * CHUNK_SIZE_X, mesh.chunkY * CHUNK_SIZE_Y, mesh.chunkZ * CHUNK_SIZE_Z));
 
 			UBO ubo
 			{

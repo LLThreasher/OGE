@@ -4,9 +4,12 @@
 #include "Engine/Random.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 
+#define LOGGER_NAME "Engine"
+#include "Engine/Logger.hpp"
+
 namespace OneGame::Engine
 {
-	void DebugScene::Initialize(AppInitContext& context)
+	void DebugScene::Initialize(AppContext& context)
 	{
 		Terrain::TerrainGenerationDesc desc{};
 		terrain.Initialize(desc);
@@ -14,16 +17,10 @@ namespace OneGame::Engine
 
 	void DebugScene::Enter(AppContext& context)
 	{
-		auto& world = context.world;
-		auto chunkEntity = world.create();
-		world.emplace<Terrain::ActiveChunkTag>(chunkEntity);
-		Terrain::ChunkMesh cm{ 0, 0, 0, { 0, 36 } };
-		world.emplace<Terrain::ChunkMesh>(chunkEntity, cm);
-		
-		chunkMesh = context.assets.LoadMesh(chunk_zero_vertices, chunk_zero_indices);
+		chunkMesh = context.CreateAssetBundle().LoadMesh(chunk_zero_vertices, chunk_zero_indices);
 	}
 
-	void DebugScene2::Initialize(AppInitContext& context)
+	void DebugScene2::Initialize(AppContext& context)
 	{
 		using namespace ECS;
 		gameWorld.Register<SubsystemCamera>();
@@ -33,23 +30,6 @@ namespace OneGame::Engine
 
 	void DebugScene2::Enter(AppContext& context)
 	{
-		auto handle = terrainData.chunkData.Create();
-		auto chunk = terrainData.chunkData.Get(handle);
-		chunk->Coords = { 0, 0, 0 };
-		chunk->data[0] = 256;
-		for (size_t i = 0; i < 200; ++i)
-		{
-			auto x = Random::RandInt(0, 15);
-			auto y = Random::RandInt(0, 15);
-			auto z = Random::RandInt(0, 15);
-			assert(x < 16);
-			assert(y < 16);
-			assert(z < 16);
-
-			auto idx = Terrain::GetBlockIndex(x, y, z);
-			assert(idx < 16 * 16 * 16);
-			chunk->data[idx] = 256;
-		}
 
 		//for (size_t x = 0; x < 16; ++x)
 		//{
@@ -65,83 +45,164 @@ namespace OneGame::Engine
 		//		}
 		//	}
 		//}
-		terrainData.coordToChunks[{0, 0, 0}] = handle;
+
+
+		//auto handle = terrainData.chunkData.Create();
+		//auto chunk = terrainData.chunkData.Get(handle);
+		//chunk->Coords = { cx, cy, cz };
+		//terrainData.coordToChunks[{cx, cy, cz}] = handle;
+		//for (size_t i = 0; i < 200; ++i)
+		//{
+		//	auto x = Random::RandInt(0, 15);
+		//	auto y = Random::RandInt(0, 15);
+		//	auto z = Random::RandInt(0, 15);
+		//	assert(x < 16);
+		//	assert(y < 16);
+		//	assert(z < 16);
+
+		//	auto idx = Terrain::GetBlockIndex(x, y, z);
+		//	assert(idx < 16 * 16 * 16);
+		//	chunk->data[idx] = 256;
+		//}
+
+		auto generate_terrain = [](int x, int y, int z) {
+			if (z > 2)
+				return 0;
+			if (((x + y + z) % 2) == 0) {
+				return 256;
+			}
+			return 0;
+			};
+
+		LOG_DEBUG("start generate terrain");
+		for (int cx = -10; cx < 10; ++cx)
 		{
-			auto nhandle = terrainData.chunkData.Create();
-			terrainData.chunkData.Get(nhandle)->Coords = { 1, 0, 0 };
-			terrainData.coordToChunks[{1, 0, 0}] = nhandle;
+			for (int cz = -10; cz < 10; ++cz)
+			{
+				for (int cy = 0; cy < 5; ++cy)
+				{
+					auto handle = terrainData.chunkData.Create();
+					auto chunk = terrainData.chunkData.Get(handle);
+					chunk->Coords = { cx, cy, cz };
+					terrainData.coordToChunks[{cx, cy, cz}] = handle;
+
+					for (size_t z = 0; z < 16; ++z)
+					{
+						for (size_t y = 0; y < 16; ++y)
+						{
+							for (size_t x = 0; x < 16; ++x)
+							{
+								chunk->SetBlock(x, y, z, generate_terrain(x, y, z));
+							}
+						}
+					}
+				}
+			}
 		}
+		LOG_DEBUG("end generate terrain");
+
+
+		LOG_DEBUG("start generate mesh");
+		for (int cx = -3; cx < 3; ++cx)
 		{
-			auto nhandle = terrainData.chunkData.Create();
-			terrainData.chunkData.Get(nhandle)->Coords = { -1, 0, 0 };
-			terrainData.coordToChunks[{-1, 0, 0}] = nhandle;
+			for (int cz = -3; cz < 3; ++cz)
+			{
+				for (int cy = 0; cy < 4; ++cy)
+				{
+					auto handle = terrainData.coordToChunks[{cx, cy, cz}];
+					assert(handle.IsValid());
+					auto coord = terrainData.chunkData.Get(handle)->Coords;
+					LOG_DEBUG("queuing chunk ({}, {}, {}) with ({}, {}, {})", cx, cy, cz, coord.x, coord.y, coord.z);
+					terrainData.buildMeshQueue.push(handle);
+				}
+			}
 		}
-		{
-			auto nhandle = terrainData.chunkData.Create();
-			terrainData.chunkData.Get(nhandle)->Coords = { 0, 1, 0 };
-			terrainData.coordToChunks[{0, 1, 0}] = nhandle;
-		}
-		{
-			auto nhandle = terrainData.chunkData.Create();
-			terrainData.chunkData.Get(nhandle)->Coords = { 0, 0, 1 };
-			terrainData.coordToChunks[{0, 0, 1}] = nhandle;
-		}
-		{
-			auto nhandle = terrainData.chunkData.Create();
-			terrainData.chunkData.Get(nhandle)->Coords = { 0, 0, -1 };
-			terrainData.coordToChunks[{0, 0, -1}] = nhandle;
-		}
-		terrainData.buildMeshQueue.push(handle);
 		meshBuilder.BuildChunkMeshes(192 * 1024 * 1024);
+		LOG_DEBUG("end generate mesh");
 
-		auto [chunkHandle, builtMeshHandle] = std::move(terrainData.uploadMeshQueue.front());
-		auto builtMesh = terrainData.builtChunkMeshes.Get(builtMeshHandle);
-
+		meshBuilder.AllocateTerrainMesh(context.backend);
+		auto bundle = context.CreateAssetBundle();
 #ifdef USE_TERRAIN_MESH_V2
-		meshBuilder.AllocateTerrainMesh(context.assets.m_backend);
-		context.assets.m_streamingManager->UploadBuffer<UploadType::Immediate, BufferUsage::Storage>(builtMesh->quads, terrainData.terrainMesh);
-		testSlot = { 0, (uint32_t)builtMesh->quads.size() };
+		context.renderer.EnableTerrainPass2(context.backend, bundle, terrainData.terrainMesh);
 
-		//Terrain::TexturedQuad quad{ 0u, 0u, 0u, 1u, 4u, COLOR_WHITE, { 0xF, 0xF, 0xF, 0xF }, { 0, 0, 0, 0 } };
-		//std::vector<Terrain::TexturedQuad> data;
-		//data.push_back(quad);
-		//context.assets->UpdateBuffer(data, 0, terrainMesh);
-		//testSlot = { 0, 1 };
+		int currentSlot = 0;
+		while (!terrainData.uploadMeshQueue.empty() && currentSlot < 100)
+		{
+			auto [chunkHandle, builtMeshHandle] = std::move(terrainData.uploadMeshQueue.front());
+			terrainData.uploadMeshQueue.pop();
+			auto builtMesh = terrainData.builtChunkMeshes.Get(builtMeshHandle);
+			auto chunkCoord = terrainData.chunkData.Get(chunkHandle)->Coords;
+			context.streamingManager.UploadBuffer<UploadType::Immediate, BufferUsage::Storage>(builtMesh->quads, terrainData.terrainMesh, currentSlot * Terrain::CHUNK_VERTEX_BYTE_SIZE);
+			testSlots.push_back(Graphics::PTerrainMesh2 { (uint32_t)currentSlot, (uint32_t)builtMesh->quads.size(), chunkCoord.x, chunkCoord.y, chunkCoord.z });
+			currentSlot += 2;
+			LOG_DEBUG("looking at chunk ({}, {}, {}), data size: {} kb", chunkCoord.x, chunkCoord.y, chunkCoord.z, (float)(builtMesh->quads.size() * sizeof(Terrain::TexturedQuad)) / 1024.f);
+		}
+		LOG_DEBUG("used slots {}", currentSlot);
 #else
-		Mesh terrainMesh;
-		assert(context.assets->LoadMesh("terrainMesh", terrainMesh));
-		context.assets->UpdateMesh(builtMesh->vertices, builtMesh->indices, terrainMesh);
-		testSlot = { 0, (uint32_t)builtMesh->indices.size() };
+		context.renderer.EnableTerrainPass(context.backend, bundle, terrainData.terrainMesh);
+		int currentSlot = 0;
+		while (!terrainData.uploadMeshQueue.empty() && currentSlot < 100)
+		{
+			auto [chunkHandle, builtMeshHandle] = std::move(terrainData.uploadMeshQueue.front());
+			terrainData.uploadMeshQueue.pop();
+			auto builtMesh = terrainData.builtChunkMeshes.Get(builtMeshHandle);
+			auto chunkCoord = terrainData.chunkData.Get(chunkHandle)->Coords;
+			if (chunkCoord.x > 2 || chunkCoord.z > 2 || chunkCoord.x < -2 || chunkCoord.z < -2)
+				continue;
+			Mesh m = terrainData.terrainMesh;
+			m.vOffset = currentSlot * Terrain::CHUNK_VERTEX_BYTE_SIZE;
+			m.iOffset = currentSlot * Terrain::CHUNK_INDEX_BYTE_SIZE;
+			bundle.UploadMesh(builtMesh->vertices, builtMesh->indices, m);
+			testSlots.push_back(Graphics::PTerrainMesh{ (uint32_t)currentSlot, (uint32_t)builtMesh->indices.size(), chunkCoord.x, chunkCoord.y, chunkCoord.z });
+			currentSlot += 2;
+			LOG_DEBUG("looking at chunk ({}, {}, {}), vert size: {} kb, index size: {} kb", chunkCoord.x, chunkCoord.y, chunkCoord.z, (float)(builtMesh->vertices.size() * sizeof(Terrain::Vertex)) / 1024.f, (builtMesh->indices.size() * sizeof(uint16_t)) / 1024.f);
+		}
+		LOG_DEBUG("used slots {}", currentSlot);
 #endif
 	}
 
-	void DebugScene2::Update(AppContext& context, float dt)
+	void DebugScene2::Exit(AppContext& context)
 	{
-		auto& world = context.world;
-		auto chunkEntity = world.create();
 #ifdef USE_TERRAIN_MESH_V2
-		world.emplace<Graphics::PTerrainMesh2>(chunkEntity, testSlot.chunkSlot, testSlot.indexCount, 0, 0, 0);
+		context.renderer.DisableTerrainPass2(context.backend);
 #else
-		world.emplace<Graphics::PTerrainMesh>(chunkEntity, testSlot.chunkSlot, testSlot.indexCount, 0, 0, 0);
+		context.renderer.DisableTerrainPass(context.backend);
 #endif
+	}
+
+	void DebugScene2::Update(AppContext& context, FrameContext& frame)
+	{
+		auto& world = frame.presentationWorld;
+#ifdef USE_TERRAIN_MESH_V2
+		using PTerrain = Graphics::PTerrainMesh2;
+#else
+		using PTerrain = Graphics::PTerrainMesh;
+#endif
+		for (auto& slot : testSlots)
+		{
+			auto chunkEntity = world.create();
+			world.emplace<PTerrain>(chunkEntity, slot);
+		}
+
 
 		if (wrappingEnabled)
-			gameWorld.Update(context, dt);
+			gameWorld.Update(context, frame);
 
-		if (context.input.IsKeyDown(KeyCode::KY_G))
+		if (frame.input.IsKeyDown(KeyCode::KY_G) || firstFrame)
 		{
 			SceneAction a{};
 			a.type = SceneActionType::SetMouseWarpping;
 			a.setMouseWarpping.enabled = true;
-			context.outSceneActions.emplace_back(a);
+			frame.outSceneActions.emplace_back(a);
 			wrappingEnabled = true;
+			firstFrame = false;
 		}
-		else if (context.input.IsKeyDown(KeyCode::KY_ESCAPE))
+		else if (frame.input.IsKeyDown(KeyCode::KY_ESCAPE))
 		{
 			SceneAction a{};
 			a.type = SceneActionType::SetMouseWarpping;
 			a.setMouseWarpping.enabled = false;
-			context.outSceneActions.emplace_back(a);
+			frame.outSceneActions.emplace_back(a);
 			wrappingEnabled = false;
 		}
 	}

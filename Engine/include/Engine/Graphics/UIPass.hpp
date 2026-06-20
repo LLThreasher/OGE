@@ -74,7 +74,7 @@ namespace OneGame::Engine::Graphics
 		bool wrap;
 	};
 
-	class UIPass : public IPass
+	class UIPass : public BasicPass
 	{
 	public:
 		struct Position
@@ -107,8 +107,8 @@ namespace OneGame::Engine::Graphics
 			uint32_t textureIndex;
 		};
 
-		void Initialize(IGraphicsBackend* backend, InitContext& ctxt) override;
-		void Shutdown(IGraphicsBackend* backend) override;
+		void Enable(IGraphicsBackend& backend, InitContext& ctxt) override;
+		void Disable(IGraphicsBackend& backend) override;
 		void Prepare(PrepareContext& ctx) override;
 		void Draw(DrawContext& context) override;
 

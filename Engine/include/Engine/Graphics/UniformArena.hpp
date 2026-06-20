@@ -1,9 +1,11 @@
 #pragma once
 
-#include "IGraphicsBackend.hpp"
+#include "Engine/ObjectType.hpp"
 
 namespace OneGame::Engine::Graphics
 {
+	class IGraphicsBackend;
+
 	class UniformArena
 	{
 	public:
@@ -15,8 +17,8 @@ namespace OneGame::Engine::Graphics
 		};
 		~UniformArena() = default;
 
-		void Initialize(IGraphicsBackend* backend, uint32_t capacityPerFrame);
-		void Shutdown(IGraphicsBackend* backend);
+		void Initialize(IGraphicsBackend& backend, uint32_t capacityPerFrame);
+		void Shutdown(IGraphicsBackend& backend);
 		GPUBufferHandle GetBuffer();
 
 		void AdvanceFrame();

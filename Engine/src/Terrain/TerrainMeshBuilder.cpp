@@ -378,12 +378,14 @@ namespace OneGame::Engine::Terrain
 		m_terrain.meshingWorkerContexts.Destroy(handle);
 	}
 
-	void TerrainMeshBuilder::AllocateTerrainMesh(Graphics::IGraphicsBackend* backend)
+	void TerrainMeshBuilder::AllocateTerrainMesh(Graphics::IGraphicsBackend& backend)
 	{
 #ifdef USE_TERRAIN_MESH_V2
-		m_terrain.terrainMesh = backend->AllocateGPUBuffer<BufferUsage::Storage>(MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE);
+		m_terrain.terrainMesh = backend.AllocateGPUBuffer<BufferUsage::Storage>(MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE);
 #else
-		ExecuteBuildChunkMeshJob(_context, context);
+		m_terrain.terrainMesh = {};
+		m_terrain.terrainMesh.vertexBuffer = backend.AllocateGPUBuffer<BufferUsage::Vertex>(MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE);
+		m_terrain.terrainMesh.indexBuffer = backend.AllocateGPUBuffer<BufferUsage::Index>(MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE);
 #endif
 	}
 
@@ -391,15 +393,16 @@ namespace OneGame::Engine::Terrain
 	{
 		uint32_t runningVertexCount = m_terrain.meshingWorkerContexts.Size() * CHUNK_VERTEX_BYTE_SIZE;
 		static_assert(std::is_default_constructible_v<ChunkMeshingWorkerContext>);
-		auto contextHandle = m_terrain.meshingWorkerContexts.Create();
 		while (runningVertexCount < vertexBudget && !m_terrain.buildMeshQueue.empty())
 		{
+			auto contextHandle = m_terrain.meshingWorkerContexts.Create();
 			auto context = m_terrain.meshingWorkerContexts.Get(contextHandle);
 			while (!m_terrain.buildMeshQueue.empty())
 			{
-				auto handle = m_terrain.buildMeshQueue.back();
+				auto handle = std::move(m_terrain.buildMeshQueue.front());
 				m_terrain.buildMeshQueue.pop();
 				auto data = m_terrain.chunkData.Get(handle);
+				LOG_DEBUG("building mesh at ({}, {}, {})", data->Coords.x, data->Coords.y, data->Coords.z);
 				
 				// skip chunks with missing neighbors
 				bool incompleteNeighbors = false;
@@ -430,7 +433,8 @@ namespace OneGame::Engine::Terrain
 							size_t blkIdx = GetBlockIndex(x, y, z);
 							assert(blkIdx < CHUNK_SIZE_TOTAL);
 							uint32_t opaque = IsOpaque(data->data[blkIdx]);
-							context->opaqueMasks[MaskIndex(z + 1, y + 1)] |= opaque << (x + 1);
+							auto midx = MaskIndex(z + 1, y + 1);
+							context->opaqueMasks[midx] |= opaque << (x + 1);
 						}
 					}
 				}

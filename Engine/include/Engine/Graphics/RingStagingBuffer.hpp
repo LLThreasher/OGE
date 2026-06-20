@@ -2,10 +2,13 @@
 #include <mutex>
 #include <cassert>
 #include <cstdint>
-#include "IGraphicsBackend.hpp"
+
+#include "Engine/ObjectType.hpp"
 
 namespace OneGame::Engine::Graphics
 {
+    class IGraphicsBackend;
+
     struct StagingAllocation
     {
         uint32_t offset;
@@ -16,8 +19,8 @@ namespace OneGame::Engine::Graphics
     class RingStagingBuffer
     {
     public:
-        void Initialize(IGraphicsBackend* backend, uint64_t size);
-        void Shutdown(IGraphicsBackend* backend);
+        void Initialize(IGraphicsBackend& backend, uint64_t size);
+        void Shutdown(IGraphicsBackend& backend);
 
         StagingAllocation Allocate(uint64_t size);
 

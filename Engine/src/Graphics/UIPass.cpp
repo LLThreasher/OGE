@@ -3,21 +3,22 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+#include "RendererInternals.hpp"
 
 namespace OneGame::Engine::Graphics
 {
-	void UIPass::Initialize(IGraphicsBackend* backend, InitContext& ctxt)
+	void UIPass::Enable(IGraphicsBackend& backend, InitContext& ctxt)
 	{
         BindingGroupLayoutDesc layout{};
         layout.textureCount = 16;
         layout.bufferCount = 0;
         layout.dynamicBufferMask = 0;
-        bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
+        bindingGroupLayout = backend.CreateBindingGroupLayout(layout);
 
         {
             GraphicsPipelineDesc desc{};
-            assert(ctxt.assets.LoadShader("ui.vert.spv", desc.vertexShader));
-            assert(ctxt.assets.LoadShader("ui.frag.spv", desc.fragmentShader));
+            assert(ctxt.assets.LoadBlob("ui.vert.spv", desc.vertexShader));
+            assert(ctxt.assets.LoadBlob("ui.frag.spv", desc.fragmentShader));
             // position
             desc.vertexLayout.push_back(VertexAttributeFormat::Uint16x2);
             // uv
@@ -39,29 +40,29 @@ namespace OneGame::Engine::Graphics
             desc.depthTest = false;
             desc.depthCompareOp = DepthCompareOp::Less;
             desc.cullMode = CullMode::Back;
-            pipelineHandle = backend->CreateGraphicsPipeline(desc);
+            pipelineHandle = backend.CreateGraphicsPipeline(desc);
         }
 
         BufferDesc vBuf{};
         vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
         vBuf.memory = MemoryUsage::GPUOnly;
         vBuf.size = 1024 * sizeof(Vertex);
-        vertexBuffer = backend->CreateBuffer(vBuf);
+        vertexBuffer = backend.CreateBuffer(vBuf);
 
         BufferDesc iBuf{};
         iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
         iBuf.memory = MemoryUsage::GPUOnly;
         iBuf.size = 4 * 256 * sizeof(uint16_t);
-        indexBuffer = backend->CreateBuffer(iBuf);
+        indexBuffer = backend.CreateBuffer(iBuf);
 
         {
             BindingGroupDesc desc{};
             desc.layout = bindingGroupLayout;
-            bindingGroup = backend->CreateBindingGroup(desc);
+            bindingGroup = backend.CreateBindingGroup(desc);
         }
 	}
 
-	void UIPass::Shutdown(IGraphicsBackend* backend)
+	void UIPass::Disable(IGraphicsBackend& backend)
 	{
 	}
 

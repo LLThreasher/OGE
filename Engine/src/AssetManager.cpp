@@ -5,29 +5,18 @@
 
 namespace OneGame::Engine
 {
-	using namespace Graphics;
-
-	bool AssetManager::GetTextureInfo(const std::string_view& id, TextureInfo& info)
+	TextureInfo* AssetManager::GetTextureInfo(const std::string_view& id)
 	{
-		info = {};
 		auto str_id = std::string(id);
 		auto it = m_textures.find(str_id);
 		if (it != m_textures.end())
 		{
-			info.width = it->second.width;
-			info.height = it->second.height;
-			return true;
+			return &it->second.info;
 		}
-
-		std::vector<char> blob;
-		if (!TryLoadBlob(id, blob))
-			return false;
-		int iwidth, iheight;
-		if (!TryLoadPNG(blob, iwidth, iheight, nullptr))
-			return false;
-		info.width = iwidth;
-		info.height = iheight;
-		return true;
+		else
+		{
+			return &LoadTexture(id)->info;
+		}
 	}
 
 	TextureData* AssetManager::LoadTexture(const std::string_view& id)
@@ -43,33 +32,16 @@ namespace OneGame::Engine
 		std::vector<char> blob;
 		if (!TryLoadBlob(id, blob))
 			return nullptr;
-		if (!TryLoadPNG(blob, data.width, data.height, nullptr))
+		int iwidth, iheight;
+		if (!TryLoadPNG(blob, iwidth, iheight, nullptr))
 			return nullptr;
-		data.data.resize(data.width * data.height * sizeof(char) * 4 * 2);
-		if (!TryLoadPNG(blob, data.width, data.height, data.data.data()))
+		data.info.width = iwidth;
+		data.info.height = iheight;
+		data.data.resize(data.info.width * data.info.height * sizeof(char) * 4 * 2);
+		if (!TryLoadPNG(blob, iwidth, iheight, data.data.data()))
 			return nullptr;
 		m_textures.emplace(id, data);
 		return &m_textures[str_id];
-	}
-
-	Future<TextureData*> AssetManager::LoadTextureAsync(const std::string_view& id)
-	{
-		auto res = dispatcher.create_future<TextureData*>();
-		m_texturesToLoad.emplace(std::string(id), res);
-		return res;
-	}
-
-	void AssetManager::IssueLoads()
-	{
-		while (!m_texturesToLoad.empty())
-		{
-			auto [id, future] = std::move(m_texturesToLoad.front());
-			m_texturesToLoad.pop();
-			jobSystem.submit([&](auto canceled) mutable
-				{
-					future.post(this->LoadTexture(id));
-				});
-		}
 	}
 
 	bool TryLoadPNG(std::vector<char> data, int& width, int& height, void* result)

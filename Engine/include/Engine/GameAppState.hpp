@@ -1,7 +1,10 @@
 #pragma once
 
 #include <entt/entt.hpp>
+#include "Engine/Graphics/Renderer.hpp"
 #include "Engine/AssetManager.hpp"
+#include "Engine/AssetBundle.hpp"
+#include "Engine/StreamingManager.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/Input/InputSystem.hpp"
 
@@ -46,20 +49,24 @@ namespace OneGame::Engine
         };
     };
 
-    struct AppInitContext
-    {
-        Graphics::IGraphicsBackend* backend;
-        entt::registry& world;
-        AssetBundleWriter<UploadType::Immediate>& assets;
-        entt::dispatcher& events;
-    };
-
     struct AppContext
     {
-        Graphics::IGraphicsBackend* backend;
-        entt::registry& world;
-        AssetBundleWriter<UploadType::Async>& assets;
+        Graphics::IGraphicsBackend& backend;
+        AssetManager& assetManager;
+        StreamingManager& streamingManager;
+        Graphics::Renderer& renderer;
         entt::dispatcher& events;
+
+        AssetBundleWriter CreateAssetBundle()
+        {
+            return AssetBundleWriter(assetManager, streamingManager, backend);
+        }
+    };
+
+    struct FrameContext
+    {
+        float dt;
+        entt::registry& presentationWorld;
         InputSystem& input;
         std::vector<SceneAction>& outSceneActions;
     };

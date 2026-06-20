@@ -9,6 +9,7 @@
 
 #include "Engine/ObjectType.hpp"
 #include "Engine/Math.hpp"
+#include "Engine/ClassHelper.hpp"
 
 /*
 ================================================================================
@@ -637,6 +638,7 @@ namespace OneGame::Engine::Graphics
     class IGraphicsBackend
     {
     public:
+        NO_COPY(IGraphicsBackend)
         virtual ~IGraphicsBackend() = default;
 
         virtual uint32_t MaxUniformBufferSize() const = 0;
@@ -665,7 +667,7 @@ namespace OneGame::Engine::Graphics
         virtual BeginFrameAction BeginFrame() = 0;
         virtual EndFrameAction EndFrame() = 0;
 
-        virtual std::unique_ptr<ICommandList> CreateCommandList(QueueType) = 0;
+        virtual ICommandList& CreateCommandList(QueueType) = 0;
 
         // ----- Buffers -----
         virtual GPUBufferHandle CreateBuffer(const BufferDesc&, void** = nullptr) = 0;
@@ -684,6 +686,17 @@ namespace OneGame::Engine::Graphics
         // ----- Textures -----
         virtual GPUTextureHandle CreateTexture(const TextureDesc&) = 0;
         virtual void DestroyTexture(GPUTextureHandle) = 0;
+
+        template<TextureFormat format = TextureFormat::RGBA8Unorm>
+        GPUTextureHandle AllocateGPUTexture(const size_t width, const size_t height)
+        {
+            TextureDesc texDesc{};
+            texDesc.width = width;
+            texDesc.height = height;
+            texDesc.format = format;
+            texDesc.usage = TextureUsage::TransferDst | TextureUsage::Sampled;
+            return CreateTexture(texDesc);
+        }
 
         // ----- Pipelines -----
         virtual GPUPipelineHandle CreateGraphicsPipeline(const GraphicsPipelineDesc&) = 0;

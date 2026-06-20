@@ -3,12 +3,6 @@
 #include "Engine/Platform/IGameWindow.hpp"
 #include "Engine/GameApp.hpp"
 
-/* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */
-/*                                                       */
-/* Remove this source, and replace with your SDL sources */
-/*                                                       */
-/* !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! */
-
 using namespace OneGame::Engine;
 using namespace OneGame::Engine::Graphics;
 

@@ -1,17 +1,17 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
-#include "Vulkan.hpp"
+#include "Engine/Graphics/IGraphicsBackend.hpp"
 
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
+    class VulkanBackend;
 
-	class VulkanCommandBuffer : public ICommandList
+	class VulkanCommandBuffer final : public ICommandList
     {
     public:
-        explicit VulkanCommandBuffer(QueueType queueType, VkDevice device, VkCommandBuffer cmd, VulkanBackend* backend) : m_queueType(queueType), m_device(device), m_cmd(cmd), m_backend(backend) {
-        }
+        explicit VulkanCommandBuffer(QueueType queueType, VkDevice device, VkCommandBuffer cmd, VulkanBackend* backend) : m_queueType(queueType), m_device(device), m_cmd(cmd), m_backend(backend) {}
         virtual ~VulkanCommandBuffer() = default;
 
         void Begin() override;
@@ -105,6 +105,12 @@ namespace OneGame::Engine::Graphics::Vulkan
         
 		VkCommandBuffer GetVulkanCommandBuffer() const { return m_cmd; }
 		QueueType GetQueueType() const { return m_queueType; }
+
+        void Clear()
+        {
+            m_currentPipelineLayout = VK_NULL_HANDLE;
+            m_currentBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+        }
     private:
 		QueueType m_queueType;
 

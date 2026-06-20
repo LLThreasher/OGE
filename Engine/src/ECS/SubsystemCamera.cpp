@@ -2,6 +2,8 @@
 #include "Engine/Math.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 
+#define LOGGER_NAME "Engine"
+#include "Engine/Logger.hpp"
 
 namespace OneGame::Engine::ECS
 {
@@ -59,17 +61,72 @@ namespace OneGame::Engine::ECS
 		cam.pitch = std::asin(cam.forward.y);
 	}
 
-	void SubsystemCamera::Update(SubsystemContext& ctx, float dt)
+	void SubsystemCamera::Update(SubsystemContext& ctx)
 	{
-		static float sens = 1.f;
-		static float speed = 10.f;
+		float dt = ctx.dt;
 		auto cameraEntity = m_gameWorld.view<ComponentCamera>().front();
 		auto& camera = m_gameWorld.get<ComponentCamera>(cameraEntity);
-		float dx = ctx.input.GetMouseDX() * sens * dt;
-		float dy = -ctx.input.GetMouseDY() * sens * dt;
+		float dx = 0;
+		float dy = 0;
+		float width = ctx.backend.SwapchainExtend().x;
+#ifdef PLATFORM_ANDROID
+		static float speed = 20.f;
+		static float sens = 1.f;
+		if (panFingerIndex != -1)
+		{
+			dx = ctx.input.GetTouchDX(panFingerIndex) * sens;
+			dy = -ctx.input.GetTouchDY(panFingerIndex) * sens;
+			if ((ctx.input.GetReleasedTouchIdMask() & (1 << panFingerIndex)) != 0)
+			{
+				LOG_DEBUG("pan up {}", panFingerIndex);
+				panFingerIndex = -1;
+			}
+		}
+		if (ctx.input.GetPressedTouchIdMask() != 0)
+		{
+			auto fingerIdx = __builtin_ctz(ctx.input.GetPressedTouchIdMask());
+			auto fingerX = ctx.input.GetTouchX(fingerIdx);
+			auto fingerY = ctx.input.GetTouchY(fingerIdx);
+			if (fingerX < 0.5)
+			{
+				if (moveFingerIndex == -1)
+				{
+					moveFingerIndex = fingerIdx;
+					moveFingerStartX = fingerX;
+					moveFingerStartY = fingerY;
+					//LOG_DEBUG("move down {} {},{}", moveFingerIndex, fingerX, fingerY);
+				}
+			}
+			else
+			{
+				if (panFingerIndex == -1)
+				{
+					panFingerIndex = fingerIdx;
+					//LOG_DEBUG("pan down {} {},{}", panFingerIndex, fingerX, fingerY);
+				}
+			}
+		}
+#else
+		static float speed = 10.f;
+		static float sens = 0.001f;
+		dx = ctx.input.GetMouseDX() * sens;
+		dy = -ctx.input.GetMouseDY() * sens;
+#endif
 
 		float dwx = 0;
 		float dwz = 0;
+#ifdef PLATFORM_ANDROID
+		if (moveFingerIndex != -1)
+		{
+			dwx += -(ctx.input.GetTouchX(moveFingerIndex) - moveFingerStartX) * dt * speed;
+			dwz += -(ctx.input.GetTouchY(moveFingerIndex) - moveFingerStartY) * dt * speed;
+			if ((ctx.input.GetReleasedTouchIdMask() & (1 << moveFingerIndex)) != 0)
+			{
+				//LOG_DEBUG("move up {}", moveFingerIndex);
+				moveFingerIndex = -1;
+			}
+		}
+#else
 		if (ctx.input.IsKeyDown(KeyCode::KY_A))
 			dwx += dt * speed;
 		if (ctx.input.IsKeyDown(KeyCode::KY_D))
@@ -78,6 +135,7 @@ namespace OneGame::Engine::ECS
 			dwz += dt * speed;
 		if (ctx.input.IsKeyDown(KeyCode::KY_S))
 			dwz -= dt * speed;
+#endif
 		camera.ApplyDelta(dx, dy, dwx, dwz);
 	}
 

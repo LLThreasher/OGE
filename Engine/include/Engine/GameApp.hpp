@@ -3,8 +3,8 @@
 #include <memory>
 #include <entt/entt.hpp>
 
-#include "Engine/AssetManager.hpp"
 #include "Engine/Graphics/Renderer.hpp"
+#include "Engine/AssetManager.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Terrain/TerrainMeshBuilder.hpp"
@@ -34,10 +34,9 @@ namespace OneGame::Engine
         GameApp();
         ~GameApp();
 
-        void Initialize(Graphics::WindowHandle*);
-        void Shutdown();
-
+        void Initialize(Graphics::WindowHandle* handle);
         AppFrameAction Update(float dt, InputSystem& input);
+        void Shutdown();
 
         void OnWindowRecreate(Graphics::WindowHandle*);
         void OnResize(int width, int height);
@@ -45,14 +44,12 @@ namespace OneGame::Engine
         void TransferToScene(uint32_t nextScene);
 
         std::unique_ptr<Graphics::IGraphicsBackend> backend;
-        entt::registry world;
-        entt::dispatcher dispatcher;
-        StreamingManager streamingManager;
         AssetManager assetManager;
+        StreamingManager streamingManager;
         Graphics::Renderer renderer;
+        entt::dispatcher dispatcher;
 
-        AsyncDispatcher asyncDispatcher;
-        JobSystem jobSystem;
+        entt::registry world;
 
         std::vector<std::unique_ptr<IScene>> allScenes;
         IScene* nextScene = nullptr;

@@ -1,7 +1,10 @@
 #include <sstream>
-#include "Engine/Graphics/DebugPass.hpp"
 #include "stb_easy_font.h"
+#include "Engine/Graphics/DebugPass.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
+#include "Engine/Graphics/IGraphicsBackend.hpp"
+
+#include "RendererInternals.hpp"
 
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
@@ -9,20 +12,20 @@
 namespace OneGame::Engine::Graphics
 {
 
-    void DebugInfoPass::Initialize(IGraphicsBackend* backend, InitContext& ctx)
+    void DebugInfoPass::Enable(IGraphicsBackend& backend, InitContext& ctx)
     {
         LOG_DEBUG("begin initialize debug info pass");
         BindingGroupLayoutDesc layout{};
         layout.textureCount = 0;
         layout.bufferCount = 0;
         layout.dynamicBufferMask = 0;
-        bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
+        bindingGroupLayout = backend.CreateBindingGroupLayout(layout);
         LOG_DEBUG("binding group layout created");
         {
             GraphicsPipelineDesc desc{};
-            if (!ctx.assets.LoadShader("debug.vert.spv", desc.vertexShader))
+            if (!ctx.assets.LoadBlob("debug.vert.spv", desc.vertexShader))
                 throw std::runtime_error("failed to load vertex shader");
-            if (!ctx.assets.LoadShader("debug.frag.spv", desc.fragmentShader))
+            if (!ctx.assets.LoadBlob("debug.frag.spv", desc.fragmentShader))
                 throw std::runtime_error("failed to load fragment shader");
             // position
             desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
@@ -40,7 +43,7 @@ namespace OneGame::Engine::Graphics
             cDesc.stageFlags = ShaderStage::Vertex;
             desc.pushConstants.push_back(cDesc);
 
-            pipeline = backend->CreateGraphicsPipeline(desc);
+            pipeline = backend.CreateGraphicsPipeline(desc);
             LOG_DEBUG("debug pipeline created");
         }
 
@@ -48,25 +51,25 @@ namespace OneGame::Engine::Graphics
         vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
         vBuf.memory = MemoryUsage::GPUOnly;
         vBuf.size = NUM_DEBUG_VERTICES * sizeof(Vertex);
-        vertexBuffer = backend->CreateBuffer(vBuf);
+        vertexBuffer = backend.CreateBuffer(vBuf);
         LOG_DEBUG("debug vbuff created");
 
         BufferDesc iBuf{};
         iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
         iBuf.memory = MemoryUsage::GPUOnly;
         iBuf.size = NUM_DEBUG_INDICES * sizeof(uint16_t);
-        indexBuffer = backend->CreateBuffer(iBuf);
+        indexBuffer = backend.CreateBuffer(iBuf);
         LOG_DEBUG("debug ibuff created");
     }
 
-    void DebugInfoPass::Shutdown(IGraphicsBackend* backend)
+    void DebugInfoPass::Disable(IGraphicsBackend& backend)
     {
     }
 
     void DebugInfoPass::Prepare(PrepareContext& ctx)
     {
         std::stringstream ss;
-        auto view = ctx.world->view<PDebugText>();
+        auto view = ctx.world.view<PDebugText>();
         for (auto [_, dbgText] : view.each())
         {
             ss << dbgText.text << std::endl;
@@ -114,26 +117,26 @@ namespace OneGame::Engine::Graphics
 
     void DebugInfoPass::Draw(DrawContext& context)
     {
-        if (context.backend->SwapchainRecreated())
+        if (context.backend.SwapchainRecreated())
         {
-            auto extent = context.backend->SwapchainExtend();
-            math::get_screen_affine(context.backend->SwapchainPretransform(), extent.x, extent.y, pushConstant.transform, pushConstant.offset);
+            auto extent = context.backend.SwapchainExtend();
+            math::get_screen_affine(context.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform, pushConstant.offset);
         }
         if (numQuads == 0)
             return;
 
-        auto tCmd = context.transferCmd;
-        auto cmd = context.drawCmd;
-        tCmd->UpdateBuffer(vertexBuffer, 0, numQuads * 4 * sizeof(Vertex), vertices);
-        tCmd->UpdateBuffer(indexBuffer, 0, numQuads * 6 * sizeof(uint16_t), indices);
-        tCmd->BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
-        tCmd->BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
+        auto& tCmd = context.transferCmd;
+        auto& cmd = context.drawCmd;
+        tCmd.UpdateBuffer(vertexBuffer, 0, numQuads * 4 * sizeof(Vertex), vertices);
+        tCmd.UpdateBuffer(indexBuffer, 0, numQuads * 6 * sizeof(uint16_t), indices);
+        tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
+        tCmd.BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
 
-        cmd->BindGraphicsPipeline(pipeline);
-        cmd->PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
-        cmd->BindVertexBuffer(vertexBuffer);
-        cmd->BindIndexBuffer(indexBuffer, 0, IndexFormat::Uint16);
-        cmd->DrawIndexed(numQuads * 6, 1, 0, 0, 0);
+        cmd.BindGraphicsPipeline(pipeline);
+        cmd.PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
+        cmd.BindVertexBuffer(vertexBuffer);
+        cmd.BindIndexBuffer(indexBuffer, 0, IndexFormat::Uint16);
+        cmd.DrawIndexed(numQuads * 6, 1, 0, 0, 0);
     }
 
     struct TestPassVertex
@@ -192,18 +195,18 @@ namespace OneGame::Engine::Graphics
         20,21,22, 22,23,20   // bottom
     };
 
-	void TestPass::Initialize(IGraphicsBackend* backend, InitContext& ctx)
+	void TestPass::Enable(IGraphicsBackend& backend, InitContext& ctx)
 	{
         BindingGroupLayoutDesc layout{};
         layout.textureCount = 1;
         layout.bufferCount = 1;
         layout.dynamicBufferMask = 1;
-        bindingGroupLayout = backend->CreateBindingGroupLayout(layout);
+        bindingGroupLayout = backend.CreateBindingGroupLayout(layout);
 
         {
             GraphicsPipelineDesc desc{};
-            ctx.assets.LoadShader("test_cube_textured.vert.spv", desc.vertexShader);
-            ctx.assets.LoadShader("test_cube_textured.frag.spv", desc.fragmentShader);
+            ctx.assets.LoadBlob("test_cube_textured.vert.spv", desc.vertexShader);
+            ctx.assets.LoadBlob("test_cube_textured.frag.spv", desc.fragmentShader);
             // position
             desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
             // color
@@ -218,7 +221,7 @@ namespace OneGame::Engine::Graphics
             desc.writeDepth = true;
             desc.depthCompareOp = DepthCompareOp::Less;
             desc.cullMode = CullMode::Back;
-            pipeline = backend->CreateGraphicsPipeline(desc);
+            pipeline = backend.CreateGraphicsPipeline(desc);
         }
 
         testCubeMesh = ctx.assets.LoadMesh(test_vertices, test_indices);
@@ -229,11 +232,11 @@ namespace OneGame::Engine::Graphics
             desc.layout = bindingGroupLayout;
             desc.buffers.push_back(BindingGroupBufferDesc{ ctx.uniformArena.GetBuffer(), sizeof(UBO) });
             desc.textures.push_back(texture);
-            bindingGroup = backend->CreateBindingGroup(desc);
+            bindingGroup = backend.CreateBindingGroup(desc);
         }
 	}
 
-	void TestPass::Shutdown(IGraphicsBackend* backend)
+	void TestPass::Disable(IGraphicsBackend& backend)
 	{
 	}
 
@@ -254,24 +257,24 @@ namespace OneGame::Engine::Graphics
             math::vec3(0, 0, 0),
             math::vec3(0, 1, 0));
 
-        ubo.proj = math::get_perspective_rot(context.backend->SwapchainPretransform()) * math::perspective(
+        ubo.proj = math::get_perspective_rot(context.backend.SwapchainPretransform()) * math::perspective(
             math::radians(45.0f),
-            context.backend->SwapchainAspect(),
+            context.backend.SwapchainAspect(),
             0.1f,
             10.0f);
 
-        auto tCmd = context.transferCmd;
-        auto cmd = context.drawCmd;
+        auto& tCmd = context.transferCmd;
+        auto& cmd = context.drawCmd;
 
-        auto uniformMemory = context.uniformArena->Allocate(sizeof(UBO));
+        auto uniformMemory = context.uniformArena.Allocate(sizeof(UBO));
         std::memcpy(uniformMemory.cpuPtr, &ubo, sizeof(UBO));
 
         uint32_t offset[1] = { uniformMemory.offset };
 
-        cmd->BindGraphicsPipeline(pipeline);
-        cmd->BindVertexBuffer(testCubeMesh.vertexBuffer);
-        cmd->BindIndexBuffer(testCubeMesh.indexBuffer, 0, IndexFormat::Uint32);
-        cmd->BindBindingGroup(bindingGroup, 0, offset);
-        cmd->DrawIndexed(testCubeMesh.indexCount, 1, 0, 0, 0);
+        cmd.BindGraphicsPipeline(pipeline);
+        cmd.BindVertexBuffer(testCubeMesh.vertexBuffer);
+        cmd.BindIndexBuffer(testCubeMesh.indexBuffer, 0, IndexFormat::Uint32);
+        cmd.BindBindingGroup(bindingGroup, 0, offset);
+        cmd.DrawIndexed(testCubeMesh.indexCount, 1, 0, 0, 0);
 	}
 }

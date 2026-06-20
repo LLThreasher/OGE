@@ -36,7 +36,7 @@ PRIVATE
     "src/Scenes/DebugScene.cpp"
     "src/Terrain/TerrainService.cpp"
     "src/ECS/SubsystemCamera.cpp"
-  "src/ECS/SubsystemDebugInfo.cpp")
+  "src/ECS/SubsystemDebugInfo.cpp" "src/AssetBundle.cpp")
 
 target_include_directories(Engine
     PUBLIC

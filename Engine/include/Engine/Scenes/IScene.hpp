@@ -10,9 +10,10 @@ namespace OneGame::Engine
 	public:
 		virtual ~IScene() = default;
 
-		virtual void Initialize(AppInitContext& context) = 0;
+		virtual void Initialize(AppContext& context) = 0;
 		virtual void Enter(AppContext& context) = 0;
 		virtual void Exit(AppContext& context) = 0;
-		virtual void Update(AppContext& context, float dt) = 0;
+		virtual void Shutdown(AppContext& context) = 0;
+		virtual void Update(AppContext& context, FrameContext& fc) = 0;
 	};
 }

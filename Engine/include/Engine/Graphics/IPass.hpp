@@ -1,43 +1,24 @@
 #pragma once
 
-#include <entt/entt.hpp>
-#include "Engine/Graphics/IGraphicsBackend.hpp"
-#include "Engine/Graphics/UniformArena.hpp"
-#include "Engine/Graphics/RingStagingBuffer.hpp"
-#include "Engine/AssetManager.hpp"
-#include "Engine/Math.hpp"
-
 namespace OneGame::Engine::Graphics
 {
-	struct InitContext {
-		AssetBundleWriter<UploadType::Immediate>& assets;
-		UniformArena& uniformArena;
-	};
+	struct InitContext;
+	struct PrepareContext;
+	struct DrawContext;
+	class IGraphicsBackend;
 
-	struct DrawContext
-	{
-		const IGraphicsBackend* backend;
-		float deltaTime;
-		UniformArena* uniformArena;
-		ICommandList* drawCmd;
-		ICommandList* transferCmd;
-	};
-
-	struct PrepareContext
-	{
-		const IGraphicsBackend* backend;
-		float deltaTime;
-		entt::registry* world;
-	};
-	
+	template<typename... Args>
 	class IPass
 	{
 	public:
 		virtual ~IPass() = default;
-
-		virtual void Initialize(IGraphicsBackend* backend, InitContext& ctx) = 0;
-		virtual void Shutdown(IGraphicsBackend* backend) = 0;
+		virtual void Enable(IGraphicsBackend& backend, InitContext&ctx, Args... args) = 0;
+		virtual void Disable(IGraphicsBackend& backend) = 0;
 		virtual void Prepare(PrepareContext& context) = 0;
 		virtual void Draw(DrawContext& context) = 0;
+	};
+
+	class BasicPass : public IPass<>
+	{
 	};
 }

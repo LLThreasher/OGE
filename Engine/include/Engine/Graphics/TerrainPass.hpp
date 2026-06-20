@@ -2,11 +2,12 @@
 #include "IPass.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
+#include "Engine/ObjectType.hpp"
 
 namespace OneGame::Engine::Graphics
 {
 
-	class TerrainPass : public IPass
+	class TerrainPass : public IPass<Mesh>
 	{
 		struct UBO
 		{
@@ -17,8 +18,8 @@ namespace OneGame::Engine::Graphics
 		{
 		}
 
-		void Initialize(IGraphicsBackend* backend, InitContext& ctxt) override;
-		void Shutdown(IGraphicsBackend* backend) override;
+		void Enable(IGraphicsBackend& backend, InitContext& ctxt, Mesh terrainMesh) override;
+		void Disable(IGraphicsBackend& backend) override;
 		void Prepare(PrepareContext& context) override;
 		void Draw(DrawContext& context) override;
 		void SetPalette(ColorRGBA8 colors[16]);
@@ -40,7 +41,7 @@ namespace OneGame::Engine::Graphics
 		math::quat orientation;
 	};
 
-	class TerrainPass2 : public IPass
+	class TerrainPass2 : public IPass<GPUBufferHandle>
 	{
 		struct UBO
 		{
@@ -51,8 +52,8 @@ namespace OneGame::Engine::Graphics
 		{
 		}
 
-		void Initialize(IGraphicsBackend* backend, InitContext& ctxt) override;
-		void Shutdown(IGraphicsBackend* backend) override;
+		void Enable(IGraphicsBackend& backend, InitContext& ctxt, GPUBufferHandle terrainMesh) override;
+		void Disable(IGraphicsBackend& backend) override;
 		void Prepare(PrepareContext& context) override;
 		void Draw(DrawContext& context) override;
 

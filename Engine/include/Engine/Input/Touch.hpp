@@ -12,9 +12,7 @@ namespace OneGame::Engine
 
 	struct TouchPoint
 	{
-		int id;
 		float x;
 		float y;
-		TouchState event;
 	};
 }

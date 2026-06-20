@@ -61,13 +61,16 @@ namespace OneGame::Engine
 	class EmptyScene : public IScene
 	{
 	public:
-		virtual void Initialize(AppInitContext& context) override
+		virtual void Initialize(AppContext& context) override
+		{
+		}
+		virtual void Shutdown(AppContext& context) override
 		{
 		}
 		virtual void Enter(AppContext& context) override
 		{
 		}
-		virtual void Update(AppContext& context, float dt) override
+		virtual void Update(AppContext& context, FrameContext& frame) override
 		{
 		}
 		virtual void Exit(AppContext& context) override
@@ -78,7 +81,7 @@ namespace OneGame::Engine
 	class DebugScene : public EmptyScene
 	{
 	public:
-		virtual void Initialize(AppInitContext& context) override;
+		virtual void Initialize(AppContext& context) override;
 		virtual void Enter(AppContext& context) override;
 	protected:
 		Terrain::TerrainService terrain;
@@ -88,19 +91,23 @@ namespace OneGame::Engine
 	class DebugScene2 : public EmptyScene
 	{
 	public:
-		DebugScene2() : meshBuilder(terrainData)
-		{
-		}
-		virtual void Initialize(AppInitContext& context) override;
+		DebugScene2() : meshBuilder(terrainData) {}
+		virtual void Initialize(AppContext& context) override;
 		virtual void Enter(AppContext& context) override;
-		virtual void Update(AppContext& context, float dt) override;
+		virtual void Exit(AppContext& context) override;
+		virtual void Update(AppContext& context, FrameContext& frame) override;
 	protected:
-		Terrain::ChunkSlot testSlot;
+#ifdef USE_TERRAIN_MESH_V2
+		std::vector<Graphics::PTerrainMesh2> testSlots;
+#else
+		std::vector<Graphics::PTerrainMesh> testSlots;
+#endif
 		Terrain::TerrainData terrainData;
 		Terrain::TerrainMeshBuilder meshBuilder;
 
 		ECS::GameWorld gameWorld;
 
 		bool wrappingEnabled = false;
+		bool firstFrame = true;
 	};
 }

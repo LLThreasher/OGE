@@ -10,6 +10,8 @@
 #include "Engine/ResourcePool.hpp"
 #include "Engine/Math.hpp"
 
+#include "VulkanCommandBuffer.hpp"
+
 #define VK_CHECK_RESULT(expr) do { VkResult res = (expr); if (res != VK_SUCCESS) { throw std::runtime_error("Vulkan error: " + std::to_string(res)); } } while(0)
 
 
@@ -29,7 +31,8 @@ namespace OneGame::Engine::Graphics::Vulkan
     {
         VkCommandPool pool;
         std::array<uint32_t, 4> cmdUsedCount = {};
-        std::array<std::vector<VkCommandBuffer>, 4> cmdBuffers = {};
+        std::array<std::vector<VulkanCommandBuffer>, 4> cmdBuffers = {};
+        std::array<std::vector<VkCommandBuffer>, 4> vkCmdBuffers = {};
         std::vector<ICommandList> absCmdBuffers = {};
         uint32_t usedAbsCmdBuffers = 0;
 
@@ -37,9 +40,6 @@ namespace OneGame::Engine::Graphics::Vulkan
         VkSemaphore renderFinished;
         VkFence inFlightFence;
     };
-
-    // Forward declare internal classes
-    class VulkanCommandList;
 
     struct VulkanBuffer;
     struct VulkanTexture;
@@ -445,7 +445,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         BeginFrameAction BeginFrame() override;
         EndFrameAction EndFrame() override;
 
-        std::unique_ptr<ICommandList> CreateCommandList(QueueType) override;
+        ICommandList& CreateCommandList(QueueType) override;
 
         // ----- Buffers -----
         GPUBufferHandle CreateBuffer(const BufferDesc&, void** stagingMemory = nullptr) override;
