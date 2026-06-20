@@ -8,17 +8,18 @@
 #include "Engine/ResourcePool.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/StreamingManager.hpp"
+#include "Engine/Async.hpp"
+#include "Engine/JobSystem.hpp"
 
 namespace OneGame::Engine
 {
-	using AssetLoadedEvent = std::shared_ptr<ResourceBundleEvent>;
 	using StagingAllocation = Graphics::StagingAllocation;
 
-	struct CPUTexture
+	struct TextureData
 	{
 		int width;
 		int height;
-		StagingAllocation data;
+		std::vector<char> data;
 	};
 
 	enum class ShaderType
@@ -36,7 +37,9 @@ namespace OneGame::Engine
 	{
 		size_t indexCount;
 		GPUBufferHandle vertexBuffer;
+		size_t vOffset;
 		GPUBufferHandle indexBuffer;
+		size_t iOffset;
 	};
 
 	struct Material
@@ -44,72 +47,112 @@ namespace OneGame::Engine
 		GPUBufferHandle gpuBuffer;
 	};
 
-	struct CPUMesh
+	struct MeshData
 	{
-		size_t vertexBufSize;
-		size_t indexBufSize;
-		StagingAllocation vertexData;
-		StagingAllocation indexData;
+		std::vector<math::vec3> positions;
+		std::vector<math::vec2> uvs;
+		std::vector<uint32_t> indices;
 	};
 
 	bool TryLoadPNG(std::vector<char> data, int& width, int& height, void* result);
 	bool TryLoadBlob(const std::string_view& id, std::vector<char>&);
 	void AllocateMesh(const size_t vertBufSize, const size_t indexBufSize, Graphics::IGraphicsBackend* backend, Mesh& m);
 
+	struct TextureInfo
+	{
+		uint32_t width;
+		uint32_t height;
+	};
+
 	class AssetManager;
 
-	class AssetBundleWriter
+	template<UploadType uploadType>
+	struct AssetBundleWriter
 	{
 	public:
-		AssetBundleWriter(AssetManager* assets, StreamingManager* stream, Graphics::IGraphicsBackend* backend, bool asyncLoad) :
+		AssetManager* m_assetManager;
+		StreamingManager* m_streamingManager;
+		Graphics::IGraphicsBackend* m_backend;
+
+		AssetBundleWriter(AssetManager* assets, StreamingManager* stream, Graphics::IGraphicsBackend* backend) :
 			m_assetManager(assets), m_streamingManager(stream), m_backend(backend)
 		{
-			if (asyncLoad)
+			if constexpr (uploadType == UploadType::Async)
 			{
 				m_event = stream->CreateResourceBundle();
 			}
 		}
 		~AssetBundleWriter() = default;
-		bool LoadTexture(const std::string_view& id, GPUTextureHandle& outTexture);
-		bool LoadMesh(const std::string_view& id, Mesh& outMesh);
-		bool LoadShader(const std::string_view& id, std::vector<char>& outShader);
-		bool LoadMaterial(const std::string_view& id, Material& outMaterial);
-		void AllocateMesh(const std::string_view& id, const size_t vertBufSize, const size_t indexBufSize, Mesh& outMesh);
 
-		template <typename TVertex, typename TIndex>
-		void UpdateMesh(const std::vector<TVertex>& vertices, const std::vector<TIndex>& indices, const size_t gpuBufOffset, Mesh& outMesh)
+		bool LoadBlob(const std::string_view& id, std::vector<char>& data);
+
+		GPUTextureHandle LoadTexture(const std::string_view& id)
 		{
-			CPUMesh cpuMesh;
-			LoadCpuMesh(vertices.data(), vertices.size() * sizeof(TVertex), indices.data(), indices.size() * sizeof(TIndex), cpuMesh);
-			LoadMesh(cpuMesh, outMesh);
+			using namespace Graphics;
+			TextureInfo texInfo;
+			m_assetManager->GetTextureInfo(id, texInfo);
+
+			TextureDesc texDesc{};
+			texDesc.width = texInfo.width;
+			texDesc.height = texInfo.height;
+			texDesc.format = TextureFormat::RGBA8Unorm;
+			texDesc.usage = TextureUsage::TransferDst | TextureUsage::Sampled;
+			GPUTextureHandle res = m_backend->CreateTexture(texDesc);
+
+			auto data = m_assetManager->LoadTexture(id);
+			//m_streamingManager->UploadTexture<uploadType>(std::span(data->data), res, 0, m_event);
+
+			return res;
 		}
 
-		std::shared_ptr<ResourceBundleEvent> GetOnLoadedEvent() { return m_event; }
-	private:
-		void LoadCpuMesh(const void* vertices, const size_t vertexBufSize, const void* indices, const size_t indexBufSize, CPUMesh& outMesh);
-		void LoadMesh(const CPUMesh& cpuMesh, const Mesh& outMesh);
+		Mesh AllocateMesh(int vCount, int iCount)
+		{
+			Mesh m{};
+			m.vertexBuffer = m_backend->AllocateGPUBuffer<BufferUsage::Vertex>(vCount);
+			m.indexBuffer = m_backend->AllocateGPUBuffer<BufferUsage::Index>(iCount);
+			return m;
+		}
 
-		std::shared_ptr<ResourceBundleEvent> m_event = nullptr;
-		AssetManager* m_assetManager;
-		StreamingManager* m_streamingManager;
-		Graphics::IGraphicsBackend* m_backend;
+		template<typename TVertex, typename TIndex>
+		Mesh LoadMesh(const std::vector<TVertex> vertices, const std::vector<TIndex> indices)
+		{
+			auto vCount = vertices.size() * sizeof(TVertex);
+			auto iCount = indices.size() * sizeof(TIndex);
+			Mesh m = AllocateMesh(vCount, iCount);
+			UploadMesh(vertices, indices, m);
+			return m;
+		}
+
+		template<typename TVertex, typename TIndex>
+		void UploadMesh(const std::vector<TVertex> vertices, const std::vector<TIndex> indices, Mesh& m)
+		{
+			m_streamingManager->UploadBuffer<UploadType::Immediate, BufferUsage::Vertex>(std::span(vertices), m.vertexBuffer, m.vOffset);
+			m_streamingManager->UploadBuffer<UploadType::Immediate, BufferUsage::Index>(std::span(indices), m.indexBuffer, m.iOffset);
+			m.indexCount = indices.size();
+		}
+
+	private:
+		ResourceBundleHandle m_event = {};
 	};
 
 	class AssetManager
 	{
-		friend class AssetBundleWriter;
 	public:
-		void AddMesh(const std::string& id, Mesh& mesh)
-		{
-			assert(m_meshes.find(id) == m_meshes.end());
-			m_meshes.emplace(id, mesh);
-		}
+		AssetManager(AsyncDispatcher& dispatcher, JobSystem& jobSystem) : dispatcher(dispatcher), jobSystem(jobSystem) {}
+		bool GetTextureInfo(const std::string_view& id, TextureInfo& info);
+		TextureData* LoadTexture(const std::string_view& id);
+		MeshData* LoadMesh(const std::string_view& id);
 
-		std::unique_ptr<AssetBundleWriter> CreateAssetBundle(StreamingManager* streamingManager, Graphics::IGraphicsBackend* backend);
-		std::unique_ptr<AssetBundleWriter> CreateAssetBundleAsync(StreamingManager* streamingManager, Graphics::IGraphicsBackend* backend);
+		Future<TextureData*> LoadTextureAsync(const std::string_view& id);
+		Future<MeshData*> LoadMeshAsync(const std::string_view& id);
 
+		void IssueLoads();
 	private:
-		std::unordered_map<std::string, GPUTextureHandle> m_textures;
+		AsyncDispatcher& dispatcher;
+		JobSystem& jobSystem;
+		std::queue <std::tuple<const std::string, Future<TextureData*>>> m_texturesToLoad;
+
+		std::unordered_map<std::string, TextureData> m_textures;
 		std::unordered_map<std::string, Mesh> m_meshes;
 	};
 }

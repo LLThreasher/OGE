@@ -12,20 +12,23 @@ namespace OneGame::Engine::Graphics
         uniformArena.Initialize(backend, backend->MaxUniformBufferSize() > 1024*1024*16 ? 1024*1024*16 : backend->MaxUniformBufferSize());
         LOG_DEBUG("uniform arena created");
 
-        auto bundle = assets.CreateAssetBundle(&streaming, backend);
-        InitContext ctx { bundle.get(), uniformArena};
+        auto bundle = AssetBundleWriter<UploadType::Immediate>(&assets, &streaming, backend);
+        InitContext ctx { bundle, uniformArena};
         debugInfoPass.Initialize(backend, ctx);
         LOG_DEBUG("debug info pass created");
         testPass.Initialize(backend, ctx);
         LOG_DEBUG("test pass created");
         terrainPass.Initialize(backend, ctx);
         LOG_DEBUG("terrain pass created");
+        terrainPass2.Initialize(backend, ctx);
+        LOG_DEBUG("terrain pass 2 created");
         //uiPass.Initialize(backend, appCtxt);
     }
 
     void Renderer::Shutdown(IGraphicsBackend* backend)
     {
         //uiPass.Shutdown(backend);
+        terrainPass2.Shutdown(backend);
         terrainPass.Shutdown(backend);
         testPass.Shutdown(backend);
         debugInfoPass.Shutdown(backend);
@@ -41,6 +44,7 @@ namespace OneGame::Engine::Graphics
             world,
         };
         //uiPass.Prepare(world);
+        terrainPass2.Prepare(pc);
         terrainPass.Prepare(pc);
         debugInfoPass.Prepare(pc);
         testPass.Prepare(pc);
@@ -67,6 +71,7 @@ namespace OneGame::Engine::Graphics
         };
 
         tCmd->Begin();
+        terrainPass2.Draw(drawCtxt);
         terrainPass.Draw(drawCtxt);
         testPass.Draw(drawCtxt);
         debugInfoPass.Draw(drawCtxt);

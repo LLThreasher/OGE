@@ -50,7 +50,7 @@ namespace OneGame::Engine
     {
         Graphics::IGraphicsBackend* backend;
         entt::registry& world;
-        AssetBundleWriter& assets;
+        AssetBundleWriter<UploadType::Immediate>& assets;
         entt::dispatcher& events;
     };
 
@@ -58,7 +58,7 @@ namespace OneGame::Engine
     {
         Graphics::IGraphicsBackend* backend;
         entt::registry& world;
-        AssetBundleWriter* assets;
+        AssetBundleWriter<UploadType::Async>& assets;
         entt::dispatcher& events;
         InputSystem& input;
         std::vector<SceneAction>& outSceneActions;

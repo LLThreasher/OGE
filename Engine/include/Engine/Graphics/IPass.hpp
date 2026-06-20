@@ -10,7 +10,7 @@
 namespace OneGame::Engine::Graphics
 {
 	struct InitContext {
-		AssetBundleWriter* assets;
+		AssetBundleWriter<UploadType::Immediate>& assets;
 		UniformArena& uniformArena;
 	};
 

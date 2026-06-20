@@ -635,10 +635,11 @@ namespace OneGame::Engine::Graphics::Vulkan
 		m_device.surfaceFormat = chosenFormat;
 		m_device.presentMode = presentMode;
 
-		std::array<VkDescriptorPoolSize, 3> poolSizes = {
-			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 100 },
-			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 100 },
-			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 100 }
+		std::array<VkDescriptorPoolSize, 4> poolSizes = {
+			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 32 },
+			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 32 },
+			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 32 },
+			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 128 }
 		};
 
 		VkDescriptorPoolCreateInfo poolInfo{};

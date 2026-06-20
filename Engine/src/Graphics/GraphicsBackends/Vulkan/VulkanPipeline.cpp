@@ -89,13 +89,25 @@ namespace OneGame::Engine::Graphics::Vulkan
         binding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
         VkPipelineVertexInputStateCreateInfo vertexInput{};
-        vertexInput.sType =
-            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-        vertexInput.vertexBindingDescriptionCount = 1;
-        vertexInput.pVertexBindingDescriptions = &binding;
-        vertexInput.vertexAttributeDescriptionCount =
-            static_cast<uint32_t>(attributes.size());
-        vertexInput.pVertexAttributeDescriptions = attributes.data();
+        if (attributes.empty())
+        {
+            vertexInput.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            vertexInput.vertexBindingDescriptionCount = 0;
+            vertexInput.pVertexBindingDescriptions = VK_NULL_HANDLE;
+            vertexInput.vertexAttributeDescriptionCount = 0;
+            vertexInput.pVertexAttributeDescriptions = VK_NULL_HANDLE;
+        }
+        else
+        {
+            vertexInput.sType =
+                VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+            vertexInput.vertexBindingDescriptionCount = 1;
+            vertexInput.pVertexBindingDescriptions = &binding;
+            vertexInput.vertexAttributeDescriptionCount =
+                static_cast<uint32_t>(attributes.size());
+            vertexInput.pVertexAttributeDescriptions = attributes.data();
+        }
 
         //
         // --- Input Assembly

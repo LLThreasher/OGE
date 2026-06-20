@@ -484,6 +484,7 @@ namespace OneGame::Engine::Graphics
         int textureCount;
         int bufferCount;
         int dynamicBufferMask;
+        int storageBufferMask;
     };
 
     struct BindingGroupBufferDesc
@@ -669,6 +670,16 @@ namespace OneGame::Engine::Graphics
         // ----- Buffers -----
         virtual GPUBufferHandle CreateBuffer(const BufferDesc&, void** = nullptr) = 0;
         virtual void DestroyBuffer(GPUBufferHandle) = 0;
+
+        template<BufferUsage usage>
+        GPUBufferHandle AllocateGPUBuffer(const size_t size)
+        {
+            BufferDesc iBuf{};
+            iBuf.usage = usage | BufferUsage::TransferDst;
+            iBuf.memory = MemoryUsage::GPUOnly;
+            iBuf.size = size;
+            return this->CreateBuffer(iBuf);
+        }
 
         // ----- Textures -----
         virtual GPUTextureHandle CreateTexture(const TextureDesc&) = 0;

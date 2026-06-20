@@ -82,6 +82,7 @@ namespace OneGame::Engine
 		virtual void Enter(AppContext& context) override;
 	protected:
 		Terrain::TerrainService terrain;
+		Mesh chunkMesh;
 	};
 
 	class DebugScene2 : public EmptyScene

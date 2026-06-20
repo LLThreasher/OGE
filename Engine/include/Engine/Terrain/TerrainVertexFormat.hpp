@@ -96,20 +96,21 @@ namespace OneGame::Engine::Terrain
 		//uint16_t Color;				// color tint R5G5B5
 		//uint8_t TextureSlot;			// texture slot on a 16 * 16 atlas
 		//uint8_t PackedAO;				// AO for 4 corners = 2 * 4 = 8 bits
-		uint64_t data = 0u;
+		uint32_t fst = 0u;
+		uint32_t sec = 0u;
 
 		TexturedQuad(uint8_t x, uint8_t y, uint8_t z, uint8_t face, uint8_t textureSlot, ColorRGBA8 color, std::array<uint8_t, 4> lights, std::array<uint8_t, 4> AOs) :
-			data(x & 0xF |
+			fst(x & 0xF |
 				(((uint64_t)y & 0xF) << 4) |
 				(((uint64_t)z & 0xF) << 8) |
 				(((uint64_t)face & 0x7) << 12) |
 				(((uint64_t)lights[0] & 0xF) << 16) | (((uint64_t)lights[1] & 0xF) << 20) |
-				(((uint64_t)lights[2] & 0xF) << 24) | (((uint64_t)lights[3] & 0xF) << 28) |
-				(((uint64_t)(color.r >> 3) & 0x1F) << 32) | (((uint64_t)(color.g >> 3) & 0x1F) << 37) |
-				(((uint64_t)(color.b >> 3) & 0x1F) << 42) |
-				(((uint64_t)textureSlot) << 48) |
-				(((uint64_t)AOs[0] & 0x3) << 56) | (((uint64_t)AOs[1] & 0x3) << 58) |
-				(((uint64_t)AOs[2] & 0x3) << 60) | (((uint64_t)AOs[3] & 0x3) << 62)
+				(((uint64_t)lights[2] & 0xF) << 24) | (((uint64_t)lights[3] & 0xF) << 28)),
+			sec((((uint64_t)(color.r >> 3) & 0x1F) << 0) | (((uint64_t)(color.g >> 3) & 0x1F) << 5) |
+				(((uint64_t)(color.b >> 3) & 0x1F) << 10) |
+				(((uint64_t)textureSlot) << 16) |
+				(((uint64_t)AOs[0] & 0x3) << 24) | (((uint64_t)AOs[1] & 0x3) << 26) |
+				(((uint64_t)AOs[2] & 0x3) << 28) | (((uint64_t)AOs[3] & 0x3) << 30)
 			)
 		{
 			assert(x < 16 && y < 16 && z < 16);

@@ -11,6 +11,7 @@ namespace OneGame::Engine::Graphics::Vulkan
     {
         VulkanBindingGroupLayout layout{};
         layout.dynamicBufferMask = desc.dynamicBufferMask;
+        layout.storageBufferMask = desc.storageBufferMask;
 
         std::vector<VkDescriptorSetLayoutBinding> bindings;
 
@@ -38,13 +39,24 @@ namespace OneGame::Engine::Graphics::Vulkan
         for (uint32_t i = 0; i < desc.bufferCount; ++i)
         {
             bool dynamic = (desc.dynamicBufferMask & (1 << i)) != 0;
+            bool storage = (desc.storageBufferMask & (1 << i)) != 0;
 
             VkDescriptorSetLayoutBinding binding{};
             binding.binding = bindingIndex++;
-            binding.descriptorType =
-                dynamic ?
-                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
-                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            if (storage)
+            {
+                binding.descriptorType =
+                    dynamic ?
+                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC :
+                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            }
+            else
+            {
+                binding.descriptorType =
+                    dynamic ?
+                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
+                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            }
 
             binding.descriptorCount = 1;
             binding.stageFlags =
@@ -170,10 +182,20 @@ namespace OneGame::Engine::Graphics::Vulkan
             write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             write.dstSet = group.descriptorSet;
             write.dstBinding = bindingIndex++;
-            write.descriptorType =
-                (layout->dynamicBufferMask & (1 << i)) != 0 ?
-                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
-                VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            if ((layout->storageBufferMask & (1 << i)) != 0)
+            {
+                write.descriptorType =
+                    (layout->dynamicBufferMask & (1 << i)) != 0 ?
+                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC :
+                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            }
+            else
+            {
+                write.descriptorType =
+                    (layout->dynamicBufferMask & (1 << i)) != 0 ?
+                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
+                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            }
             write.descriptorCount = 1;
             write.pBufferInfo = &bufferInfos.back();
 

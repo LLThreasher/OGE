@@ -51,6 +51,9 @@ namespace OneGame::Engine
         AssetManager assetManager;
         Graphics::Renderer renderer;
 
+        AsyncDispatcher asyncDispatcher;
+        JobSystem jobSystem;
+
         std::vector<std::unique_ptr<IScene>> allScenes;
         IScene* nextScene = nullptr;
         IScene* currentScene = nullptr;

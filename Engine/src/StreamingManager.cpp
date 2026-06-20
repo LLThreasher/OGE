@@ -19,38 +19,42 @@ namespace OneGame::Engine
 		return &m_ringStagingBuffer;
 	}
 
-	std::shared_ptr<ResourceBundleEvent> StreamingManager::CreateResourceBundle()
+	ResourceBundleHandle StreamingManager::CreateResourceBundle()
 	{
-		return std::shared_ptr<ResourceBundleEvent>();
+		return m_resouceBundles.Create();
 	}
 
-	void StreamingManager::ScheduleBufferUpload(const BufferUploadDesc& desc, UploadType uploadType)
+	template<UploadType uploadType>
+	void StreamingManager::ScheduleBufferUpload(const BufferUploadDesc& desc)
 	{
 		assert(desc.stagingAlloc.size <= m_uploadByteBudget);
-		if (uploadType == UploadType::Immediate)
+		if constexpr (uploadType == UploadType::Immediate)
 			m_buffersToUploadImmediate.push(desc);
 		else
 			m_buffersToUpload.push(desc);
-		if (desc.bundleEvent != nullptr)
-			desc.bundleEvent->itemCount += 1;
 	}
 
-	void StreamingManager::ScheduleTextureUpload(const TextureUploadDesc& desc, UploadType uploadType)
+	template void StreamingManager::ScheduleBufferUpload<UploadType::Immediate>(const BufferUploadDesc& desc);
+	template void StreamingManager::ScheduleBufferUpload<UploadType::Async>(const BufferUploadDesc& desc);
+
+	template<UploadType uploadType>
+	void StreamingManager::ScheduleTextureUpload(const TextureUploadDesc& desc)
 	{
 		assert(desc.stagingAlloc.size <= m_uploadByteBudget);
-		if (uploadType == UploadType::Immediate)
+		if constexpr (uploadType == UploadType::Immediate)
 			m_texturesToUploadImmediate.push(desc);
 		else
 			m_texturesToUpload.push(desc);
-		if (desc.bundleEvent != nullptr)
-			desc.bundleEvent->itemCount += 1;
 	}
+
+	template void StreamingManager::ScheduleTextureUpload<UploadType::Immediate>(const TextureUploadDesc& desc);
+	template void StreamingManager::ScheduleTextureUpload<UploadType::Async>(const TextureUploadDesc& desc);
 
 	void StreamingManager::UploadBuffer(uint32_t fidx, BufferUploadDesc& desc, ICommandList* transferCmd)
 	{
 		transferCmd->CopyBuffer(m_ringStagingBuffer.GetBuffer(), desc.gpuBuffer, desc.effectiveBufferSize, desc.stagingAlloc.offset, desc.gpuBufferOffset);
 		transferCmd->BufferBarrier(desc.gpuBuffer, desc.bufferUsage | BufferUsage::TransferDst, desc.bufferUsage);
-		m_stagingAllocationToFree[fidx].emplace(desc.bundleEvent, desc.stagingAlloc);
+		m_stagingAllocationToFree[fidx].emplace(desc.bundle, desc.stagingAlloc);
 	}
 
 	void StreamingManager::UploadTexture(uint32_t fidx, TextureUploadDesc& desc, ICommandList* transferCmd)
@@ -58,10 +62,10 @@ namespace OneGame::Engine
 		transferCmd->TextureBarrier(desc.gpuBuffer, Graphics::TextureState::TransferDst);
 		transferCmd->CopyBufferToTexture(m_ringStagingBuffer.GetBuffer(), desc.gpuBuffer, desc.stagingAlloc.offset);
 		transferCmd->TextureBarrier(desc.gpuBuffer, Graphics::TextureState::ShaderRead);
-		m_stagingAllocationToFree[fidx].emplace(desc.bundleEvent, desc.stagingAlloc);
+		m_stagingAllocationToFree[fidx].emplace(desc.bundle, desc.stagingAlloc);
 	}
 
-	void StreamingManager::RunUploadStep(const Graphics::IGraphicsBackend* backend, Graphics::ICommandList* transferCmd, entt::dispatcher* dispatcher)
+	void StreamingManager::RunUploadStep(const Graphics::IGraphicsBackend* backend, Graphics::ICommandList* transferCmd)
 	{
 		auto stagingGpuBuffer = m_ringStagingBuffer.GetBuffer();
 		auto fidx = backend->CurrentFrameIndex();
@@ -70,11 +74,9 @@ namespace OneGame::Engine
 			auto& [event, buffer] = m_stagingAllocationToFree[fidx].front();
 			m_ringStagingBuffer.Free(buffer.offset, buffer.size);
 			m_stagingAllocationToFree[fidx].pop();
-			if (event != nullptr)
+			if (event.IsValid())
 			{
-				event->itemCount -= 1;
-				if (event->itemCount == 0)
-					dispatcher->enqueue(event);
+				m_resouceBundles.Get(event)->m_itemCounter -= 1;
 			}
 		}
 
@@ -109,4 +111,10 @@ namespace OneGame::Engine
 			totalBytesUploaded += desc.stagingAlloc.size;
 		}
 	}
+
+	template void StreamingManager::ScheduleBufferUpload<UploadType::Immediate>(const BufferUploadDesc& desc);
+	template void StreamingManager::ScheduleBufferUpload<UploadType::Async>(const BufferUploadDesc& desc);
+
+	template void StreamingManager::ScheduleTextureUpload<UploadType::Immediate>(const TextureUploadDesc& desc);
+	template void StreamingManager::ScheduleTextureUpload<UploadType::Async>(const TextureUploadDesc& desc);
 }

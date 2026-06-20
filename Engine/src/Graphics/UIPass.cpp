@@ -16,8 +16,8 @@ namespace OneGame::Engine::Graphics
 
         {
             GraphicsPipelineDesc desc{};
-            assert(ctxt.assets->LoadShader("ui.vert.spv", desc.vertexShader));
-            assert(ctxt.assets->LoadShader("ui.frag.spv", desc.fragmentShader));
+            assert(ctxt.assets.LoadShader("ui.vert.spv", desc.vertexShader));
+            assert(ctxt.assets.LoadShader("ui.frag.spv", desc.fragmentShader));
             // position
             desc.vertexLayout.push_back(VertexAttributeFormat::Uint16x2);
             // uv

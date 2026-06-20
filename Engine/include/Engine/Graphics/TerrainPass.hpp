@@ -28,7 +28,7 @@ namespace OneGame::Engine::Graphics
 		void* colorPaletteStagingBuffer;
 		bool isColorPaletteDirty = true;
 
-		Mesh terrainMesh;
+		Mesh terrainMesh = {};
 		std::vector<PTerrainMesh> activeChunkSlots;
 		std::vector<UBO> ubos;
 
@@ -38,5 +38,32 @@ namespace OneGame::Engine::Graphics
 		GPUTextureHandle blockTexture;
 
 		math::quat orientation;
+	};
+
+	class TerrainPass2 : public IPass
+	{
+		struct UBO
+		{
+			math::mat4 mvp;
+		};
+	public:
+		TerrainPass2()
+		{
+		}
+
+		void Initialize(IGraphicsBackend* backend, InitContext& ctxt) override;
+		void Shutdown(IGraphicsBackend* backend) override;
+		void Prepare(PrepareContext& context) override;
+		void Draw(DrawContext& context) override;
+
+	private:
+		GPUBufferHandle storageBuffer;
+		std::vector<PTerrainMesh2> activeChunkSlots;
+		std::vector<UBO> ubos;
+
+		GPUPipelineHandle pipelineHandle;
+		GPUBindingGroupLayoutHandle bindingGroupLayout;
+		GPUBindingGroupHandle bindingGroup;
+		GPUTextureHandle blockTexture;
 	};
 }

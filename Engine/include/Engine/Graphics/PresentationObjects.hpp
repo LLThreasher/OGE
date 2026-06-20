@@ -21,4 +21,11 @@ namespace OneGame::Engine::Graphics
 		uint32_t indexCount;
 		int chunkX, chunkY, chunkZ;
 	};
+
+	struct PTerrainMesh2
+	{
+		uint32_t chunkSlot;
+		uint32_t faceCount;
+		int chunkX, chunkY, chunkZ;
+	};
 }

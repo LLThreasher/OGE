@@ -1,6 +1,7 @@
 #pragma once
 #include "Engine/ObjectType.hpp"
 #include "Engine/ResourcePool.hpp"
+#include "Engine/Async.hpp"
 
 namespace OneGame::Engine
 {

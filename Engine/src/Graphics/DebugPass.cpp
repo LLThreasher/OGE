@@ -20,9 +20,9 @@ namespace OneGame::Engine::Graphics
         LOG_DEBUG("binding group layout created");
         {
             GraphicsPipelineDesc desc{};
-            if (!ctx.assets->LoadShader("debug.vert.spv", desc.vertexShader))
+            if (!ctx.assets.LoadShader("debug.vert.spv", desc.vertexShader))
                 throw std::runtime_error("failed to load vertex shader");
-            if (!ctx.assets->LoadShader("debug.frag.spv", desc.fragmentShader))
+            if (!ctx.assets.LoadShader("debug.frag.spv", desc.fragmentShader))
                 throw std::runtime_error("failed to load fragment shader");
             // position
             desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
@@ -136,6 +136,62 @@ namespace OneGame::Engine::Graphics
         cmd->DrawIndexed(numQuads * 6, 1, 0, 0, 0);
     }
 
+    struct TestPassVertex
+    {
+        math::vec3 pos;
+        math::vec3 color;
+        math::vec2 uv;
+    };
+
+    const std::vector<TestPassVertex> test_vertices =
+    {
+        // FRONT (+Z)
+        {{-1,-1, 1}, {1,1,1}, {0,0}},
+        {{ 1,-1, 1}, {1,1,1}, {1,0}},
+        {{ 1, 1, 1}, {1,1,1}, {1,1}},
+        {{-1, 1, 1}, {1,1,1}, {0,1}},
+
+        // BACK (-Z)
+        {{ 1,-1,-1}, {1,1,1}, {0,0}},
+        {{-1,-1,-1}, {1,1,1}, {1,0}},
+        {{-1, 1,-1}, {1,1,1}, {1,1}},
+        {{ 1, 1,-1}, {1,1,1}, {0,1}},
+
+        // LEFT (-X)
+        {{-1,-1,-1}, {1,1,1}, {0,0}},
+        {{-1,-1, 1}, {1,1,1}, {1,0}},
+        {{-1, 1, 1}, {1,1,1}, {1,1}},
+        {{-1, 1,-1}, {1,1,1}, {0,1}},
+
+        // RIGHT (+X)
+        {{ 1,-1, 1}, {1,1,1}, {0,0}},
+        {{ 1,-1,-1}, {1,1,1}, {1,0}},
+        {{ 1, 1,-1}, {1,1,1}, {1,1}},
+        {{ 1, 1, 1}, {1,1,1}, {0,1}},
+
+        // TOP (+Y)
+        {{-1, 1, 1}, {1,1,1}, {0,0}},
+        {{ 1, 1, 1}, {1,1,1}, {1,0}},
+        {{ 1, 1,-1}, {1,1,1}, {1,1}},
+        {{-1, 1,-1}, {1,1,1}, {0,1}},
+
+        // BOTTOM (-Y)
+        {{-1,-1,-1}, {1,1,1}, {0,0}},
+        {{ 1,-1,-1}, {1,1,1}, {1,0}},
+        {{ 1,-1, 1}, {1,1,1}, {1,1}},
+        {{-1,-1, 1}, {1,1,1}, {0,1}},
+    };
+
+    const std::vector<uint32_t> test_indices =
+    {
+        0,1,2, 2,3,0,        // front
+        4,5,6, 6,7,4,        // back
+        8,9,10, 10,11,8,     // left
+        12,13,14, 14,15,12,  // right
+        16,17,18, 18,19,16,  // top
+        20,21,22, 22,23,20   // bottom
+    };
+
 	void TestPass::Initialize(IGraphicsBackend* backend, InitContext& ctx)
 	{
         BindingGroupLayoutDesc layout{};
@@ -146,8 +202,8 @@ namespace OneGame::Engine::Graphics
 
         {
             GraphicsPipelineDesc desc{};
-            ctx.assets->LoadShader("test_cube_textured.vert.spv", desc.vertexShader);
-            ctx.assets->LoadShader("test_cube_textured.frag.spv", desc.fragmentShader);
+            ctx.assets.LoadShader("test_cube_textured.vert.spv", desc.vertexShader);
+            ctx.assets.LoadShader("test_cube_textured.frag.spv", desc.fragmentShader);
             // position
             desc.vertexLayout.push_back(VertexAttributeFormat::Float32x3);
             // color
@@ -165,11 +221,10 @@ namespace OneGame::Engine::Graphics
             pipeline = backend->CreateGraphicsPipeline(desc);
         }
 
-        ctx.assets->LoadMesh("test_cube.obj", testCubeMesh);
+        testCubeMesh = ctx.assets.LoadMesh(test_vertices, test_indices);
 
+        texture = ctx.assets.LoadTexture("blocks.png");
         {
-            ctx.assets->LoadTexture("blocks.png", texture);
-
             BindingGroupDesc desc{};
             desc.layout = bindingGroupLayout;
             desc.buffers.push_back(BindingGroupBufferDesc{ ctx.uniformArena.GetBuffer(), sizeof(UBO) });

@@ -4,8 +4,7 @@
 
 namespace OneGame::Engine::Terrain
 {
-	void TerrainService::Initialize(const TerrainGenerationDesc& desc, AssetBundleWriter* assets)
+	void TerrainService::Initialize(const TerrainGenerationDesc& desc)
 	{
-		m_terrainMeshBuilder.Initialize(assets);
 	}
 }

@@ -7,194 +7,68 @@ namespace OneGame::Engine
 {
 	using namespace Graphics;
 
-	//GPUBufferHandle AssetBundleWriter::GetStagingBuffer()
-	//{
-	//	return m_streamingManager->GetStagingBuffer()->GetBuffer();
-	//}
-
-	bool AssetBundleWriter::LoadTexture(const std::string_view& id, GPUTextureHandle& outTexture)
+	bool AssetManager::GetTextureInfo(const std::string_view& id, TextureInfo& info)
 	{
-		auto it = m_assetManager->m_textures.find(std::string(id));
-		if (it != m_assetManager->m_textures.end())
+		info = {};
+		auto str_id = std::string(id);
+		auto it = m_textures.find(str_id);
+		if (it != m_textures.end())
 		{
-			outTexture = it->second;
+			info.width = it->second.width;
+			info.height = it->second.height;
 			return true;
 		}
 
 		std::vector<char> blob;
-		assert(TryLoadBlob(id, blob));
-		CPUTexture result;
-		TryLoadPNG(blob, result.width, result.height, nullptr);
-		result.data = m_streamingManager->GetStagingBuffer()->Allocate(result.width * result.height * sizeof(char) * 4 * 2);
-		TryLoadPNG(blob, result.width, result.height, result.data.cpuPtr);
-
-		Graphics::TextureDesc texDesc{};
-		texDesc.width = result.width;
-		texDesc.height = result.height;
-		texDesc.format = Graphics::TextureFormat::RGBA8Unorm;
-		texDesc.usage = Graphics::TextureUsage::TransferDst | Graphics::TextureUsage::Sampled;
-		auto texture = m_backend->CreateTexture(texDesc);
-
-		m_assetManager->m_textures.emplace(id, texture);
-		TextureUploadDesc desc{};
-		desc.bundleEvent = m_event;
-		desc.gpuBuffer = texture;
-		desc.gpuBufferOffset = 0;
-		desc.stagingAlloc = result.data;
-		m_streamingManager->ScheduleTextureUpload(desc, m_event == nullptr ? UploadType::Immediate : UploadType::Async);
-		outTexture = texture;
+		if (!TryLoadBlob(id, blob))
+			return false;
+		int iwidth, iheight;
+		if (!TryLoadPNG(blob, iwidth, iheight, nullptr))
+			return false;
+		info.width = iwidth;
+		info.height = iheight;
 		return true;
 	}
 
-	bool AssetBundleWriter::LoadShader(const std::string_view& id, std::vector<char>& outShader)
+	TextureData* AssetManager::LoadTexture(const std::string_view& id)
 	{
-		return TryLoadBlob(id, outShader);
-	}
-
-	void AssetBundleWriter::AllocateMesh(const std::string_view& id, const size_t vertBufSize, const size_t indexBufSize, Mesh& outMesh)
-	{
-		assert(m_assetManager->m_meshes.find(std::string(id)) == m_assetManager->m_meshes.end());
-		BufferDesc vBuf{};
-		vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
-		vBuf.memory = MemoryUsage::GPUOnly;
-		vBuf.size = vertBufSize;
-		outMesh.vertexBuffer = m_backend->CreateBuffer(vBuf);
-
-		BufferDesc iBuf{};
-		iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
-		iBuf.memory = MemoryUsage::GPUOnly;
-		iBuf.size = indexBufSize;
-		outMesh.indexBuffer = m_backend->CreateBuffer(iBuf);
-		m_assetManager->m_meshes.emplace(id, outMesh);
-	}
-
-	struct TestPassVertex
-	{
-		math::vec3 pos;
-		math::vec3 color;
-		math::vec2 uv;
-	};
-
-	const std::vector<TestPassVertex> test_vertices =
-	{
-		// FRONT (+Z)
-		{{-1,-1, 1}, {1,1,1}, {0,0}},
-		{{ 1,-1, 1}, {1,1,1}, {1,0}},
-		{{ 1, 1, 1}, {1,1,1}, {1,1}},
-		{{-1, 1, 1}, {1,1,1}, {0,1}},
-
-		// BACK (-Z)
-		{{ 1,-1,-1}, {1,1,1}, {0,0}},
-		{{-1,-1,-1}, {1,1,1}, {1,0}},
-		{{-1, 1,-1}, {1,1,1}, {1,1}},
-		{{ 1, 1,-1}, {1,1,1}, {0,1}},
-
-		// LEFT (-X)
-		{{-1,-1,-1}, {1,1,1}, {0,0}},
-		{{-1,-1, 1}, {1,1,1}, {1,0}},
-		{{-1, 1, 1}, {1,1,1}, {1,1}},
-		{{-1, 1,-1}, {1,1,1}, {0,1}},
-
-		// RIGHT (+X)
-		{{ 1,-1, 1}, {1,1,1}, {0,0}},
-		{{ 1,-1,-1}, {1,1,1}, {1,0}},
-		{{ 1, 1,-1}, {1,1,1}, {1,1}},
-		{{ 1, 1, 1}, {1,1,1}, {0,1}},
-
-		// TOP (+Y)
-		{{-1, 1, 1}, {1,1,1}, {0,0}},
-		{{ 1, 1, 1}, {1,1,1}, {1,0}},
-		{{ 1, 1,-1}, {1,1,1}, {1,1}},
-		{{-1, 1,-1}, {1,1,1}, {0,1}},
-
-		// BOTTOM (-Y)
-		{{-1,-1,-1}, {1,1,1}, {0,0}},
-		{{ 1,-1,-1}, {1,1,1}, {1,0}},
-		{{ 1,-1, 1}, {1,1,1}, {1,1}},
-		{{-1,-1, 1}, {1,1,1}, {0,1}},
-	};
-
-	const std::vector<uint32_t> test_indices =
-	{
-		0,1,2, 2,3,0,        // front
-		4,5,6, 6,7,4,        // back
-		8,9,10, 10,11,8,     // left
-		12,13,14, 14,15,12,  // right
-		16,17,18, 18,19,16,  // top
-		20,21,22, 22,23,20   // bottom
-	};
-
-	bool AssetBundleWriter::LoadMesh(const std::string_view& id, Mesh& outMesh)
-	{
-		auto it = m_assetManager->m_meshes.find(std::string(id));
-		if (it != m_assetManager->m_meshes.end())
+		auto str_id = std::string(id);
+		auto it = m_textures.find(str_id);
+		if (it != m_textures.end())
 		{
-			outMesh = it->second;
-			return true;
+			return &it->second;
 		}
 
-		if (id == "test_cube.obj")
-		{
-			outMesh.indexCount = test_indices.size();
-			CPUMesh cpuMesh{};
-			LoadCpuMesh(test_vertices.data(), test_vertices.size() * sizeof(TestPassVertex), test_indices.data(), test_indices.size() * sizeof(uint32_t), cpuMesh);
-			AllocateMesh(id, cpuMesh.vertexBufSize, cpuMesh.indexBufSize, outMesh);
-			LoadMesh(cpuMesh, outMesh);
-			return true;
-		}
-		else if (id == "terrainMesh")
-		{
-			assert(false);
-			//AllocateMesh(id, 64 * 1024, 48 * 1024, outMesh);
-			//CPUMesh cpuMesh{};
-			//outMesh.indexCount = chunk_zero_indices.size();
-			//LoadCpuMesh(
-			//	chunk_zero_vertices.data(),
-			//	chunk_zero_vertices.size() * sizeof(Terrain::Vertex),
-			//	chunk_zero_indices.data(),
-			//	chunk_zero_indices.size() * sizeof(uint16_t),
-			//	cpuMesh
-			//);
-			//LoadMesh(cpuMesh, outMesh);
-			//m_assetManager->m_meshes.emplace(id, outMesh);
-			//return true;
-		}
-		return false;
+		TextureData data;
+		std::vector<char> blob;
+		if (!TryLoadBlob(id, blob))
+			return nullptr;
+		if (!TryLoadPNG(blob, data.width, data.height, nullptr))
+			return nullptr;
+		data.data.resize(data.width * data.height * sizeof(char) * 4 * 2);
+		if (!TryLoadPNG(blob, data.width, data.height, data.data.data()))
+			return nullptr;
+		m_textures.emplace(id, data);
+		return &m_textures[str_id];
 	}
 
-	void AssetBundleWriter::LoadCpuMesh(const void* vertices, const size_t vertexBufSize, const void* indices, const size_t indexBufSize, CPUMesh& cpuMesh)
+	Future<TextureData*> AssetManager::LoadTextureAsync(const std::string_view& id)
 	{
-		auto stagingBuffer = m_streamingManager->GetStagingBuffer();
-		cpuMesh.vertexData = stagingBuffer->Allocate(vertexBufSize);
-		cpuMesh.vertexBufSize = vertexBufSize;
-		cpuMesh.indexData = stagingBuffer->Allocate(indexBufSize);
-		cpuMesh.indexBufSize = indexBufSize;
-
-		memcpy(cpuMesh.vertexData.cpuPtr, vertices, vertexBufSize);
-		memcpy(cpuMesh.indexData.cpuPtr, indices, indexBufSize);
+		auto res = dispatcher.create_future<TextureData*>();
+		m_texturesToLoad.emplace(std::string(id), res);
+		return res;
 	}
 
-	void AssetBundleWriter::LoadMesh(const CPUMesh& cpuMesh, const Mesh& outMesh)
+	void AssetManager::IssueLoads()
 	{
+		while (!m_texturesToLoad.empty())
 		{
-			BufferUploadDesc vdesc{};
-			vdesc.bundleEvent = m_event;
-			vdesc.bufferUsage = BufferUsage::Vertex;
-			vdesc.effectiveBufferSize = cpuMesh.vertexBufSize;
-			vdesc.gpuBuffer = outMesh.vertexBuffer;
-			vdesc.gpuBufferOffset = 0;
-			vdesc.stagingAlloc = cpuMesh.vertexData;
-			m_streamingManager->ScheduleBufferUpload(vdesc, m_event == nullptr ? UploadType::Immediate : UploadType::Async);
-		}
-		{
-			BufferUploadDesc idesc{};
-			idesc.bundleEvent = m_event;
-			idesc.bufferUsage = BufferUsage::Index;
-			idesc.effectiveBufferSize = cpuMesh.indexBufSize;
-			idesc.gpuBuffer = outMesh.indexBuffer;
-			idesc.gpuBufferOffset = 0;
-			idesc.stagingAlloc = cpuMesh.indexData;
-			m_streamingManager->ScheduleBufferUpload(idesc, m_event == nullptr ? UploadType::Immediate : UploadType::Async);
+			auto [id, future] = std::move(m_texturesToLoad.front());
+			m_texturesToLoad.pop();
+			jobSystem.submit([&](auto canceled) mutable
+				{
+					future.post(this->LoadTexture(id));
+				});
 		}
 	}
 
@@ -230,15 +104,5 @@ namespace OneGame::Engine
 
 		stbi_image_free(pixels);
 		return true;
-	}
-
-	std::unique_ptr<AssetBundleWriter> AssetManager::CreateAssetBundle(StreamingManager* streamingManager, Graphics::IGraphicsBackend* backend)
-	{
-		return std::unique_ptr<AssetBundleWriter>(new AssetBundleWriter(this, streamingManager, backend, false));
-	}
-
-	std::unique_ptr<AssetBundleWriter> AssetManager::CreateAssetBundleAsync(StreamingManager* streamingManager, Graphics::IGraphicsBackend* backend)
-	{
-		return std::unique_ptr<AssetBundleWriter>(new AssetBundleWriter(this, streamingManager, backend, true));
 	}
 }

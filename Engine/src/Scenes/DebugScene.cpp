@@ -1,5 +1,6 @@
 #include "Engine/Scenes/DebugScene.hpp"
 #include "Engine/Terrain/TerrainMeshBuilder.hpp"
+#include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "Engine/Random.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 
@@ -8,7 +9,7 @@ namespace OneGame::Engine
 	void DebugScene::Initialize(AppInitContext& context)
 	{
 		Terrain::TerrainGenerationDesc desc{};
-		terrain.Initialize(desc, &context.assets);
+		terrain.Initialize(desc);
 	}
 
 	void DebugScene::Enter(AppContext& context)
@@ -18,10 +19,8 @@ namespace OneGame::Engine
 		world.emplace<Terrain::ActiveChunkTag>(chunkEntity);
 		Terrain::ChunkMesh cm{ 0, 0, 0, { 0, 36 } };
 		world.emplace<Terrain::ChunkMesh>(chunkEntity, cm);
-
-		Mesh terrainMesh;
-		assert(context.assets->LoadMesh("terrainMesh", terrainMesh));
-		context.assets->UpdateMesh(chunk_zero_vertices, chunk_zero_indices, 0, terrainMesh);
+		
+		chunkMesh = context.assets.LoadMesh(chunk_zero_vertices, chunk_zero_indices);
 	}
 
 	void DebugScene2::Initialize(AppInitContext& context)
@@ -30,7 +29,6 @@ namespace OneGame::Engine
 		gameWorld.Register<SubsystemCamera>();
 		gameWorld.Register<SubsystemDebugInfo>();
 		gameWorld.Initialize(context);
-		meshBuilder.Initialize(&context.assets);
 	}
 
 	void DebugScene2::Enter(AppContext& context)
@@ -38,6 +36,7 @@ namespace OneGame::Engine
 		auto handle = terrainData.chunkData.Create();
 		auto chunk = terrainData.chunkData.Get(handle);
 		chunk->Coords = { 0, 0, 0 };
+		chunk->data[0] = 256;
 		for (size_t i = 0; i < 200; ++i)
 		{
 			auto x = Random::RandInt(0, 15);
@@ -51,6 +50,7 @@ namespace OneGame::Engine
 			assert(idx < 16 * 16 * 16);
 			chunk->data[idx] = 256;
 		}
+
 		//for (size_t x = 0; x < 16; ++x)
 		//{
 		//	for (size_t y = 0; y < 16; ++y)
@@ -97,18 +97,33 @@ namespace OneGame::Engine
 		auto [chunkHandle, builtMeshHandle] = std::move(terrainData.uploadMeshQueue.front());
 		auto builtMesh = terrainData.builtChunkMeshes.Get(builtMeshHandle);
 
+#ifdef USE_TERRAIN_MESH_V2
+		meshBuilder.AllocateTerrainMesh(context.assets.m_backend);
+		context.assets.m_streamingManager->UploadBuffer<UploadType::Immediate, BufferUsage::Storage>(builtMesh->quads, terrainData.terrainMesh);
+		testSlot = { 0, (uint32_t)builtMesh->quads.size() };
+
+		//Terrain::TexturedQuad quad{ 0u, 0u, 0u, 1u, 4u, COLOR_WHITE, { 0xF, 0xF, 0xF, 0xF }, { 0, 0, 0, 0 } };
+		//std::vector<Terrain::TexturedQuad> data;
+		//data.push_back(quad);
+		//context.assets->UpdateBuffer(data, 0, terrainMesh);
+		//testSlot = { 0, 1 };
+#else
 		Mesh terrainMesh;
 		assert(context.assets->LoadMesh("terrainMesh", terrainMesh));
-		context.assets->UpdateMesh(builtMesh->vertices, builtMesh->indices, 0, terrainMesh);
-
+		context.assets->UpdateMesh(builtMesh->vertices, builtMesh->indices, terrainMesh);
 		testSlot = { 0, (uint32_t)builtMesh->indices.size() };
+#endif
 	}
 
 	void DebugScene2::Update(AppContext& context, float dt)
 	{
 		auto& world = context.world;
 		auto chunkEntity = world.create();
+#ifdef USE_TERRAIN_MESH_V2
+		world.emplace<Graphics::PTerrainMesh2>(chunkEntity, testSlot.chunkSlot, testSlot.indexCount, 0, 0, 0);
+#else
 		world.emplace<Graphics::PTerrainMesh>(chunkEntity, testSlot.chunkSlot, testSlot.indexCount, 0, 0, 0);
+#endif
 
 		if (wrappingEnabled)
 			gameWorld.Update(context, dt);

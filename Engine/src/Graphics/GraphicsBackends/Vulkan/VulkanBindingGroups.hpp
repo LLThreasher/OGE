@@ -10,6 +10,7 @@ namespace OneGame::Engine::Graphics::Vulkan
     {
         VkDescriptorSetLayout layout = VK_NULL_HANDLE;
         uint32_t dynamicBufferMask;
+        uint32_t storageBufferMask;
     };
 
     struct VulkanBindingGroup

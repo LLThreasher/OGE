@@ -46,11 +46,6 @@ namespace OneGame::Engine::Terrain
 	{
 	}
 
-	void TerrainMeshBuilder::Initialize(AssetBundleWriter* assets)
-	{
-		assets->LoadMesh("terrainMesh", m_terrainMesh);
-	}
-
 	static size_t MaskIndex(size_t z, size_t y)
 	{
 		assert(0 <= y && y < 18);
@@ -253,13 +248,143 @@ namespace OneGame::Engine::Terrain
 		}
 	}
 
+	void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltChunkMesh2* context)
+	{
+		const uint32_t* masks = _context->opaqueMasks;
+		for (size_t z = 1; z < CHUNK_SIZE_Z + 1; ++z)
+		{
+			for (size_t y = 1; y < CHUNK_SIZE_Y + 1; ++y)
+			{
+				uint32_t row = masks[MaskIndex(z, y)];
+				uint32_t posX = row & ~(row << 1);
+				uint32_t negX = row & ~(row >> 1);
+
+				uint32_t posZ = row & ~masks[MaskIndex(z + 1, y)];
+				uint32_t negZ = row & ~masks[MaskIndex(z - 1, y)];
+
+				uint32_t posY = row & ~masks[MaskIndex(z, y + 1)];
+				uint32_t negY = row & ~masks[MaskIndex(z, y - 1)];
+
+				uint32_t bits;
+				bits = posX & 0x1FFFE;
+				while (bits)
+				{
+					int bx = __builtin_ctz(bits);
+					bits &= bits - 1;
+
+					int x = bx - 1;
+					int wy = y - 1;
+					int wz = z - 1;
+
+					// -X face
+					TexturedQuad quad
+					{ (uint8_t)x, (uint8_t)wy, (uint8_t)wz, 0u, 4u, COLOR_WHITE, { 0xF, 0xF, 0xF, 0xF }, { 0, 0, 0, 0 } };
+					context->quads.emplace_back(quad);
+				}
+
+				bits = negX & 0x1FFFE;
+				while (bits)
+				{
+					int bx = __builtin_ctz(bits);
+					bits &= bits - 1;
+
+					int x = bx - 1;
+					int wy = y - 1;
+					int wz = z - 1;
+
+					// +X face
+					TexturedQuad quad
+					{ (uint8_t)x, (uint8_t)wy, (uint8_t)wz, 1u, 4u, COLOR_WHITE, { 0xF, 0xF, 0xF, 0xF }, { 0, 0, 0, 0 } };
+					context->quads.emplace_back(quad);
+				}
+
+				bits = posY & 0x1FFFE;
+				while (bits)
+				{
+					int bx = __builtin_ctz(bits);
+					bits &= bits - 1;
+
+					int x = bx - 1;
+					int wy = y - 1;
+					int wz = z - 1;
+
+					// +Y face
+					TexturedQuad quad
+					{ (uint8_t)x, (uint8_t)wy, (uint8_t)wz, 2u, 4u, COLOR_WHITE, { 0xF, 0xF, 0xF, 0xF }, { 0, 0, 0, 0 } };
+					context->quads.emplace_back(quad);
+				}
+
+				bits = negY & 0x1FFFE;
+				while (bits)
+				{
+					int bx = __builtin_ctz(bits);
+					bits &= bits - 1;
+
+					int x = bx - 1;
+					int wy = y - 1;
+					int wz = z - 1;
+
+					// -Y face
+					TexturedQuad quad
+					{ (uint8_t)x, (uint8_t)wy, (uint8_t)wz, 3u, 4u, COLOR_WHITE, { 0xF, 0xF, 0xF, 0xF }, { 0, 0, 0, 0 } };
+					context->quads.emplace_back(quad);
+				}
+
+				bits = posZ & 0x1FFFE;
+				while (bits)
+				{
+					int bx = __builtin_ctz(bits);
+					bits &= bits - 1;
+
+					int x = bx - 1;
+					int wy = y - 1;
+					int wz = z - 1;
+
+					// +Z face
+					TexturedQuad quad
+					{ (uint8_t)x, (uint8_t)wy, (uint8_t)wz, 4u, 4u, COLOR_WHITE, { 0xF, 0xF, 0xF, 0xF }, { 0, 0, 0, 0 } };
+					context->quads.emplace_back(quad);
+				}
+
+				bits = negZ & 0x1FFFE;
+				while (bits)
+				{
+					int bx = __builtin_ctz(bits);
+					bits &= bits - 1;
+
+					int x = bx - 1;
+					int wy = y - 1;
+					int wz = z - 1;
+
+					// -Z face
+					TexturedQuad quad
+					{ (uint8_t)x, (uint8_t)wy, (uint8_t)wz, 5u, 4u, COLOR_WHITE, { 0xF, 0xF, 0xF, 0xF }, { 0, 0, 0, 0 } };
+					context->quads.emplace_back(quad);
+				}
+			}
+		}
+	}
+
 	void TerrainMeshBuilder::ExecuteBuildChunkMesh(MeshingWorkerContextHandle handle)
 	{
 		auto _context = m_terrain.meshingWorkerContexts.Get(handle);
 		auto context = m_terrain.builtChunkMeshes.Get(_context->chunkMeshHandle);
+#ifdef USE_TERRAIN_MESH_V2
+		ExecuteBuildChunkMeshJob2(_context, context);
+#else
 		ExecuteBuildChunkMeshJob(_context, context);
+#endif
 		m_terrain.uploadMeshQueue.push(std::make_tuple(_context->chunkHandle, _context->chunkMeshHandle));
 		m_terrain.meshingWorkerContexts.Destroy(handle);
+	}
+
+	void TerrainMeshBuilder::AllocateTerrainMesh(Graphics::IGraphicsBackend* backend)
+	{
+#ifdef USE_TERRAIN_MESH_V2
+		m_terrain.terrainMesh = backend->AllocateGPUBuffer<BufferUsage::Storage>(MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE);
+#else
+		ExecuteBuildChunkMeshJob(_context, context);
+#endif
 	}
 
 	void TerrainMeshBuilder::BuildChunkMeshes(int vertexBudget)
@@ -387,55 +512,5 @@ namespace OneGame::Engine::Terrain
 			}
 			ExecuteBuildChunkMesh(contextHandle);
 		}
-	}
-
-	void TerrainMeshBuilder::UploadChunkMeshes(int byteBudget, uint32_t frameIndex, Graphics::ICommandList* cmd)
-	{
-		// free previous upload data and finish upload
-		//for (auto& handle : m_activeStagingDataPerFrame[frameIndex])
-		//{
-		//	auto chunk = m_terrain.chunkData.Get(handle);
-		//	auto stagingData = chunk->stagingBuffers.value();
-		//	m_gpuRingStagingBuffer.Free(stagingData.vertexStagingBuffer.offset, stagingData.vertexStagingBuffer.size);
-		//	m_gpuRingStagingBuffer.Free(stagingData.indexStagingBuffer.offset, stagingData.indexStagingBuffer.size);
-		//	m_terrain.builtChunkMeshes.Destroy(stagingData.builtMesh);
-		//	m_terrain.gpuAvailableChunkQueue.push(handle);
-		//}
-		//assert(byteBudget < MAX_STAGING_PER_FRAME * (CHUNK_VERTEX_BYTE_SIZE + CHUNK_INDEX_BYTE_SIZE));
-		//size_t currentBytes = 0;
-		//while (!m_terrain.uploadMeshQueue.empty() && currentBytes < byteBudget)
-		//{
-		//	auto [chunkHandle, builtMeshHandle] = m_terrain.uploadMeshQueue.back();
-		//	m_terrain.uploadMeshQueue.pop();
-		//	auto builtMesh = m_terrain.builtChunkMeshes.Get(builtMeshHandle);
-		//	
-		//	auto vertSizeInBytes = sizeof(Vertex) * builtMesh->vertices.size();
-		//	auto indexSizeInBytes = sizeof(uint16_t) * builtMesh->indices.size();
-		//	auto vertStaging = m_gpuRingStagingBuffer.Allocate(vertSizeInBytes);
-		//	auto indexStaging = m_gpuRingStagingBuffer.Allocate(indexSizeInBytes);
-
-		//	memcpy(vertStaging.cpuPtr, builtMesh->vertices.data(), vertSizeInBytes);
-		//	memcpy(indexStaging.cpuPtr, builtMesh->indices.data(), indexSizeInBytes);
-
-		//	int chunkOffset;
-		//	if (vertSizeInBytes < CHUNK_VERTEX_BYTE_SIZE)
-		//		chunkOffset = m_gpuBufferAllocator.Allocate(1);
-		//	else if (vertSizeInBytes < CHUNK_VERTEX_BYTE_SIZE * 2)
-		//		chunkOffset = m_gpuBufferAllocator.Allocate(2);
-		//	else
-		//		chunkOffset = m_gpuBufferAllocator.Allocate(4);
-		//	
-		//	cmd->CopyBuffer(m_gpuRingStagingBuffer.GetBuffer(), m_gpuVertexBuffer, vertSizeInBytes, vertStaging.offset, chunkOffset * CHUNK_VERTEX_BYTE_SIZE);
-		//	cmd->CopyBuffer(m_gpuRingStagingBuffer.GetBuffer(), m_gpuIndexBuffer, indexSizeInBytes, indexStaging.offset, chunkOffset * CHUNK_INDEX_BYTE_SIZE);
-
-		//	auto chunk = m_terrain.chunkData.Get(chunkHandle);
-		//	chunk->stagingBuffers = {
-		//		builtMeshHandle,
-		//		vertStaging,
-		//		indexStaging,
-		//	};
-		//	m_activeStagingDataPerFrame[frameIndex].push_back(chunkHandle);
-		//	currentBytes += vertSizeInBytes + indexSizeInBytes;
-		//}
 	}
 }

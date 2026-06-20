@@ -14,6 +14,8 @@
 
 #include "BlockManager.hpp"
 
+#define USE_TERRAIN_MESH_V2
+
 namespace OneGame::Engine::Terrain
 {
 	enum class TerrainObject
@@ -99,11 +101,9 @@ namespace OneGame::Engine::Terrain
 		std::vector<uint16_t> indices;
 	};
 
-	struct StagingData
+	struct BuiltChunkMesh2
 	{
-		BuiltMeshHandle builtMesh;
-		Graphics::StagingAllocation vertexStagingBuffer;
-		Graphics::StagingAllocation indexStagingBuffer;
+		std::vector<TexturedQuad> quads;
 	};
 
 	struct AllocatedChunkSlot
@@ -129,8 +129,6 @@ namespace OneGame::Engine::Terrain
 	{
 		uint32_t data[CHUNK_SIZE_TOTAL] = {};
 		Point3 Coords = {};
-		std::optional<StagingData> stagingBuffers;
-		std::optional<AllocatedChunkSlot> chunkMeshSlot;
 
 	public:
 		uint32_t GetBlock(uint8_t x, uint8_t y, uint8_t z)
@@ -175,15 +173,23 @@ namespace OneGame::Engine::Terrain
 
 	struct TerrainData
 	{
+#ifdef USE_TERRAIN_MESH_V2
+		GPUBufferHandle terrainMesh;
+#else
+		Mesh terrainMesh;
+#endif
 		std::unordered_map<Point3, ChunkHandle, Point3Hash> coordToChunks;
 		std::queue<Point3> destroyChunkQueue;
 		std::queue<ChunkHandle> generateTerrainQueue;
 		std::queue<ChunkHandle> buildMeshQueue;
 		std::queue<std::tuple<ChunkHandle, BuiltMeshHandle>> uploadMeshQueue;
-		std::queue<ChunkHandle> gpuAvailableChunkQueue;
 		std::unordered_map<Point3, std::vector<LocalUpdateBlockCmd>, Point3Hash> blockModificationQueue;
 		ResourcePool<TerrainObject::Chunk, ChunkData> chunkData;
+#ifdef USE_TERRAIN_MESH_V2
+		ResourcePool<TerrainObject::BuiltChunkMesh, BuiltChunkMesh2> builtChunkMeshes;
+#else
 		ResourcePool<TerrainObject::BuiltChunkMesh, BuiltChunkMesh> builtChunkMeshes;
+#endif
 		ResourcePool<TerrainObject::MeshingWorkerContext, ChunkMeshingWorkerContext> meshingWorkerContexts;
 	};
 
@@ -193,10 +199,8 @@ namespace OneGame::Engine::Terrain
 	{
 	public:
 		TerrainMeshBuilder(TerrainData& terrain);
-
-		void Initialize(AssetBundleWriter* assets);
 		void BuildChunkMeshes(int vertexBudget);
-		void UploadChunkMeshes(int byteBudget, uint32_t frameIndex, Graphics::ICommandList* cmd);
+		void AllocateTerrainMesh(Graphics::IGraphicsBackend* backend);
 	private:
 		void ExecuteBuildChunkMesh(MeshingWorkerContextHandle);
 
@@ -242,7 +246,7 @@ namespace OneGame::Engine::Terrain
 		}
 		~TerrainService() = default;
 
-		void Initialize(const TerrainGenerationDesc& desc, AssetBundleWriter* assets);
+		void Initialize(const TerrainGenerationDesc& desc);
 		uint32_t GetBlock(int x, int y, int z);
 		void SetBlock(int x, int y, int z, uint32_t value);
 		ChunkData* GetChunkForRead(int chunkX, int chunkY, int chunkZ);
