@@ -205,8 +205,8 @@ namespace OneGame::Engine::Terrain
 		void ExecuteBuildChunkMesh(MeshingWorkerContextHandle);
 
 		TerrainData& m_terrain;
-		Graphics::ChunkAllocator m_gpuBufferAllocator;
 		Mesh m_terrainMesh = {};
+		uint32_t m_runningVertexCount = 0;
 		//GPUBufferHandle m_gpuVertexBuffer;
 		//GPUBufferHandle m_gpuIndexBuffer;
 		//Graphics::RingStagingBuffer m_gpuRingStagingBuffer;

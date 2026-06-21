@@ -59,7 +59,7 @@ namespace OneGame::Engine::Graphics
 
 	private:
 		GPUBufferHandle storageBuffer;
-		std::vector<PTerrainMesh2> activeChunkSlots;
+		std::vector<PTerrainMesh> activeChunkSlots;
 		std::vector<UBO> ubos;
 
 		GPUPipelineHandle pipelineHandle;

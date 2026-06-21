@@ -97,17 +97,15 @@ namespace OneGame::Engine
 		virtual void Exit(AppContext& context) override;
 		virtual void Update(AppContext& context, FrameContext& frame) override;
 	protected:
-#ifdef USE_TERRAIN_MESH_V2
-		std::vector<Graphics::PTerrainMesh2> testSlots;
-#else
 		std::vector<Graphics::PTerrainMesh> testSlots;
-#endif
 		Terrain::TerrainData terrainData;
 		Terrain::TerrainMeshBuilder meshBuilder;
 
 		ECS::GameWorld gameWorld;
 
 		bool wrappingEnabled = false;
+		//bool firstFrame = false;
 		bool firstFrame = true;
+		bool isTerrainReady = false;
 	};
 }

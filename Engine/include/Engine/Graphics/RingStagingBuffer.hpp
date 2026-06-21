@@ -2,6 +2,7 @@
 #include <mutex>
 #include <cassert>
 #include <cstdint>
+#include <map>
 
 #include "Engine/ObjectType.hpp"
 
@@ -23,13 +24,14 @@ namespace OneGame::Engine::Graphics
         void Shutdown(IGraphicsBackend& backend);
 
         StagingAllocation Allocate(uint64_t size);
-
+        bool TryAllocate(uint64_t size, StagingAllocation& out);
         void Free(uint64_t offset, uint64_t size);
 
         GPUBufferHandle GetBuffer() const { return m_buffer; }
 
     private:
         GPUBufferHandle m_buffer;
+        std::map<uint64_t, uint64_t> m_pendingFrees; // Maps offset -> size
 
         void* m_mappedPtr = nullptr;
 

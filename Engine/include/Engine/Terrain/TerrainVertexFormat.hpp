@@ -31,6 +31,7 @@ namespace OneGame::Engine::Terrain
 
 	static constexpr uint32_t CHUNK_VERTEX_BYTE_SIZE = 64 * 1024; // 64 kb
 	static constexpr uint32_t CHUNK_INDEX_BYTE_SIZE = 48 * 1024; // 48 kb
+	static constexpr uint32_t CHUNK_STORE_BYTE_SIZE = 25 * 1024; // 25 kb
 
 	static constexpr uint32_t MAX_STAGING_PER_FRAME = 6;
 	static constexpr uint32_t MAX_VISIBLE_CHUNK_NUM = 160;
@@ -119,4 +120,21 @@ namespace OneGame::Engine::Terrain
 			assert(AOs[0] < 4 && AOs[1] < 4 && AOs[2] < 4 && AOs[3] < 4);
 		}
 	};
+
+	static constexpr uint32_t MAXIMUM_QUAD_BYTE_SIZE = 16 * 16 * 16 * 6 * sizeof(TexturedQuad); // 98 kb
+
+	// V3
+	// x,y,z 12 bit -> array 1
+	// index + face -> array 2
+	// array 1 : int16
+	// array 2 :
+	//   index 11 bit
+	//   face 3 bit
+	//   texId 8 bit
+	//   color 10 bit -> 3 bit rgb
+
+	// V3.1
+	// x,y,z 12 bit
+	// face 3 bit
+	// texSlot 9 bit
 }

@@ -58,7 +58,7 @@ namespace OneGame::Engine::Graphics
 
     void Renderer::Draw(DrawContext& drawCtxt)
     {
-        testPass.Draw(drawCtxt);
+        //testPass.Draw(drawCtxt);
         if (enableTerrainPass)
             terrainPass.Draw(drawCtxt);
         else if (enableTerrainPass2)

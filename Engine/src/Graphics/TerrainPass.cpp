@@ -103,8 +103,8 @@ namespace OneGame::Engine::Graphics
 		{
 			uint32_t offset[1] = { static_cast<uint32_t>(uniformMemory.offset + i * sizeof(UBO)) };
 			ctxt.drawCmd.BindBindingGroup(bindingGroup, 0, offset);
-			ctxt.drawCmd.BindVertexBuffer(terrainMesh.vertexBuffer, activeChunkSlots[i].chunkSlot * Terrain::CHUNK_VERTEX_BYTE_SIZE);
-			ctxt.drawCmd.BindIndexBuffer(terrainMesh.indexBuffer, activeChunkSlots[i].chunkSlot * Terrain::CHUNK_INDEX_BYTE_SIZE, IndexFormat::Uint16);
+			ctxt.drawCmd.BindVertexBuffer(terrainMesh.vertexBuffer, activeChunkSlots[i].offset);
+			ctxt.drawCmd.BindIndexBuffer(terrainMesh.indexBuffer, activeChunkSlots[i].offset, IndexFormat::Uint16);
 			ctxt.drawCmd.DrawIndexed(activeChunkSlots[i].indexCount);
 		}
 	}
@@ -196,7 +196,7 @@ namespace OneGame::Engine::Graphics
 			BindingGroupDesc desc{};
 			desc.layout = bindingGroupLayout;
 			desc.textures.push_back(blockTexture);
-			desc.buffers.push_back({ storageBuffer, CHUNK_VERTEX_BYTE_SIZE });
+			desc.buffers.push_back({ storageBuffer, MAXIMUM_QUAD_BYTE_SIZE });
 			desc.buffers.push_back({ ctxt.uniformArena.GetBuffer(), sizeof(UBO) });
 			bindingGroup = backend.CreateBindingGroup(desc);
 		}
@@ -221,9 +221,9 @@ namespace OneGame::Engine::Graphics
 
 		for (uint32_t i = 0; i < ubos.size(); ++i)
 		{
-			uint32_t offset[2] = { CHUNK_VERTEX_BYTE_SIZE * activeChunkSlots[i].chunkSlot, static_cast<uint32_t>(uniformMemory.offset + i * sizeof(UBO))};
+			uint32_t offset[2] = { activeChunkSlots[i].offset, static_cast<uint32_t>(uniformMemory.offset + i * sizeof(UBO)) };
 			ctxt.drawCmd.BindBindingGroup(bindingGroup, 0, offset);
-			ctxt.drawCmd.Draw(activeChunkSlots[i].faceCount * 6);
+			ctxt.drawCmd.Draw(activeChunkSlots[i].indexCount);
 		}
 	}
 
@@ -249,11 +249,11 @@ namespace OneGame::Engine::Graphics
 			math::radians(45.0f),
 			context.backend.SwapchainAspect(),
 			0.1f,
-			100.f);
+			200.f);
 
 		activeChunkSlots.clear();
 		ubos.clear();
-		auto worldView = context.world.view<const PTerrainMesh2>();
+		auto worldView = context.world.view<const PTerrainMesh>();
 		for (auto [_, mesh] : worldView.each())
 		{
 			activeChunkSlots.push_back(mesh);

@@ -42,7 +42,7 @@ namespace OneGame::Engine::Terrain
 
 	using namespace Graphics;
 
-	TerrainMeshBuilder::TerrainMeshBuilder(TerrainData& terrain) : m_terrain(terrain), m_gpuBufferAllocator(MAX_VISIBLE_CHUNK_NUM)
+	TerrainMeshBuilder::TerrainMeshBuilder(TerrainData& terrain) : m_terrain(terrain)
 	{
 	}
 
@@ -376,25 +376,21 @@ namespace OneGame::Engine::Terrain
 #endif
 		m_terrain.uploadMeshQueue.push(std::make_tuple(_context->chunkHandle, _context->chunkMeshHandle));
 		m_terrain.meshingWorkerContexts.Destroy(handle);
+		m_runningVertexCount -= CHUNK_VERTEX_BYTE_SIZE;
 	}
 
 	void TerrainMeshBuilder::AllocateTerrainMesh(Graphics::IGraphicsBackend& backend)
 	{
-#ifdef USE_TERRAIN_MESH_V2
-		m_terrain.terrainMesh = backend.AllocateGPUBuffer<BufferUsage::Storage>(MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE);
-#else
-		m_terrain.terrainMesh = {};
-		m_terrain.terrainMesh.vertexBuffer = backend.AllocateGPUBuffer<BufferUsage::Vertex>(MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE);
-		m_terrain.terrainMesh.indexBuffer = backend.AllocateGPUBuffer<BufferUsage::Index>(MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE);
-#endif
 	}
 
 	void TerrainMeshBuilder::BuildChunkMeshes(int vertexBudget)
 	{
-		uint32_t runningVertexCount = m_terrain.meshingWorkerContexts.Size() * CHUNK_VERTEX_BYTE_SIZE;
 		static_assert(std::is_default_constructible_v<ChunkMeshingWorkerContext>);
-		while (runningVertexCount < vertexBudget && !m_terrain.buildMeshQueue.empty())
+		while (!m_terrain.buildMeshQueue.empty())
 		{
+			if (m_runningVertexCount > vertexBudget)
+				break;
+			m_runningVertexCount += CHUNK_VERTEX_BYTE_SIZE;
 			auto contextHandle = m_terrain.meshingWorkerContexts.Create();
 			auto context = m_terrain.meshingWorkerContexts.Get(contextHandle);
 			while (!m_terrain.buildMeshQueue.empty())

@@ -27,7 +27,7 @@ namespace OneGame::Engine
 	void GameApp::Initialize(WindowHandle* handle)
 	{
 		backend = CreateBackend(BackendType::Vulkan);
-		backend->Initialize(BackendDesc{ handle, FrameTimePreference::VSync });
+		backend->Initialize(BackendDesc{ handle, FrameTimePreference::Unlimited });
 		LOG_DEBUG("Backend created");
 		streamingManager.Initialize(*backend);
 		LOG_DEBUG("StreamingManager created");

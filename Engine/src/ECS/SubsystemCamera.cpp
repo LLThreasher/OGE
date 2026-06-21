@@ -78,7 +78,7 @@ namespace OneGame::Engine::ECS
 			dy = -ctx.input.GetTouchDY(panFingerIndex) * sens;
 			if ((ctx.input.GetReleasedTouchIdMask() & (1 << panFingerIndex)) != 0)
 			{
-				LOG_DEBUG("pan up {}", panFingerIndex);
+				//LOG_DEBUG("pan up {}", panFingerIndex);
 				panFingerIndex = -1;
 			}
 		}
