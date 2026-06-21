@@ -4,6 +4,7 @@
 #include "Engine/GameAppState.hpp"
 #include "Engine/Terrain/TerrainMeshBuilder.hpp"
 #include "Engine/ECS/GameWorld.hpp"
+#include "Engine/Graphics/PresentationObjects.hpp"
 
 #include "IScene.hpp"
 

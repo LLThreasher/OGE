@@ -5,6 +5,7 @@
 
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/AssetManager.hpp"
+#include "Engine/StreamingManager.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Terrain/TerrainMeshBuilder.hpp"

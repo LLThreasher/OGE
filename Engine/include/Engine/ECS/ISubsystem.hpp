@@ -2,6 +2,7 @@
 #include "Engine/GameAppState.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math.hpp"
+#include "Engine/Graphics/IGraphicsBackend.hpp"
 
 #define DECLARE_SUBSYSTEM(Name, ...)                \
 class Subsystem##Name : public ISubsystem     \

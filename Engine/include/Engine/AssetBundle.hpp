@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Engine/ObjectType.hpp"
+
 namespace OneGame::Engine
 {
 	class AssetManager;

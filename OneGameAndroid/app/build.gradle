@@ -5,7 +5,7 @@ plugins {
 // def buildWithCMake = project.hasProperty('BUILD_WITH_CMAKE');
 def buildWithCMake = true;
 def frames = project.hasProperty("MAX_FRAMES_IN_FLIGHT") ?
-             project.MAX_FRAMES_IN_FLIGHT : "3";
+             project.MAX_FRAMES_IN_FLIGHT : "1";
 
 android {
     signingConfigs {

@@ -3,6 +3,8 @@
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "Engine/Random.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
+#include "Engine/Graphics/Renderer.hpp"
+#include "Engine/StreamingManager.hpp"
 
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
