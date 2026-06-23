@@ -10,14 +10,6 @@
 namespace OneGame::Engine
 {
 
-	enum class StreamingObjects
-	{
-		ResourceBundle,
-	};
-
-	using ResourceBundleHandle = ResourceHandle<StreamingObjects::ResourceBundle>;
-
-
 	enum class UploadType : uint32_t
 	{
 		Async,
@@ -93,7 +85,7 @@ namespace OneGame::Engine
 		template<UploadType uploadType = UploadType::Immediate>
 		void ScheduleBufferUpload(const BufferUploadDesc& desc);
 		template<UploadType uploadType = UploadType::Immediate>
-		StagingBuffer AllocateStagingBuffer(const std::span<const std::byte> data);
+		bool AllocateStagingBuffer(const std::span<const std::byte> data, StagingBuffer&);
 
 		void UploadBuffer(uint32_t fidx, BufferUploadDesc& desc, Graphics::ICommandList& transferCmd);
 		void UploadTexture(uint32_t fidx, BufferUploadDesc& desc, Graphics::ICommandList& transferCmd);

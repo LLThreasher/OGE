@@ -26,17 +26,18 @@ namespace OneGame::Engine
 		return res;
 	}
 
-	Mesh AssetBundleWriter::LoadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices, uint32_t indexCount)
+	Mesh AssetBundleWriter::LoadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices, uint32_t indexCount, ResourceBundleHandle res)
 	{
 		Mesh m = AllocateMesh(vertices.size(), indices.size());
-		UploadMesh(vertices, indices, m, indexCount);
+		UploadMesh<UploadType::Immediate>(vertices, indices, m, indexCount, res);
 		return m;
 	}
 
-	void AssetBundleWriter::UploadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices, Mesh& m, uint32_t indexCount)
+	template <auto uploadType>
+	void AssetBundleWriter::UploadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices, Mesh& m, uint32_t indexCount, ResourceBundleHandle res)
 	{
-		m_streamingManager.UploadBuffer<UploadType::Immediate, BufferUsage::Vertex>(vertices, m.vertexBuffer, m.vOffset);
-		m_streamingManager.UploadBuffer<UploadType::Immediate, BufferUsage::Index>(indices, m.indexBuffer, m.iOffset);
+		m_streamingManager.UploadBuffer<uploadType, BufferUsage::Vertex>(vertices, m.vertexBuffer, m.vOffset, res);
+		m_streamingManager.UploadBuffer<uploadType, BufferUsage::Index>(indices, m.indexBuffer, m.iOffset, res);
 		m.indexCount = indexCount;
 	}
 
@@ -47,4 +48,7 @@ namespace OneGame::Engine
 		m.indexBuffer = m_backend.AllocateGPUBuffer<BufferUsage::Index>(iCount);
 		return m;
 	}
+
+	template void AssetBundleWriter::UploadMesh<UploadType::Async>(const std::span<const std::byte> vertices, const std::span<const std::byte> indices, Mesh& m, uint32_t indexCount, ResourceBundleHandle res);
+	template void AssetBundleWriter::UploadMesh<UploadType::Immediate>(const std::span<const std::byte> vertices, const std::span<const std::byte> indices, Mesh& m, uint32_t indexCount, ResourceBundleHandle res);
 }

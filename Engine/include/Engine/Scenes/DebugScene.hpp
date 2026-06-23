@@ -2,7 +2,7 @@
 
 #include <string>
 #include "Engine/GameAppState.hpp"
-#include "Engine/Terrain/TerrainMeshBuilder.hpp"
+#include "Engine/Terrain/Terrain.hpp"
 #include "Engine/ECS/GameWorld.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 
@@ -84,7 +84,9 @@ namespace OneGame::Engine
 	public:
 		virtual void Initialize(AppContext& context) override;
 		virtual void Enter(AppContext& context) override;
+		virtual void Update(AppContext& context, FrameContext& frame) override;
 	protected:
+		ECS::GameWorld gameWorld;
 		Terrain::TerrainService terrain;
 		Mesh chunkMesh;
 	};
@@ -92,7 +94,7 @@ namespace OneGame::Engine
 	class DebugScene2 : public EmptyScene
 	{
 	public:
-		DebugScene2() : meshBuilder(terrainData) {}
+		DebugScene2() {}
 		virtual void Initialize(AppContext& context) override;
 		virtual void Enter(AppContext& context) override;
 		virtual void Exit(AppContext& context) override;

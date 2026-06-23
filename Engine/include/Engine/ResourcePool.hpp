@@ -30,6 +30,11 @@ namespace OneGame::Engine
             {
                 return std::launder(reinterpret_cast<Resource*>(storage));
             }
+
+            const Resource* Get() const
+            {
+                return std::launder(reinterpret_cast<const Resource*>(storage));
+            }
         };
 
         std::vector<Entry>     m_entries;
@@ -91,6 +96,13 @@ namespace OneGame::Engine
         // Access
         // ----------------------------
         Resource* Get(Handle handle)
+        {
+            if (!IsAlive(handle))
+                return nullptr;
+            return m_entries[handle.index - 1].Get();
+        }
+
+        const Resource* Get(Handle handle) const
         {
             if (!IsAlive(handle))
                 return nullptr;

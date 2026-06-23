@@ -140,3 +140,5 @@ vk_layer_settings.txt
 ############################################
 assets_cache/
 shader_cache/
+
+AGI_trace/

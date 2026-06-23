@@ -19,8 +19,8 @@ namespace OneGame::Engine::Graphics
         InitContext ctx { bundle, uniformArena };
         debugInfoPass.Enable(backend, ctx);
         LOG_DEBUG("debug info pass created");
-        testPass.Enable(backend, ctx);
-        LOG_DEBUG("test pass created");
+        //testPass.Enable(backend, ctx);
+        //LOG_DEBUG("test pass created");
         //terrainPass.Enable(backend, ctx);
         //LOG_DEBUG("terrain pass created");
         //terrainPass2.Enable(backend, ctx);
@@ -33,7 +33,7 @@ namespace OneGame::Engine::Graphics
         //uiPass.Shutdown(backend);
         //terrainPass2.Disable(backend);
         //terrainPass.Disable(backend);
-        testPass.Disable(backend);
+        //testPass.Disable(backend);
         debugInfoPass.Disable(backend);
 
         uniformArena.Shutdown(backend);
@@ -51,7 +51,7 @@ namespace OneGame::Engine::Graphics
         terrainPass2.Prepare(pc);
         terrainPass.Prepare(pc);
         debugInfoPass.Prepare(pc);
-        testPass.Prepare(pc);
+        //testPass.Prepare(pc);
     }
 
     

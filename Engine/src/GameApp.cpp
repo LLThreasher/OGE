@@ -12,11 +12,13 @@ namespace OneGame::Engine
 {
 	using namespace Graphics;
 
-	constexpr uint32_t DEBUG_SCENE = 0;
-	constexpr uint32_t DEBUG_SCENE2 = 1;
+	constexpr uint32_t EMPTY_SCENE		= 0;
+	constexpr uint32_t DEBUG_SCENE		= 1;
+	constexpr uint32_t DEBUG_SCENE2		= 2;
 
 	GameApp::GameApp()
 	{
+		allScenes.push_back(std::unique_ptr<IScene>(new EmptyScene()));
 		allScenes.push_back(std::unique_ptr<IScene>(new DebugScene()));
 		allScenes.push_back(std::unique_ptr<IScene>(new DebugScene2()));
 		TransferToScene(DEBUG_SCENE2);

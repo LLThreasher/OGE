@@ -1,4 +1,4 @@
-#include "Engine/Terrain/TerrainMeshBuilder.hpp"
+#include "Engine/Terrain/Terrain.hpp"
 #include "Engine/Terrain/BlockManager.hpp"
 
 #define LOGGER_NAME "Engine"
@@ -41,10 +41,6 @@ namespace OneGame::Engine::Terrain
 	};
 
 	using namespace Graphics;
-
-	TerrainMeshBuilder::TerrainMeshBuilder(TerrainData& terrain) : m_terrain(terrain)
-	{
-	}
 
 	static size_t MaskIndex(size_t z, size_t y)
 	{
@@ -365,56 +361,52 @@ namespace OneGame::Engine::Terrain
 		}
 	}
 
-	void TerrainMeshBuilder::ExecuteBuildChunkMesh(MeshingWorkerContextHandle handle)
+	void TerrainMeshBuilder::ExecuteBuildChunkMesh(TerrainData& terrain, MeshingWorkerContextHandle handle)
 	{
-		auto _context = m_terrain.meshingWorkerContexts.Get(handle);
-		auto context = m_terrain.builtChunkMeshes.Get(_context->chunkMeshHandle);
+		auto _context = terrain.meshingWorkerContexts.Get(handle);
+		auto context = terrain.builtChunkMeshes.Get(_context->chunkMeshHandle);
 #ifdef USE_TERRAIN_MESH_V2
 		ExecuteBuildChunkMeshJob2(_context, context);
 #else
 		ExecuteBuildChunkMeshJob(_context, context);
 #endif
-		m_terrain.uploadMeshQueue.push(std::make_tuple(_context->chunkHandle, _context->chunkMeshHandle));
-		m_terrain.meshingWorkerContexts.Destroy(handle);
+		terrain.uploadMeshQueue.push(std::make_tuple(_context->chunkHandle, _context->chunkMeshHandle));
+		terrain.meshingWorkerContexts.Destroy(handle);
 		m_runningVertexCount -= CHUNK_VERTEX_BYTE_SIZE;
 	}
 
-	void TerrainMeshBuilder::AllocateTerrainMesh(Graphics::IGraphicsBackend& backend)
-	{
-	}
-
-	void TerrainMeshBuilder::BuildChunkMeshes(int vertexBudget)
+	void TerrainMeshBuilder::BuildChunkMeshes(TerrainData& terrain, BlockRegistry& blocks)
 	{
 		static_assert(std::is_default_constructible_v<ChunkMeshingWorkerContext>);
-		while (!m_terrain.buildMeshQueue.empty())
+		while (!terrain.buildMeshQueue.empty())
 		{
-			if (m_runningVertexCount > vertexBudget)
+			if (m_runningVertexCount > m_vertexBudget)
 				break;
 			m_runningVertexCount += CHUNK_VERTEX_BYTE_SIZE;
-			auto contextHandle = m_terrain.meshingWorkerContexts.Create();
-			auto context = m_terrain.meshingWorkerContexts.Get(contextHandle);
-			while (!m_terrain.buildMeshQueue.empty())
+			auto contextHandle = terrain.meshingWorkerContexts.Create();
+			auto context = terrain.meshingWorkerContexts.Get(contextHandle);
+			while (!terrain.buildMeshQueue.empty())
 			{
-				auto handle = std::move(m_terrain.buildMeshQueue.front());
-				m_terrain.buildMeshQueue.pop();
-				auto data = m_terrain.chunkData.Get(handle);
+				auto handle = std::move(terrain.buildMeshQueue.front());
+				terrain.buildMeshQueue.pop();
+				auto data = terrain.chunks.Get(handle);
 				LOG_DEBUG("building mesh at ({}, {}, {})", data->Coords.x, data->Coords.y, data->Coords.z);
 				
 				// skip chunks with missing neighbors
 				bool incompleteNeighbors = false;
-				ChunkHandle neighbors[6] = {};
+				ChunkData* neighbors[6] = {};
 				for (size_t i = 0; i < 6; ++i)
 				{
 					if (i == FACE_DOWN && data->Coords.y == 0)
 						continue;
 					auto pos = perFaceOffset[i] + data->Coords;
-					auto it = m_terrain.coordToChunks.find(pos);
-					if (it == m_terrain.coordToChunks.end())
+					auto [_, chunk] = terrain.chunks.Get(pos);
+					if (chunk == nullptr)
 					{
 						incompleteNeighbors = true;
 						break;
 					}
-					neighbors[i] = it->second;
+					neighbors[i] = chunk;
 				}
 
 				assert(!incompleteNeighbors && "Chunk updater should prevent this");
@@ -439,7 +431,7 @@ namespace OneGame::Engine::Terrain
 				// left & right
 				for (size_t i = 0; i < 2; ++i)
 				{
-					auto neighborData = m_terrain.chunkData.Get(neighbors[i])->data;
+					auto neighborData = neighbors[i]->data;
 					for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
 					{
 						for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
@@ -467,7 +459,7 @@ namespace OneGame::Engine::Terrain
 						}
 						continue;
 					}
-					auto neighborData = m_terrain.chunkData.Get(neighbors[2 + i])->data;
+					auto neighborData = neighbors[2 + i]->data;
 					for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
 					{
 						for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
@@ -482,7 +474,7 @@ namespace OneGame::Engine::Terrain
 				// front & back
 				for (size_t i = 0; i < 2; ++i)
 				{
-					auto neighborData = m_terrain.chunkData.Get(neighbors[4 + i])->data;
+					auto neighborData = neighbors[4 + i]->data;
 					for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
 					{
 						for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
@@ -506,11 +498,11 @@ namespace OneGame::Engine::Terrain
 					}
 				}
 
-				context->chunkMeshHandle = m_terrain.builtChunkMeshes.Create();
+				context->chunkMeshHandle = terrain.builtChunkMeshes.Create();
 				context->chunkHandle = handle;
 				break;
 			}
-			ExecuteBuildChunkMesh(contextHandle);
+			ExecuteBuildChunkMesh(terrain, contextHandle);
 		}
 	}
 }

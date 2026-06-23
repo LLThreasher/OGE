@@ -1,6 +1,7 @@
 #include "Engine/Scenes/DebugScene.hpp"
-#include "Engine/Terrain/TerrainMeshBuilder.hpp"
+#include "Engine/Terrain/Terrain.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
+#include "Engine/Terrain/BlockManager.hpp"
 #include "Engine/Random.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/Graphics/Renderer.hpp"
@@ -13,13 +14,20 @@ namespace OneGame::Engine
 {
 	void DebugScene::Initialize(AppContext& context)
 	{
-		Terrain::TerrainGenerationDesc desc{};
-		terrain.Initialize(desc);
+		using namespace ECS;
+		//Terrain::TerrainGenerationDesc desc{};
+		//terrain.Initialize(desc);
+		gameWorld.Register<SubsystemDebugInfo>();
 	}
 
 	void DebugScene::Enter(AppContext& context)
 	{
-		chunkMesh = context.CreateAssetBundle().LoadMesh(chunk_zero_vertices, chunk_zero_indices);
+		//chunkMesh = context.CreateAssetBundle().LoadMesh(chunk_zero_vertices, chunk_zero_indices);
+	}
+
+	void DebugScene::Update(AppContext& context, FrameContext& frame)
+	{
+		gameWorld.Update(context, frame);
 	}
 
 	void DebugScene2::Initialize(AppContext& context)
@@ -32,6 +40,7 @@ namespace OneGame::Engine
 
 	void DebugScene2::Enter(AppContext& context)
 	{
+		using namespace Terrain;
 		using BufferUsage = Graphics::BufferUsage;
 		//for (size_t x = 0; x < 16; ++x)
 		//{
@@ -47,7 +56,6 @@ namespace OneGame::Engine
 		//		}
 		//	}
 		//}
-
 
 		//auto handle = terrainData.chunkData.Create();
 		//auto chunk = terrainData.chunkData.Get(handle);
@@ -68,7 +76,7 @@ namespace OneGame::Engine
 		//}
 
 		static int chunkCount = 1024;
-		Graphics::ChunkAllocator gpuBufferAllocator(chunkCount);
+		Graphics::ChunkAllocator gpuBufferAllocator;
 
 		auto generate_terrain = [](int x, int y, int z) {
 			//if (z > 14)
@@ -86,10 +94,8 @@ namespace OneGame::Engine
 			{
 				for (int cy = 0; cy < 5; ++cy)
 				{
-					auto handle = terrainData.chunkData.Create();
-					auto chunk = terrainData.chunkData.Get(handle);
-					chunk->Coords = { cx, cy, cz };
-					terrainData.coordToChunks[{cx, cy, cz}] = handle;
+					auto handle = terrainData.chunks.AllocateChunk({ cx, cy, cz });
+					auto chunk = terrainData.chunks.Get(handle);
 
 					for (size_t z = 0; z < 16; ++z)
 					{
@@ -114,27 +120,21 @@ namespace OneGame::Engine
 			{
 				for (int cy = 0; cy < 4; ++cy)
 				{
-					auto handle = terrainData.coordToChunks[{cx, cy, cz}];
+					auto [handle, chunk] = terrainData.chunks.Get({ cx, cy, cz });
 					assert(handle.IsValid());
-					auto coord = terrainData.chunkData.Get(handle)->Coords;
+					auto coord = chunk->Coords;
 					LOG_DEBUG("queuing chunk ({}, {}, {}) with ({}, {}, {})", cx, cy, cz, coord.x, coord.y, coord.z);
 					terrainData.buildMeshQueue.push(handle);
 				}
 			}
 		}
-		meshBuilder.BuildChunkMeshes(192 * 1024 * 1024);
+		BlockRegistry blocks;
+		meshBuilder.SetVertexBudget(192 * 1024 * 1024);
+		meshBuilder.BuildChunkMeshes(terrainData, blocks);
 		LOG_DEBUG("end generate mesh");
 
-#ifdef USE_TERRAIN_MESH_V2
 		terrainData.terrainMesh = context.backend.AllocateGPUBuffer<BufferUsage::Storage>(chunkCount * 4 * Terrain::CHUNK_STORE_BYTE_SIZE);
-#else
-		m_terrain.terrainMesh = {};
-		m_terrain.terrainMesh.vertexBuffer = backend.AllocateGPUBuffer<BufferUsage::Vertex>(MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE);
-		m_terrain.terrainMesh.indexBuffer = backend.AllocateGPUBuffer<BufferUsage::Index>(MAX_VISIBLE_CHUNK_NUM * CHUNK_VERTEX_BYTE_SIZE);
-#endif
-		meshBuilder.AllocateTerrainMesh(context.backend);
 		auto bundle = context.CreateAssetBundle();
-#ifdef USE_TERRAIN_MESH_V2
 		context.renderer.EnableTerrainPass2(context.backend, bundle, terrainData.terrainMesh);
 
 		int active_count = chunkCount - 23;
@@ -148,7 +148,7 @@ namespace OneGame::Engine
 			auto [chunkHandle, builtMeshHandle] = std::move(terrainData.uploadMeshQueue.front());
 			terrainData.uploadMeshQueue.pop();
 			auto builtMesh = terrainData.builtChunkMeshes.Get(builtMeshHandle);
-			auto chunkCoord = terrainData.chunkData.Get(chunkHandle)->Coords;
+			auto chunkCoord = terrainData.chunks.Get(chunkHandle)->Coords;
 			context.streamingManager.UploadBuffer<UploadType::Async, BufferUsage::Storage>(builtMesh->quads, terrainData.terrainMesh, currentSlot * Terrain::CHUNK_STORE_BYTE_SIZE, event);
 			testSlots.push_back(Graphics::PTerrainMesh{ currentSlot * Terrain::CHUNK_STORE_BYTE_SIZE, static_cast<uint32_t>(builtMesh->quads.size()) * 6, chunkCoord.x, chunkCoord.y, chunkCoord.z });
 			currentSlot += 4;
@@ -156,27 +156,6 @@ namespace OneGame::Engine
 			LOG_DEBUG("looking at chunk ({}, {}, {}), data size: {} kb", chunkCoord.x, chunkCoord.y, chunkCoord.z, (float)(builtMesh->quads.size() * sizeof(Terrain::TexturedQuad)) / 1024.f);
 		}
 		LOG_DEBUG("used slots {}", currentSlot);
-#else
-		context.renderer.EnableTerrainPass(context.backend, bundle, terrainData.terrainMesh);
-		int currentSlot = 0;
-		while (!terrainData.uploadMeshQueue.empty() && currentSlot < 100)
-		{
-			auto [chunkHandle, builtMeshHandle] = std::move(terrainData.uploadMeshQueue.front());
-			terrainData.uploadMeshQueue.pop();
-			auto builtMesh = terrainData.builtChunkMeshes.Get(builtMeshHandle);
-			auto chunkCoord = terrainData.chunkData.Get(chunkHandle)->Coords;
-			if (chunkCoord.x > 2 || chunkCoord.z > 2 || chunkCoord.x < -2 || chunkCoord.z < -2)
-				continue;
-			Mesh m = terrainData.terrainMesh;
-			m.vOffset = currentSlot * Terrain::CHUNK_VERTEX_BYTE_SIZE;
-			m.iOffset = currentSlot * Terrain::CHUNK_INDEX_BYTE_SIZE;
-			bundle.UploadMesh(builtMesh->vertices, builtMesh->indices, m);
-			testSlots.push_back(Graphics::PTerrainMesh{ (uint32_t)currentSlot, (uint32_t)builtMesh->indices.size(), chunkCoord.x, chunkCoord.y, chunkCoord.z });
-			currentSlot += 2;
-			LOG_DEBUG("looking at chunk ({}, {}, {}), vert size: {} kb, index size: {} kb", chunkCoord.x, chunkCoord.y, chunkCoord.z, (float)(builtMesh->vertices.size() * sizeof(Terrain::Vertex)) / 1024.f, (builtMesh->indices.size() * sizeof(uint16_t)) / 1024.f);
-		}
-		LOG_DEBUG("used slots {}", currentSlot);
-#endif
 	}
 
 	void DebugScene2::Exit(AppContext& context)

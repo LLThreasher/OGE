@@ -10,9 +10,11 @@ namespace OneGame::Engine::Graphics
     {
     public:
         // maxChunks must be divisible by 4
-        explicit ChunkAllocator(uint32_t maxChunks)
-            : m_totalChunks(maxChunks),
-            m_blockOrder(maxChunks, INVALID_ORDER)
+        explicit ChunkAllocator()
+        {
+        }
+
+        void Initialize(uint32_t maxChunks)
         {
             assert(maxChunks % 4 == 0);
 

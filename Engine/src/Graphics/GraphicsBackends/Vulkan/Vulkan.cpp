@@ -607,6 +607,12 @@ namespace OneGame::Engine::Graphics::Vulkan
 		VkSurfaceFormatKHR chosenFormat = swapchainSupport.formats[0];
 		for (auto& f : swapchainSupport.formats)
 		{
+			if (f.format == VK_FORMAT_R8G8B8A8_SRGB &&
+				f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+			{
+				chosenFormat = f;
+				break;
+			}
 			if (f.format == VK_FORMAT_B8G8R8A8_SRGB &&
 				f.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
 			{
@@ -615,7 +621,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			}
 		}
 
-		m_device.depthFormat = VK_FORMAT_D32_SFLOAT;
+		m_device.depthFormat = VK_FORMAT_D16_UNORM;
 
 		VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
 		for (auto& mode : swapchainSupport.presentModes)
@@ -636,10 +642,10 @@ namespace OneGame::Engine::Graphics::Vulkan
 		m_device.presentMode = presentMode;
 
 		std::array<VkDescriptorPoolSize, 4> poolSizes = {
-			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 32 },
-			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 32 },
-			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 32 },
-			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 128 }
+			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 8 },
+			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 8 },
+			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, 4 },
+			VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 32 }
 		};
 
 		VkDescriptorPoolCreateInfo poolInfo{};

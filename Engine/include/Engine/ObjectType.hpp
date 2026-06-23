@@ -60,6 +60,11 @@ namespace OneGame::Engine
 		{
 			return ResourceHandle<Tag>{ 0, 0 };
 		}
+
+		bool operator==(const ResourceHandle<Tag>& other) const noexcept
+		{
+			return index == other.index && generation == other.generation;
+		}
 	};
 
 	using GPUBufferHandle = ResourceHandle<GPUObjectType::Buffer>;
@@ -86,5 +91,21 @@ namespace OneGame::Engine
 		size_t vOffset;
 		GPUBufferHandle indexBuffer;
 		size_t iOffset;
+	};
+
+	enum class StreamingObjects
+	{
+		ResourceBundle,
+	};
+
+	using ResourceBundleHandle = ResourceHandle<StreamingObjects::ResourceBundle>;
+
+	template<typename Handle>
+	struct HandleHash
+	{
+		size_t operator()(const Handle& slot) const noexcept
+		{
+			return (static_cast<uint64_t>(slot.index) << 32) | slot.generation;
+		}
 	};
 }

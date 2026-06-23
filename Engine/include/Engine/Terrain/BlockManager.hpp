@@ -30,4 +30,23 @@ namespace OneGame::Engine::Terrain
         result |= (blockValue & BLOCK_META_COLOR_MASK) >> (16 - 8);
         return result;
     }
+
+    constexpr uint32_t BLOCK_FLAG_OPAQUE_TO_MESHER  = 1 << 0;
+    constexpr uint32_t BLOCK_FLAG_OPAQUE_TO_LIGHT   = 1 << 1;
+
+    struct BlockConfig
+    {
+        std::string blockDisplayName;
+        std::array<uint8_t, 6> textureSlotPerFace;
+        uint32_t blockFlags;
+    };
+
+    class BlockRegistry
+    {
+    public:
+        void RegisterBlock(std::string blockIdName, BlockConfig config);
+        uint32_t GetBlockId(std::string blockIdName);
+    private:
+
+    };
 }

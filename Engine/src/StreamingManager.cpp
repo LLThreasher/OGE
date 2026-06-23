@@ -55,17 +55,20 @@ namespace OneGame::Engine
 			desc.type = UploadObjectType::Texture;
 		}
 		desc.gpuBufferOffset = gpuOffset;
-		desc.staging = AllocateStagingBuffer<uploadType>(data);
 		desc.bufferUsage = usage;
 
-		assert(desc.staging.alloc.size <= m_uploadByteBudget);
-		if (desc.staging.alloc.cpuPtr == 0)
+		if (!AllocateStagingBuffer<uploadType>(data, desc.staging))
 		{
 			auto& [_desc, _] = m_buffersQueuedInCPU.back();
 			_desc = desc;
 		}
 		else
 		{
+			if (!m_buffersQueuedInCPU.empty())
+			{
+				auto& [_desc, _] = m_buffersQueuedInCPU.back();
+				assert(_desc.gpuBuffer.IsValid());
+			}
 			if constexpr (uploadType == UploadType::Immediate)
 			{
 				m_buffersToUploadImmediate.push(desc);
@@ -85,11 +88,10 @@ namespace OneGame::Engine
 	}
 
 	template<UploadType uploadType>
-	StreamingManager::StagingBuffer StreamingManager::AllocateStagingBuffer(const std::span<const std::byte> data)
+	bool StreamingManager::AllocateStagingBuffer(const std::span<const std::byte> data, StreamingManager::StagingBuffer& res)
 	{
 		size_t dataSizeInBytes = data.size();
 		assert(dataSizeInBytes <= m_uploadByteBudget && "manumal chunking required");
-		StagingBuffer res{};
 		if (!m_ringStagingBuffer.TryAllocate(dataSizeInBytes, res.alloc) || !m_buffersQueuedInCPU.empty())
 		{
 			if constexpr (uploadType == UploadType::Immediate)
@@ -104,12 +106,13 @@ namespace OneGame::Engine
 				buf.resize(dataSizeInBytes);
 				memcpy(buf.data(), data.data(), dataSizeInBytes);
 			}
+			return false;
 		}
 		else
 		{
 			memcpy(res.alloc.cpuPtr, data.data(), dataSizeInBytes);
+			return true;
 		}
-		return res;
 	}
 
 	void StreamingManager::UploadBuffer(uint32_t fidx, BufferUploadDesc& desc, ICommandList& transferCmd)
@@ -152,10 +155,10 @@ namespace OneGame::Engine
 
 		while (!m_buffersQueuedInCPU.empty())
 		{
-			//LOG_DEBUG("checking queue {}", m_buffersQueuedInCPU.size());
 			auto& [item, buffer] = m_buffersQueuedInCPU.front();
 			if (!m_ringStagingBuffer.TryAllocate(buffer.size(), item.staging.alloc))
 				break;
+			assert(item.gpuBuffer.IsValid());
 			memcpy(item.staging.alloc.cpuPtr, buffer.data(), buffer.size());
 			m_buffersQueuedInCPU.pop();
 			m_buffersToUpload.push(item);
@@ -181,8 +184,8 @@ namespace OneGame::Engine
 		}
 	}
 
-	template StreamingManager::StagingBuffer StreamingManager::AllocateStagingBuffer<UploadType::Immediate>(const std::span<const std::byte> data);
-	template StreamingManager::StagingBuffer StreamingManager::AllocateStagingBuffer<UploadType::Async>(const std::span<const std::byte> data);
+	template bool StreamingManager::AllocateStagingBuffer<UploadType::Immediate>(const std::span<const std::byte> data, StreamingManager::StagingBuffer&);
+	template bool StreamingManager::AllocateStagingBuffer<UploadType::Async>(const std::span<const std::byte> data, StreamingManager::StagingBuffer&);
 
 	template void StreamingManager::ScheduleBufferUpload<UploadType::Immediate>(const BufferUploadDesc& desc);
 	template void StreamingManager::ScheduleBufferUpload<UploadType::Async>(const BufferUploadDesc& desc);

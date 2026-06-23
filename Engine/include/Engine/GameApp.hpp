@@ -8,7 +8,7 @@
 #include "Engine/StreamingManager.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/Input/InputSystem.hpp"
-#include "Engine/Terrain/TerrainMeshBuilder.hpp"
+#include "Engine/Terrain/Terrain.hpp"
 #include "Engine/Scenes/IScene.hpp"
 #include "Engine/GameAppState.hpp"
 
