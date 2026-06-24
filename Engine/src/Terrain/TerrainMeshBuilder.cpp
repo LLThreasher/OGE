@@ -412,19 +412,35 @@ namespace OneGame::Engine::Terrain
 				assert(!incompleteNeighbors && "Chunk updater should prevent this");
 
 				// build occupancy mask
+				uint32_t allAndMask = 0x1FFFE;
+				uint32_t allOrMask = 0;
 				for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
 				{
 					for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
 					{
+						auto midx = MaskIndex(z + 1, y + 1);
 						for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
 						{
 							size_t blkIdx = GetBlockIndex(x, y, z);
 							assert(blkIdx < CHUNK_SIZE_TOTAL);
 							uint32_t opaque = IsOpaque(data->data[blkIdx]);
-							auto midx = MaskIndex(z + 1, y + 1);
 							context->opaqueMasks[midx] |= opaque << (x + 1);
 						}
+						allAndMask &= context->opaqueMasks[midx];
+						allOrMask |= context->opaqueMasks[midx];
 					}
+				}
+				if (allAndMask == 0x1FFFE)
+				{
+					LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full soild", data->Coords.x, data->Coords.y, data->Coords.z);
+					terrain.residentChunks.insert(handle);
+					continue;
+				}
+				else if (allOrMask == 0x0)
+				{
+					LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full air", data->Coords.x, data->Coords.y, data->Coords.z);
+					terrain.residentChunks.insert(handle);
+					continue;
 				}
 				
 				// handle neighbors
@@ -500,9 +516,9 @@ namespace OneGame::Engine::Terrain
 
 				context->chunkMeshHandle = terrain.builtChunkMeshes.Create();
 				context->chunkHandle = handle;
+				ExecuteBuildChunkMesh(terrain, contextHandle);
 				break;
 			}
-			ExecuteBuildChunkMesh(terrain, contextHandle);
 		}
 	}
 }

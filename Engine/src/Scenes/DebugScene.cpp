@@ -78,9 +78,9 @@ namespace OneGame::Engine
 		static int chunkCount = 1024;
 		Graphics::ChunkAllocator gpuBufferAllocator;
 
-		auto generate_terrain = [](int x, int y, int z) {
-			//if (z > 14)
-			//	return 0;
+		auto generate_terrain = [](int cx, int cy, int cz, int x, int y, int z) {
+			if (cx > -3 && cx < 2 && cy > 0 && cy < 3 && cz > -3 && cz < 2)
+				return 0;
 			if (((x + y + z) % 2) == 0) {
 				return 256;
 			}
@@ -103,7 +103,7 @@ namespace OneGame::Engine
 						{
 							for (size_t x = 0; x < 16; ++x)
 							{
-								chunk->SetBlock(x, y, z, generate_terrain(x, y, z));
+								chunk->SetBlock(x, y, z, generate_terrain(cx, cy, cz, x, y, z));
 							}
 						}
 					}
