@@ -131,6 +131,9 @@ namespace OneGame::Engine
             return;
         }
 
+        const int FPS_60_TARGET_FRAME_DURATION_MS = 1000.0 / 60;
+
+        uint64_t perfFrequency = SDL_GetPerformanceFrequency();
         bool readyToClose = false;
         bool waitingSurface = false;
         SDL_Event event;
@@ -138,6 +141,8 @@ namespace OneGame::Engine
         double timeAccumulator = 0.0f;
         while (!readyToClose)
         {
+            uint64_t frameStartTicks = SDL_GetPerformanceCounter();
+
             m_input.NewFrame();
             while (SDL_PollEvent(&event))
             {
@@ -187,6 +192,10 @@ namespace OneGame::Engine
             {
                 waitingSurface = true;
             }
+
+            uint64_t frameEndTicks = SDL_GetPerformanceCounter();
+            double elapsedMS = (double)(frameEndTicks - frameStartTicks) * 1000.0 / perfFrequency;
+
             if ((appFrameAction & AppFrameAction::WrapMouse) == AppFrameAction::WrapMouse)
             {
                 SDL_SetWindowRelativeMouseMode(m_window, true);
@@ -194,6 +203,13 @@ namespace OneGame::Engine
             else if ((appFrameAction & AppFrameAction::UnwrapMouse) == AppFrameAction::UnwrapMouse)
             {
                 SDL_SetWindowRelativeMouseMode(m_window, false);
+            }
+            else if ((appFrameAction & AppFrameAction::WaitFPS60) == AppFrameAction::WaitFPS60)
+            {
+                if (elapsedMS < FPS_60_TARGET_FRAME_DURATION_MS) {
+                    double delayMS = FPS_60_TARGET_FRAME_DURATION_MS - elapsedMS;
+                    SDL_Delay(static_cast<Uint32>(delayMS));
+                }
             }
         }
 

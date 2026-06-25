@@ -202,6 +202,9 @@ namespace OneGame::Engine::Graphics::Vulkan
 				indices.present = i;
 		}
 
+		if (!indices.transfer.has_value())
+			indices.transfer = indices.graphics;
+
 		return indices;
 	}
 
@@ -291,46 +294,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 		return score;
 	}
 
-	static std::tuple<VkPhysicalDevice, SwapchainSupport, QueueIndices> SelectPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions)
-	{
-		uint32_t deviceCount = 0;
-		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
-		if (deviceCount == 0)
-		{
-			throw std::runtime_error("Failed to find GPUs with Vulkan support!");
-		}
-		std::vector<VkPhysicalDevice> devices(deviceCount);
-		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
-
-		VkPhysicalDevice bestDevice = VK_NULL_HANDLE;
-		SwapchainSupport bestSwapchainSupport;
-		QueueIndices bestQueueIndices;
-		int bestScore = -1;
-
-		SwapchainSupport currentSwapchainSupport;
-		QueueIndices currentQueueIndices;
-		for (const auto& device : devices)
-		{
-			if (!IsDeviceSuitable(device, surface, requiredExtensions, currentSwapchainSupport, currentQueueIndices))
-				continue;
-
-			int score = RateDevice(device);
-
-			if (score > bestScore)
-			{
-				bestScore = score;
-				bestDevice = device;
-				bestSwapchainSupport = currentSwapchainSupport;
-				bestQueueIndices = currentQueueIndices;
-			}
-		}
-
-		if (bestDevice == VK_NULL_HANDLE)
-			throw std::runtime_error("Failed to find a suitable GPU!");
-
-		return { bestDevice, bestSwapchainSupport, bestQueueIndices };
-	}
-
 	static const char* DeviceTypeToString(VkPhysicalDeviceType type)
 	{
 		switch (type)
@@ -416,6 +379,51 @@ namespace OneGame::Engine::Graphics::Vulkan
 		LOG_INFO("Sampler Anisotropy: {}", features.samplerAnisotropy ? "Yes" : "No");
 
 		LOG_INFO("========================");
+	}
+
+	static std::tuple<VkPhysicalDevice, SwapchainSupport, QueueIndices> SelectPhysicalDevice(VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions)
+	{
+		uint32_t deviceCount = 0;
+		vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+		if (deviceCount == 0)
+		{
+			throw std::runtime_error("Failed to find GPUs with Vulkan support!");
+		}
+		std::vector<VkPhysicalDevice> devices(deviceCount);
+		vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+		VkPhysicalDevice bestDevice = VK_NULL_HANDLE;
+		SwapchainSupport bestSwapchainSupport;
+		QueueIndices bestQueueIndices;
+		int bestScore = -1;
+
+		for (const auto& device : devices)
+		{
+			PrintPhysicalDeviceInfo(device);
+		}
+
+		SwapchainSupport currentSwapchainSupport;
+		QueueIndices currentQueueIndices;
+		for (const auto& device : devices)
+		{
+			if (!IsDeviceSuitable(device, surface, requiredExtensions, currentSwapchainSupport, currentQueueIndices))
+				continue;
+
+			int score = RateDevice(device);
+
+			if (score > bestScore)
+			{
+				bestScore = score;
+				bestDevice = device;
+				bestSwapchainSupport = currentSwapchainSupport;
+				bestQueueIndices = currentQueueIndices;
+			}
+		}
+
+		if (bestDevice == VK_NULL_HANDLE)
+			throw std::runtime_error("Failed to find a suitable GPU!");
+
+		return { bestDevice, bestSwapchainSupport, bestQueueIndices };
 	}
 
 	GPUInfo VulkanBackend::GetGPUInfo() const
@@ -550,8 +558,6 @@ namespace OneGame::Engine::Graphics::Vulkan
 		std::vector deviceExtensions { VK_KHR_SWAPCHAIN_EXTENSION_NAME };
 		auto [physicalDevice, swapchainSupport, queueIndices] = SelectPhysicalDevice(m_device.instance, m_device.surface, deviceExtensions);
 		m_device.physicalDevice = physicalDevice;
-
-		PrintPhysicalDeviceInfo(physicalDevice);
 
 		{
 			float queuePriority = 1.0f;
@@ -820,6 +826,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		{
 			imageCount = capabilities.maxImageCount;
 		}
+		LOG_INFO("chosen min swapchain image count: {}", imageCount);
 
 		VkCompositeAlphaFlagBitsKHR compositeAlpha;
 
@@ -883,6 +890,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			m_swapchain.swapchain,
 			&swapchainImageCount,
 			nullptr);
+		LOG_INFO("chosen final swapchain image count: {}", swapchainImageCount);
 
 		std::vector<VkImage> images(swapchainImageCount);
 		vkGetSwapchainImagesKHR(
@@ -949,7 +957,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		LOG_DEBUG("swapchain render pass created");
 		CreateSwapchainFrameBuffers();
 		LOG_DEBUG("swapchain frame buffer created");
-		CreateSyncObjects(imageCount);
+		CreateSyncObjects(swapchainImageCount);
 		LOG_DEBUG("Sync objects created");
 	}
 
@@ -1120,7 +1128,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 				UINT64_MAX);
 			m_imagesInFlight[m_imageIndex] = VK_NULL_HANDLE;
 		}
-
+		
 		vkResetFences(
 			m_device.device,
 			1,
@@ -1244,6 +1252,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			{
 				throw std::runtime_error("Failed to create imageAvailable semaphore");
 			}
+			LOG_DEBUG("frame {} image available semaphore {}", i, (void*)m_frames[i].imageAvailableAndTransferComplete[0]);
 
 			if (m_frames[i].imageAvailableAndTransferComplete[1] != VK_NULL_HANDLE)
 			{
@@ -1258,6 +1267,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			{
 				throw std::runtime_error("Failed to create imageAvailable semaphore");
 			}
+			LOG_DEBUG("frame {} transfer complete semaphore {}", i, (void*)m_frames[i].imageAvailableAndTransferComplete[1]);
 
 			if (m_frames[i].renderFinished != VK_NULL_HANDLE)
 			{
@@ -1272,6 +1282,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			{
 				throw std::runtime_error("Failed to create renderFinished semaphore");
 			}
+			LOG_DEBUG("frame {} render finished semaphore {}", i, (void*)m_frames[i].renderFinished);
 
 			if (m_frames[i].inFlightFence != VK_NULL_HANDLE)
 			{
@@ -1286,6 +1297,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 			{
 				throw std::runtime_error("Failed to create inFlight fence");
 			}
+			LOG_DEBUG("frame {} in flight fence {}", i, (void*)m_frames[i].inFlightFence);
 		}
 
 		m_imagesInFlight.resize(swapImageCount);

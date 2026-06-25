@@ -75,12 +75,12 @@ namespace OneGame::Engine
 		//	chunk->data[idx] = 256;
 		//}
 
-		static int chunkCount = 1024;
+		static int chunkCount = 32;
 		Graphics::ChunkAllocator gpuBufferAllocator;
 
 		auto generate_terrain = [](int cx, int cy, int cz, int x, int y, int z) {
-			if (cx > -3 && cx < 2 && cy > 0 && cy < 3 && cz > -3 && cz < 2)
-				return 0;
+			//if (cx > -3 && cx < 2 && cy > 0 && cy < 3 && cz > -3 && cz < 2)
+			//	return 0;
 			if (((x + y + z) % 2) == 0) {
 				return 256;
 			}
@@ -114,20 +114,27 @@ namespace OneGame::Engine
 
 
 		LOG_DEBUG("start generate mesh");
-		for (int cx = -3; cx < 3; ++cx)
-		{
-			for (int cz = -3; cz < 3; ++cz)
-			{
-				for (int cy = 0; cy < 4; ++cy)
-				{
-					auto [handle, chunk] = terrainData.chunks.Get({ cx, cy, cz });
-					assert(handle.IsValid());
-					auto coord = chunk->Coords;
-					LOG_DEBUG("queuing chunk ({}, {}, {}) with ({}, {}, {})", cx, cy, cz, coord.x, coord.y, coord.z);
-					terrainData.buildMeshQueue.push(handle);
-				}
-			}
-		}
+
+		auto [handle, chunk] = terrainData.chunks.Get({ 0, 0, 0 });
+		assert(handle.IsValid());
+		auto coord = chunk->Coords;
+		LOG_DEBUG("queuing chunk ({}, {}, {}) with ({}, {}, {})", 0, 0, 0, coord.x, coord.y, coord.z);
+		terrainData.buildMeshQueue.push(handle);
+
+		//for (int cx = -3; cx < 3; ++cx)
+		//{
+		//	for (int cz = -3; cz < 3; ++cz)
+		//	{
+		//		for (int cy = 0; cy < 4; ++cy)
+		//		{
+		//			auto [handle, chunk] = terrainData.chunks.Get({ cx, cy, cz });
+		//			assert(handle.IsValid());
+		//			auto coord = chunk->Coords;
+		//			LOG_DEBUG("queuing chunk ({}, {}, {}) with ({}, {}, {})", cx, cy, cz, coord.x, coord.y, coord.z);
+		//			terrainData.buildMeshQueue.push(handle);
+		//		}
+		//	}
+		//}
 		BlockRegistry blocks;
 		meshBuilder.SetVertexBudget(192 * 1024 * 1024);
 		meshBuilder.BuildChunkMeshes(terrainData, blocks);

@@ -36,9 +36,9 @@ namespace OneGame::Engine::Graphics::Vulkan
         std::vector<ICommandList> absCmdBuffers = {};
         uint32_t usedAbsCmdBuffers = 0;
 
-        VkSemaphore imageAvailableAndTransferComplete[2];
-        VkSemaphore renderFinished;
-        VkFence inFlightFence;
+        VkSemaphore imageAvailableAndTransferComplete[2] = {};
+        VkSemaphore renderFinished  = VK_NULL_HANDLE;
+        VkFence inFlightFence       = VK_NULL_HANDLE;
     };
 
     struct VulkanBuffer;
@@ -491,9 +491,9 @@ namespace OneGame::Engine::Graphics::Vulkan
         uint32_t			        m_frameIndex = 0;
         std::vector<FrameData>      m_frames;
         uint32_t			        m_imageIndex = 0;
-        std::vector<VkFence>        m_imagesInFlight;
+        std::vector<VkFence>        m_imagesInFlight = {};
         uint32_t                    m_imagesAvailableSlot = 0;
-        std::vector<VkSemaphore>    m_imagesFinishRender;
+        std::vector<VkSemaphore>    m_imagesFinishRender = {};
 
         VkDescriptorPool            m_descriptorPool = {};
 #ifdef VULKAN_VALIDATION

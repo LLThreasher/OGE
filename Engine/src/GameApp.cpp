@@ -77,7 +77,7 @@ namespace OneGame::Engine
 
 	AppFrameAction GameApp::Update(float dt, InputSystem& input)
 	{
-		AppFrameAction appRes = AppFrameAction::None;
+		AppFrameAction appRes = AppFrameAction::WaitFPS60;
 		auto res = backend->BeginFrame();
 		if (res == BeginFrameAction::RecreateSurface)
 			return appRes | AppFrameAction::WaitSurface;
