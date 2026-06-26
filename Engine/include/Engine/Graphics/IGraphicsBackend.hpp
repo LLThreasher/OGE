@@ -672,6 +672,7 @@ namespace OneGame::Engine::Graphics
         // ----- Buffers -----
         virtual GPUBufferHandle CreateBuffer(const BufferDesc&, void** = nullptr) = 0;
         virtual void DestroyBuffer(GPUBufferHandle) = 0;
+        virtual void FlushStagingBufferRanges(const std::span<GPUBufferRange> ranges) = 0;
 
         template<BufferUsage usage>
         GPUBufferHandle AllocateGPUBuffer(const size_t size)

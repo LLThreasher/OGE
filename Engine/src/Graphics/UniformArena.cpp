@@ -38,7 +38,7 @@ namespace OneGame::Engine::Graphics
 		m_head = m_frameIdx * m_alignedCapacityPerFrame;
 	}
 
-	UniformArena::BufferRange UniformArena::Allocate(uint32_t size)
+	StagingAllocation UniformArena::Allocate(uint32_t size)
 	{
 		uint32_t alignedSize = math::align(size, m_alignment);
 
@@ -47,7 +47,7 @@ namespace OneGame::Engine::Graphics
 
 		assert(m_head + alignedSize <= frameEnd);
 
-		BufferRange result{};
+		StagingAllocation result{};
 		result.offset = m_head;
 		result.size = alignedSize;
 		result.cpuPtr = static_cast<uint8_t*>(m_cpuBuffer) + m_head;
@@ -55,5 +55,14 @@ namespace OneGame::Engine::Graphics
 		m_head += alignedSize;
 
 		return result;
+	}
+
+	void UniformArena::Flush(IGraphicsBackend& backend)
+	{
+		GPUBufferRange range;
+		range.buffer = m_gpuBuffer;
+		range.offset = 0;
+		range.size = m_head;
+		backend.FlushStagingBufferRanges(std::span(&range, 1));
 	}
 }

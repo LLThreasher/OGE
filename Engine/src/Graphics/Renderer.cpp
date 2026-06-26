@@ -74,7 +74,7 @@ namespace OneGame::Engine::Graphics
 
         ClearValues values{};
         values.colorClears[0] = { 0.1f, 0.2f, 0.4f, 1.0f };
-        values.depthClear = 1.0f;
+        values.depthClear = 0.0f;
         values.stencilClear = 0.f;
         cmd.BeginRenderPass(backend.GetCurrentRenderPass(), backend.GetCurrentFrameBuffer(), values);
 
@@ -93,6 +93,7 @@ namespace OneGame::Engine::Graphics
         cmd.EndRenderPass();
         cmd.End();
 
+        uniformArena.Flush(backend);
         uniformArena.AdvanceFrame();
     }
     

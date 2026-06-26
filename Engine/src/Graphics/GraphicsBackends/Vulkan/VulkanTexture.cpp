@@ -115,22 +115,24 @@ namespace OneGame::Engine::Graphics::Vulkan
         samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
 
-        VkPhysicalDeviceFeatures features;
-        vkGetPhysicalDeviceFeatures(m_device.physicalDevice, &features);
+        //VkPhysicalDeviceFeatures features;
+        //vkGetPhysicalDeviceFeatures(m_device.physicalDevice, &features);
 
-        if (!features.samplerAnisotropy)
-        {
-            samplerInfo.anisotropyEnable = VK_FALSE;
-        }
-        else
-        {
-            VkPhysicalDeviceProperties props;
-            vkGetPhysicalDeviceProperties(m_device.physicalDevice, &props);
-            float maxSupported =
-                props.limits.maxSamplerAnisotropy;
-            samplerInfo.anisotropyEnable = VK_TRUE;
-            samplerInfo.maxAnisotropy = 8.0f < maxSupported ? 8.0f : maxSupported;
-        }
+        //if (!features.samplerAnisotropy)
+        //{
+        //    samplerInfo.anisotropyEnable = VK_FALSE;
+        //}
+        //else
+        //{
+        //    VkPhysicalDeviceProperties props;
+        //    vkGetPhysicalDeviceProperties(m_device.physicalDevice, &props);
+        //    float maxSupported =
+        //        props.limits.maxSamplerAnisotropy;
+        //    samplerInfo.anisotropyEnable = VK_TRUE;
+        //    samplerInfo.maxAnisotropy = 8.0f < maxSupported ? 8.0f : maxSupported;
+        //}
+
+        samplerInfo.anisotropyEnable = VK_FALSE;
 
         samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 
@@ -139,7 +141,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         samplerInfo.compareEnable = VK_FALSE;
         samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 
-        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+        samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_NEAREST;
         samplerInfo.minLod = 0.0f;
         samplerInfo.maxLod = static_cast<float>(mipLevels);
         samplerInfo.mipLodBias = 0.0f;

@@ -4,9 +4,10 @@
 #include "Vulkan.hpp"
 #include "VulkanBuffer.hpp"
 
-//extern "C" {
 #include "vk_mem_alloc.h"
-//}
+
+#define LOGGER_NAME "Vulkan"
+#include "Engine/Logger.hpp"
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
@@ -71,6 +72,13 @@ namespace OneGame::Engine::Graphics::Vulkan
             *stagingMemory = allocationInfo.pMappedData;
 		}
 
+        VkMemoryPropertyFlags memFlags;
+        vmaGetAllocationMemoryProperties(m_device.m_allocator, result.allocation, &memFlags);
+        if (!(memFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))
+        {
+            LOG_WARN("Allocated non host coherent CPU-to-GPU buffer: {}", (void*)result.buffer);
+        }
+
         return m_buffers.Create(result);
     }
 
@@ -89,5 +97,32 @@ namespace OneGame::Engine::Graphics::Vulkan
             buffer->size = 0;
         }
         m_buffers.Destroy(handle);
+    }
+
+    void VulkanBackend::FlushStagingBufferRanges(const std::span<GPUBufferRange> ranges)
+    {
+        std::vector<VmaAllocation> allocs;
+        std::vector<VkDeviceSize> offsets;
+        std::vector<VkDeviceSize> sizes;
+
+        allocs.reserve(ranges.size());
+        offsets.reserve(ranges.size());
+        sizes.reserve(ranges.size());
+
+        for (auto& range : ranges)
+        {
+            auto buffer = m_buffers.Get(range.buffer);
+            VkMemoryPropertyFlags memFlags;
+            vmaGetAllocationMemoryProperties(m_device.m_allocator, buffer->allocation, &memFlags);
+            allocs.push_back(buffer->allocation);
+            offsets.push_back(range.offset);
+            sizes.push_back(range.size);
+        }
+        if (allocs.size() == 0)
+            LOG_WARN("Empty allocs");
+        if (allocs.size() > 0)
+        {
+            vmaFlushAllocations(m_device.m_allocator, allocs.size(), allocs.data(), offsets.data(), sizes.data());
+        }
     }
 }

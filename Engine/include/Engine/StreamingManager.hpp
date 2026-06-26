@@ -31,7 +31,6 @@ namespace OneGame::Engine
 	class StreamingManager
 	{
 		using RingStagingBuffer = Graphics::RingStagingBuffer;
-		using StagingAllocation = Graphics::StagingAllocation;
 		using BufferUsage = Graphics::BufferUsage;
 
 		struct StagingBuffer
@@ -79,7 +78,7 @@ namespace OneGame::Engine
 			return UploadBuffer<uploadType, BufferUsage::None>(std::as_bytes(std::span(data)), handle, gpuOffset, resBundle);
 		}
 
-		void RunUploadStep(const Graphics::IGraphicsBackend&, Graphics::ICommandList&);
+		void RunUploadStep(Graphics::IGraphicsBackend&, Graphics::ICommandList&);
 
 	private:
 		template<UploadType uploadType = UploadType::Immediate>

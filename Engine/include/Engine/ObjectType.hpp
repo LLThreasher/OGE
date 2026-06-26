@@ -108,4 +108,18 @@ namespace OneGame::Engine
 			return (static_cast<uint64_t>(slot.index) << 32) | slot.generation;
 		}
 	};
+
+	struct StagingAllocation
+	{
+		uint32_t offset;
+		uint32_t size;
+		void* cpuPtr;
+	};
+
+	struct GPUBufferRange
+	{
+		uint32_t offset;
+		uint32_t size;
+		GPUBufferHandle buffer;
+	};
 }

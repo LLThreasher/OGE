@@ -130,7 +130,7 @@ namespace OneGame::Engine
 		m_stagingAllocationToFree[fidx].emplace(desc.bundle, desc.staging.alloc);
 	}
 
-	void StreamingManager::RunUploadStep(const Graphics::IGraphicsBackend& backend, Graphics::ICommandList& transferCmd)
+	void StreamingManager::RunUploadStep(Graphics::IGraphicsBackend& backend, Graphics::ICommandList& transferCmd)
 	{
 		auto stagingGpuBuffer = m_ringStagingBuffer.GetBuffer();
 		auto fidx = backend.CurrentFrameIndex();
@@ -182,6 +182,8 @@ namespace OneGame::Engine
 			m_buffersToUpload.pop();
 			totalBytesUploaded += desc.staging.alloc.size;
 		}
+
+		m_ringStagingBuffer.Flush(backend);
 	}
 
 	template bool StreamingManager::AllocateStagingBuffer<UploadType::Immediate>(const std::span<const std::byte> data, StreamingManager::StagingBuffer&);

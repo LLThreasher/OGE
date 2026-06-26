@@ -113,4 +113,26 @@ namespace OneGame::Engine::Graphics
         }
     }
 
+    void RingStagingBuffer::Flush(IGraphicsBackend& backend)
+    {
+        GPUBufferRange ranges[2] = {};
+        if (m_head > m_lastFlushTail)
+        {
+            ranges[0].buffer = m_buffer;
+            ranges[0].offset = m_lastFlushTail;
+            ranges[0].size = m_head - m_lastFlushTail;
+            backend.FlushStagingBufferRanges(std::span<GPUBufferRange>(ranges, 1));
+        }
+        else if (m_head < m_lastFlushTail)
+        {
+            ranges[0].buffer = m_buffer;
+            ranges[0].offset = m_lastFlushTail;
+            ranges[0].size = m_capacity - m_lastFlushTail;
+            ranges[1].buffer = m_buffer;
+            ranges[1].offset = 0;
+            ranges[1].size = m_head;
+            backend.FlushStagingBufferRanges(std::span<GPUBufferRange>(ranges, 2));
+        }
+        m_lastFlushTail = m_head;
+    }
 }

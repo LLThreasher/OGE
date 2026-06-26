@@ -450,6 +450,7 @@ namespace OneGame::Engine::Graphics::Vulkan
         // ----- Buffers -----
         GPUBufferHandle CreateBuffer(const BufferDesc&, void** stagingMemory = nullptr) override;
         void DestroyBuffer(GPUBufferHandle) override;
+        void FlushStagingBufferRanges(const std::span<GPUBufferRange> ranges) override;
 
         // ----- Textures -----
         GPUTextureHandle CreateTexture(const TextureDesc&) override;

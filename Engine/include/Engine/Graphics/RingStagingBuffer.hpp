@@ -10,13 +10,6 @@ namespace OneGame::Engine::Graphics
 {
     class IGraphicsBackend;
 
-    struct StagingAllocation
-    {
-        uint32_t offset;
-        uint32_t size;
-        void* cpuPtr;
-    };
-
     class RingStagingBuffer
     {
     public:
@@ -28,6 +21,8 @@ namespace OneGame::Engine::Graphics
         void Free(uint64_t offset, uint64_t size);
 
         GPUBufferHandle GetBuffer() const { return m_buffer; }
+
+        void Flush(IGraphicsBackend& backend);
 
     private:
         GPUBufferHandle m_buffer;
@@ -41,5 +36,7 @@ namespace OneGame::Engine::Graphics
         uint64_t m_alignment;
 
         std::mutex m_mutex;
+
+        uint64_t m_lastFlushTail = 0;
     };
 }

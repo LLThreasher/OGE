@@ -188,8 +188,8 @@ namespace OneGame::Engine::Graphics
 			desc.writeDepth = true;
 			desc.blending = false;
 			desc.depthTest = true;
-			desc.depthCompareOp = DepthCompareOp::Less;
-			desc.cullMode = CullMode::Back;
+			desc.depthCompareOp = DepthCompareOp::GreaterEqual;
+			desc.cullMode = CullMode::None;
 			pipelineHandle = backend.CreateGraphicsPipeline(desc);
 		}
 		{
@@ -248,8 +248,8 @@ namespace OneGame::Engine::Graphics
 		auto proj = math::get_perspective_rot(context.backend.SwapchainPretransform()) * math::perspective(
 			math::radians(45.0f),
 			context.backend.SwapchainAspect(),
-			0.1f,
-			200.f);
+			100.f,
+			0.1f);
 
 		activeChunkSlots.clear();
 		ubos.clear();
