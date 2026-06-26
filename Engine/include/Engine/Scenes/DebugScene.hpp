@@ -10,6 +10,16 @@
 
 namespace OneGame::Engine
 {
+	const std::vector<Terrain::TexturedQuad> chunk_zero_quads =
+	{
+		{ 0, 0, 0, 0, 0, COLOR_WHITE, {0xF, 0xF, 0xF, 0xF}, {0, 0, 0, 0}},
+		{ 0, 0, 0, 1, 1, COLOR_WHITE, {0xF, 0xF, 0xF, 0xF}, {0, 0, 0, 0}},
+		{ 0, 0, 0, 2, 2, COLOR_WHITE, {0xF, 0xF, 0xF, 0xF}, {0, 0, 0, 0}},
+		{ 0, 0, 0, 3, 3, COLOR_WHITE, {0xF, 0xF, 0xF, 0xF}, {0, 0, 0, 0}},
+		{ 0, 0, 0, 4, 4, COLOR_WHITE, {0xF, 0xF, 0xF, 0xF}, {0, 0, 0, 0}},
+		{ 0, 0, 0, 5, 5, COLOR_WHITE, {0xF, 0xF, 0xF, 0xF}, {0, 0, 0, 0}},
+	};
+
 	const std::vector<Terrain::Vertex> chunk_zero_vertices =
 	{
 		// FRONT (+Z)
@@ -84,11 +94,12 @@ namespace OneGame::Engine
 	public:
 		virtual void Initialize(AppContext& context) override;
 		virtual void Enter(AppContext& context) override;
+		virtual void Exit(AppContext& context) override;
 		virtual void Update(AppContext& context, FrameContext& frame) override;
 	protected:
 		ECS::GameWorld gameWorld;
 		Terrain::TerrainService terrain;
-		Mesh chunkMesh;
+		GPUBufferHandle chunkMesh;
 	};
 
 	class DebugScene2 : public EmptyScene

@@ -18,16 +18,30 @@ namespace OneGame::Engine
 		//Terrain::TerrainGenerationDesc desc{};
 		//terrain.Initialize(desc);
 		gameWorld.Register<SubsystemDebugInfo>();
+		gameWorld.Register<SubsystemCamera>();
+		gameWorld.Initialize(context);
 	}
 
 	void DebugScene::Enter(AppContext& context)
 	{
-		//chunkMesh = context.CreateAssetBundle().LoadMesh(chunk_zero_vertices, chunk_zero_indices);
+		chunkMesh = context.backend.AllocateGPUBuffer<Graphics::BufferUsage::Storage>(16 * Terrain::CHUNK_STORE_BYTE_SIZE);
+		context.streamingManager.UploadBuffer<UploadType::Immediate, Graphics::BufferUsage::Storage>(chunk_zero_quads, chunkMesh);
+		auto bundle = context.CreateAssetBundle();
+		context.renderer.EnableTerrainPass2(context.backend, bundle, chunkMesh);
+	}
+
+	void DebugScene::Exit(AppContext& context)
+	{
+		context.renderer.DisableTerrainPass2(context.backend);
 	}
 
 	void DebugScene::Update(AppContext& context, FrameContext& frame)
 	{
 		gameWorld.Update(context, frame);
+		auto& world = frame.presentationWorld;
+		auto chunkEntity = world.create();
+		Graphics::PTerrainMesh tMesh = { 0u, 3u, 0, 0, 0 };
+		world.emplace<Graphics::PTerrainMesh>(chunkEntity, tMesh);
 	}
 
 	void DebugScene2::Initialize(AppContext& context)
@@ -167,11 +181,7 @@ namespace OneGame::Engine
 
 	void DebugScene2::Exit(AppContext& context)
 	{
-#ifdef USE_TERRAIN_MESH_V2
 		context.renderer.DisableTerrainPass2(context.backend);
-#else
-		context.renderer.DisableTerrainPass(context.backend);
-#endif
 	}
 
 	void DebugScene2::Update(AppContext& context, FrameContext& frame)

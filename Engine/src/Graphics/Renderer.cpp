@@ -49,7 +49,7 @@ namespace OneGame::Engine::Graphics
         };
         //uiPass.Prepare(world);
         terrainPass2.Prepare(pc);
-        terrainPass.Prepare(pc);
+        //terrainPass.Prepare(pc);
         debugInfoPass.Prepare(pc);
         //testPass.Prepare(pc);
     }
@@ -59,9 +59,9 @@ namespace OneGame::Engine::Graphics
     void Renderer::Draw(DrawContext& drawCtxt)
     {
         //testPass.Draw(drawCtxt);
-        if (enableTerrainPass)
-            terrainPass.Draw(drawCtxt);
-        else if (enableTerrainPass2)
+        //if (enableTerrainPass)
+        //    terrainPass.Draw(drawCtxt);
+        if (enableTerrainPass2)
             terrainPass2.Draw(drawCtxt);
         debugInfoPass.Draw(drawCtxt);
     }
@@ -100,13 +100,13 @@ namespace OneGame::Engine::Graphics
     void Renderer::EnableTerrainPass(IGraphicsBackend& backend, AssetBundleWriter& bundle, Mesh terrainMesh)
     {
         InitContext initCtx { bundle, uniformArena };
-        terrainPass.Enable(backend, initCtx, terrainMesh);
+        //terrainPass.Enable(backend, initCtx, terrainMesh);
         enableTerrainPass = true;
     }
 
     void Renderer::DisableTerrainPass(IGraphicsBackend& backend)
     {
-        terrainPass.Disable(backend);
+        //terrainPass.Disable(backend);
         enableTerrainPass = false;
     }
 

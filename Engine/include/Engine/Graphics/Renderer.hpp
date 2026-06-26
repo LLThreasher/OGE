@@ -45,7 +45,7 @@ namespace OneGame::Engine::Graphics
         UIPass uiPass;
         TestPass testPass;
         DebugInfoPass debugInfoPass;
-        TerrainPass terrainPass;
+        //TerrainPass terrainPass;
         TerrainPass2 terrainPass2;
 
         bool enableTerrainPass = false;
