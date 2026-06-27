@@ -53,7 +53,7 @@ namespace OneGame::Engine::Graphics::Vulkan
 		if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 		{
 			LOG_ERROR(message);
-#ifndef PLATFORM_ANDROID
+#ifdef PLATFORM_WINDOWS
 			PrintStackTrace();
 #endif
  		}
@@ -470,6 +470,12 @@ namespace OneGame::Engine::Graphics::Vulkan
 			VK_KHR_SURFACE_EXTENSION_NAME,
 			VK_KHR_ANDROID_SURFACE_EXTENSION_NAME,
 		};
+#elif defined(PLATFORM_DARWIN)
+		std::vector<const char*> extensions =
+		{
+			VK_KHR_SURFACE_EXTENSION_NAME,
+			VK_EXT_METAL_SURFACE_EXTENSION_NAME,
+		};
 #else
 		std::vector<const char*> extensions;
 #endif
@@ -697,6 +703,15 @@ namespace OneGame::Engine::Graphics::Vulkan
 			createInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
 			createInfo.window = static_cast<ANativeWindow*>(handle->nativeWindow);
 			res = vkCreateAndroidSurfaceKHR(m_device.instance, &createInfo, nullptr, &m_device.surface);
+		}
+#elif defined(PLATFORM_DARWIN)
+		{
+			VkMetalSurfaceCreateInfoEXT createInfo{};
+			createInfo.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
+			createInfo.pNext = nullptr;
+			createInfo.flags = 0;
+			createInfo.pLayer = handle->metalLayer;
+			res = vkCreateMetalSurfaceEXT(m_device.instance, &createInfo, nullptr, &m_device.surface);
 		}
 #endif
 		if (res != VK_SUCCESS)

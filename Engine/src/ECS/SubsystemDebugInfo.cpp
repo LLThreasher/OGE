@@ -34,6 +34,6 @@ namespace OneGame::Engine::ECS
 		gpuInfoText.text = gpuInfo.name;
 		auto debugInfoEntity = world.create();
 		world.emplace<Graphics::PDebugText>(debugInfoEntity);
-		world.get<Graphics::PDebugText>(debugInfoEntity).text = std::format("FPS {} ({} ms)\nGPU Heap 0: {} MB / {} MB\nGPU Heap 1: {} MB / {} MB", currentFPS, currentFrameTime, memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024, memUsage.heapUsage[1] / 1024 / 1024, memUsage.heapBudget[1] / 1024 / 1024);
+		world.get<Graphics::PDebugText>(debugInfoEntity).text = std::format("FPS {} ({} ms)\nGPU Heap 0: {} MB / {} MB", currentFPS, currentFrameTime, memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024);
 	}
 }

@@ -36,9 +36,9 @@ PRIVATE
     "src/Scenes/DebugScene.cpp"
     "src/Terrain/TerrainService.cpp"
     "src/ECS/SubsystemCamera.cpp"
-  "src/ECS/SubsystemDebugInfo.cpp"
-  "src/AssetBundle.cpp"
-  "src/Terrain/TerrainUploader.cpp"
+    "src/ECS/SubsystemDebugInfo.cpp"
+    "src/AssetBundle.cpp"
+    "src/Terrain/TerrainUploader.cpp"
 )
 
 target_include_directories(Engine
@@ -74,6 +74,30 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
         VK_USE_PLATFORM_WIN32_KHR
     )
     
+    target_link_libraries(Engine
+        PUBLIC
+            glm::glm
+            spdlog::spdlog
+            EnTT::EnTT
+        PRIVATE
+            SDL3::SDL3-static
+            Vulkan::Vulkan
+            freetype
+            stb
+            vma
+    )
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    target_sources(Engine
+    PRIVATE
+        "src/Platform/SDL3MetalExt.mm"
+    )
+    target_compile_definitions(Engine
+    PUBLIC
+        PLATFORM_DARWIN
+    PRIVATE
+        VK_USE_PLATFORM_METAL_EXT
+    )
+
     target_link_libraries(Engine
         PUBLIC
             glm::glm

@@ -1,4 +1,5 @@
-#ifdef PLATFORM_WINDOWS
+#ifndef USE_SDL3
+#if defined(PLATFORM_WINDOWS) || defined(PLATFORM_DARWIN)
 
 #include <format>
 #include <fstream>
@@ -33,4 +34,5 @@ namespace OneGame::Engine
 		return true;
 	}
 }
+#endif
 #endif
