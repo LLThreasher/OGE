@@ -206,6 +206,8 @@ namespace OneGame::Engine::Graphics
         void* hwnd;
 #elif defined(PLATFORM_ANDROID)
         void* nativeWindow;
+#elif defined(PLATFORM_DARWIN)
+        const void* metalLayer;
 #endif
     };
 

@@ -1,8 +1,10 @@
 #ifdef USE_SDL3
-#ifdef PLATFORM_ANDROID
-
 #include <SDL3/SDL.h>
+
+#ifndef PLATFORM_ANDROID
 #include <format>
+#endif
+
 #include "Engine/AssetManager.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 
@@ -17,11 +19,16 @@ namespace OneGame::Engine
 	{
         size_t fileSize = 0;
 
-        // SDL3 allocates the buffer and reads the file from APK assets
+#ifdef PLATFORM_ANDROID
         void* fileBuffer = SDL_LoadFile(std::string(id).c_str(), &fileSize);
+#else
+        const char* basePath = SDL_GetBasePath();
+		auto filePath = std::format("{}/assets/{}", basePath, id);
+        void* fileBuffer = SDL_LoadFile(filePath.c_str(), &fileSize);
+#endif
 
         if (fileBuffer == NULL) {
-            LOG_ERROR("Failed to load file into memory: %s", SDL_GetError());
+            LOG_ERROR("Failed to load file into memory: {}", SDL_GetError());
             return false;
         }
 
@@ -34,5 +41,4 @@ namespace OneGame::Engine
         return true;
 	}
 }
-#endif
 #endif

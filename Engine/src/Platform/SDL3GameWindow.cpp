@@ -18,6 +18,10 @@
 
 namespace OneGame::Engine
 {
+#ifdef PLATFORM_DARWIN
+    const void* GetMetalLayer(SDL_Window* sdlWindow);
+#endif
+
     static KeyCode map[256] = {};
 
     KeyCode GetEngineKey(SDL_Keycode sdlKey)
@@ -103,7 +107,7 @@ namespace OneGame::Engine
         HWND hwnd = (HWND)SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
         handle.hInstance = GetModuleHandle(nullptr);
         handle.hwnd = hwnd;
-#else
+#elif defined(PLATFORM_ANDROID)
         SDL_PropertiesID props = SDL_GetWindowProperties(m_window);
         ANativeWindow* nativeWindow = (ANativeWindow*)SDL_GetPointerProperty(
             props,
@@ -111,6 +115,10 @@ namespace OneGame::Engine
             NULL
         );
         handle.nativeWindow = nativeWindow;
+#elif defined(PLATFORM_DARWIN)
+        handle.metalLayer = GetMetalLayer(m_window);
+#else
+#error
 #endif
         return handle;
     }
