@@ -1,21 +1,18 @@
 #pragma once
-#include <string>
 #include <memory>
+#include <string>
 
 namespace OneGame::Engine
 {
-    class GameClientApp;
+class GameClientApp;
 
-    class IGameWindow
-    {
-    public:
-        virtual ~IGameWindow() = default;
+class IGameWindow
+{
+   public:
+    virtual ~IGameWindow() = default;
 
-        virtual void Run(GameClientApp& app) = 0;
-    };
+    virtual void Run(GameClientApp& app) = 0;
+};
 
-    std::unique_ptr<IGameWindow>
-        CreateGameWindow(const std::string& title,
-            int width,
-            int height);
-}
+std::unique_ptr<IGameWindow> CreateGameWindow(const std::string& title, int width, int height);
+}  // namespace OneGame::Engine

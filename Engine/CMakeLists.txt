@@ -23,6 +23,9 @@ PRIVATE
     "src/Graphics/TerrainPass.cpp"
     "src/Graphics/MeshBuilder.cpp"
     "src/Terrain/TerrainMeshBuilder.cpp"
+    "src/Terrain/TerrainService.cpp"
+    "src/Terrain/TerrainUploader.cpp"
+    "src/Terrain/BlockManager.cpp"
     "src/Platform/SDL3GameWindow.cpp"
     "src/Platform/SDL3AssetLoader.cpp"
     "src/Platform/Win32GameWindow.cpp"
@@ -34,12 +37,12 @@ PRIVATE
     "src/StreamingManager.cpp"
     "src/Input/InputSystem.cpp"
     "src/Scenes/DebugScene.cpp"
-    "src/Terrain/TerrainService.cpp"
+    "src/AssetBundle.cpp"
     "src/ECS/SubsystemCamera.cpp"
     "src/ECS/SubsystemDebugInfo.cpp"
-    "src/AssetBundle.cpp"
-    "src/Terrain/TerrainUploader.cpp"
- "src/ECS/SubsystemPlayerInput.cpp"  "src/ECS/SubsystemUI.cpp")
+    "src/ECS/SubsystemPlayerInput.cpp"
+    "src/ECS/SubsystemUI.cpp"
+)
 
 target_include_directories(Engine
     PUBLIC

@@ -2,37 +2,41 @@
 
 #include <vulkan/vulkan.h>
 
+#include <array>
+
+#include "Engine/Graphics/IGraphicsBackend.hpp"
+
 namespace OneGame::Engine::Graphics::Vulkan
 {
-    struct RenderTextureDesc
-    {
-        VkFormat format;
-        VkAttachmentLoadOp loadOp;
-        VkAttachmentStoreOp storeOp;
-    };
+struct RenderTextureDesc
+{
+    VkFormat format;
+    VkAttachmentLoadOp loadOp;
+    VkAttachmentStoreOp storeOp;
+};
 
-    struct VulkanRenderPassDesc
-    {
-        int colorCount;
-        bool hasDepth;
-        bool isSwapchain;
-        std::array<RenderTextureDesc, MaxColorAttachments + 1> renderTextures;
-    };
+struct VulkanRenderPassDesc
+{
+    int colorCount;
+    bool hasDepth;
+    bool isSwapchain;
+    std::array<RenderTextureDesc, MaxColorAttachments + 1> renderTextures;
+};
 
-    struct VulkanRenderPass
-    {
-        VkRenderPass handle = VK_NULL_HANDLE;
+struct VulkanRenderPass
+{
+    VkRenderPass handle = VK_NULL_HANDLE;
 
-        VulkanRenderPassDesc desc = {};
-    };
+    VulkanRenderPassDesc desc = {};
+};
 
-    struct VulkanFrameBuffer
-    {
-        VkFramebuffer handle = VK_NULL_HANDLE;
-        VkRenderPass  renderPass = VK_NULL_HANDLE;
+struct VulkanFrameBuffer
+{
+    VkFramebuffer handle = VK_NULL_HANDLE;
+    VkRenderPass renderPass = VK_NULL_HANDLE;
 
-        uint32_t width = 0;
-        uint32_t height = 0;
-    };
+    uint32_t width = 0;
+    uint32_t height = 0;
+};
 
-}
+}  // namespace OneGame::Engine::Graphics::Vulkan

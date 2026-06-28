@@ -1,8 +1,8 @@
 #pragma once
 
 #ifdef PLATFORM_WINDOWS
-#include <windows.h>
 #include <dbghelp.h>
+#include <windows.h>
 #pragma comment(lib, "dbghelp.lib")
 
 static void PrintStackTrace()

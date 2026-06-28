@@ -5,12 +5,12 @@
 namespace OneGame::Engine::Graphics::Vulkan
 {
 
-    struct VulkanPipeline
-    {
-        VkPipeline          pipeline = VK_NULL_HANDLE;
-        VkPipelineLayout    layout = VK_NULL_HANDLE;
+struct VulkanPipeline
+{
+    VkPipeline pipeline = VK_NULL_HANDLE;
+    VkPipelineLayout layout = VK_NULL_HANDLE;
 
-        VkPipelineBindPoint bindingPoint;
-    };
+    VkPipelineBindPoint bindingPoint;
+};
 
-}
+}  // namespace OneGame::Engine::Graphics::Vulkan

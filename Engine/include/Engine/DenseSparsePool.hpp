@@ -1,7 +1,7 @@
 #pragma once
-#include <vector>
 #include <cassert>
 #include <limits>
+#include <vector>
 
 using Entity = uint32_t;
 static constexpr Entity INVALID_ENTITY = std::numeric_limits<Entity>::max();
@@ -11,9 +11,10 @@ struct IPool
     virtual ~IPool() = default;
 };
 
-template<typename T>
-class DenseSparsePool : IPool {
-public:
+template <typename T>
+class DenseSparsePool : IPool
+{
+   public:
     void insert(Entity e, const T& component);
     void remove(Entity e);
     bool contains(Entity e) const;
@@ -28,15 +29,17 @@ public:
     const std::vector<Entity>& entities() const { return dense; }
     const std::vector<T>& components() const { return data; }
 
-private:
+   private:
     std::vector<Entity> dense;
     std::vector<T> data;
     std::vector<size_t> sparse;
 };
 
-template<typename T>
-void DenseSparsePool<T>::insert(Entity e, const T& component) {
-    if (e >= sparse.size()) {
+template <typename T>
+void DenseSparsePool<T>::insert(Entity e, const T& component)
+{
+    if (e >= sparse.size())
+    {
         sparse.resize(e + 1, INVALID_ENTITY);
     }
 
@@ -47,33 +50,35 @@ void DenseSparsePool<T>::insert(Entity e, const T& component) {
     data.push_back(component);
 }
 
-template<typename T>
-bool DenseSparsePool<T>::contains(Entity e) const {
-    if (e >= sparse.size())
-        return false;
+template <typename T>
+bool DenseSparsePool<T>::contains(Entity e) const
+{
+    if (e >= sparse.size()) return false;
 
     size_t index = sparse[e];
 
-    if (index == INVALID_ENTITY)
-        return false;
+    if (index == INVALID_ENTITY) return false;
 
     return index < dense.size() && dense[index] == e;
 }
 
-template<typename T>
-T& DenseSparsePool<T>::get(Entity e) {
+template <typename T>
+T& DenseSparsePool<T>::get(Entity e)
+{
     assert(contains(e));
     return data[sparse[e]];
 }
 
-template<typename T>
-const T& DenseSparsePool<T>::get(Entity e) const {
+template <typename T>
+const T& DenseSparsePool<T>::get(Entity e) const
+{
     assert(contains(e));
     return data[sparse[e]];
 }
 
-template<typename T>
-void DenseSparsePool<T>::remove(Entity e) {
+template <typename T>
+void DenseSparsePool<T>::remove(Entity e)
+{
     assert(contains(e));
 
     size_t index = sparse[e];
@@ -94,8 +99,9 @@ void DenseSparsePool<T>::remove(Entity e) {
     sparse[e] = INVALID_ENTITY;
 }
 
-template<typename T>
-void DenseSparsePool<T>::clear() {
+template <typename T>
+void DenseSparsePool<T>::clear()
+{
     dense.clear();
     data.clear();
     sparse.clear();

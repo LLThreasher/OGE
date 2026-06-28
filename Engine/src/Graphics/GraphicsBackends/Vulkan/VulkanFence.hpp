@@ -5,9 +5,9 @@
 namespace OneGame::Engine::Graphics::Vulkan
 {
 
-    struct VulkanFence
-    {
-        VkFence fence = VK_NULL_HANDLE;
-    };
+struct VulkanFence
+{
+    VkFence fence = VK_NULL_HANDLE;
+};
 
-}
+}  // namespace OneGame::Engine::Graphics::Vulkan

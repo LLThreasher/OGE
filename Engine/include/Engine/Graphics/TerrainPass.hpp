@@ -1,70 +1,68 @@
 #pragma once
-#include "IPass.hpp"
-#include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/ObjectType.hpp"
+#include "Engine/Terrain/TerrainVertexFormat.hpp"
+#include "IPass.hpp"
 
 namespace OneGame::Engine::Graphics
 {
 
-	class TerrainPass : public IPass<Mesh>
-	{
-		struct UBO
-		{
-			math::mat4 mvp;
-		};
-	public:
-		TerrainPass() : orientation(math::identity_quat())
-		{
-		}
+class TerrainPass : public IPass<Mesh>
+{
+    struct UBO
+    {
+        math::mat4 mvp;
+    };
 
-		void Enable(IGraphicsBackend& backend, InitContext& ctxt, Mesh terrainMesh) override;
-		void Disable(IGraphicsBackend& backend) override;
-		void Prepare(PrepareContext& context) override;
-		void Draw(DrawContext& context) override;
-		void SetPalette(ColorRGBA8 colors[16]);
+   public:
+    TerrainPass() : orientation(math::identity_quat()) {}
 
-	private:
-		GPUBufferHandle colorPaletteGpuBuffer;
-		void* colorPaletteStagingBuffer;
-		bool isColorPaletteDirty = true;
+    void Enable(IGraphicsBackend& backend, InitContext& ctxt, Mesh terrainMesh) override;
+    void Disable(IGraphicsBackend& backend) override;
+    void Prepare(PrepareContext& context) override;
+    void Draw(DrawContext& context) override;
+    void SetPalette(ColorRGBA8 colors[16]);
 
-		Mesh terrainMesh = {};
-		std::vector<PTerrainMesh> activeChunkSlots;
-		std::vector<UBO> ubos;
+   private:
+    GPUBufferHandle colorPaletteGpuBuffer;
+    void* colorPaletteStagingBuffer;
+    bool isColorPaletteDirty = true;
 
-		GPUPipelineHandle pipelineHandle;
-		GPUBindingGroupLayoutHandle bindingGroupLayout;
-		GPUBindingGroupHandle bindingGroup;
-		GPUTextureHandle blockTexture;
+    Mesh terrainMesh = {};
+    std::vector<PTerrainMesh> activeChunkSlots;
+    std::vector<UBO> ubos;
 
-		math::quat orientation;
-	};
+    GPUPipelineHandle pipelineHandle;
+    GPUBindingGroupLayoutHandle bindingGroupLayout;
+    GPUBindingGroupHandle bindingGroup;
+    GPUTextureHandle blockTexture;
 
-	class TerrainPass2 : public IPass<GPUBufferHandle>
-	{
-		struct UBO
-		{
-			math::mat4 mvp;
-		};
-	public:
-		TerrainPass2()
-		{
-		}
+    math::quat orientation;
+};
 
-		void Enable(IGraphicsBackend& backend, InitContext& ctxt, GPUBufferHandle terrainMesh) override;
-		void Disable(IGraphicsBackend& backend) override;
-		void Prepare(PrepareContext& context) override;
-		void Draw(DrawContext& context) override;
+class TerrainPass2 : public IPass<GPUBufferHandle>
+{
+    struct UBO
+    {
+        math::mat4 mvp;
+    };
 
-	private:
-		GPUBufferHandle storageBuffer;
-		std::vector<PTerrainMesh> activeChunkSlots;
-		std::vector<UBO> ubos;
+   public:
+    TerrainPass2() {}
 
-		GPUPipelineHandle pipelineHandle;
-		GPUBindingGroupLayoutHandle bindingGroupLayout;
-		GPUBindingGroupHandle bindingGroup;
-		GPUTextureHandle blockTexture;
-	};
-}
+    void Enable(IGraphicsBackend& backend, InitContext& ctxt, GPUBufferHandle terrainMesh) override;
+    void Disable(IGraphicsBackend& backend) override;
+    void Prepare(PrepareContext& context) override;
+    void Draw(DrawContext& context) override;
+
+   private:
+    GPUBufferHandle storageBuffer;
+    std::vector<PTerrainMesh> activeChunkSlots;
+    std::vector<UBO> ubos;
+
+    GPUPipelineHandle pipelineHandle;
+    GPUBindingGroupLayoutHandle bindingGroupLayout;
+    GPUBindingGroupHandle bindingGroup;
+    GPUTextureHandle blockTexture;
+};
+}  // namespace OneGame::Engine::Graphics

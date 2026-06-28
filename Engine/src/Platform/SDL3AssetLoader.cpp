@@ -13,32 +13,33 @@
 
 namespace OneGame::Engine
 {
-	using namespace Graphics;
+using namespace Graphics;
 
-	bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
-	{
-        size_t fileSize = 0;
+bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
+{
+    size_t fileSize = 0;
 
 #ifdef PLATFORM_ANDROID
-        void* fileBuffer = SDL_LoadFile(std::string(id).c_str(), &fileSize);
+    void* fileBuffer = SDL_LoadFile(std::string(id).c_str(), &fileSize);
 #else
-        const char* basePath = SDL_GetBasePath();
-		auto filePath = std::format("{}/assets/{}", basePath, id);
-        void* fileBuffer = SDL_LoadFile(filePath.c_str(), &fileSize);
+    const char* basePath = SDL_GetBasePath();
+    auto filePath = std::format("{}/assets/{}", basePath, id);
+    void* fileBuffer = SDL_LoadFile(filePath.c_str(), &fileSize);
 #endif
 
-        if (fileBuffer == NULL) {
-            LOG_ERROR("Failed to load file into memory: {}", SDL_GetError());
-            return false;
-        }
+    if (fileBuffer == NULL)
+    {
+        LOG_ERROR("Failed to load file into memory: {}", SDL_GetError());
+        return false;
+    }
 
-        output.resize(fileSize);
-        memcpy(output.data(), fileBuffer, fileSize);
+    output.resize(fileSize);
+    memcpy(output.data(), fileBuffer, fileSize);
 
-        // You MUST free the buffer using SDL_free when done
-        SDL_free(fileBuffer);
+    // You MUST free the buffer using SDL_free when done
+    SDL_free(fileBuffer);
 
-        return true;
-	}
+    return true;
 }
+}  // namespace OneGame::Engine
 #endif

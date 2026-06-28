@@ -4,33 +4,33 @@
 
 namespace OneGame::Engine::Graphics
 {
-	class IGraphicsBackend;
+class IGraphicsBackend;
 
-	class UniformArena
-	{
-	public:
-		~UniformArena() = default;
+class UniformArena
+{
+   public:
+    ~UniformArena() = default;
 
-		void Initialize(IGraphicsBackend& backend, uint32_t capacityPerFrame);
-		void Shutdown(IGraphicsBackend& backend);
-		GPUBufferHandle GetBuffer();
+    void Initialize(IGraphicsBackend& backend, uint32_t capacityPerFrame);
+    void Shutdown(IGraphicsBackend& backend);
+    GPUBufferHandle GetBuffer();
 
-		void AdvanceFrame();
-		StagingAllocation Allocate(uint32_t size);
+    void AdvanceFrame();
+    StagingAllocation Allocate(uint32_t size);
 
-		void Flush(IGraphicsBackend& backend);
+    void Flush(IGraphicsBackend& backend);
 
-	private:
-		uint32_t m_capacityPerFrame;
-		uint32_t m_alignedCapacityPerFrame;
+   private:
+    uint32_t m_capacityPerFrame;
+    uint32_t m_alignedCapacityPerFrame;
 
-		GPUBufferHandle m_gpuBuffer;
-		void* m_cpuBuffer;
+    GPUBufferHandle m_gpuBuffer;
+    void* m_cpuBuffer;
 
-		uint32_t m_head = 0;
-		uint32_t m_frameIdx = 0;
+    uint32_t m_head = 0;
+    uint32_t m_frameIdx = 0;
 
-		uint32_t m_framesInFlight;
-		uint32_t m_alignment;
-	};
-}
+    uint32_t m_framesInFlight;
+    uint32_t m_alignment;
+};
+}  // namespace OneGame::Engine::Graphics

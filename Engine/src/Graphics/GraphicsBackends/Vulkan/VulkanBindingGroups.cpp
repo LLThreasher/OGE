@@ -1,230 +1,198 @@
-#include <vulkan/vulkan.h>
-#include "Vulkan.hpp"
 #include "VulkanBindingGroups.hpp"
-#include "VulkanTexture.hpp"
+
+#include <vulkan/vulkan.h>
+
+#include "Vulkan.hpp"
 #include "VulkanBuffer.hpp"
+#include "VulkanTexture.hpp"
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
-    GPUBindingGroupLayoutHandle
-        VulkanBackend::CreateBindingGroupLayout(const BindingGroupLayoutDesc& desc)
+GPUBindingGroupLayoutHandle VulkanBackend::CreateBindingGroupLayout(const BindingGroupLayoutDesc& desc)
+{
+    VulkanBindingGroupLayout layout{};
+    layout.dynamicBufferMask = desc.dynamicBufferMask;
+    layout.storageBufferMask = desc.storageBufferMask;
+
+    std::vector<VkDescriptorSetLayoutBinding> bindings;
+
+    uint32_t bindingIndex = 0;
+
+    //
+    // Textures
+    //
+    for (int i = 0; i < desc.textureCount; ++i)
     {
-        VulkanBindingGroupLayout layout{};
-        layout.dynamicBufferMask = desc.dynamicBufferMask;
-        layout.storageBufferMask = desc.storageBufferMask;
+        VkDescriptorSetLayoutBinding binding{};
+        binding.binding = bindingIndex++;
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        binding.descriptorCount = 1;
+        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
-        std::vector<VkDescriptorSetLayoutBinding> bindings;
-
-        uint32_t bindingIndex = 0;
-
-        //
-        // Textures
-        //
-        for (int i = 0; i < desc.textureCount; ++i)
-        {
-            VkDescriptorSetLayoutBinding binding{};
-            binding.binding = bindingIndex++;
-            binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            binding.descriptorCount = 1;
-            binding.stageFlags =
-                VK_SHADER_STAGE_VERTEX_BIT |
-                VK_SHADER_STAGE_FRAGMENT_BIT;
-
-            bindings.push_back(binding);
-        }
-
-        //
-        // Buffers
-        //
-        for (uint32_t i = 0; i < desc.bufferCount; ++i)
-        {
-            bool dynamic = (desc.dynamicBufferMask & (1 << i)) != 0;
-            bool storage = (desc.storageBufferMask & (1 << i)) != 0;
-
-            VkDescriptorSetLayoutBinding binding{};
-            binding.binding = bindingIndex++;
-            if (storage)
-            {
-                binding.descriptorType =
-                    dynamic ?
-                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC :
-                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            }
-            else
-            {
-                binding.descriptorType =
-                    dynamic ?
-                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
-                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            }
-
-            binding.descriptorCount = 1;
-            binding.stageFlags =
-                VK_SHADER_STAGE_VERTEX_BIT |
-                VK_SHADER_STAGE_FRAGMENT_BIT;
-
-            bindings.push_back(binding);
-        }
-
-        VkDescriptorSetLayoutCreateInfo layoutInfo{};
-        layoutInfo.sType =
-            VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount =
-            static_cast<uint32_t>(bindings.size());
-        layoutInfo.pBindings = bindings.data();
-
-        if (vkCreateDescriptorSetLayout(
-            m_device.device,
-            &layoutInfo,
-            nullptr,
-            &layout.layout) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Failed to create descriptor set layout");
-        }
-
-        return m_bindingGroupLayouts.Create(layout);
+        bindings.push_back(binding);
     }
 
-    void VulkanBackend::DestroyBindingGroupLayout(
-        GPUBindingGroupLayoutHandle handle)
+    //
+    // Buffers
+    //
+    for (uint32_t i = 0; i < desc.bufferCount; ++i)
     {
-        auto layout = m_bindingGroupLayouts.Get(handle);
+        bool dynamic = (desc.dynamicBufferMask & (1 << i)) != 0;
+        bool storage = (desc.storageBufferMask & (1 << i)) != 0;
 
-        if (layout->layout != VK_NULL_HANDLE)
+        VkDescriptorSetLayoutBinding binding{};
+        binding.binding = bindingIndex++;
+        if (storage)
         {
-            vkDestroyDescriptorSetLayout(
-                m_device.device,
-                layout->layout,
-                nullptr);
+            binding.descriptorType =
+                dynamic ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        }
+        else
+        {
+            binding.descriptorType =
+                dynamic ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         }
 
-        layout = {};
-        m_bindingGroupLayouts.Destroy(handle);
+        binding.descriptorCount = 1;
+        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        bindings.push_back(binding);
     }
 
-    GPUBindingGroupHandle
-        VulkanBackend::CreateBindingGroup(const BindingGroupDesc& desc)
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
+
+    if (vkCreateDescriptorSetLayout(m_device.device, &layoutInfo, nullptr, &layout.layout) != VK_SUCCESS)
     {
-        VulkanBindingGroup group{};
-        group.layoutHandle = desc.layout;
+        throw std::runtime_error("Failed to create descriptor set layout");
+    }
 
-        auto layout =
-            m_bindingGroupLayouts.Get(desc.layout);
+    return m_bindingGroupLayouts.Create(layout);
+}
 
-        //
-        // 1️⃣ Allocate descriptor set
-        //
-        VkDescriptorSetAllocateInfo allocInfo{};
-        allocInfo.sType =
-            VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool = m_descriptorPool;
-        allocInfo.descriptorSetCount = 1;
-        allocInfo.pSetLayouts = &layout->layout;
+void VulkanBackend::DestroyBindingGroupLayout(GPUBindingGroupLayoutHandle handle)
+{
+    auto layout = m_bindingGroupLayouts.Get(handle);
 
-        if (vkAllocateDescriptorSets(
-            m_device.device,
-            &allocInfo,
-            &group.descriptorSet) != VK_SUCCESS)
-        {
-            throw std::runtime_error("Failed to allocate descriptor set");
-        }
+    if (layout->layout != VK_NULL_HANDLE)
+    {
+        vkDestroyDescriptorSetLayout(m_device.device, layout->layout, nullptr);
+    }
 
-        //
-        // 2️⃣ Write descriptors
-        //
-        std::vector<VkDescriptorImageInfo> imageInfos;
-        std::vector<VkWriteDescriptorSet> writes;
+    layout = {};
+    m_bindingGroupLayouts.Destroy(handle);
+}
 
-        uint32_t bindingIndex = 0;
+GPUBindingGroupHandle VulkanBackend::CreateBindingGroup(const BindingGroupDesc& desc)
+{
+    VulkanBindingGroup group{};
+    group.layoutHandle = desc.layout;
 
-        //
-        // Textures
-        //
-        for (auto texHandle : desc.textures)
-        {
-            auto tex = m_textures.Get(texHandle);
+    auto layout = m_bindingGroupLayouts.Get(desc.layout);
 
-            VkDescriptorImageInfo imageInfo{};
-            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-            imageInfo.imageView = tex->view;
-            imageInfo.sampler = tex->sampler;
-            imageInfos.push_back(imageInfo);
-        }
+    //
+    // 1️⃣ Allocate descriptor set
+    //
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = m_descriptorPool;
+    allocInfo.descriptorSetCount = 1;
+    allocInfo.pSetLayouts = &layout->layout;
+
+    if (vkAllocateDescriptorSets(m_device.device, &allocInfo, &group.descriptorSet) != VK_SUCCESS)
+    {
+        throw std::runtime_error("Failed to allocate descriptor set");
+    }
+
+    //
+    // 2️⃣ Write descriptors
+    //
+    std::vector<VkDescriptorImageInfo> imageInfos;
+    std::vector<VkWriteDescriptorSet> writes;
+
+    uint32_t bindingIndex = 0;
+
+    //
+    // Textures
+    //
+    for (auto texHandle : desc.textures)
+    {
+        auto tex = m_textures.Get(texHandle);
+
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = tex->view;
+        imageInfo.sampler = tex->sampler;
+        imageInfos.push_back(imageInfo);
+    }
+
+    VkWriteDescriptorSet write{};
+    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    write.dstSet = group.descriptorSet;
+    write.dstBinding = bindingIndex++;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write.descriptorCount = imageInfos.size();
+    write.pImageInfo = imageInfos.data();
+
+    writes.push_back(write);
+
+    std::vector<VkDescriptorBufferInfo> bufferInfos;
+    bufferInfos.reserve(desc.buffers.size());
+    //
+    // Buffers
+    //
+    for (size_t i = 0; i < desc.buffers.size(); ++i)
+    {
+        auto& bufHandle = desc.buffers[i];
+        auto buf = m_buffers.Get(bufHandle.gpuBuffer);
+
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = buf->buffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = bufHandle.stride == 0 ? VK_WHOLE_SIZE : bufHandle.stride;
+        bufferInfos.push_back(bufferInfo);
 
         VkWriteDescriptorSet write{};
         write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         write.dstSet = group.descriptorSet;
         write.dstBinding = bindingIndex++;
-        write.descriptorType =
-            VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        write.descriptorCount = imageInfos.size();
-        write.pImageInfo = imageInfos.data();
+        if ((layout->storageBufferMask & (1 << i)) != 0)
+        {
+            write.descriptorType = (layout->dynamicBufferMask & (1 << i)) != 0
+                                       ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
+                                       : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        }
+        else
+        {
+            write.descriptorType = (layout->dynamicBufferMask & (1 << i)) != 0
+                                       ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+                                       : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        }
+        write.descriptorCount = 1;
+        write.pBufferInfo = &bufferInfos.back();
 
         writes.push_back(write);
-
-        std::vector<VkDescriptorBufferInfo> bufferInfos;
-        bufferInfos.reserve(desc.buffers.size());
-        //
-        // Buffers
-        //
-        for (size_t i = 0; i < desc.buffers.size(); ++i)
-        {
-            auto& bufHandle = desc.buffers[i];
-            auto buf = m_buffers.Get(bufHandle.gpuBuffer);
-
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = buf->buffer;
-            bufferInfo.offset = 0;
-            bufferInfo.range = bufHandle.stride == 0 ? VK_WHOLE_SIZE : bufHandle.stride;
-            bufferInfos.push_back(bufferInfo);
-
-            VkWriteDescriptorSet write{};
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = group.descriptorSet;
-            write.dstBinding = bindingIndex++;
-            if ((layout->storageBufferMask & (1 << i)) != 0)
-            {
-                write.descriptorType =
-                    (layout->dynamicBufferMask & (1 << i)) != 0 ?
-                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC :
-                    VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-            }
-            else
-            {
-                write.descriptorType =
-                    (layout->dynamicBufferMask & (1 << i)) != 0 ?
-                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC :
-                    VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            }
-            write.descriptorCount = 1;
-            write.pBufferInfo = &bufferInfos.back();
-
-            writes.push_back(write);
-        }
-
-        vkUpdateDescriptorSets(
-            m_device.device,
-            static_cast<uint32_t>(writes.size()),
-            writes.data(),
-            0,
-            nullptr);
-
-        return m_bindingGroups.Create(group);
     }
 
-    void VulkanBackend::DestroyBindingGroup(
-        GPUBindingGroupHandle handle)
-    {
-        auto group = m_bindingGroups.Get(handle);
+    vkUpdateDescriptorSets(m_device.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 
-        // we use destroy descriptor pool
-        //vkFreeDescriptorSets(
-        //    m_device.device,
-        //    m_descriptorPool,
-        //    1,
-        //    &group.descriptorSet);
-
-        *group = {};
-        m_bindingGroups.Destroy(handle);
-    }
+    return m_bindingGroups.Create(group);
 }
+
+void VulkanBackend::DestroyBindingGroup(GPUBindingGroupHandle handle)
+{
+    auto group = m_bindingGroups.Get(handle);
+
+    // we use destroy descriptor pool
+    // vkFreeDescriptorSets(
+    //    m_device.device,
+    //    m_descriptorPool,
+    //    1,
+    //    &group.descriptorSet);
+
+    *group = {};
+    m_bindingGroups.Destroy(handle);
+}
+}  // namespace OneGame::Engine::Graphics::Vulkan
