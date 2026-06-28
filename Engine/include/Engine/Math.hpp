@@ -94,6 +94,11 @@ inline mat4 perspective(float fovRadians, float aspect, float nearPlane, float f
     return glm::perspective(fovRadians, aspect, nearPlane, farPlane);
 }
 
+inline int ceil(float val)
+{
+    return glm::ceil(val);
+}
+
 inline unsigned int align(unsigned int size, unsigned int alignment)
 {
     return (size + alignment - 1) & ~(alignment - 1);

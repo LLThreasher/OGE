@@ -13,15 +13,15 @@ namespace OneGame::Engine
 {
 using namespace Graphics;
 
-constexpr uint32_t EMPTY_SCENE = 0;
-constexpr uint32_t DEBUG_SCENE = 1;
-constexpr uint32_t DEBUG_SCENE2 = 2;
+constexpr uint32_t DEBUG_SCENE2 = 0;
+constexpr uint32_t DEBUG_SCENE3 = 1;
 
 GameClientApp::GameClientApp(IGraphicsBackend& backend)
     : m_backend(backend), m_assetPool(m_assetManager, m_streamingManager, m_backend)
 {
     m_allScenes.push_back(std::unique_ptr<ClientSceneBase>(new DebugScene2()));
-    TransferToScene(0);
+    m_allScenes.push_back(std::unique_ptr<ClientSceneBase>(new DebugScene3()));
+    TransferToScene(DEBUG_SCENE3);
 }
 
 GameClientApp::~GameClientApp() = default;

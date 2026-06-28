@@ -15,14 +15,6 @@ constexpr uint32_t BLOCK_META_COLOR_MASK = (uint32_t)(((uint64_t)1 << 4) - 1) <<
 
 using BlockMetadata = uint8_t;
 
-inline bool IsOpaque(uint32_t blockValue) { return (blockValue & BLOCK_ID_MASK) >= OPAQUE_BLOCK_START; }
-
-inline uint8_t GetTextureSlot(uint32_t blockValue)
-{
-    // auto id = (blockValue & BLOCK_ID_MASK);
-    return 0;
-}
-
 inline BlockMetadata GetMetadata(uint32_t blockValue)
 {
     BlockMetadata result;
@@ -43,11 +35,12 @@ struct BlockConfig
 class BlockRegistry
 {
    public:
+    BlockRegistry();
     void RegisterBlock(std::string blockIdName, BlockConfig config);
-    uint16_t GetBlockId(std::string blockIdName);
-    uint16_t GetBlockId(uint32_t blockValue);
-    bool IsOpaque(uint16_t blockIdx);
-    std::array<uint8_t, 6>& GetTextureSlot(uint16_t blockIdx);
+    static uint16_t GetBlockId(uint32_t blockValue);
+    uint16_t GetBlockId(const std::string blockIdName) const;
+    bool IsOpaque(uint16_t blockIdx) const;
+    const std::array<uint8_t, 6>& GetTextureSlot(uint16_t blockIdx) const;
 
    private:
     std::unordered_map<std::string, uint16_t> m_idNameToBlockId;

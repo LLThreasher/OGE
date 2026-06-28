@@ -74,7 +74,7 @@ void DebugScene2::Enter(PresentationContext& context)
         //	return 0;
         if (((x + y + z) % 2) == 0)
         {
-            return 256;
+            return 1;
         }
         return 0;
     };
@@ -127,6 +127,7 @@ void DebugScene2::Enter(PresentationContext& context)
     //	}
     // }
     BlockRegistry blocks;
+    blocks.RegisterBlock("dirt", {"Dirt", {0, 1, 2, 3, 4, 5}, 1});
     meshBuilder.SetVertexBudget(192 * 1024 * 1024);
     meshBuilder.BuildChunkMeshes(terrainData, blocks, terrainPresData);
     LOG_DEBUG("end generate mesh");
@@ -192,6 +193,60 @@ void DebugScene2::Update(PresentationContext& context, const FrameInputData& fra
     else if (frame.input.IsKeyDown(KeyCode::KY_ESCAPE))
     {
         auto& gworld = gameWorld.GetWorld();
+        auto pe = gworld.view<ECS::PlayerViewPanel>().front();
+        if (gworld.all_of<ECS::UIFocus>(pe))
+        {
+            gworld.erase<ECS::UIFocus>(pe);
+        }
+    }
+}
+
+void DebugScene3::Initialize(PresentationContext& context)
+{
+    using namespace ECS;
+    m_gameWorld.Register<SubsystemUI>();
+    m_gameWorld.Register<SubsystemPlayerInput>();
+    m_gameWorld.Register<SubsystemCamera>();
+    m_gameWorld.Register<SubsystemDebugInfo>();
+
+    auto swapExtend = context.backend.SwapchainExtend();
+    auto rect = UIRect{0, {0, 0}, swapExtend};
+    auto e = PlayerInputData::CreatePlayerViewPanel(m_gameWorld.GetWorld(), rect);
+
+    m_blocks.RegisterBlock("dirt", {"Dirt", {0, 1, 2, 3, 4, 5}, 1});
+}
+
+void DebugScene3::Enter(PresentationContext& context)
+{
+    Terrain::TerrainDesc desc{};
+    desc.chunkViewDistance = 4;
+    m_terrain.Initialize(desc, {0, 0, 0});
+    context.renderer.EnableTerrainPass2(context.backend, context.assetPool, m_terrain.GetOrCreateTerrainMesh(context.backend));
+    m_gameWorld.Initialize(context.appCtx);
+}
+
+void DebugScene3::Exit(PresentationContext& context)
+{
+    context.renderer.DisableTerrainPass2(context.backend);
+}
+
+void DebugScene3::Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut)
+{
+    m_terrain.Update(m_blocks, {0, 0});
+    m_terrain.Present(m_blocks, {}, context.streamingManager, frameOut.presentationWorld);
+
+    m_gameWorld.Update(context.appCtx, frame);
+    m_gameWorld.Present(context, frameOut);
+
+    if (frame.input.IsKeyDown(KeyCode::KY_G))
+    {
+        auto& gworld = m_gameWorld.GetWorld();
+        auto pe = gworld.view<ECS::PlayerViewPanel>().front();
+        gworld.get_or_emplace<ECS::UIFocus>(pe);
+    }
+    else if (frame.input.IsKeyDown(KeyCode::KY_ESCAPE))
+    {
+        auto& gworld = m_gameWorld.GetWorld();
         auto pe = gworld.view<ECS::PlayerViewPanel>().front();
         if (gworld.all_of<ECS::UIFocus>(pe))
         {

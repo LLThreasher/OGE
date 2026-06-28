@@ -18,7 +18,9 @@ Graphics::RingStagingBuffer& StreamingManager::GetStagingBuffer() { return m_rin
 
 ResourceBundleHandle StreamingManager::CreateResourceBundle(std::function<void()> callback)
 {
-    return m_resouceBundles.Create(0, callback);
+    auto ret = m_resourceBundles.Create();
+    m_resourceBundleCallbacks[ret] = callback;
+    return ret;
 }
 
 template <UploadType uploadType>
@@ -75,12 +77,7 @@ size_t StreamingManager::UploadBuffer(const std::span<const std::byte> data, con
     }
     if (resBundle.IsValid())
     {
-        m_resouceBundles.Get(resBundle)->m_itemCounter += 1;
-
-        // LOG_DEBUG("schedule {} {} {}",
-        // m_resouceBundles.Get(resBundle)->m_itemCounter,
-        // m_buffersToUploadImmediate.size(), m_buffersToUpload.size(),
-        // m_buffersQueuedInCPU.size());
+        m_resourceBundles.Get(resBundle)->itemCounter += 1;
     }
     return dataSizeInBytes;
 }
@@ -145,12 +142,15 @@ void StreamingManager::RunUploadStep(Graphics::IGraphicsBackend& backend, Graphi
         m_stagingAllocationToFree[fidx].pop();
         if (event.IsValid())
         {
-            auto eData = m_resouceBundles.Get(event);
+            auto eData = m_resourceBundles.Get(event);
             assert(eData != nullptr);
-            eData->m_itemCounter -= 1;
-            if (eData->m_itemCounter == 0 && eData->m_callback != nullptr)
+            eData->itemCounter -= 1;
+            if (eData->itemCounter == 0)
             {
-                eData->m_callback();
+                auto it = m_resourceBundleCallbacks.find(event);
+                if (it != m_resourceBundleCallbacks.end())
+                    it->second();
+                m_resourceBundles.Destroy(event);
             }
             // LOG_DEBUG("progress {}", eData->m_itemCounter);
         }

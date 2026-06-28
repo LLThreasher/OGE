@@ -7,7 +7,9 @@ void TerrainService::Initialize(const TerrainDesc& desc, Point3 chunkOrigin)
 {
     m_terrainGenerator.SetTerrainGenChunkBudget(desc.terrainGenChunkBudget);
     m_terrainMeshBuilder.SetVertexBudget(desc.meshingQuadBudget);
+    m_terrainUploader.SetMaxNumChunks((desc.chunkViewDistance + 1) * (desc.chunkViewDistance + 1) * 6);
     m_terrainUpdateScheduler.SetChunkViewDistance(desc.chunkViewDistance);
+    m_terrainUpdateScheduler.InitialUpdate(m_terrainData, chunkOrigin);
 }
 
 uint32_t TerrainService::GetBlock(int x, int y, int z)
@@ -36,23 +38,32 @@ ChunkData* TerrainService::GetChunk(ChunkHandle handle) { return m_terrainData.c
 
 void TerrainService::SubmitChunk(ChunkHandle handle) { m_terrainData.dirtyChunks.insert(handle); }
 
-void TerrainService::Update(Point3 chunkOrigin, std::array<math::vec3, 6> frustum)
+void TerrainService::Update(BlockRegistry& blocks, Point3 chunkOrigin)
 {
+    m_terrainGenerator.GenerateTerrain(m_terrainData, blocks);
     for (auto chunk : m_terrainData.dirtyChunks)
     {
         m_terrainPData.buildMeshQueue.push(chunk);
     }
     m_terrainData.dirtyChunks.clear();
-    m_terrainUpdateScheduler.UpdateChunkVisibility(m_terrainData, chunkOrigin, frustum);
 }
 
-void TerrainService::BuildTerrainMesh(BlockRegistry& blocks)
+void TerrainService::Present(BlockRegistry& blocks, std::array<math::vec3, 6> frustum,
+                             StreamingManager& sm, entt::registry& presentationWorld)
 {
     m_terrainMeshBuilder.BuildChunkMeshes(m_terrainData, blocks, m_terrainPData);
+    m_terrainUploader.UploadTerrain(m_terrainPData, sm);
+    m_terrainUpdateScheduler.UpdateChunkVisibility(m_terrainData, m_terrainPData, frustum, presentationWorld);
 }
 
 void TerrainService::UploadBuiltChunks(StreamingManager& stream)
 {
     m_terrainUploader.UploadTerrain(m_terrainPData, stream);
+}
+
+GPUBufferHandle TerrainService::GetOrCreateTerrainMesh(Graphics::IGraphicsBackend& backend)
+{
+    if (!m_terrainPData.terrainMesh.IsValid()) m_terrainUploader.CreateTerrainMesh(m_terrainPData, backend);
+    return m_terrainPData.terrainMesh;
 }
 }  // namespace OneGame::Engine::Terrain

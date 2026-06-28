@@ -16,6 +16,7 @@ class ChunkAllocator
     {
         assert(maxChunks % 4 == 0);
 
+        m_blockOrder.resize(maxChunks);
         // Initially everything is a size-4 block (order 2)
         for (uint32_t i = 0; i < maxChunks; i += 4)
         {
@@ -35,6 +36,11 @@ class ChunkAllocator
     {
         uint32_t order = SizeToOrder(size);
         FreeOrder(index, order);
+    }
+
+    uint32_t GetMaxNumChunks() const
+    {
+        return m_totalChunks;
     }
 
    private:

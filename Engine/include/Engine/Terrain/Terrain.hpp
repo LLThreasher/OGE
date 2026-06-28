@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cassert>
+#include <entt/entt.hpp>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
@@ -23,7 +24,8 @@ class StreamingManager;
 namespace Graphics
 {
 class IGraphicsBackend;
-}
+class PTerrainMesh;
+}  // namespace Graphics
 }  // namespace OneGame::Engine
 
 namespace OneGame::Engine::Terrain
@@ -75,9 +77,7 @@ struct Point3Hash
 enum class ChunkState
 {
     GeneratingTerrain,
-    GeneratingMesh,
-    PendingUpload,
-    GpuAvailable,
+    Persistent,
     PendingDestroy,
 };
 
@@ -99,12 +99,13 @@ struct BuiltChunkMesh2
 
 struct AllocatedChunkSlot
 {
-    uint32_t index;
+    uint32_t slot;
     uint32_t size;  // always 1, 2, 4
+    uint32_t indexCount;
 
     bool operator==(const AllocatedChunkSlot& other) const noexcept
     {
-        return index == other.index && size == other.size;
+        return slot == other.slot && size == other.size && indexCount == other.indexCount;
     }
 };
 
@@ -112,14 +113,16 @@ struct AllocatedChunkSlotHasher
 {
     std::size_t operator()(const AllocatedChunkSlot& slot) const noexcept
     {
-        return (static_cast<uint64_t>(slot.index) << 3) | slot.size;
+        return (static_cast<uint64_t>(slot.slot) << 3) | slot.size;
     }
 };
 
 struct ChunkData
 {
+    // 16384 bytes
     uint32_t data[CHUNK_SIZE_TOTAL] = {};
     Point3 Coords = {};
+    ChunkState state = ChunkState::GeneratingTerrain;
 
    public:
     ChunkData(Point3 coords) { Coords = coords; }
@@ -133,6 +136,36 @@ struct ChunkData
     }
 
     void SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value) { data[GetBlockIndex(x, y, z)] = value; }
+};
+
+struct PaletteCompressedChunk
+{
+    std::vector<uint32_t> palette;
+    uint8_t data[CHUNK_SIZE_TOTAL];
+
+    static PaletteCompressedChunk FromChunkData(const ChunkData& c)
+    {
+        PaletteCompressedChunk result;
+        std::unordered_map<uint32_t, uint8_t> palette_map;
+        for (size_t i = 0; i < CHUNK_SIZE_TOTAL; ++i)
+        {
+            auto it = palette_map.find(c.data[i]);
+            if (it == palette_map.end())
+            {
+                palette_map.emplace(c.data[i], result.palette.size());
+                result.data[i] = result.palette.size();
+                result.palette.push_back(c.data[i]);
+            }
+            else
+            {
+                result.data[i] = it->second;
+            }
+        }
+        assert(result.palette.size() <= 255);
+        return result;
+    }
+
+    uint32_t Get(int x, int y, int z) const { return palette[data[GetBlockIndex(x, y, z)]]; }
 };
 
 struct LocalUpdateBlockCmd
@@ -155,8 +188,8 @@ struct ChunkMeshingWorkerContext
 {
     // 1296 bytes
     uint32_t opaqueMasks[(CHUNK_SIZE_Y + 2) * (CHUNK_SIZE_Z + 2)];
-    // 8192 bytes
-    BlockMetadata blockMetadata[CHUNK_SIZE_TOTAL];
+    // 5120 bytes
+    PaletteCompressedChunk compressedChunk;
     ChunkHandle chunkHandle;
     BuiltMeshHandle chunkMeshHandle;
 };
@@ -243,11 +276,11 @@ struct TerrainPresentationData
     std::queue<std::tuple<ChunkHandle, BuiltMeshHandle>> uploadMeshQueue;
     GPUBufferHandle terrainMesh;
 
-    std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> residentChunks;
-    std::unordered_set<AllocatedChunkSlot, AllocatedChunkSlotHasher> currentVisibleChunks;
+    std::unordered_map<ChunkHandle, AllocatedChunkSlot, HandleHash<ChunkHandle>> residentChunks;
 };
 
-void ExecuteBuildChunkMeshJob(const ChunkMeshingWorkerContext* _context, BuiltChunkMesh* context);
+void ExecuteBuildChunkMeshJob(const ChunkMeshingWorkerContext* _context, BuiltChunkMesh* context,
+                              const BlockRegistry& blocks);
 
 class TerrainMeshBuilder
 {
@@ -257,7 +290,8 @@ class TerrainMeshBuilder
     void SetVertexBudget(uint32_t val) { m_vertexBudget = val; }
 
    private:
-    void ExecuteBuildChunkMesh(TerrainPresentationData& pData, MeshingWorkerContextHandle);
+    void ExecuteBuildChunkMesh(TerrainPresentationData& pData, MeshingWorkerContextHandle handle,
+                               const BlockRegistry& blocks);
 
     uint32_t m_vertexBudget = 1024;
     uint32_t m_runningVertexCount = 0;
@@ -266,23 +300,9 @@ class TerrainMeshBuilder
 class TerrainUpdateScheduler
 {
    public:
-    void InitialUpdate(TerrainData& terrain, Point3 chunkOrigin)
-    {
-        for (int x = -m_chunkViewDistance - 1; x <= m_chunkViewDistance + 1; ++x)
-        {
-            for (int z = -m_chunkViewDistance - 1; z <= m_chunkViewDistance + 1; ++z)
-            {
-                for (int y = 0; y <= 4; ++y)
-                {
-                    auto handle = terrain.chunks.AllocateChunk({x, y, z});
-                    terrain.generateTerrainQueue.push(handle);
-                }
-            }
-        }
-    }
-
-    void UpdateChunkVisibility(TerrainData& terrain, Point3 chunkOrigin, std::array<math::vec3, 6> frustum) {}
-
+    void InitialUpdate(TerrainData& terrain, Point3 chunkOrigin);
+    void UpdateChunkVisibility(TerrainData& data, TerrainPresentationData& pdata, std::array<math::vec3, 6> frustum,
+                               entt::registry& presentationWorld);
     void SetChunkViewDistance(int val) { m_chunkViewDistance = val; }
 
    private:
@@ -293,6 +313,7 @@ class TerrainUploader
 {
    public:
     void SetMaxNumChunks(uint32_t maxNumChunks);
+    void CreateTerrainMesh(TerrainPresentationData& terrain, Graphics::IGraphicsBackend& backend);
     void UploadTerrain(TerrainPresentationData& terrain, StreamingManager& sm);
 
    private:
@@ -309,7 +330,7 @@ struct TerrainDesc
 class TerrainGenerator
 {
    public:
-    void GenerateTerrain(TerrainData& terrain);
+    void GenerateTerrain(TerrainData& terrain, BlockRegistry& blocks);
     void SetTerrainGenChunkBudget(int chunkBudget) { terrainGenChunkBudget = chunkBudget; }
 
    private:
@@ -335,10 +356,12 @@ class TerrainService
     ChunkData* GetChunk(ChunkHandle handle);
     void SubmitChunk(ChunkHandle handle);
 
-    void Update(Point3 chunkOrigin, std::array<math::vec3, 6> frustum);
-
-    void BuildTerrainMesh(BlockRegistry& blocks);
+    void Update(BlockRegistry& blocks, Point3 chunkOrigin);
+    void Present(BlockRegistry& blocks, std::array<math::vec3, 6> frustum, StreamingManager& sm,
+                 entt::registry& presentationWorld);
     void UploadBuiltChunks(StreamingManager& stream);
+
+    GPUBufferHandle GetOrCreateTerrainMesh(Graphics::IGraphicsBackend& backend);
 
    private:
     TerrainData m_terrainData;

@@ -21,9 +21,9 @@ class ResourcePool
    private:
     struct Entry
     {
-        alignas(Resource) std::byte storage[sizeof(Resource)];
-        uint32_t generation = 1;
         bool alive = false;
+        uint32_t generation = 1;
+        alignas(Resource) std::byte storage[sizeof(Resource)];
 
         Resource* Get() { return std::launder(reinterpret_cast<Resource*>(storage)); }
 
@@ -107,7 +107,6 @@ class ResourcePool
     // ----------------------------
     bool IsAlive(Handle handle) const
     {
-        if (handle.index == 0) throw std::runtime_error("using nullptr handle");
         if (handle.index == 0) return false;
         auto index = handle.index - 1;
         if (index >= m_entries.size()) return false;

@@ -7,6 +7,7 @@
 #include "Engine/Graphics/RingStagingBuffer.hpp"
 #include "Engine/ResourcePool.hpp"
 #include "Engine/entt.hpp"
+#include "Engine/Async.hpp"
 
 namespace OneGame::Engine
 {
@@ -25,8 +26,7 @@ enum class UploadObjectType
 
 struct ResourceBundle
 {
-  size_t m_itemCounter = 0;
-  std::function<void()> m_callback = nullptr;
+  size_t itemCounter = 0;
 };
 
 class StreamingManager
@@ -97,7 +97,8 @@ class StreamingManager
   std::queue<std::tuple<BufferUploadDesc, std::vector<std::byte>>> m_buffersQueuedInCPU;
   std::queue<BufferUploadDesc> m_buffersToUpload;
   std::queue<BufferUploadDesc> m_buffersToUploadImmediate;
-  ResourcePool<StreamingObjects::ResourceBundle, ResourceBundle> m_resouceBundles;
+  ResourcePool<StreamingObjects::ResourceBundle, ResourceBundle> m_resourceBundles;
+  std::unordered_map<ResourceBundleHandle, std::function<void()>, HandleHash<ResourceBundleHandle>> m_resourceBundleCallbacks;
   std::array<std::queue<std::tuple<ResourceBundleHandle, StagingAllocation>>, MAX_FRAMES_IN_FLIGHT>
       m_stagingAllocationToFree;
 };

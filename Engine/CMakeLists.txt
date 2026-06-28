@@ -26,6 +26,7 @@ PRIVATE
     "src/Terrain/TerrainService.cpp"
     "src/Terrain/TerrainUploader.cpp"
     "src/Terrain/BlockManager.cpp"
+    "src/Terrain/TerrainGenerator.cpp"
     "src/Platform/SDL3GameWindow.cpp"
     "src/Platform/SDL3AssetLoader.cpp"
     "src/Platform/Win32GameWindow.cpp"

@@ -88,9 +88,19 @@ class DebugScene2 : public ClientSceneBase
 
     ECS::GameWorld gameWorld;
 
-    bool wrappingEnabled = false;
-    // bool firstFrame = false;
-    bool firstFrame = true;
     bool isTerrainReady = false;
+};
+
+class DebugScene3 : public ClientSceneBase
+{
+public:
+    virtual void Initialize(PresentationContext& context) override;
+    virtual void Enter(PresentationContext& context) override;
+    virtual void Exit(PresentationContext& context) override;
+    virtual void Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut) override;
+private:
+    ECS::GameWorld m_gameWorld;
+    Terrain::TerrainService m_terrain;
+    Terrain::BlockRegistry m_blocks;
 };
 }  // namespace OneGame::Engine
