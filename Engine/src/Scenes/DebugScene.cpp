@@ -15,13 +15,23 @@ namespace OneGame::Engine
 	void DebugScene2::Initialize(PresentationContext& context)
 	{
 		using namespace ECS;
+		gameWorld.Register<SubsystemUI>();
+		gameWorld.Register<SubsystemPlayerInput>();
 		gameWorld.Register<SubsystemCamera>();
 		gameWorld.Register<SubsystemDebugInfo>();
-		gameWorld.Initialize(context.appCtx);
+
+		auto swapExtend = context.backend.SwapchainExtend();
+		auto rect = UIRect{ 0, {0, 0}, swapExtend };
+		auto e = PlayerInputData::CreatePlayerViewPanel(
+			gameWorld.GetWorld(),
+			rect
+		);
 	}
 
 	void DebugScene2::Enter(PresentationContext& context)
 	{
+		gameWorld.Initialize(context.appCtx);
+
 		using namespace Terrain;
 		using BufferUsage = Graphics::BufferUsage;
 		//for (size_t x = 0; x < 16; ++x)
@@ -130,7 +140,10 @@ namespace OneGame::Engine
 		LOG_INFO("total used size: {} {}", active_count, active_count * Terrain::CHUNK_STORE_BYTE_SIZE * 4);
 		int currentSlot = 0;
 		auto event = context.streamingManager.CreateResourceBundle([&] {
-			isTerrainReady = true;
+				isTerrainReady = true;
+				auto& world = gameWorld.GetWorld();
+				auto pe = world.view<ECS::PlayerViewPanel>().front();
+				world.emplace<ECS::UIFocus>(pe);
 			});
 		while (!terrainPresData.uploadMeshQueue.empty() && currentSlot < active_count)
 		{
@@ -164,28 +177,23 @@ namespace OneGame::Engine
 			}
 		}
 
-		if (wrappingEnabled)
-		{
-			gameWorld.Update(context.appCtx, frame);
-			gameWorld.Present(context, frameOut);
-		}
+		gameWorld.Update(context.appCtx, frame);
+		gameWorld.Present(context, frameOut);
 
-		if (frame.input.IsKeyDown(KeyCode::KY_G) || firstFrame)
+		if (frame.input.IsKeyDown(KeyCode::KY_G))
 		{
-			SceneAction a{};
-			a.type = SceneActionType::SetMouseWarpping;
-			a.setMouseWarpping.enabled = true;
-			frameOut.outSceneActions.emplace_back(a);
-			wrappingEnabled = true;
-			firstFrame = false;
+			auto& gworld = gameWorld.GetWorld();
+			auto pe = gworld.view<ECS::PlayerViewPanel>().front();
+			gworld.get_or_emplace<ECS::UIFocus>(pe);
 		}
 		else if (frame.input.IsKeyDown(KeyCode::KY_ESCAPE))
 		{
-			SceneAction a{};
-			a.type = SceneActionType::SetMouseWarpping;
-			a.setMouseWarpping.enabled = false;
-			frameOut.outSceneActions.emplace_back(a);
-			wrappingEnabled = false;
+			auto& gworld = gameWorld.GetWorld();
+			auto pe = gworld.view<ECS::PlayerViewPanel>().front();
+			if (gworld.all_of<ECS::UIFocus>(pe))
+			{
+				gworld.erase<ECS::UIFocus>(pe);
+			}
 		}
 	}
 }

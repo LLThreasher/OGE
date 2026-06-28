@@ -26,7 +26,7 @@ namespace OneGame::Engine
 
 	void GameClientApp::Initialize(WindowHandle* handle)
 	{
-		m_backend.Initialize(BackendDesc{ handle, FrameTimePreference::Unlimited });
+		m_backend.Initialize(BackendDesc{ handle, FrameTimePreference::VSync });
 		LOG_DEBUG("Backend created");
 		m_streamingManager.Initialize(m_backend);
 		LOG_DEBUG("StreamingManager created");
@@ -76,6 +76,8 @@ namespace OneGame::Engine
 			return appRes | AppFrameAction::WaitSurface;
 		if (res != BeginFrameAction::Continue)
 			return appRes | AppFrameAction::None;
+
+		m_dispatcher.update();
 
 		AppContext ctx
 		{
@@ -154,5 +156,7 @@ namespace OneGame::Engine
 	void GameClientApp::OnWindowRecreate(Graphics::WindowHandle* handle)
 	{
 		m_backend.RecreateSurface(handle);
+		auto swapExtend = m_backend.SwapchainExtend();
+		m_dispatcher.enqueue<SurfaceRecreateEvent>(swapExtend.x, swapExtend.y);
 	}
 }

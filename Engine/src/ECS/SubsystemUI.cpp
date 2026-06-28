@@ -69,7 +69,8 @@ namespace OneGame::Engine::ECS
 				activeDrags[PointerIdx::MOUSE] = entt::null;
 			}
 		}
-		gameWorld.emplace<UIRaycastHit>(mouseEntityHit, activeDrags[PointerIdx::MOUSE]);
+		if (mouseEntityHit != entt::null)
+			gameWorld.emplace<UIRaycastHit>(mouseEntityHit, activeDrags[PointerIdx::MOUSE]);
 		
 		// handle touch drag
 		uint32_t pressedTouchMask = f.input.GetPressedTouchIdMask();

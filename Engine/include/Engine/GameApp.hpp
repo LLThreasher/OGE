@@ -1,7 +1,7 @@
 #pragma once
 #include <string>
 #include <memory>
-#include <entt/entt.hpp>
+#include "Engine/entt.hpp"
 
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/AssetManager.hpp"

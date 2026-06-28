@@ -1,7 +1,7 @@
 #pragma once
 
 #include <queue>
-#include <entt/entt.hpp>
+#include "Engine/entt.hpp"
 #include <span>
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/Graphics/RingStagingBuffer.hpp"

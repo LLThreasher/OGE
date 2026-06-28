@@ -14,6 +14,8 @@ namespace OneGame::Engine::ECS
 		math::vec3 position;
 		glm::vec3 forward;
 
+		entt::entity playerInputData;
+
 		math::mat4 view() const
 		{
 			return math::lookAt(position, position + forward, glm::vec3(0, 1, 0));;
@@ -59,6 +61,7 @@ namespace OneGame::Engine::ECS
 
 		cam.yaw = std::atan2(cam.forward.x, cam.forward.z);
 		cam.pitch = std::asin(cam.forward.y);
+		cam.playerInputData = gameWorld.view<PlayerInputData>().front();
 	}
 
 	void SubsystemCamera::Update(AppContext& ctx, entt::registry& gameWorld, const FrameInputData& fd)
@@ -67,13 +70,9 @@ namespace OneGame::Engine::ECS
 		auto cameraEntity = gameWorld.view<ComponentCamera>().front();
 		auto& camera = gameWorld.get<ComponentCamera>(cameraEntity);
 
-		float dx = 0;
-		float dy = 0;
+		auto& data = gameWorld.get<const PlayerInputData>(camera.playerInputData);
 
-		float dwx = 0;
-		float dwz = 0;
-
-		camera.ApplyDelta(dx, dy, dwx, dwz);
+		camera.ApplyDelta(data.panDelta.x, data.panDelta.y, data.moveDelta.x, data.moveDelta.y);
 	}
 
 	void SubsystemCamera::Present(const entt::registry& gameWorld, PresentationContext& ctx, FrameOutputData& fd)

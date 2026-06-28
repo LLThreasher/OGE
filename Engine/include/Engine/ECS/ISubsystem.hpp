@@ -27,6 +27,7 @@ namespace OneGame::Engine::ECS
 	};
 
 	DECLARE_SUBSYSTEM(Camera);
+
 	DECLARE_SUBSYSTEM(DebugInfo,
 		float currentFPS = 0.f;
 		float currentFrameTime = 0.f;
@@ -34,7 +35,20 @@ namespace OneGame::Engine::ECS
 		uint64_t frameCount = 0;
 	);
 
-	DECLARE_SUBSYSTEM(PlayerInput);
+	struct UIRect;
+	struct PlayerInputData
+	{
+		math::vec2 moveDelta;
+		math::vec2 panDelta;
+
+		static entt::entity CreatePlayerViewPanel(entt::registry& gameWorld, UIRect& rect);
+	};
+	DECLARE_SUBSYSTEM(PlayerInput,
+		void onUIGainFocus(entt::registry& gameWorld, entt::entity entity);
+		void onUILoseFocus(entt::registry& gameWorld, entt::entity entity);
+		std::optional<entt::entity> playerInputUsingKeyMouse;
+		bool isKeyMouseUsed = false;
+	);
 
 	struct UIDrag
 	{
@@ -53,6 +67,10 @@ namespace OneGame::Engine::ECS
 	{
 	};
 
+	struct UIFocus
+	{
+	};
+
 	struct UIRaycastHit
 	{
 		entt::entity dragStart;
@@ -63,15 +81,26 @@ namespace OneGame::Engine::ECS
 		int zLevel;
 		math::vec2 pos;
 		math::vec2 extend;
-		std::string spriteId;
 	};
 
-	struct PlayerMovePanel
+	namespace InputSource
 	{
+		constexpr uint8_t Widget = 1 << 0;
+		constexpr uint8_t KeyMouse = 1 << 1;
+	};
+
+	struct InputSourceWidget
+	{
+		entt::entity moveWidget;
+		entt::entity viewWidget;
 	};
 
 	struct PlayerViewPanel
 	{
+		union {
+			InputSourceWidget widgetInput;
+		};
+		uint8_t source;
 	};
 
 	// Handle drags and UI rendering

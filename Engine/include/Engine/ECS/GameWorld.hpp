@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <entt/entt.hpp>
+#include "Engine/entt.hpp"
 #include "ISubsystem.hpp"
 
 namespace OneGame::Engine::ECS
@@ -37,6 +37,11 @@ namespace OneGame::Engine::ECS
 			{
 				ptr->Present(m_world, pctx, frameOut);
 			}
+		}
+
+		entt::registry& GetWorld()
+		{
+			return m_world;
 		}
 
 	private:

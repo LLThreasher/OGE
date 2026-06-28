@@ -1,6 +1,6 @@
 #pragma once
 
-#include <entt/entt.hpp>
+#include "Engine/entt.hpp"
 #include "Engine/AssetBundle.hpp"
 #include "Engine/TickScheduler.hpp"
 
@@ -95,4 +95,10 @@ namespace OneGame::Engine
     // game states + presentation context = frame output data
     // network layer:
     // server game states -> client game states
+
+    struct SurfaceRecreateEvent
+    {
+        float swapchainWidth;
+        float swapchainHeight;
+    };
 }

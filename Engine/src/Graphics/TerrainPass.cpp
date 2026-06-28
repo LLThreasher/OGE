@@ -1,7 +1,7 @@
 #include "Engine/Graphics/TerrainPass.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
-#include <entt/entt.hpp>
+#include "Engine/entt.hpp"
 
 #include "RendererInternals.hpp"
 #define LOGGER_NAME "Engine"
