@@ -213,7 +213,9 @@ void DebugScene3::Initialize(PresentationContext& context)
     auto rect = UIRect{0, {0, 0}, swapExtend};
     auto e = PlayerInputData::CreatePlayerViewPanel(m_gameWorld.GetWorld(), rect);
 
-    m_blocks.RegisterBlock("dirt", {"Dirt", {0, 1, 2, 3, 4, 5}, 1});
+    m_blocks.RegisterBlock("dirt", {"Dirt", {2, 2, 2, 2, 2, 2}, 1});
+    m_blocks.RegisterBlock("wood", {"Wood", {4, 4, 4, 4, 4, 4}, 1});
+    m_blocks.RegisterBlock("stone", {"Stone", {5, 5, 5, 5, 5, 5}, 1});
 }
 
 void DebugScene3::Enter(PresentationContext& context)

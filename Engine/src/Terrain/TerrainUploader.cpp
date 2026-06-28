@@ -57,6 +57,33 @@ void TerrainUpdateScheduler::InitialUpdate(TerrainData& terrain, Point3 chunkOri
     }
 }
 
+void TerrainUpdateScheduler::QueueChunksForMeshing(TerrainData& terrain, TerrainPresentationData& pdata)
+{
+    std::vector<ChunkHandle> toRemove;
+    for (auto handle : terrain.dirtyChunks)
+    {
+        auto chunk = terrain.chunks.Get(handle);
+        bool fullNeighbors = true;
+        for (int i = 0; i < 6; ++i)
+        {
+            auto neighborCoord = perFaceOffset[i] + chunk->Coords;
+            auto [handle, chunk] = terrain.chunks.Get(neighborCoord);
+            if (!chunk || chunk->state != ChunkState::Persistent)
+            {
+                fullNeighbors = false;
+                break;
+            }
+        }
+        if (!fullNeighbors) continue;
+        toRemove.push_back(handle);
+    }
+    for (auto handle : toRemove)
+    {
+        pdata.buildMeshQueue.push(handle);
+        terrain.dirtyChunks.erase(handle);
+    }
+}
+
 void TerrainUpdateScheduler::UpdateChunkVisibility(TerrainData& data, TerrainPresentationData& pdata,
                                                    std::array<math::vec3, 6> frustum, entt::registry& presentationWorld)
 {

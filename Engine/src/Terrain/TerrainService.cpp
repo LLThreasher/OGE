@@ -41,16 +41,12 @@ void TerrainService::SubmitChunk(ChunkHandle handle) { m_terrainData.dirtyChunks
 void TerrainService::Update(BlockRegistry& blocks, Point3 chunkOrigin)
 {
     m_terrainGenerator.GenerateTerrain(m_terrainData, blocks);
-    for (auto chunk : m_terrainData.dirtyChunks)
-    {
-        m_terrainPData.buildMeshQueue.push(chunk);
-    }
-    m_terrainData.dirtyChunks.clear();
 }
 
 void TerrainService::Present(BlockRegistry& blocks, std::array<math::vec3, 6> frustum,
                              StreamingManager& sm, entt::registry& presentationWorld)
 {
+    m_terrainUpdateScheduler.QueueChunksForMeshing(m_terrainData, m_terrainPData);
     m_terrainMeshBuilder.BuildChunkMeshes(m_terrainData, blocks, m_terrainPData);
     m_terrainUploader.UploadTerrain(m_terrainPData, sm);
     m_terrainUpdateScheduler.UpdateChunkVisibility(m_terrainData, m_terrainPData, frustum, presentationWorld);

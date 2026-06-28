@@ -6,9 +6,6 @@
 
 namespace OneGame::Engine::Terrain
 {
-constexpr Point3 perFaceOffset[6] = {
-    {0, 0, 1}, {0, 0, -1}, {0, 1, 0}, {0, -1, 0}, {1, 0, 0}, {-1, 0, 0},
-};
 
 constexpr size_t oppositeFace[6] = {
     1, 0, 3, 2, 5, 4,

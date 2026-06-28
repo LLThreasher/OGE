@@ -101,6 +101,7 @@ void SubsystemPlayerInput::Update(AppContext& ctx, entt::registry& gameWorld, co
             else
                 data.moveDelta.x = 0.f;
             data.moveDelta *= f.dt;
+            data.moveDelta *= 5.f;
         }
     }
 }

@@ -30,6 +30,7 @@ class PTerrainMesh;
 
 namespace OneGame::Engine::Terrain
 {
+
 enum class TerrainObject
 {
     Chunk,
@@ -55,6 +56,10 @@ struct Point3
     Point3 operator+(const Point3& other) const noexcept { return {x + other.x, y + other.y, z + other.z}; }
 
     Point3 operator-(const Point3& other) const noexcept { return {x - other.x, y - other.y, z - other.z}; }
+};
+    
+constexpr Point3 perFaceOffset[6] = {
+    {0, 0, 1}, {0, 0, -1}, {0, 1, 0}, {0, -1, 0}, {1, 0, 0}, {-1, 0, 0},
 };
 
 struct Point3Hash
@@ -301,6 +306,7 @@ class TerrainUpdateScheduler
 {
    public:
     void InitialUpdate(TerrainData& terrain, Point3 chunkOrigin);
+    void QueueChunksForMeshing(TerrainData& terrain, TerrainPresentationData& pdata);
     void UpdateChunkVisibility(TerrainData& data, TerrainPresentationData& pdata, std::array<math::vec3, 6> frustum,
                                entt::registry& presentationWorld);
     void SetChunkViewDistance(int val) { m_chunkViewDistance = val; }
