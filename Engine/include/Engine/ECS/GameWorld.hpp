@@ -12,34 +12,30 @@ namespace OneGame::Engine::ECS
 		template <typename TSubsystem>
 		void Register()
 		{
-			m_subsystems.emplace_back(new TSubsystem(m_world));
+			m_subsystems.emplace_back(new TSubsystem());
 		}
 
 		void Initialize(AppContext& ctx)
 		{
-			SubsystemInitContext sctx
-			{
-				ctx
-			};
 			for (auto& ptr : m_subsystems)
 			{
-				ptr->Initialize(sctx);
+				ptr->Initialize(ctx, m_world);
 			}
 		}
 
-		void Update(AppContext& app, FrameContext& frame)
+		void Update(AppContext& app, const FrameInputData& frame)
 		{
-			SubsystemContext sctx
-			{
-				frame.dt,
-				frame.input,
-				app.events,
-				app.backend,
-			};
 			for (auto& ptr : m_subsystems)
 			{
-				ptr->Update(sctx);
-				ptr->Present(frame.presentationWorld);
+				ptr->Update(app, m_world, frame);
+			}
+		}
+
+		void Present(PresentationContext& pctx, FrameOutputData& frameOut)
+		{
+			for (auto& ptr : m_subsystems)
+			{
+				ptr->Present(m_world, pctx, frameOut);
 			}
 		}
 

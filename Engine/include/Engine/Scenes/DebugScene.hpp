@@ -10,6 +10,11 @@
 
 namespace OneGame::Engine
 {
+	namespace ECS
+	{
+		class SubsystemDebugInfo;
+	}
+
 	const std::vector<Terrain::TexturedQuad> chunk_zero_quads =
 	{
 		{ 0, 0, 0, 0, 0, COLOR_WHITE, {0xF, 0xF, 0xF, 0xF}, {0, 0, 0, 0}},
@@ -69,50 +74,18 @@ namespace OneGame::Engine
 		20,21,22, 22,23,20   // bottom
 	};
 
-	class EmptyScene : public IScene
-	{
-	public:
-		virtual void Initialize(AppContext& context) override
-		{
-		}
-		virtual void Shutdown(AppContext& context) override
-		{
-		}
-		virtual void Enter(AppContext& context) override
-		{
-		}
-		virtual void Update(AppContext& context, FrameContext& frame) override
-		{
-		}
-		virtual void Exit(AppContext& context) override
-		{
-		}
-	};
-
-	class DebugScene : public EmptyScene
-	{
-	public:
-		virtual void Initialize(AppContext& context) override;
-		virtual void Enter(AppContext& context) override;
-		virtual void Exit(AppContext& context) override;
-		virtual void Update(AppContext& context, FrameContext& frame) override;
-	protected:
-		ECS::GameWorld gameWorld;
-		Terrain::TerrainService terrain;
-		GPUBufferHandle chunkMesh;
-	};
-
-	class DebugScene2 : public EmptyScene
+	class DebugScene2 : public ClientSceneBase
 	{
 	public:
 		DebugScene2() {}
-		virtual void Initialize(AppContext& context) override;
-		virtual void Enter(AppContext& context) override;
-		virtual void Exit(AppContext& context) override;
-		virtual void Update(AppContext& context, FrameContext& frame) override;
+		virtual void Initialize(PresentationContext& context) override;
+		virtual void Enter(PresentationContext& context) override;
+		virtual void Exit(PresentationContext& context) override;
+		virtual void Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut) override;
 	protected:
 		std::vector<Graphics::PTerrainMesh> testSlots;
 		Terrain::TerrainData terrainData;
+		Terrain::TerrainPresentationData terrainPresData;
 		Terrain::TerrainMeshBuilder meshBuilder;
 
 		ECS::GameWorld gameWorld;

@@ -16,114 +16,116 @@ namespace OneGame::Engine
 	constexpr uint32_t DEBUG_SCENE		= 1;
 	constexpr uint32_t DEBUG_SCENE2		= 2;
 
-	GameApp::GameApp()
+	GameClientApp::GameClientApp(IGraphicsBackend& backend) : m_backend(backend), m_assetPool(m_assetManager, m_streamingManager, m_backend)
 	{
-		allScenes.push_back(std::unique_ptr<IScene>(new EmptyScene()));
-		allScenes.push_back(std::unique_ptr<IScene>(new DebugScene()));
-		allScenes.push_back(std::unique_ptr<IScene>(new DebugScene2()));
-		TransferToScene(DEBUG_SCENE2);
+		m_allScenes.push_back(std::unique_ptr<ClientSceneBase>(new DebugScene2()));
+		TransferToScene(0);
 	}
 
-	GameApp::~GameApp() = default;
+	GameClientApp::~GameClientApp() = default;
 
-	void GameApp::Initialize(WindowHandle* handle)
+	void GameClientApp::Initialize(WindowHandle* handle)
 	{
-		backend = CreateBackend(BackendType::Vulkan);
-		backend->Initialize(BackendDesc{ handle, FrameTimePreference::Unlimited });
+		m_backend.Initialize(BackendDesc{ handle, FrameTimePreference::Unlimited });
 		LOG_DEBUG("Backend created");
-		streamingManager.Initialize(*backend);
+		m_streamingManager.Initialize(m_backend);
 		LOG_DEBUG("StreamingManager created");
-		renderer.Initialize(*backend, assetManager, streamingManager);
+		m_renderer.Initialize(m_backend, m_assetPool);
 		LOG_DEBUG("Renderer created");
 
 		AppContext appCtx
 		{
-			*backend,
-			assetManager,
-			streamingManager,
-			renderer,
-			dispatcher,
+			m_assetManager,
+			m_dispatcher,
 		};
 
-		AppContext ctx
+		PresentationContext ctx
 		{
-			*backend,
-			assetManager,
-			streamingManager,
-			renderer,
-			dispatcher,
+			appCtx,
+			m_backend,
+			m_renderer,
+			m_streamingManager,
+			m_assetPool,
 		};
 
-		for (auto& scene : allScenes)
+		for (auto& scene : m_allScenes)
 		{
-			auto assetBundle = AssetBundleWriter(assetManager, streamingManager, *backend);
 			scene->Initialize(ctx);
 		}
 	}
 
-	void GameApp::TransferToScene(uint32_t scene)
+	void GameClientApp::TransferToScene(uint32_t scene)
 	{
-		assert(scene < allScenes.size());
-		nextScene = allScenes[scene].get();
+		assert(scene < m_allScenes.size());
+		m_nextScene = m_allScenes[scene].get();
 	}
 
-	void GameApp::Shutdown()
+	void GameClientApp::Shutdown()
 	{
-		backend->WaitDeviceIdle();
-		renderer.Shutdown(*backend);
-		streamingManager.Shutdown(*backend);
-		backend->Shutdown();
+		m_backend.WaitDeviceIdle();
+		m_renderer.Shutdown(m_backend);
+		m_streamingManager.Shutdown(m_backend);
+		m_backend.Shutdown();
 	}
 
-	AppFrameAction GameApp::Update(float dt, InputSystem& input)
+	AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
 	{
 		AppFrameAction appRes = AppFrameAction::WaitFPS60;
-		auto res = backend->BeginFrame();
+		auto res = m_backend.BeginFrame();
 		if (res == BeginFrameAction::RecreateSurface)
 			return appRes | AppFrameAction::WaitSurface;
 		if (res != BeginFrameAction::Continue)
 			return appRes | AppFrameAction::None;
 
-		AppContext appCtx
+		AppContext ctx
 		{
-			*backend,
-			assetManager,
-			streamingManager,
-			renderer,
-			dispatcher,
+			m_assetManager,
+			m_dispatcher,
 		};
+		PresentationContext pctx
+		{
+			ctx,
+			m_backend,
+			m_renderer,
+			m_streamingManager,
+			m_assetPool,
+		};
+
 		std::vector<SceneAction> outSceneActions;
-		FrameContext frame
+		FrameInputData frame
 		{
 			dt,
-			world,
 			input,
+		};
+		FrameOutputData frameOut
+		{
+			m_presentationWorld,
 			outSceneActions,
 		};
-		if (nextScene != nullptr)
+		if (m_nextScene != nullptr)
 		{
-			if (currentScene != nullptr)
+			if (m_currentScene != nullptr)
 			{
-				currentScene->Exit(appCtx);
+				m_currentScene->Exit(pctx);
 			}
-			nextScene->Enter(appCtx);
-			currentScene = nextScene;
-			nextScene = nullptr;
+			m_nextScene->Enter(pctx);
+			m_currentScene = m_nextScene;
+			m_nextScene = nullptr;
 		}
-		assert(currentScene != nullptr);
-		world.clear();
-		currentScene->Update(appCtx, frame);
+		assert(m_currentScene != nullptr);
+		m_presentationWorld.clear();
+		m_currentScene->Update(pctx, frame, frameOut);
 
-		renderer.Prepare(*backend, world, dt);
-		auto& tcmd = backend->CreateCommandList(QueueType::Transfer);
+		m_renderer.Prepare(m_backend, m_presentationWorld, dt);
+		auto& tcmd = m_backend.CreateCommandList(QueueType::Transfer);
 		tcmd.Begin();
-		streamingManager.RunUploadStep(*backend, tcmd);
+		m_streamingManager.RunUploadStep(m_backend, tcmd);
 		tcmd.End();
 
-		renderer.Render(*backend, dt);
-		auto endRes = backend->EndFrame();
+		m_renderer.Render(m_backend, dt);
+		auto endRes = m_backend.EndFrame();
 
-		for (auto& action : frame.outSceneActions)
+		for (auto& action : frameOut.outSceneActions)
 		{
 			if (action.type == SceneActionType::SetMouseWarpping)
 			{
@@ -144,13 +146,13 @@ namespace OneGame::Engine
 		return appRes;
 	}
 
-	void GameApp::OnResize(int width, int height)
+	void GameClientApp::OnResize(int width, int height)
 	{
-		backend->Resize(width, height);
+		m_backend.Resize(width, height);
 	}
 
-	void GameApp::OnWindowRecreate(Graphics::WindowHandle* handle)
+	void GameClientApp::OnWindowRecreate(Graphics::WindowHandle* handle)
 	{
-		backend->RecreateSurface(handle);
+		m_backend.RecreateSurface(handle);
 	}
 }

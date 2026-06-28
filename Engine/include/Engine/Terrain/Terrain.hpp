@@ -260,7 +260,13 @@ namespace OneGame::Engine::Terrain
 	{
 		ChunkDataCollection chunks;
 		std::queue<ChunkHandle> generateTerrainQueue;
+		std::unordered_set<Point3, Point3Hash> chunksToDestroy;
+		std::unordered_map<ChunkHandle, std::vector<LocalUpdateBlockCmd>, HandleHash<ChunkHandle>> blockModificationQueue;
+		std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> dirtyChunks;
+	};
 
+	struct TerrainPresentationData
+	{
 		std::queue<ChunkHandle> buildMeshQueue;
 		ResourcePool<TerrainObject::MeshingWorkerContext, ChunkMeshingWorkerContext> meshingWorkerContexts;
 		ResourcePool<TerrainObject::BuiltChunkMesh, BuiltChunkMesh2> builtChunkMeshes;
@@ -268,10 +274,7 @@ namespace OneGame::Engine::Terrain
 		std::queue<std::tuple<ChunkHandle, BuiltMeshHandle>> uploadMeshQueue;
 		GPUBufferHandle terrainMesh;
 
-		std::unordered_set<Point3, Point3Hash> chunksToDestroy;
-		std::unordered_map<ChunkHandle, std::vector<LocalUpdateBlockCmd>, HandleHash<ChunkHandle>> blockModificationQueue;
 		std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> residentChunks;
-		std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> dirtyChunks;
 		std::unordered_set<AllocatedChunkSlot, AllocatedChunkSlotHasher> currentVisibleChunks;
 	};
 
@@ -280,13 +283,13 @@ namespace OneGame::Engine::Terrain
 	class TerrainMeshBuilder
 	{
 	public:
-		void BuildChunkMeshes(TerrainData& terrain, BlockRegistry& blocks);
+		void BuildChunkMeshes(const TerrainData& terrain, const BlockRegistry& blocks, TerrainPresentationData& terrainPData);
 		void SetVertexBudget(uint32_t val)
 		{
 			m_vertexBudget = val;
 		}
 	private:
-		void ExecuteBuildChunkMesh(TerrainData& terrain, MeshingWorkerContextHandle);
+		void ExecuteBuildChunkMesh(TerrainPresentationData& pData, MeshingWorkerContextHandle);
 
 		uint32_t m_vertexBudget = 1024;
 		uint32_t m_runningVertexCount = 0;
@@ -327,7 +330,7 @@ namespace OneGame::Engine::Terrain
 	{
 	public:
 		void SetMaxNumChunks(uint32_t maxNumChunks);
-		void UploadTerrain(TerrainData& terrain, StreamingManager& sm);
+		void UploadTerrain(TerrainPresentationData& terrain, StreamingManager& sm);
 	private:
 		Graphics::ChunkAllocator m_chunkAllocator;
 	};
@@ -375,6 +378,7 @@ namespace OneGame::Engine::Terrain
 		void UploadBuiltChunks(StreamingManager& stream);
 	private:
 		TerrainData m_terrainData;
+		TerrainPresentationData m_terrainPData;
 		TerrainGenerator m_terrainGenerator;
 		TerrainMeshBuilder m_terrainMeshBuilder;
 		TerrainUpdateScheduler m_terrainUpdateScheduler;

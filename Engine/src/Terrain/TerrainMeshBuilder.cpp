@@ -361,7 +361,7 @@ namespace OneGame::Engine::Terrain
 		}
 	}
 
-	void TerrainMeshBuilder::ExecuteBuildChunkMesh(TerrainData& terrain, MeshingWorkerContextHandle handle)
+	void TerrainMeshBuilder::ExecuteBuildChunkMesh(TerrainPresentationData& terrain, MeshingWorkerContextHandle handle)
 	{
 		auto _context = terrain.meshingWorkerContexts.Get(handle);
 		auto context = terrain.builtChunkMeshes.Get(_context->chunkMeshHandle);
@@ -375,26 +375,26 @@ namespace OneGame::Engine::Terrain
 		m_runningVertexCount -= CHUNK_VERTEX_BYTE_SIZE;
 	}
 
-	void TerrainMeshBuilder::BuildChunkMeshes(TerrainData& terrain, BlockRegistry& blocks)
+	void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const BlockRegistry& blocks, TerrainPresentationData& pData)
 	{
 		static_assert(std::is_default_constructible_v<ChunkMeshingWorkerContext>);
-		while (!terrain.buildMeshQueue.empty())
+		while (!pData.buildMeshQueue.empty())
 		{
 			if (m_runningVertexCount > m_vertexBudget)
 				break;
 			m_runningVertexCount += CHUNK_VERTEX_BYTE_SIZE;
-			auto contextHandle = terrain.meshingWorkerContexts.Create();
-			auto context = terrain.meshingWorkerContexts.Get(contextHandle);
-			while (!terrain.buildMeshQueue.empty())
+			auto contextHandle = pData.meshingWorkerContexts.Create();
+			auto context = pData.meshingWorkerContexts.Get(contextHandle);
+			while (!pData.buildMeshQueue.empty())
 			{
-				auto handle = std::move(terrain.buildMeshQueue.front());
-				terrain.buildMeshQueue.pop();
+				auto handle = std::move(pData.buildMeshQueue.front());
+				pData.buildMeshQueue.pop();
 				auto data = terrain.chunks.Get(handle);
 				LOG_DEBUG("building mesh at ({}, {}, {})", data->Coords.x, data->Coords.y, data->Coords.z);
 				
 				// skip chunks with missing neighbors
 				bool incompleteNeighbors = false;
-				ChunkData* neighbors[6] = {};
+				const ChunkData* neighbors[6] = {};
 				for (size_t i = 0; i < 6; ++i)
 				{
 					if (i == FACE_DOWN && data->Coords.y == 0)
@@ -433,13 +433,13 @@ namespace OneGame::Engine::Terrain
 				if (allAndMask == 0x1FFFE)
 				{
 					LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full soild", data->Coords.x, data->Coords.y, data->Coords.z);
-					terrain.residentChunks.insert(handle);
+					pData.residentChunks.insert(handle);
 					continue;
 				}
 				else if (allOrMask == 0x0)
 				{
 					LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full air", data->Coords.x, data->Coords.y, data->Coords.z);
-					terrain.residentChunks.insert(handle);
+					pData.residentChunks.insert(handle);
 					continue;
 				}
 				
@@ -514,9 +514,9 @@ namespace OneGame::Engine::Terrain
 					}
 				}
 
-				context->chunkMeshHandle = terrain.builtChunkMeshes.Create();
+				context->chunkMeshHandle = pData.builtChunkMeshes.Create();
 				context->chunkHandle = handle;
-				ExecuteBuildChunkMesh(terrain, contextHandle);
+				ExecuteBuildChunkMesh(pData, contextHandle);
 				break;
 			}
 		}

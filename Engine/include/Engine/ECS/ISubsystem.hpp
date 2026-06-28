@@ -8,59 +8,75 @@
 class Subsystem##Name : public ISubsystem     \
 {                                              \
 public:                                        \
-	Subsystem##Name(entt::registry& gameWorld) : ISubsystem(gameWorld) {} \
-    void Initialize(SubsystemInitContext& ctx) override; \
-    void Update(SubsystemContext& ctx) override; \
-    void Present(entt::registry& presentationWorld) override; \
+    void Initialize(AppContext& ctx, entt::registry& gameWorld) override; \
+    void Update(AppContext& ctx, entt::registry& gameWorld, const FrameInputData& fd) override; \
+    void Present(const entt::registry& gameWorld, PresentationContext& ctx, FrameOutputData& fd) override; \
 private:									\
 	__VA_ARGS__                             \
 };
 
 namespace OneGame::Engine::ECS
 {
-	struct SubsystemInitContext
-	{
-		AppContext& ctx;
-	};
-
-	struct SubsystemContext
-	{
-		float dt;
-		InputSystem& input;
-		entt::dispatcher& events;
-		const Graphics::IGraphicsBackend& backend;
-	};
-
 	class ISubsystem
 	{
 	public:
-		ISubsystem(entt::registry& gameWorld) : m_gameWorld(gameWorld)
-		{
-		}
 		virtual ~ISubsystem() = default;
-		virtual void Initialize(SubsystemInitContext& ctx) = 0;
-		virtual void Update(SubsystemContext& ctx) = 0;
-		virtual void Present(entt::registry& presentationWorld) = 0;
-	protected:
-		entt::registry& m_gameWorld;
+		virtual void Initialize	(AppContext& ctx, entt::registry& gameWorld) = 0;
+		virtual void Update		(AppContext& ctx, entt::registry& gameWorld, const FrameInputData& fd) = 0;
+		virtual void Present	(const entt::registry& gameWorld, PresentationContext& ctx, FrameOutputData& fd) = 0;
 	};
 
-#ifdef PLATFORM_ANDROID
-	DECLARE_SUBSYSTEM(Camera,
-		int panFingerIndex = -1;
-		int moveFingerIndex = -1;
-		float moveFingerStartX = 0;
-		float moveFingerStartY = 0;
-	);
-#else
 	DECLARE_SUBSYSTEM(Camera);
-#endif
 	DECLARE_SUBSYSTEM(DebugInfo,
-		Graphics::GPUMemoryUsage memUsage;
-		Graphics::GPUInfo gpuInfo;
 		float currentFPS = 0.f;
 		float currentFrameTime = 0.f;
 		float accumTime = 0.f;
 		uint64_t frameCount = 0;
+	);
+
+	DECLARE_SUBSYSTEM(PlayerInput);
+
+	struct UIDrag
+	{
+		int inputIndex = -1;
+		MouseButton dragStartButton;
+		math::vec2 dragStartPos;
+	};
+
+	struct UIDragRelease
+	{
+		UIDrag drag;
+		entt::entity dragStart;
+	};
+
+	struct UIRaycastTarget
+	{
+	};
+
+	struct UIRaycastHit
+	{
+		entt::entity dragStart;
+	};
+
+	struct UIRect
+	{
+		int zLevel;
+		math::vec2 pos;
+		math::vec2 extend;
+		std::string spriteId;
+	};
+
+	struct PlayerMovePanel
+	{
+	};
+
+	struct PlayerViewPanel
+	{
+	};
+
+	// Handle drags and UI rendering
+	DECLARE_SUBSYSTEM(UI,
+		std::array<entt::entity, PointerIdx::COUNT> activeDrags;
+		void onCreateUIRect(entt::registry& gameWorld, entt::entity entity);
 	);
 }

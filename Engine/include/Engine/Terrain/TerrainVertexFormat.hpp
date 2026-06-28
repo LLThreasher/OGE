@@ -129,12 +129,12 @@ namespace OneGame::Engine::Terrain
 	// array 1 : int16
 	// array 2 :
 	//   index 11 bit
-	//   face 3 bit
-	//   texId 8 bit
+	//   face	3 bit
+	//   texId	8 bit
 	//   color 10 bit -> 3 bit rgb
 
 	// V3.1
-	// x,y,z 12 bit
-	// face 3 bit
-	// texSlot 9 bit
+	// x,y,z   12 bit
+	// face		3 bit
+	// texSlot  9 bit
 }

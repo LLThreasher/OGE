@@ -1,7 +1,19 @@
 #include "Engine/Input/InputSystem.hpp"
+#include <cassert>
 
 namespace OneGame::Engine
 {
+    int PointerIdx::PtrIdxFromTouchIdx(int idx)
+    {
+        assert(idx >= 0 && idx < 10);
+        return TOUCH0 + idx;
+    }
+
+    int PointerIdx::TouchIdxFromPtrIdx(int idx)
+    {
+        assert(idx >= TOUCH0 && idx <= TOUCH9);
+        return idx - TOUCH0;
+    }
 
     void InputSystem::NewFrame()
     {

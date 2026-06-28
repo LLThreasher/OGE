@@ -15,7 +15,7 @@ namespace OneGame::Engine
 {
     class AssetManager;
     class StreamingManager;
-    class AssetBundleWriter;
+    class AssetPool;
 }
 
 namespace OneGame::Engine::Graphics
@@ -26,14 +26,14 @@ namespace OneGame::Engine::Graphics
     {
     public:
         NO_COPY(Renderer)
-        void Initialize(IGraphicsBackend& backend, AssetManager& am, StreamingManager& sm);
+        void Initialize(IGraphicsBackend& backend, AssetPool& pool);
         void Shutdown(IGraphicsBackend& backend);
         void Prepare(IGraphicsBackend& backend, entt::registry& world, float deltaTime);
         void Render(IGraphicsBackend& backend, float deltaTime);
 
-        void EnableTerrainPass(IGraphicsBackend& backend, AssetBundleWriter& bundle, Mesh terrainMesh);
+        void EnableTerrainPass(IGraphicsBackend& backend, AssetPool& bundle, Mesh terrainMesh);
         void DisableTerrainPass(IGraphicsBackend& backend);
-        void EnableTerrainPass2(IGraphicsBackend& backend, AssetBundleWriter& bundle, GPUBufferHandle storageBuf);
+        void EnableTerrainPass2(IGraphicsBackend& backend, AssetPool& bundle, GPUBufferHandle storageBuf);
         void DisableTerrainPass2(IGraphicsBackend& backend);
 
     private:

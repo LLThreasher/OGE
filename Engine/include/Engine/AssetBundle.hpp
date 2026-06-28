@@ -1,5 +1,6 @@
 #pragma once
 
+#include <unordered_map>
 #include "Engine/ObjectType.hpp"
 
 namespace OneGame::Engine
@@ -11,11 +12,11 @@ namespace OneGame::Engine
 		class IGraphicsBackend;
 	}
 
-	struct AssetBundleWriter
+	class AssetPool
 	{
 	public:
-		AssetBundleWriter(AssetManager& assets, StreamingManager& stream, Graphics::IGraphicsBackend& backend);
-		~AssetBundleWriter() = default;
+		AssetPool(AssetManager& assets, StreamingManager& stream, Graphics::IGraphicsBackend& backend);
+		~AssetPool() = default;
 
 		bool LoadBlob(const std::string_view& id, std::vector<char>& data);
 
@@ -38,6 +39,7 @@ namespace OneGame::Engine
 		}
 
 	private:
+		std::unordered_map<std::string, GPUTextureHandle> m_texturePool;
 		AssetManager& m_assetManager;
 		StreamingManager& m_streamingManager;
 		Graphics::IGraphicsBackend& m_backend;

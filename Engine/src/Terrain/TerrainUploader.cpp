@@ -3,7 +3,7 @@
 
 namespace OneGame::Engine::Terrain
 {
-	void TerrainUploader::UploadTerrain(TerrainData& terrain, StreamingManager& sm)
+	void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, StreamingManager& sm)
 	{
 		while (!terrain.uploadMeshQueue.empty())
 		{

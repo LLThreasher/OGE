@@ -10,13 +10,12 @@
 namespace OneGame::Engine::Graphics
 {
 
-    void Renderer::Initialize(IGraphicsBackend& backend, AssetManager& assets, StreamingManager& streaming)
+    void Renderer::Initialize(IGraphicsBackend& backend, AssetPool& pool)
     {
         uniformArena.Initialize(backend, backend.MaxUniformBufferSize() > 1024*1024*16 ? 1024*1024*16 : backend.MaxUniformBufferSize());
         LOG_DEBUG("uniform arena created");
 
-        auto bundle = AssetBundleWriter(assets, streaming, backend);
-        InitContext ctx { bundle, uniformArena };
+        InitContext ctx { pool, uniformArena };
         debugInfoPass.Enable(backend, ctx);
         LOG_DEBUG("debug info pass created");
         //testPass.Enable(backend, ctx);
@@ -97,7 +96,7 @@ namespace OneGame::Engine::Graphics
         uniformArena.AdvanceFrame();
     }
     
-    void Renderer::EnableTerrainPass(IGraphicsBackend& backend, AssetBundleWriter& bundle, Mesh terrainMesh)
+    void Renderer::EnableTerrainPass(IGraphicsBackend& backend, AssetPool& bundle, Mesh terrainMesh)
     {
         InitContext initCtx { bundle, uniformArena };
         //terrainPass.Enable(backend, initCtx, terrainMesh);
@@ -110,7 +109,7 @@ namespace OneGame::Engine::Graphics
         enableTerrainPass = false;
     }
 
-    void Renderer::EnableTerrainPass2(IGraphicsBackend& backend, AssetBundleWriter& bundle, GPUBufferHandle storageBuf)
+    void Renderer::EnableTerrainPass2(IGraphicsBackend& backend, AssetPool& bundle, GPUBufferHandle storageBuf)
     {
         InitContext initCtx { bundle, uniformArena };
         terrainPass2.Enable(backend, initCtx, storageBuf);

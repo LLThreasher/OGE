@@ -1,6 +1,6 @@
 add_executable(OneGame
-	"main2.cpp"
-	"TestRenderer.cpp"  )
+	"main.cpp"
+	  )
 
 target_link_libraries(OneGame PRIVATE Engine)
 

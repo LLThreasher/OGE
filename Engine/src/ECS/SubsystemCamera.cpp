@@ -47,10 +47,10 @@ namespace OneGame::Engine::ECS
 		}
 	};
 
-	void SubsystemCamera::Initialize(SubsystemInitContext& ctx)
+	void SubsystemCamera::Initialize(AppContext& ctx, entt::registry& gameWorld)
 	{
-		auto camera = m_gameWorld.create();
-		ComponentCamera& cam = m_gameWorld.emplace<ComponentCamera>(camera);
+		auto camera = gameWorld.create();
+		ComponentCamera& cam = gameWorld.emplace<ComponentCamera>(camera);
 
 		cam.position = { 20.f, 20.f, 20.f };
 
@@ -61,91 +61,28 @@ namespace OneGame::Engine::ECS
 		cam.pitch = std::asin(cam.forward.y);
 	}
 
-	void SubsystemCamera::Update(SubsystemContext& ctx)
+	void SubsystemCamera::Update(AppContext& ctx, entt::registry& gameWorld, const FrameInputData& fd)
 	{
-		float dt = ctx.dt;
-		auto cameraEntity = m_gameWorld.view<ComponentCamera>().front();
-		auto& camera = m_gameWorld.get<ComponentCamera>(cameraEntity);
+		float dt = fd.dt;
+		auto cameraEntity = gameWorld.view<ComponentCamera>().front();
+		auto& camera = gameWorld.get<ComponentCamera>(cameraEntity);
+
 		float dx = 0;
 		float dy = 0;
-		float width = ctx.backend.SwapchainExtend().x;
-#ifdef PLATFORM_ANDROID
-		static float speed = 20.f;
-		static float sens = 1.f;
-		if (panFingerIndex != -1)
-		{
-			dx = ctx.input.GetTouchDX(panFingerIndex) * sens;
-			dy = -ctx.input.GetTouchDY(panFingerIndex) * sens;
-			if ((ctx.input.GetReleasedTouchIdMask() & (1 << panFingerIndex)) != 0)
-			{
-				//LOG_DEBUG("pan up {}", panFingerIndex);
-				panFingerIndex = -1;
-			}
-		}
-		if (ctx.input.GetPressedTouchIdMask() != 0)
-		{
-			auto fingerIdx = __builtin_ctz(ctx.input.GetPressedTouchIdMask());
-			auto fingerX = ctx.input.GetTouchX(fingerIdx);
-			auto fingerY = ctx.input.GetTouchY(fingerIdx);
-			if (fingerX < 0.5)
-			{
-				if (moveFingerIndex == -1)
-				{
-					moveFingerIndex = fingerIdx;
-					moveFingerStartX = fingerX;
-					moveFingerStartY = fingerY;
-					//LOG_DEBUG("move down {} {},{}", moveFingerIndex, fingerX, fingerY);
-				}
-			}
-			else
-			{
-				if (panFingerIndex == -1)
-				{
-					panFingerIndex = fingerIdx;
-					//LOG_DEBUG("pan down {} {},{}", panFingerIndex, fingerX, fingerY);
-				}
-			}
-		}
-#else
-		static float speed = 10.f;
-		static float sens = 0.001f;
-		dx = ctx.input.GetMouseDX() * sens;
-		dy = -ctx.input.GetMouseDY() * sens;
-#endif
 
 		float dwx = 0;
 		float dwz = 0;
-#ifdef PLATFORM_ANDROID
-		if (moveFingerIndex != -1)
-		{
-			dwx += -(ctx.input.GetTouchX(moveFingerIndex) - moveFingerStartX) * dt * speed;
-			dwz += -(ctx.input.GetTouchY(moveFingerIndex) - moveFingerStartY) * dt * speed;
-			if ((ctx.input.GetReleasedTouchIdMask() & (1 << moveFingerIndex)) != 0)
-			{
-				//LOG_DEBUG("move up {}", moveFingerIndex);
-				moveFingerIndex = -1;
-			}
-		}
-#else
-		if (ctx.input.IsKeyDown(KeyCode::KY_A))
-			dwx += dt * speed;
-		if (ctx.input.IsKeyDown(KeyCode::KY_D))
-			dwx -= dt * speed;
-		if (ctx.input.IsKeyDown(KeyCode::KY_W))
-			dwz += dt * speed;
-		if (ctx.input.IsKeyDown(KeyCode::KY_S))
-			dwz -= dt * speed;
-#endif
+
 		camera.ApplyDelta(dx, dy, dwx, dwz);
 	}
 
-	void SubsystemCamera::Present(entt::registry& presentationWorld)
+	void SubsystemCamera::Present(const entt::registry& gameWorld, PresentationContext& ctx, FrameOutputData& fd)
 	{
-		auto e = presentationWorld.create();
-		auto& view = presentationWorld.emplace<Graphics::PViewTransform>(e);
+		auto e = fd.presentationWorld.create();
+		auto& view = fd.presentationWorld.emplace<Graphics::PViewTransform>(e);
 
-		auto cameraEntity = m_gameWorld.view<ComponentCamera>().front();
-		auto& camera = m_gameWorld.get<ComponentCamera>(cameraEntity);
+		auto cameraEntity = gameWorld.view<ComponentCamera>().front();
+		auto& camera = gameWorld.get<ComponentCamera>(cameraEntity);
 
 		view.view = camera.view();
 	}

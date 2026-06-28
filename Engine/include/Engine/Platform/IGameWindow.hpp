@@ -4,14 +4,14 @@
 
 namespace OneGame::Engine
 {
-    class GameApp;
+    class GameClientApp;
 
     class IGameWindow
     {
     public:
         virtual ~IGameWindow() = default;
 
-        virtual void Run(GameApp& app) = 0;
+        virtual void Run(GameClientApp& app) = 0;
     };
 
     std::unique_ptr<IGameWindow>

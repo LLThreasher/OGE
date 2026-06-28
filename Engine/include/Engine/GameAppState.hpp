@@ -3,12 +3,13 @@
 #include <entt/entt.hpp>
 #include "Engine/AssetBundle.hpp"
 #include "Engine/TickScheduler.hpp"
-#include "Engine/Input/InputSystem.hpp"
 
 namespace OneGame::Engine
 {
     class AssetManager;
     class StreamingManager;
+    class InputSystem;
+
     namespace Graphics
     {
         class Renderer;
@@ -55,25 +56,43 @@ namespace OneGame::Engine
         };
     };
 
+    // Application states
     struct AppContext
     {
-        Graphics::IGraphicsBackend& backend;
         AssetManager& assetManager;
-        StreamingManager& streamingManager;
-        Graphics::Renderer& renderer;
         entt::dispatcher& events;
-
-        AssetBundleWriter CreateAssetBundle()
-        {
-            return AssetBundleWriter(assetManager, streamingManager, backend);
-        }
     };
 
-    struct FrameContext
+    // world states are stored in scenes
+
+    // this comes every frame
+    struct FrameInputData
     {
         float dt;
-        entt::registry& presentationWorld;
         InputSystem& input;
+    };
+
+    // game states writes to this
+    struct FrameOutputData
+    {
+        entt::registry& presentationWorld;
         std::vector<SceneAction>& outSceneActions;
     };
+
+    // presentation context
+    // writing presentation world requires this
+    struct PresentationContext
+    {
+        AppContext& appCtx;
+        Graphics::IGraphicsBackend& backend;
+        Graphics::Renderer& renderer;
+        StreamingManager& streamingManager;
+        AssetPool& assetPool;
+    };
+
+    // relationship:
+    // frame input data + application context = game states
+    // game states + presentation context = frame output data
+    // network layer:
+    // server game states -> client game states
 }

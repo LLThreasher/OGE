@@ -12,47 +12,15 @@
 
 namespace OneGame::Engine
 {
-	void DebugScene::Initialize(AppContext& context)
-	{
-		using namespace ECS;
-		//Terrain::TerrainGenerationDesc desc{};
-		//terrain.Initialize(desc);
-		gameWorld.Register<SubsystemDebugInfo>();
-		gameWorld.Register<SubsystemCamera>();
-		gameWorld.Initialize(context);
-	}
-
-	void DebugScene::Enter(AppContext& context)
-	{
-		chunkMesh = context.backend.AllocateGPUBuffer<Graphics::BufferUsage::Storage>(16 * Terrain::CHUNK_STORE_BYTE_SIZE);
-		context.streamingManager.UploadBuffer<UploadType::Immediate, Graphics::BufferUsage::Storage>(chunk_zero_quads, chunkMesh);
-		auto bundle = context.CreateAssetBundle();
-		context.renderer.EnableTerrainPass2(context.backend, bundle, chunkMesh);
-	}
-
-	void DebugScene::Exit(AppContext& context)
-	{
-		context.renderer.DisableTerrainPass2(context.backend);
-	}
-
-	void DebugScene::Update(AppContext& context, FrameContext& frame)
-	{
-		gameWorld.Update(context, frame);
-		auto& world = frame.presentationWorld;
-		auto chunkEntity = world.create();
-		Graphics::PTerrainMesh tMesh = { 0u, 3u, 0, 0, 0 };
-		world.emplace<Graphics::PTerrainMesh>(chunkEntity, tMesh);
-	}
-
-	void DebugScene2::Initialize(AppContext& context)
+	void DebugScene2::Initialize(PresentationContext& context)
 	{
 		using namespace ECS;
 		gameWorld.Register<SubsystemCamera>();
 		gameWorld.Register<SubsystemDebugInfo>();
-		gameWorld.Initialize(context);
+		gameWorld.Initialize(context.appCtx);
 	}
 
-	void DebugScene2::Enter(AppContext& context)
+	void DebugScene2::Enter(PresentationContext& context)
 	{
 		using namespace Terrain;
 		using BufferUsage = Graphics::BufferUsage;
@@ -133,7 +101,7 @@ namespace OneGame::Engine
 		assert(handle.IsValid());
 		auto coord = chunk->Coords;
 		LOG_DEBUG("queuing chunk ({}, {}, {}) with ({}, {}, {})", 0, 0, 0, coord.x, coord.y, coord.z);
-		terrainData.buildMeshQueue.push(handle);
+		terrainPresData.buildMeshQueue.push(handle);
 
 		//for (int cx = -3; cx < 3; ++cx)
 		//{
@@ -151,12 +119,12 @@ namespace OneGame::Engine
 		//}
 		BlockRegistry blocks;
 		meshBuilder.SetVertexBudget(192 * 1024 * 1024);
-		meshBuilder.BuildChunkMeshes(terrainData, blocks);
+		meshBuilder.BuildChunkMeshes(terrainData, blocks, terrainPresData);
 		LOG_DEBUG("end generate mesh");
 
-		terrainData.terrainMesh = context.backend.AllocateGPUBuffer<BufferUsage::Storage>(chunkCount * 4 * Terrain::CHUNK_STORE_BYTE_SIZE);
-		auto bundle = context.CreateAssetBundle();
-		context.renderer.EnableTerrainPass2(context.backend, bundle, terrainData.terrainMesh);
+		terrainPresData.terrainMesh = context.backend.AllocateGPUBuffer<BufferUsage::Storage>(chunkCount * 4 * Terrain::CHUNK_STORE_BYTE_SIZE);
+		auto bundle = context.assetPool;
+		context.renderer.EnableTerrainPass2(context.backend, bundle, terrainPresData.terrainMesh);
 
 		int active_count = chunkCount - 23;
 		LOG_INFO("total used size: {} {}", active_count, active_count * Terrain::CHUNK_STORE_BYTE_SIZE * 4);
@@ -164,13 +132,13 @@ namespace OneGame::Engine
 		auto event = context.streamingManager.CreateResourceBundle([&] {
 			isTerrainReady = true;
 			});
-		while (!terrainData.uploadMeshQueue.empty() && currentSlot < active_count)
+		while (!terrainPresData.uploadMeshQueue.empty() && currentSlot < active_count)
 		{
-			auto [chunkHandle, builtMeshHandle] = std::move(terrainData.uploadMeshQueue.front());
-			terrainData.uploadMeshQueue.pop();
-			auto builtMesh = terrainData.builtChunkMeshes.Get(builtMeshHandle);
+			auto [chunkHandle, builtMeshHandle] = std::move(terrainPresData.uploadMeshQueue.front());
+			terrainPresData.uploadMeshQueue.pop();
+			auto builtMesh = terrainPresData.builtChunkMeshes.Get(builtMeshHandle);
 			auto chunkCoord = terrainData.chunks.Get(chunkHandle)->Coords;
-			context.streamingManager.UploadBuffer<UploadType::Async, BufferUsage::Storage>(builtMesh->quads, terrainData.terrainMesh, currentSlot * Terrain::CHUNK_STORE_BYTE_SIZE, event);
+			context.streamingManager.UploadBuffer<UploadType::Async, BufferUsage::Storage>(builtMesh->quads, terrainPresData.terrainMesh, currentSlot * Terrain::CHUNK_STORE_BYTE_SIZE, event);
 			testSlots.push_back(Graphics::PTerrainMesh{ currentSlot * Terrain::CHUNK_STORE_BYTE_SIZE, static_cast<uint32_t>(builtMesh->quads.size()) * 6, chunkCoord.x, chunkCoord.y, chunkCoord.z });
 			currentSlot += 4;
 			assert(builtMesh->quads.size() * sizeof(Terrain::TexturedQuad) <= Terrain::CHUNK_STORE_BYTE_SIZE * 4);
@@ -179,14 +147,14 @@ namespace OneGame::Engine
 		LOG_DEBUG("used slots {}", currentSlot);
 	}
 
-	void DebugScene2::Exit(AppContext& context)
+	void DebugScene2::Exit(PresentationContext& context)
 	{
 		context.renderer.DisableTerrainPass2(context.backend);
 	}
 
-	void DebugScene2::Update(AppContext& context, FrameContext& frame)
+	void DebugScene2::Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut)
 	{
-		auto& world = frame.presentationWorld;
+		auto& world = frameOut.presentationWorld;
 		if (isTerrainReady)
 		{
 			for (auto& slot : testSlots)
@@ -197,14 +165,17 @@ namespace OneGame::Engine
 		}
 
 		if (wrappingEnabled)
-			gameWorld.Update(context, frame);
+		{
+			gameWorld.Update(context.appCtx, frame);
+			gameWorld.Present(context, frameOut);
+		}
 
 		if (frame.input.IsKeyDown(KeyCode::KY_G) || firstFrame)
 		{
 			SceneAction a{};
 			a.type = SceneActionType::SetMouseWarpping;
 			a.setMouseWarpping.enabled = true;
-			frame.outSceneActions.emplace_back(a);
+			frameOut.outSceneActions.emplace_back(a);
 			wrappingEnabled = true;
 			firstFrame = false;
 		}
@@ -213,7 +184,7 @@ namespace OneGame::Engine
 			SceneAction a{};
 			a.type = SceneActionType::SetMouseWarpping;
 			a.setMouseWarpping.enabled = false;
-			frame.outSceneActions.emplace_back(a);
+			frameOut.outSceneActions.emplace_back(a);
 			wrappingEnabled = false;
 		}
 	}

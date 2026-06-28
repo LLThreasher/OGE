@@ -3,7 +3,8 @@
 
 namespace OneGame::Engine
 {
-	enum class MouseButton : uint32_t {
+	enum class MouseButton : uint32_t
+	{
 		Left = 0,
 		Right,
 		Middle,
@@ -12,5 +13,16 @@ namespace OneGame::Engine
 		Button5,
 		Button6,
 		Button7
+	};
+
+	constexpr std::array<MouseButton, 8> ALL_MOUSE_BUTTONS {
+		MouseButton::Left,
+		MouseButton::Right,
+		MouseButton::Middle,
+		MouseButton::Button3,
+		MouseButton::Button4,
+		MouseButton::Button5,
+		MouseButton::Button6,
+		MouseButton::Button7
 	};
 }

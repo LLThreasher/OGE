@@ -39,7 +39,7 @@ PRIVATE
     "src/ECS/SubsystemDebugInfo.cpp"
     "src/AssetBundle.cpp"
     "src/Terrain/TerrainUploader.cpp"
-)
+ "src/ECS/SubsystemPlayerInput.cpp"  "src/ECS/SubsystemUI.cpp")
 
 target_include_directories(Engine
     PUBLIC

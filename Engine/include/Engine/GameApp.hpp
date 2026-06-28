@@ -8,9 +8,7 @@
 #include "Engine/StreamingManager.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/Input/InputSystem.hpp"
-#include "Engine/Terrain/Terrain.hpp"
 #include "Engine/Scenes/IScene.hpp"
-#include "Engine/GameAppState.hpp"
 
 namespace OneGame::Engine
 {
@@ -20,20 +18,24 @@ namespace OneGame::Engine
         class IGraphicsBackend;
     }
 
-    class IGameApp
+    class GameServerApp
     {
     public:
-        virtual void Initialize(const Graphics::WindowHandle&) = 0;
-        virtual void Shutdown() = 0;
-        virtual void Update(float dt) = 0;
-        virtual void OnResize(int width, int height) = 0;
+        void Initialize();
+        void Update(float dt);
+        void Shutdown();
+    private:
+        AssetManager assetManager;
+        entt::dispatcher dispatcher;
+
+        std::unique_ptr<IServerScene> m_serverScene;
     };
 
-    class GameApp
+    class GameClientApp
     {
     public:
-        GameApp();
-        ~GameApp();
+        GameClientApp(Graphics::IGraphicsBackend& backend);
+        ~GameClientApp();
 
         void Initialize(Graphics::WindowHandle* handle);
         AppFrameAction Update(float dt, InputSystem& input);
@@ -44,16 +46,18 @@ namespace OneGame::Engine
     private:
         void TransferToScene(uint32_t nextScene);
 
-        std::unique_ptr<Graphics::IGraphicsBackend> backend;
-        AssetManager assetManager;
-        StreamingManager streamingManager;
-        Graphics::Renderer renderer;
-        entt::dispatcher dispatcher;
+        AssetManager m_assetManager;
+        entt::dispatcher m_dispatcher;
 
-        entt::registry world;
+        Graphics::IGraphicsBackend& m_backend;
+        Graphics::Renderer m_renderer;
+        StreamingManager m_streamingManager;
+        AssetPool m_assetPool;
 
-        std::vector<std::unique_ptr<IScene>> allScenes;
-        IScene* nextScene = nullptr;
-        IScene* currentScene = nullptr;
+        entt::registry m_presentationWorld;
+
+        std::vector<std::unique_ptr<ClientSceneBase>> m_allScenes;
+        ClientSceneBase* m_nextScene = nullptr;
+        ClientSceneBase* m_currentScene = nullptr;
     };
 }

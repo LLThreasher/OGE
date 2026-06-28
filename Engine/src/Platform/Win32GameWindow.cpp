@@ -32,7 +32,7 @@ namespace OneGame::Engine
 	public:
         Win32GameWindow(std::string name, int width, int height);
 
-        void Run(GameApp&) override;
+        void Run(GameClientApp&) override;
     private:
         void PollEvents();
 
@@ -65,7 +65,7 @@ namespace OneGame::Engine
         );
     }
 
-    void Win32GameWindow::Run(GameApp& app)
+    void Win32GameWindow::Run(GameClientApp& app)
     {
         ShowWindow(m_hwnd, SW_SHOW);
 

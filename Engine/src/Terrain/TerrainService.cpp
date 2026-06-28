@@ -49,7 +49,7 @@ namespace OneGame::Engine::Terrain
 	{
 		for (auto chunk : m_terrainData.dirtyChunks)
 		{
-			m_terrainData.buildMeshQueue.push(chunk);
+			m_terrainPData.buildMeshQueue.push(chunk);
 		}
 		m_terrainData.dirtyChunks.clear();
 		m_terrainUpdateScheduler.UpdateChunkVisibility(m_terrainData, chunkOrigin, frustum);
@@ -57,11 +57,11 @@ namespace OneGame::Engine::Terrain
 
 	void TerrainService::BuildTerrainMesh(BlockRegistry& blocks)
 	{
-		m_terrainMeshBuilder.BuildChunkMeshes(m_terrainData, blocks);
+		m_terrainMeshBuilder.BuildChunkMeshes(m_terrainData, blocks, m_terrainPData);
 	}
 
 	void TerrainService::UploadBuiltChunks(StreamingManager& stream)
 	{
-		m_terrainUploader.UploadTerrain(m_terrainData, stream);
+		m_terrainUploader.UploadTerrain(m_terrainPData, stream);
 	}
 }

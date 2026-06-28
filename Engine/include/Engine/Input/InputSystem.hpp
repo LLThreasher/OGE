@@ -7,13 +7,31 @@
 
 namespace OneGame::Engine
 {
+    namespace PointerIdx
+    {
+        constexpr int COUNT = 11;
+        constexpr int MOUSE = 0;
+        constexpr int TOUCH0 = 1;
+        constexpr int TOUCH1 = 2;
+        constexpr int TOUCH2 = 3;
+        constexpr int TOUCH3 = 4;
+        constexpr int TOUCH4 = 5;
+        constexpr int TOUCH5 = 6;
+        constexpr int TOUCH6 = 7;
+        constexpr int TOUCH7 = 8;
+        constexpr int TOUCH8 = 9;
+        constexpr int TOUCH9 = 10;
+
+        int PtrIdxFromTouchIdx(int idx);
+        int TouchIdxFromPtrIdx(int idx);
+    }
 
     class InputSystem
     {
     public:
         static constexpr int MaxKeys = 256;
         static constexpr int MaxMouseButtons = 8;
-        static constexpr int MaxTouches = 16;
+        static constexpr int MaxTouches = 10;
 
         void NewFrame();
 

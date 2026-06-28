@@ -6,16 +6,14 @@
 
 namespace OneGame::Engine::ECS
 {
-	void SubsystemDebugInfo::Initialize(SubsystemInitContext& ctx)
+	void SubsystemDebugInfo::Initialize(AppContext& ctx, entt::registry& gameWorld)
 	{
-		gpuInfo = ctx.ctx.backend.GetGPUInfo();
 	}
 
-	void SubsystemDebugInfo::Update(SubsystemContext& ctx)
+	void SubsystemDebugInfo::Update(AppContext& ctx, entt::registry& gameWorld, const FrameInputData& fd)
 	{
-		memUsage = ctx.backend.GetGPUMemoryUsage();
 		++frameCount;
-		accumTime += ctx.dt;
+		accumTime += fd.dt;
 
 		if (accumTime >= 1.f)
 		{
@@ -27,13 +25,17 @@ namespace OneGame::Engine::ECS
 		}
 	}
 
-	void SubsystemDebugInfo::Present(entt::registry& world)
+	void SubsystemDebugInfo::Present(const entt::registry& gameWorld, PresentationContext& ctx, FrameOutputData& fd)
 	{
+		auto gpuInfo = ctx.backend.GetGPUInfo();
+		auto memUsage = ctx.backend.GetGPUMemoryUsage();
+
+		auto& world = fd.presentationWorld;
 		auto gpuInfoEntity = world.create();
 		auto& gpuInfoText = world.emplace<Graphics::PDebugText>(gpuInfoEntity);
 		gpuInfoText.text = gpuInfo.name;
 		auto debugInfoEntity = world.create();
 		world.emplace<Graphics::PDebugText>(debugInfoEntity);
-		world.get<Graphics::PDebugText>(debugInfoEntity).text = std::format("FPS {} ({} ms)\nGPU Heap 0: {} MB / {} MB", currentFPS, currentFrameTime, memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024);
+		world.get<Graphics::PDebugText>(debugInfoEntity).text = std::format("FPS {:.2f} ({:.2f} ms)\nGPU Heap 0: {} MB / {} MB", currentFPS, currentFrameTime, memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024);
 	}
 }

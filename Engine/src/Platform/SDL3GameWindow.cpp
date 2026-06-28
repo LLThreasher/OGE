@@ -18,6 +18,8 @@
 
 namespace OneGame::Engine
 {
+    constexpr double FPS_60_TARGET_FRAME_DURATION_S = 1.0 / 60.0;
+
 #ifdef PLATFORM_DARWIN
     const void* GetMetalLayer(SDL_Window* sdlWindow);
 #endif
@@ -38,7 +40,7 @@ namespace OneGame::Engine
     public:
         SDL3GameWindow(std::string name, int width, int height);
 
-        void Run(GameApp&) override;
+        void Run(GameClientApp&) override;
     private:
         void PollEvents();
         Graphics::WindowHandle GetCurrentWindow();
@@ -123,7 +125,7 @@ namespace OneGame::Engine
         return handle;
     }
 
-    void SDL3GameWindow::Run(GameApp& app)
+    void SDL3GameWindow::Run(GameClientApp& app)
     {
         SDL_ShowWindow(m_window);
         try
@@ -139,14 +141,14 @@ namespace OneGame::Engine
             return;
         }
 
-        const int FPS_60_TARGET_FRAME_DURATION_MS = 1000.0 / 60;
-
         uint64_t perfFrequency = SDL_GetPerformanceFrequency();
         bool readyToClose = false;
         bool waitingSurface = false;
         SDL_Event event;
 
-        double timeAccumulator = 0.0f;
+        double elapsedS = 0.0;
+        double finalDeltaTime;
+
         while (!readyToClose)
         {
             uint64_t frameStartTicks = SDL_GetPerformanceCounter();
@@ -195,14 +197,14 @@ namespace OneGame::Engine
             if (waitingSurface)
                 continue;
 
-            auto appFrameAction = app.Update(m_timer.Tick(), m_input);
+            auto appFrameAction = app.Update(finalDeltaTime, m_input);
             if ((appFrameAction & AppFrameAction::WaitSurface) == AppFrameAction::WaitSurface)
             {
                 waitingSurface = true;
             }
 
             uint64_t frameEndTicks = SDL_GetPerformanceCounter();
-            double elapsedMS = (double)(frameEndTicks - frameStartTicks) * 1000.0 / perfFrequency;
+            elapsedS = (double)(frameEndTicks - frameStartTicks) / perfFrequency;
 
             if ((appFrameAction & AppFrameAction::WrapMouse) == AppFrameAction::WrapMouse)
             {
@@ -214,9 +216,14 @@ namespace OneGame::Engine
             }
             else if ((appFrameAction & AppFrameAction::WaitFPS60) == AppFrameAction::WaitFPS60)
             {
-                if (elapsedMS < FPS_60_TARGET_FRAME_DURATION_MS) {
-                    double delayMS = FPS_60_TARGET_FRAME_DURATION_MS - elapsedMS;
-                    SDL_Delay(static_cast<Uint32>(delayMS));
+                if (elapsedS < FPS_60_TARGET_FRAME_DURATION_S) {
+                    double delayS = FPS_60_TARGET_FRAME_DURATION_S - elapsedS;
+                    SDL_Delay(static_cast<Uint32>(delayS));
+                    finalDeltaTime = FPS_60_TARGET_FRAME_DURATION_S;
+                }
+                else
+                {
+                    finalDeltaTime = elapsedS;
                 }
             }
         }
