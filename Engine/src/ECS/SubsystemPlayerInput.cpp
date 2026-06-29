@@ -18,10 +18,10 @@ static math::vec2 ScreenSpaceToSufaceSpace(const UIRect rect, math::vec2 screenP
     return (screenPos - rect.pos) / rect.extend;
 }
 
-void SubsystemPlayerInput::Initialize(AppContext& ctx, entt::registry& gameWorld)
+void SubsystemPlayerInput::Initialize(GameWorldContext& game, AppContext ctx)
 {
-    gameWorld.on_construct<UIFocus>().connect<&SubsystemPlayerInput::onUIGainFocus>(this);
-    gameWorld.on_destroy<UIFocus>().connect<&SubsystemPlayerInput::onUILoseFocus>(this);
+    game.world.on_construct<UIFocus>().connect<&SubsystemPlayerInput::onUIGainFocus>(this);
+    game.world.on_destroy<UIFocus>().connect<&SubsystemPlayerInput::onUILoseFocus>(this);
 }
 
 void SubsystemPlayerInput::onUIGainFocus(entt::registry& gameWorld, entt::entity entity)
@@ -53,18 +53,18 @@ void SubsystemPlayerInput::onUILoseFocus(entt::registry& gameWorld, entt::entity
     }
 }
 
-void SubsystemPlayerInput::Update(AppContext& ctx, entt::registry& gameWorld, const FrameInputData& f)
+void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& f)
 {
     for (auto [entity, prect, panel, data] :
-         gameWorld.view<const UIRect, const PlayerViewPanel, PlayerInputData>().each())
+         game.world.view<const UIRect, const PlayerViewPanel, PlayerInputData>().each())
     {
         // handle touch
         if (panel.source & InputSource::Widget)
         {
             // handle move
             {
-                auto& rect = gameWorld.get<UIRect>(panel.widgetInput.moveWidget);
-                auto drag = gameWorld.try_get<UIDrag>(panel.widgetInput.moveWidget);
+                auto& rect = game.world.get<UIRect>(panel.widgetInput.moveWidget);
+                auto drag = game.world.try_get<UIDrag>(panel.widgetInput.moveWidget);
                 if (drag != nullptr)
                 {
                     auto touchIdx = PointerIdx::TouchIdxFromPtrIdx(drag->inputIndex);
@@ -74,8 +74,8 @@ void SubsystemPlayerInput::Update(AppContext& ctx, entt::registry& gameWorld, co
             }
             // handle pan
             {
-                auto& rect = gameWorld.get<UIRect>(panel.widgetInput.viewWidget);
-                auto drag = gameWorld.try_get<UIDrag>(panel.widgetInput.viewWidget);
+                auto& rect = game.world.get<UIRect>(panel.widgetInput.viewWidget);
+                auto drag = game.world.try_get<UIDrag>(panel.widgetInput.viewWidget);
                 if (drag != nullptr)
                 {
                     auto touchIdx = PointerIdx::TouchIdxFromPtrIdx(drag->inputIndex);
@@ -105,7 +105,7 @@ void SubsystemPlayerInput::Update(AppContext& ctx, entt::registry& gameWorld, co
     }
 }
 
-void SubsystemPlayerInput::Present(const entt::registry& gameWorld, PresentationContext& pctx, FrameOutputData& f)
+void SubsystemPlayerInput::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& f)
 {
     if (playerInputUsingKeyMouse.has_value() && !isKeyMouseUsed)
     {

@@ -6,9 +6,9 @@
 
 namespace OneGame::Engine::ECS
 {
-void SubsystemDebugInfo::Initialize(AppContext& ctx, entt::registry& gameWorld) {}
+void SubsystemDebugInfo::Initialize(GameWorldContext& game, AppContext ctx) {}
 
-void SubsystemDebugInfo::Update(AppContext& ctx, entt::registry& gameWorld, const FrameInputData& fd)
+void SubsystemDebugInfo::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd)
 {
     ++frameCount;
     accumTime += fd.dt;
@@ -23,7 +23,7 @@ void SubsystemDebugInfo::Update(AppContext& ctx, entt::registry& gameWorld, cons
     }
 }
 
-void SubsystemDebugInfo::Present(const entt::registry& gameWorld, PresentationContext& ctx, FrameOutputData& fd)
+void SubsystemDebugInfo::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
 {
     auto gpuInfo = ctx.backend.GetGPUInfo();
     auto memUsage = ctx.backend.GetGPUMemoryUsage();

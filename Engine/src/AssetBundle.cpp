@@ -1,4 +1,5 @@
 #include "Engine/AssetBundle.hpp"
+#include "Engine/GameAppState.hpp"
 
 #include "Engine/AssetManager.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
@@ -8,23 +9,44 @@ namespace OneGame::Engine
 {
 using BufferUsage = Graphics::BufferUsage;
 
-AssetPool::AssetPool(AssetManager& assets, StreamingManager& stream, Graphics::IGraphicsBackend& backend)
-    : m_assetManager(assets), m_streamingManager(stream), m_backend(backend)
+bool AssetPool::Load(const std::string_view& id, GPUTextureHandle& outTexture)
 {
+    auto it = m_texturePool.find(std::string(id));
+    if (it == m_texturePool.end())
+    {
+        outTexture = {};
+        return false;
+    }
+    else
+    {
+        outTexture = it->second;
+        return true;
+    }
 }
 
-bool AssetPool::LoadBlob(const std::string_view& id, std::vector<char>& data) { return TryLoadBlob(id, data); }
-
-GPUTextureHandle AssetPool::LoadTexture(const std::string_view& id)
+void AssetPool::Cache(const std::string_view& id, const GPUTextureHandle texture)
 {
-    auto tex = m_assetManager.LoadTexture(id);
+    m_texturePool.emplace(id, texture);
+}
+
+bool AssetBase::LoadBlob(const std::string_view& id, std::vector<char>& data) { return TryLoadBlob(id, data); }
+
+GPUTextureHandle AssetContext::LoadTexture(const std::string_view& id)
+{
+    GPUTextureHandle result;
+    if (assetPool.Load(id, result))
+    {
+        return result;
+    }
+    auto tex = assetManager.LoadTexture(id);
     auto& info = tex->info;
-    auto res = m_backend.AllocateGPUTexture(info.width, info.height);
-    m_streamingManager.UploadTexture<UploadType::Immediate>(tex->data, res, 0);
+    auto res = backend.AllocateGPUTexture(info.width, info.height);
+    streamingManager.UploadTexture<UploadType::Immediate>(tex->data, res, 0);
+    assetPool.Cache(id, res);
     return res;
 }
 
-Mesh AssetPool::LoadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices,
+Mesh AssetContext::LoadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices,
                          uint32_t indexCount, ResourceBundleHandle res)
 {
     Mesh m = AllocateMesh(vertices.size(), indices.size());
@@ -33,26 +55,26 @@ Mesh AssetPool::LoadMesh(const std::span<const std::byte> vertices, const std::s
 }
 
 template <auto uploadType>
-void AssetPool::UploadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices, Mesh& m,
+void AssetContext::UploadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices, Mesh& m,
                            uint32_t indexCount, ResourceBundleHandle res)
 {
-    m_streamingManager.UploadBuffer<uploadType, BufferUsage::Vertex>(vertices, m.vertexBuffer, m.vOffset, res);
-    m_streamingManager.UploadBuffer<uploadType, BufferUsage::Index>(indices, m.indexBuffer, m.iOffset, res);
+    streamingManager.UploadBuffer<uploadType, BufferUsage::Vertex>(vertices, m.vertexBuffer, m.vOffset, res);
+    streamingManager.UploadBuffer<uploadType, BufferUsage::Index>(indices, m.indexBuffer, m.iOffset, res);
     m.indexCount = indexCount;
 }
 
-Mesh AssetPool::AllocateMesh(int vCount, int iCount)
+Mesh AssetContext::AllocateMesh(int vCount, int iCount)
 {
     Mesh m{};
-    m.vertexBuffer = m_backend.AllocateGPUBuffer<BufferUsage::Vertex>(vCount);
-    m.indexBuffer = m_backend.AllocateGPUBuffer<BufferUsage::Index>(iCount);
+    m.vertexBuffer = backend.AllocateGPUBuffer<BufferUsage::Vertex>(vCount);
+    m.indexBuffer = backend.AllocateGPUBuffer<BufferUsage::Index>(iCount);
     return m;
 }
 
-template void AssetPool::UploadMesh<UploadType::Async>(const std::span<const std::byte> vertices,
+template void AssetContext::UploadMesh<UploadType::Async>(const std::span<const std::byte> vertices,
                                                        const std::span<const std::byte> indices, Mesh& m,
                                                        uint32_t indexCount, ResourceBundleHandle res);
-template void AssetPool::UploadMesh<UploadType::Immediate>(const std::span<const std::byte> vertices,
+template void AssetContext::UploadMesh<UploadType::Immediate>(const std::span<const std::byte> vertices,
                                                            const std::span<const std::byte> indices, Mesh& m,
                                                            uint32_t indexCount, ResourceBundleHandle res);
 }  // namespace OneGame::Engine

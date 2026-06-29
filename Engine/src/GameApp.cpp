@@ -16,8 +16,23 @@ using namespace Graphics;
 constexpr uint32_t DEBUG_SCENE2 = 0;
 constexpr uint32_t DEBUG_SCENE3 = 1;
 
+inline PresentationContext GameClientApp::PresentCtx()
+{
+	return {m_assetManager, m_streamingManager, m_backend, m_assetPool, m_dispatcher, m_renderer};
+}
+
+inline PresentationContext GameClientApp::PresentCtx(AssetContext assets)
+{
+	return {assets, m_dispatcher, m_renderer};
+}
+
+inline AssetContext GameClientApp::AssetCtx()
+{
+	return {m_assetManager, m_streamingManager, m_backend, m_assetPool};
+}
+
 GameClientApp::GameClientApp(IGraphicsBackend& backend)
-    : m_backend(backend), m_assetPool(m_assetManager, m_streamingManager, m_backend)
+    : m_backend(backend)
 {
     m_allScenes.push_back(std::unique_ptr<ClientSceneBase>(new DebugScene2()));
     m_allScenes.push_back(std::unique_ptr<ClientSceneBase>(new DebugScene3()));
@@ -32,17 +47,11 @@ void GameClientApp::Initialize(WindowHandle* handle)
     LOG_DEBUG("Backend created");
     m_streamingManager.Initialize(m_backend);
     LOG_DEBUG("StreamingManager created");
-    m_renderer.Initialize(m_backend, m_assetPool);
+	AssetContext assets = AssetCtx();
+    m_renderer.Initialize(assets);
     LOG_DEBUG("Renderer created");
 
-    AppContext appCtx{
-        m_assetManager,
-        m_dispatcher,
-    };
-
-    PresentationContext ctx{
-        appCtx, m_backend, m_renderer, m_streamingManager, m_assetPool,
-    };
+    PresentationContext ctx = PresentCtx(assets);
 
     for (auto& scene : m_allScenes)
     {
@@ -59,7 +68,8 @@ void GameClientApp::TransferToScene(uint32_t scene)
 void GameClientApp::Shutdown()
 {
     m_backend.WaitDeviceIdle();
-    m_renderer.Shutdown(m_backend);
+	auto assets = AssetCtx();
+    m_renderer.Shutdown(assets);
     m_streamingManager.Shutdown(m_backend);
     m_backend.Shutdown();
 }
@@ -73,13 +83,7 @@ AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
 
     m_dispatcher.update();
 
-    AppContext ctx{
-        m_assetManager,
-        m_dispatcher,
-    };
-    PresentationContext pctx{
-        ctx, m_backend, m_renderer, m_streamingManager, m_assetPool,
-    };
+    PresentationContext pctx = PresentCtx();
 
     std::vector<SceneAction> outSceneActions;
     FrameInputData frame{
@@ -104,7 +108,7 @@ AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
     m_presentationWorld.clear();
     m_currentScene->Update(pctx, frame, frameOut);
 
-    m_renderer.Prepare(m_backend, m_presentationWorld, dt);
+    m_renderer.Prepare(pctx, m_presentationWorld, dt);
     auto& tcmd = m_backend.CreateCommandList(QueueType::Transfer);
     tcmd.Begin();
     m_streamingManager.RunUploadStep(m_backend, tcmd);

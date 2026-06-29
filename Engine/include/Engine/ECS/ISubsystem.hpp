@@ -8,23 +8,35 @@
     class Subsystem##Name : public ISubsystem                                                                  \
     {                                                                                                          \
        public:                                                                                                 \
-        void Initialize(AppContext& ctx, entt::registry& gameWorld) override;                                  \
-        void Update(AppContext& ctx, entt::registry& gameWorld, const FrameInputData& fd) override;            \
-        void Present(const entt::registry& gameWorld, PresentationContext& ctx, FrameOutputData& fd) override; \
+        void Initialize(GameWorldContext& game, AppContext ctx) override;                                  \
+        void Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd) override;            \
+        void Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd) override; \
                                                                                                                \
        private:                                                                                                \
         __VA_ARGS__                                                                                            \
     };
 
+namespace OneGame::Engine::Terrain
+{
+	class TerrainService;
+}
+
 namespace OneGame::Engine::ECS
 {
+
+struct GameWorldContext
+{
+	entt::registry& world;
+	Terrain::TerrainService& terrain;
+};
+
 class ISubsystem
 {
    public:
     virtual ~ISubsystem() = default;
-    virtual void Initialize(AppContext& ctx, entt::registry& gameWorld) = 0;
-    virtual void Update(AppContext& ctx, entt::registry& gameWorld, const FrameInputData& fd) = 0;
-    virtual void Present(const entt::registry& gameWorld, PresentationContext& ctx, FrameOutputData& fd) = 0;
+    virtual void Initialize(GameWorldContext& game, AppContext ctx) = 0;
+    virtual void Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd) = 0;
+    virtual void Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd) = 0;
 };
 
 DECLARE_SUBSYSTEM(Camera);

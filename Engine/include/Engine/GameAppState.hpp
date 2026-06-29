@@ -54,10 +54,16 @@ struct SceneAction
     };
 };
 
-// Application states
-struct AppContext
+struct AssetBase
 {
     AssetManager& assetManager;
+
+    bool LoadBlob(const std::string_view& id, std::vector<char>& data);
+};
+
+// Application states
+struct AppContext : AssetBase
+{
     entt::dispatcher& events;
 };
 
@@ -77,15 +83,42 @@ struct FrameOutputData
     std::vector<SceneAction>& outSceneActions;
 };
 
+struct AssetContext : AssetBase
+{
+    StreamingManager& streamingManager;
+    Graphics::IGraphicsBackend& backend;
+    AssetPool& assetPool;
+
+    GPUTextureHandle LoadTexture(const std::string_view& id);
+    Mesh AllocateMesh(int vCount, int iCount);
+    Mesh LoadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices,
+                  uint32_t indexCount, ResourceBundleHandle res = {});
+    template <typename TData, typename TIndex>
+    Mesh LoadMesh(const std::vector<TData>& vertices, const std::vector<TIndex>& indices)
+    {
+        return LoadMesh(std::as_bytes(std::span{vertices}), std::as_bytes(std::span{indices}), indices.size());
+    }
+    template <auto uploadType>
+    void UploadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices, Mesh& m,
+                    uint32_t indexCount, ResourceBundleHandle res = {});
+    template <auto uploadType, typename TData, typename TIndex>
+    void UploadMesh(const std::vector<TData>& vertices, const std::vector<TIndex>& indices, Mesh& m,
+                    ResourceBundleHandle res = {})
+    {
+        UploadMesh<uploadType>(std::as_bytes(std::span{vertices}), std::as_bytes(std::span{indices}), m, indices.size(),
+                               res);
+    }
+};
+
 // presentation context
 // writing presentation world requires this
-struct PresentationContext
+struct PresentationContext : AssetContext
 {
-    AppContext& appCtx;
-    Graphics::IGraphicsBackend& backend;
+    entt::dispatcher& events;
     Graphics::Renderer& renderer;
-    StreamingManager& streamingManager;
-    AssetPool& assetPool;
+
+    operator AppContext() const { return {assetManager, events}; }
+    operator AppContext() { return {assetManager, events}; }
 };
 
 // relationship:

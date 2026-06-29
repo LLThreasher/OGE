@@ -50,10 +50,10 @@ struct ComponentCamera
     }
 };
 
-void SubsystemCamera::Initialize(AppContext& ctx, entt::registry& gameWorld)
+void SubsystemCamera::Initialize(GameWorldContext& game, AppContext ctx)
 {
-    auto camera = gameWorld.create();
-    ComponentCamera& cam = gameWorld.emplace<ComponentCamera>(camera);
+    auto camera = game.world.create();
+    ComponentCamera& cam = game.world.emplace<ComponentCamera>(camera);
 
     cam.position = {20.f, 20.f, 20.f};
 
@@ -62,27 +62,27 @@ void SubsystemCamera::Initialize(AppContext& ctx, entt::registry& gameWorld)
 
     cam.yaw = std::atan2(cam.forward.x, cam.forward.z);
     cam.pitch = std::asin(cam.forward.y);
-    cam.playerInputData = gameWorld.view<PlayerInputData>().front();
+    cam.playerInputData = game.world.view<PlayerInputData>().front();
 }
 
-void SubsystemCamera::Update(AppContext& ctx, entt::registry& gameWorld, const FrameInputData& fd)
+void SubsystemCamera::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd)
 {
     float dt = fd.dt;
-    auto cameraEntity = gameWorld.view<ComponentCamera>().front();
-    auto& camera = gameWorld.get<ComponentCamera>(cameraEntity);
+    auto cameraEntity = game.world.view<ComponentCamera>().front();
+    auto& camera = game.world.get<ComponentCamera>(cameraEntity);
 
-    auto& data = gameWorld.get<const PlayerInputData>(camera.playerInputData);
+    auto& data = game.world.get<const PlayerInputData>(camera.playerInputData);
 
     camera.ApplyDelta(data.panDelta.x, data.panDelta.y, data.moveDelta.x, data.moveDelta.y);
 }
 
-void SubsystemCamera::Present(const entt::registry& gameWorld, PresentationContext& ctx, FrameOutputData& fd)
+void SubsystemCamera::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
 {
     auto e = fd.presentationWorld.create();
     auto& view = fd.presentationWorld.emplace<Graphics::PViewTransform>(e);
 
-    auto cameraEntity = gameWorld.view<ComponentCamera>().front();
-    auto& camera = gameWorld.get<ComponentCamera>(cameraEntity);
+    auto cameraEntity = game.world.view<ComponentCamera>().front();
+    auto& camera = game.world.get<ComponentCamera>(cameraEntity);
 
     view.view = camera.view();
 }

@@ -6,6 +6,7 @@
 #include "RendererInternals.hpp"
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
+#include "Engine/GameAppState.hpp"
 
 namespace OneGame::Engine::Graphics
 {

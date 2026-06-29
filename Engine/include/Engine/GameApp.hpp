@@ -47,6 +47,9 @@ class GameClientApp
 
    private:
     void TransferToScene(uint32_t nextScene);
+    PresentationContext PresentCtx();
+    PresentationContext PresentCtx(AssetContext);
+    AssetContext AssetCtx();
 
     AssetManager m_assetManager;
     entt::dispatcher m_dispatcher;

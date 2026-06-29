@@ -75,10 +75,10 @@ class DebugScene2 : public ClientSceneBase
 {
    public:
     DebugScene2() {}
-    virtual void Initialize(PresentationContext& context) override;
-    virtual void Enter(PresentationContext& context) override;
-    virtual void Exit(PresentationContext& context) override;
-    virtual void Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut) override;
+    virtual void Initialize(PresentationContext context) override;
+    virtual void Enter(PresentationContext context) override;
+    virtual void Exit(PresentationContext context) override;
+    virtual void Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut) override;
 
    protected:
     std::vector<Graphics::PTerrainMesh> testSlots;
@@ -94,10 +94,10 @@ class DebugScene2 : public ClientSceneBase
 class DebugScene3 : public ClientSceneBase
 {
 public:
-    virtual void Initialize(PresentationContext& context) override;
-    virtual void Enter(PresentationContext& context) override;
-    virtual void Exit(PresentationContext& context) override;
-    virtual void Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut) override;
+    virtual void Initialize(PresentationContext context) override;
+    virtual void Enter(PresentationContext context) override;
+    virtual void Exit(PresentationContext context) override;
+    virtual void Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut) override;
 private:
     ECS::GameWorld m_gameWorld;
     Terrain::TerrainService m_terrain;
