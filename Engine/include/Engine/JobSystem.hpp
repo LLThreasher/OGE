@@ -1,4 +1,7 @@
 #pragma once
+#include <atomic>
+#include <thread>
+
 #include "Engine/Async.hpp"
 #include "Engine/ObjectType.hpp"
 #include "Engine/ResourcePool.hpp"
