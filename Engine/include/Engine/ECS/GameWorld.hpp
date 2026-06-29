@@ -4,6 +4,7 @@
 
 #include "Engine/entt.hpp"
 #include "ISubsystem.hpp"
+#include "Engine/Terrain/Terrain.hpp"
 
 namespace OneGame::Engine::ECS
 {
@@ -16,34 +17,38 @@ class GameWorld
         m_subsystems.emplace_back(new TSubsystem());
     }
 
-    void Initialize(AppContext& ctx)
+    void Initialize(AppContext ctx)
     {
+        GameWorldContext game = Get();
         for (auto& ptr : m_subsystems)
         {
-            ptr->Initialize(ctx, m_world);
+            ptr->Initialize(game, ctx);
         }
     }
 
-    void Update(AppContext& app, const FrameInputData& frame)
+    void Update(AppContext app, const FrameInputData& frame)
     {
+        GameWorldContext game = Get();
         for (auto& ptr : m_subsystems)
         {
-            ptr->Update(app, m_world, frame);
+            ptr->Update(game, app, frame);
         }
     }
 
-    void Present(PresentationContext& pctx, FrameOutputData& frameOut)
+    void Present(PresentationContext pctx, FrameOutputData& frameOut)
     {
+        GameWorldContext game = Get();
         for (auto& ptr : m_subsystems)
         {
-            ptr->Present(m_world, pctx, frameOut);
+            ptr->Present(game, pctx, frameOut);
         }
     }
 
-    entt::registry& GetWorld() { return m_world; }
+    GameWorldContext Get() { return {m_world, m_terrain}; }
 
    private:
     std::vector<std::unique_ptr<ISubsystem>> m_subsystems;
     entt::registry m_world;
+    Terrain::TerrainService m_terrain;
 };
 }  // namespace OneGame::Engine::ECS

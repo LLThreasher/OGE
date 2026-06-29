@@ -23,31 +23,31 @@ static entt::entity RunUIRaycast(entt::registry& gameWorld, math::vec2 pos)
     return resultEntity;
 }
 
-void SubsystemUI::Initialize(AppContext& ctx, entt::registry& gameWorld)
+void SubsystemUI::Initialize(GameWorldContext& game, AppContext ctx)
 {
     for (auto& entity : activeDrags)
     {
         entity = entt::null;
     }
-    gameWorld.on_construct<UIRect>().connect<entt::invoke<&SubsystemUI::onCreateUIRect>>();
+    game.world.on_construct<UIRect>().connect<entt::invoke<&SubsystemUI::onCreateUIRect>>();
 }
 
 void SubsystemUI::onCreateUIRect(entt::registry& gameWorld, entt::entity entity) {}
 
-void SubsystemUI::Update(AppContext& ctx, entt::registry& gameWorld, const FrameInputData& f)
+void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& f)
 {
-    gameWorld.clear<UIDragRelease>();
-    gameWorld.clear<UIRaycastHit>();
+    game.world.clear<UIDragRelease>();
+    game.world.clear<UIRaycastHit>();
     // handle mouse drag
     math::vec2 mousePos{f.input.GetMouseX(), f.input.GetMouseY()};
-    auto mouseEntityHit = RunUIRaycast(gameWorld, mousePos);
+    auto mouseEntityHit = RunUIRaycast(game.world, mousePos);
     if (activeDrags[PointerIdx::MOUSE] == entt::null)
     {
         for (auto button : ALL_MOUSE_BUTTONS)
         {
             if (f.input.IsMousePressed(button))
             {
-                gameWorld.emplace<UIDrag>(mouseEntityHit, PointerIdx::MOUSE, button, mousePos);
+                game.world.emplace<UIDrag>(mouseEntityHit, PointerIdx::MOUSE, button, mousePos);
                 activeDrags[PointerIdx::MOUSE] = mouseEntityHit;
                 break;
             }
@@ -55,15 +55,15 @@ void SubsystemUI::Update(AppContext& ctx, entt::registry& gameWorld, const Frame
     }
     else
     {
-        const UIDrag& mouseDrag = gameWorld.get<const UIDrag>(activeDrags[PointerIdx::MOUSE]);
+        const UIDrag& mouseDrag = game.world.get<const UIDrag>(activeDrags[PointerIdx::MOUSE]);
         if (f.input.IsMouseReleased(mouseDrag.dragStartButton))
         {
-            gameWorld.emplace<UIDragRelease>(mouseEntityHit, mouseDrag, activeDrags[PointerIdx::MOUSE]);
-            gameWorld.erase<UIDrag>(activeDrags[PointerIdx::MOUSE]);
+            game.world.emplace<UIDragRelease>(mouseEntityHit, mouseDrag, activeDrags[PointerIdx::MOUSE]);
+            game.world.erase<UIDrag>(activeDrags[PointerIdx::MOUSE]);
             activeDrags[PointerIdx::MOUSE] = entt::null;
         }
     }
-    if (mouseEntityHit != entt::null) gameWorld.emplace<UIRaycastHit>(mouseEntityHit, activeDrags[PointerIdx::MOUSE]);
+    if (mouseEntityHit != entt::null) game.world.emplace<UIRaycastHit>(mouseEntityHit, activeDrags[PointerIdx::MOUSE]);
 
     // handle touch drag
     uint32_t pressedTouchMask = f.input.GetPressedTouchIdMask();
@@ -76,27 +76,27 @@ void SubsystemUI::Update(AppContext& ctx, entt::registry& gameWorld, const Frame
             math::vec2 pos{f.input.GetTouchX(pidx), f.input.GetTouchY(pidx)};
             entt::entity& e = activeDrags[ptrIdx];
             assert(e == entt::null);
-            e = RunUIRaycast(gameWorld, pos);
-            gameWorld.emplace<UIDrag>(e, ptrIdx, MouseButton::Left, pos);
+            e = RunUIRaycast(game.world, pos);
+            game.world.emplace<UIDrag>(e, ptrIdx, MouseButton::Left, pos);
         }
         if (releasedTouchMask & (1 << pidx))
         {
             math::vec2 pos{f.input.GetTouchX(pidx), f.input.GetTouchY(pidx)};
             entt::entity& e = activeDrags[ptrIdx];
             assert(e != entt::null);
-            auto resultE = RunUIRaycast(gameWorld, pos);
-            gameWorld.emplace<UIDragRelease>(resultE, gameWorld.get<UIDrag>(e), e);
-            gameWorld.erase<UIDrag>(e);
+            auto resultE = RunUIRaycast(game.world, pos);
+            game.world.emplace<UIDragRelease>(resultE, game.world.get<UIDrag>(e), e);
+            game.world.erase<UIDrag>(e);
             e = entt::null;
         }
         if (activeDrags[ptrIdx] != entt::null)
         {
             math::vec2 pos{f.input.GetTouchX(pidx), f.input.GetTouchY(pidx)};
-            auto hit = RunUIRaycast(gameWorld, pos);
-            gameWorld.emplace<UIRaycastHit>(hit, activeDrags[ptrIdx]);
+            auto hit = RunUIRaycast(game.world, pos);
+            game.world.emplace<UIRaycastHit>(hit, activeDrags[ptrIdx]);
         }
     }
 }
 
-void SubsystemUI::Present(const entt::registry& gameWorld, PresentationContext& pctx, FrameOutputData& f) {}
+void SubsystemUI::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& f) {}
 }  // namespace OneGame::Engine::ECS

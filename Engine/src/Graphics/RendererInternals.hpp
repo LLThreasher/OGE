@@ -5,11 +5,16 @@
 #include "Engine/Graphics/RingStagingBuffer.hpp"
 #include "Engine/Graphics/UniformArena.hpp"
 
+namespace OneGame::Engine
+{
+    struct AssetContext;
+}
+
 namespace OneGame::Engine::Graphics
 {
 struct InitContext
 {
-    AssetPool& assets;
+    AssetContext& assets;
     UniformArena& uniformArena;
 };
 

@@ -2,6 +2,7 @@
 
 #include <sstream>
 
+#include "Engine/GameAppState.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "RendererInternals.hpp"

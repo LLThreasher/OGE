@@ -4,6 +4,7 @@
 #include FT_FREETYPE_H
 
 #include "RendererInternals.hpp"
+#include "Engine/GameAppState.hpp"
 
 namespace OneGame::Engine::Graphics
 {

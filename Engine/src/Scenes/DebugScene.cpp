@@ -13,7 +13,7 @@
 
 namespace OneGame::Engine
 {
-void DebugScene2::Initialize(PresentationContext& context)
+void DebugScene2::Initialize(PresentationContext context)
 {
     using namespace ECS;
     gameWorld.Register<SubsystemUI>();
@@ -23,12 +23,13 @@ void DebugScene2::Initialize(PresentationContext& context)
 
     auto swapExtend = context.backend.SwapchainExtend();
     auto rect = UIRect{0, {0, 0}, swapExtend};
-    auto e = PlayerInputData::CreatePlayerViewPanel(gameWorld.GetWorld(), rect);
+    auto e = PlayerInputData::CreatePlayerViewPanel(gameWorld.Get().world, rect);
 }
 
-void DebugScene2::Enter(PresentationContext& context)
+void DebugScene2::Enter(PresentationContext context)
 {
-    gameWorld.Initialize(context.appCtx);
+    AppContext actx = context;
+    gameWorld.Initialize(actx);
 
     using namespace Terrain;
     using BufferUsage = Graphics::BufferUsage;
@@ -135,7 +136,7 @@ void DebugScene2::Enter(PresentationContext& context)
     terrainPresData.terrainMesh =
         context.backend.AllocateGPUBuffer<BufferUsage::Storage>(chunkCount * 4 * Terrain::CHUNK_STORE_BYTE_SIZE);
     auto bundle = context.assetPool;
-    context.renderer.EnableTerrainPass2(context.backend, bundle, terrainPresData.terrainMesh);
+    context.renderer.EnableTerrainPass2(context, terrainPresData.terrainMesh);
 
     int active_count = chunkCount - 23;
     LOG_INFO("total used size: {} {}", active_count, active_count * Terrain::CHUNK_STORE_BYTE_SIZE * 4);
@@ -144,7 +145,7 @@ void DebugScene2::Enter(PresentationContext& context)
         [&]
         {
             isTerrainReady = true;
-            auto& world = gameWorld.GetWorld();
+            auto& world = gameWorld.Get().world;
             auto pe = world.view<ECS::PlayerViewPanel>().front();
             world.emplace<ECS::UIFocus>(pe);
         });
@@ -167,9 +168,9 @@ void DebugScene2::Enter(PresentationContext& context)
     LOG_DEBUG("used slots {}", currentSlot);
 }
 
-void DebugScene2::Exit(PresentationContext& context) { context.renderer.DisableTerrainPass2(context.backend); }
+void DebugScene2::Exit(PresentationContext context) { context.renderer.DisableTerrainPass2(context); }
 
-void DebugScene2::Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut)
+void DebugScene2::Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut)
 {
     auto& world = frameOut.presentationWorld;
     if (isTerrainReady)
@@ -181,18 +182,18 @@ void DebugScene2::Update(PresentationContext& context, const FrameInputData& fra
         }
     }
 
-    gameWorld.Update(context.appCtx, frame);
+    gameWorld.Update(context, frame);
     gameWorld.Present(context, frameOut);
 
     if (frame.input.IsKeyDown(KeyCode::KY_G))
     {
-        auto& gworld = gameWorld.GetWorld();
+        auto& gworld = gameWorld.Get().world;
         auto pe = gworld.view<ECS::PlayerViewPanel>().front();
         gworld.get_or_emplace<ECS::UIFocus>(pe);
     }
     else if (frame.input.IsKeyDown(KeyCode::KY_ESCAPE))
     {
-        auto& gworld = gameWorld.GetWorld();
+        auto& gworld = gameWorld.Get().world;
         auto pe = gworld.view<ECS::PlayerViewPanel>().front();
         if (gworld.all_of<ECS::UIFocus>(pe))
         {
@@ -201,7 +202,7 @@ void DebugScene2::Update(PresentationContext& context, const FrameInputData& fra
     }
 }
 
-void DebugScene3::Initialize(PresentationContext& context)
+void DebugScene3::Initialize(PresentationContext context)
 {
     using namespace ECS;
     m_gameWorld.Register<SubsystemUI>();
@@ -211,44 +212,44 @@ void DebugScene3::Initialize(PresentationContext& context)
 
     auto swapExtend = context.backend.SwapchainExtend();
     auto rect = UIRect{0, {0, 0}, swapExtend};
-    auto e = PlayerInputData::CreatePlayerViewPanel(m_gameWorld.GetWorld(), rect);
+    auto e = PlayerInputData::CreatePlayerViewPanel(m_gameWorld.Get().world, rect);
 
     m_blocks.RegisterBlock("dirt", {"Dirt", {2, 2, 2, 2, 2, 2}, 1});
     m_blocks.RegisterBlock("wood", {"Wood", {4, 4, 4, 4, 4, 4}, 1});
     m_blocks.RegisterBlock("stone", {"Stone", {5, 5, 5, 5, 5, 5}, 1});
 }
 
-void DebugScene3::Enter(PresentationContext& context)
+void DebugScene3::Enter(PresentationContext context)
 {
     Terrain::TerrainDesc desc{};
     desc.chunkViewDistance = 4;
     m_terrain.Initialize(desc, {0, 0, 0});
-    context.renderer.EnableTerrainPass2(context.backend, context.assetPool, m_terrain.GetOrCreateTerrainMesh(context.backend));
-    m_gameWorld.Initialize(context.appCtx);
+    context.renderer.EnableTerrainPass2(context, m_terrain.GetOrCreateTerrainMesh(context.backend));
+    m_gameWorld.Initialize(context);
 }
 
-void DebugScene3::Exit(PresentationContext& context)
+void DebugScene3::Exit(PresentationContext context)
 {
-    context.renderer.DisableTerrainPass2(context.backend);
+    context.renderer.DisableTerrainPass2(context);
 }
 
-void DebugScene3::Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut)
+void DebugScene3::Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut)
 {
     m_terrain.Update(m_blocks, {0, 0});
     m_terrain.Present(m_blocks, {}, context.streamingManager, frameOut.presentationWorld);
 
-    m_gameWorld.Update(context.appCtx, frame);
+    m_gameWorld.Update(context, frame);
     m_gameWorld.Present(context, frameOut);
 
     if (frame.input.IsKeyDown(KeyCode::KY_G))
     {
-        auto& gworld = m_gameWorld.GetWorld();
+        auto& gworld = m_gameWorld.Get().world;
         auto pe = gworld.view<ECS::PlayerViewPanel>().front();
         gworld.get_or_emplace<ECS::UIFocus>(pe);
     }
     else if (frame.input.IsKeyDown(KeyCode::KY_ESCAPE))
     {
-        auto& gworld = m_gameWorld.GetWorld();
+        auto& gworld = m_gameWorld.Get().world;
         auto pe = gworld.view<ECS::PlayerViewPanel>().front();
         if (gworld.all_of<ECS::UIFocus>(pe))
         {

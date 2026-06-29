@@ -1,5 +1,6 @@
 #include "Engine/Graphics/Renderer.hpp"
 
+#include "Engine/GameAppState.hpp"
 #include "Engine/AssetBundle.hpp"
 #include "stb_easy_font.h"
 
@@ -10,14 +11,14 @@
 namespace OneGame::Engine::Graphics
 {
 
-void Renderer::Initialize(IGraphicsBackend& backend, AssetPool& pool)
+void Renderer::Initialize(AssetContext& assets)
 {
     uniformArena.Initialize(
-        backend, backend.MaxUniformBufferSize() > 1024 * 1024 * 16 ? 1024 * 1024 * 16 : backend.MaxUniformBufferSize());
+        assets.backend, assets.backend.MaxUniformBufferSize() > 1024 * 1024 * 16 ? 1024 * 1024 * 16 : assets.backend.MaxUniformBufferSize());
     LOG_DEBUG("uniform arena created");
 
-    InitContext ctx{pool, uniformArena};
-    debugInfoPass.Enable(backend, ctx);
+    InitContext ctx{assets, uniformArena};
+    debugInfoPass.Enable(assets.backend, ctx);
     LOG_DEBUG("debug info pass created");
     // testPass.Enable(backend, ctx);
     // LOG_DEBUG("test pass created");
@@ -28,21 +29,21 @@ void Renderer::Initialize(IGraphicsBackend& backend, AssetPool& pool)
     // uiPass.Initialize(backend, appCtxt);
 }
 
-void Renderer::Shutdown(IGraphicsBackend& backend)
+void Renderer::Shutdown(AssetContext& assets)
 {
     // uiPass.Shutdown(backend);
     // terrainPass2.Disable(backend);
     // terrainPass.Disable(backend);
     // testPass.Disable(backend);
-    debugInfoPass.Disable(backend);
+    debugInfoPass.Disable(assets.backend);
 
-    uniformArena.Shutdown(backend);
+    uniformArena.Shutdown(assets.backend);
 }
 
-void Renderer::Prepare(IGraphicsBackend& backend, entt::registry& world, float deltaTime)
+void Renderer::Prepare(AssetContext& assets, entt::registry& world, float deltaTime)
 {
     PrepareContext pc{
-        backend,
+        assets.backend,
         deltaTime,
         world,
     };
@@ -89,29 +90,29 @@ void Renderer::Render(IGraphicsBackend& backend, float deltaTime)
     uniformArena.AdvanceFrame();
 }
 
-void Renderer::EnableTerrainPass(IGraphicsBackend& backend, AssetPool& bundle, Mesh terrainMesh)
+void Renderer::EnableTerrainPass(AssetContext& assets, Mesh terrainMesh)
 {
-    InitContext initCtx{bundle, uniformArena};
+    InitContext initCtx{assets, uniformArena};
     // terrainPass.Enable(backend, initCtx, terrainMesh);
     enableTerrainPass = true;
 }
 
-void Renderer::DisableTerrainPass(IGraphicsBackend& backend)
+void Renderer::DisableTerrainPass(AssetContext& assets)
 {
     // terrainPass.Disable(backend);
     enableTerrainPass = false;
 }
 
-void Renderer::EnableTerrainPass2(IGraphicsBackend& backend, AssetPool& bundle, GPUBufferHandle storageBuf)
+void Renderer::EnableTerrainPass2(AssetContext& assets, GPUBufferHandle storageBuf)
 {
-    InitContext initCtx{bundle, uniformArena};
-    terrainPass2.Enable(backend, initCtx, storageBuf);
+    InitContext initCtx{assets, uniformArena};
+    terrainPass2.Enable(assets.backend, initCtx, storageBuf);
     enableTerrainPass2 = true;
 }
 
-void Renderer::DisableTerrainPass2(IGraphicsBackend& backend)
+void Renderer::DisableTerrainPass2(AssetContext& assets)
 {
-    terrainPass2.Disable(backend);
+    terrainPass2.Disable(assets.backend);
     enableTerrainPass2 = false;
 }
 
