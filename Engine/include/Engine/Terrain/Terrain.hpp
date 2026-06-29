@@ -6,6 +6,7 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
+#include <optional>
 
 #include "BlockManager.hpp"
 #include "Engine/ClassHelper.hpp"
@@ -56,6 +57,20 @@ struct Point3
     Point3 operator+(const Point3& other) const noexcept { return {x + other.x, y + other.y, z + other.z}; }
 
     Point3 operator-(const Point3& other) const noexcept { return {x - other.x, y - other.y, z - other.z}; }
+    
+    const int32_t& operator[](size_t index) const
+    {
+        switch(index)
+        {
+        case 0:
+            return x;
+        case 1:
+            return y;
+        case 2:
+            return z;
+        }
+        return 0.f;
+    }
 };
     
 constexpr Point3 perFaceOffset[6] = {
@@ -349,6 +364,13 @@ struct VisibleChunkMeshes
     std::unordered_set<AllocatedChunkSlot, AllocatedChunkSlotHasher>& meshes;
 };
 
+struct TerrainRaycastResult
+{
+    uint8_t hitFace;
+    Point3 hitPos;
+    uint32_t hitBlockValue;
+};
+
 class TerrainService
 {
    public:
@@ -368,6 +390,8 @@ class TerrainService
     void UploadBuiltChunks(StreamingManager& stream);
 
     GPUBufferHandle GetOrCreateTerrainMesh(Graphics::IGraphicsBackend& backend);
+
+    std::optional<TerrainRaycastResult> CastRay(math::vec3 pos, math::vec3 ray, float maxDist = 20.f);
 
    private:
     TerrainData m_terrainData;

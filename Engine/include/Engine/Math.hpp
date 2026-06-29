@@ -99,6 +99,21 @@ inline int ceil(float val)
     return glm::ceil(val);
 }
 
+inline int floor(float val)
+{
+    return glm::floor(val);
+}
+
+inline int abs(int val)
+{
+    return glm::abs(val);
+}
+
+inline float abs(float val)
+{
+    return glm::abs(val);
+}
+
 inline unsigned int align(unsigned int size, unsigned int alignment)
 {
     return (size + alignment - 1) & ~(alignment - 1);
