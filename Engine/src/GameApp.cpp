@@ -108,13 +108,12 @@ AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
     m_presentationWorld.clear();
     m_currentScene->Update(pctx, frame, frameOut);
 
-    m_renderer.Prepare(pctx, m_presentationWorld, dt);
     auto& tcmd = m_backend.CreateCommandList(QueueType::Transfer);
     tcmd.Begin();
     m_streamingManager.RunUploadStep(m_backend, tcmd);
     tcmd.End();
 
-    m_renderer.Render(m_backend, dt);
+    m_renderer.Render(pctx, m_presentationWorld, dt);
     auto endRes = m_backend.EndFrame();
 
     for (auto& action : frameOut.outSceneActions)

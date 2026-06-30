@@ -3,7 +3,6 @@
 namespace OneGame::Engine::Graphics
 {
 struct InitContext;
-struct PrepareContext;
 struct DrawContext;
 class IGraphicsBackend;
 
@@ -14,7 +13,6 @@ class IPass
     virtual ~IPass() = default;
     virtual void Enable(IGraphicsBackend& backend, InitContext& ctx, Args... args) = 0;
     virtual void Disable(IGraphicsBackend& backend) = 0;
-    virtual void Prepare(PrepareContext& context) = 0;
     virtual void Draw(DrawContext& context) = 0;
 };
 

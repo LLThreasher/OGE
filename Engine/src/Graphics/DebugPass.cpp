@@ -66,7 +66,7 @@ void DebugInfoPass::Enable(IGraphicsBackend& backend, InitContext& ctx)
 
 void DebugInfoPass::Disable(IGraphicsBackend& backend) {}
 
-void DebugInfoPass::Prepare(PrepareContext& ctx)
+void DebugInfoPass::Draw(DrawContext& ctx)
 {
     std::stringstream ss;
     auto view = ctx.world.view<PDebugText>();
@@ -74,7 +74,6 @@ void DebugInfoPass::Prepare(PrepareContext& ctx)
     {
         ss << dbgText.text << std::endl;
     }
-
     std::string s = ss.str();
     const char* cs = s.c_str();
     // draw background
@@ -114,20 +113,17 @@ void DebugInfoPass::Prepare(PrepareContext& ctx)
         *(iptr++) = i * 4 + 3;
         *(iptr++) = i * 4;
     }
-}
 
-void DebugInfoPass::Draw(DrawContext& context)
-{
-    if (context.backend.SwapchainRecreated())
+    if (ctx.backend.SwapchainRecreated())
     {
-        auto extent = context.backend.SwapchainExtend();
-        math::get_screen_affine(context.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
+        auto extent = ctx.backend.SwapchainExtend();
+        math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
                                 pushConstant.offset);
     }
     if (numQuads == 0) return;
 
-    auto& tCmd = context.transferCmd;
-    auto& cmd = context.drawCmd;
+    auto& tCmd = ctx.transferCmd;
+    auto& cmd = ctx.drawCmd;
     tCmd.UpdateBuffer(vertexBuffer, 0, numQuads * 4 * sizeof(Vertex), vertices);
     tCmd.UpdateBuffer(indexBuffer, 0, numQuads * 6 * sizeof(uint16_t), indices);
     tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
@@ -237,10 +233,9 @@ void TestPass::Enable(IGraphicsBackend& backend, InitContext& ctx)
 
 void TestPass::Disable(IGraphicsBackend& backend) {}
 
-void TestPass::Prepare(PrepareContext& context) {}
-
 void TestPass::Draw(DrawContext& context)
 {
+    if (context.currentView != entt::null) return;
     m_Time += context.deltaTime;
     UBO ubo{};
     ubo.model =

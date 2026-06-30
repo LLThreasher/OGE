@@ -1,28 +1,70 @@
+#include <limits>
+
 #include "Engine/Terrain/BlockManager.hpp"
 #include "Engine/Terrain/Terrain.hpp"
-#include <limits>
+#include "Engine/GameAppState.hpp"
+#include "Engine/ECS/ISubsystem.hpp"
 
 namespace OneGame::Engine::Terrain
 {
-void TerrainService::Initialize(const TerrainDesc& desc, Point3 chunkOrigin)
+using namespace ECS;
+
+void TerrainService::Initialize(const TerrainDesc& desc, TerrainContext& ctx)
 {
     m_terrainGenerator.SetTerrainGenChunkBudget(desc.terrainGenChunkBudget);
     m_terrainMeshBuilder.SetVertexBudget(desc.meshingQuadBudget);
     m_terrainUploader.SetMaxNumChunks((desc.chunkViewDistance + 1) * (desc.chunkViewDistance + 1) * 6);
     m_terrainUpdateScheduler.SetChunkViewDistance(desc.chunkViewDistance);
-    m_terrainUpdateScheduler.InitialUpdate(m_terrainData, chunkOrigin);
+    ctx.world.on_construct<ComponentPlayer>().connect<&TerrainService::onPlayerCreated>(this);
 }
 
-uint32_t TerrainService::GetBlock(int x, int y, int z)
+void TerrainService::onPlayerCreated(entt::registry& world, entt::entity entity)
+{
+    // TODO: replace with physic body position
+    auto view = world.get<ComponentPlayer>(entity).playerInputEntity;
+    auto pos = world.get<ComponentCamera>(view).position;
+    Point3 ipos = {math::floor(pos.x) / CHUNK_SIZE_X, math::floor(pos.y) / CHUNK_SIZE_Y, math::floor(pos.z) / CHUNK_SIZE_Z};
+    m_terrainUpdateScheduler.InitialUpdate(m_terrainData, ipos);
+}
+
+void TerrainService::Update(TerrainContext& ctx)
+{
+    m_terrainGenerator.GenerateTerrain(m_terrainData, ctx.blocks);
+}
+
+void TerrainService::Present(TerrainContext& ctx, PresentationContext& pctx, FrameOutputData& frameOut)
+{
+    m_terrainUpdateScheduler.QueueChunksForMeshing(m_terrainData, m_terrainPData);
+    m_terrainMeshBuilder.BuildChunkMeshes(m_terrainData, ctx.blocks, m_terrainPData);
+    m_terrainUploader.UploadTerrain(m_terrainPData, pctx);
+    for (auto [_, player] : ctx.world.view<PlayerViewPanel>().each())
+    {
+        m_terrainUpdateScheduler.UpdateChunkVisibility(m_terrainData, m_terrainPData, {}, frameOut.presentationWorld, Graphics::PGameViewTag(player.activeSlot));
+    }
+}
+
+uint32_t TerrainView::GetBlock(int x, int y, int z)
 {
     Point3 chunkCoord = {x >> 4, y >> 4, z >> 4};
     auto [_, chunk] = GetChunk(chunkCoord);
-    assert(chunk != nullptr);
+    assert(chunk != nullptr && chunk->state == ChunkState::Persistent);
     if (chunk != nullptr) return chunk->GetBlock(x & 0xF, y & 0xF, z & 0xF);
     return 0;
 }
 
-void TerrainService::SetBlock(int x, int y, int z, uint32_t value)
+bool TerrainView::TryGetBlock(int x, int y, int z, uint32_t& value)
+{
+    Point3 chunkCoord = {x >> 4, y >> 4, z >> 4};
+    auto [_, chunk] = GetChunk(chunkCoord);
+    if (chunk != nullptr)
+    {
+        value = chunk->GetBlock(x & 0xF, y & 0xF, z & 0xF);
+        return true;
+    }
+    return false;
+}
+
+void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
 {
     Point3 chunkCoord = {x >> 4, y >> 4, z >> 4};
     auto [_, chunk] = GetChunk(chunkCoord);
@@ -30,44 +72,20 @@ void TerrainService::SetBlock(int x, int y, int z, uint32_t value)
     if (chunk != nullptr) return chunk->SetBlock(x & 0xF, y & 0xF, z & 0xF, value);
 }
 
-std::tuple<ChunkHandle, ChunkData*> TerrainService::GetChunk(Point3 chunkCoord)
+std::tuple<ChunkHandle, ChunkData*> TerrainView::GetChunk(Point3 chunkCoord)
 {
     return m_terrainData.chunks.Get(chunkCoord);
 }
 
-ChunkData* TerrainService::GetChunk(ChunkHandle handle) { return m_terrainData.chunks.Get(handle); }
+ChunkData* TerrainView::GetChunk(ChunkHandle handle) { return m_terrainData.chunks.Get(handle); }
 
-void TerrainService::SubmitChunk(ChunkHandle handle) { m_terrainData.dirtyChunks.insert(handle); }
+void TerrainView::SubmitChunk(ChunkHandle handle) { m_terrainData.dirtyChunks.insert(handle); }
 
-void TerrainService::Update(BlockRegistry& blocks, Point3 chunkOrigin)
+std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos, math::vec3 ray, float maxDist)
 {
-    m_terrainGenerator.GenerateTerrain(m_terrainData, blocks);
-}
-
-void TerrainService::Present(BlockRegistry& blocks, std::array<math::vec3, 6> frustum,
-                             StreamingManager& sm, entt::registry& presentationWorld)
-{
-    m_terrainUpdateScheduler.QueueChunksForMeshing(m_terrainData, m_terrainPData);
-    m_terrainMeshBuilder.BuildChunkMeshes(m_terrainData, blocks, m_terrainPData);
-    m_terrainUploader.UploadTerrain(m_terrainPData, sm);
-    m_terrainUpdateScheduler.UpdateChunkVisibility(m_terrainData, m_terrainPData, frustum, presentationWorld);
-}
-
-void TerrainService::UploadBuiltChunks(StreamingManager& stream)
-{
-    m_terrainUploader.UploadTerrain(m_terrainPData, stream);
-}
-
-GPUBufferHandle TerrainService::GetOrCreateTerrainMesh(Graphics::IGraphicsBackend& backend)
-{
-    if (!m_terrainPData.terrainMesh.IsValid()) m_terrainUploader.CreateTerrainMesh(m_terrainPData, backend);
-    return m_terrainPData.terrainMesh;
-}
-
-std::optional<TerrainRaycastResult> TerrainService::CastRay(math::vec3 pos, math::vec3 ray, float maxDist)
-{
-    constexpr int MAX_INT = std::numeric_limits<int>::max();
-    math::vec3 delta(ray.x == 0 ? MAX_INT : math::abs(1 / ray.x), ray.y == 0 ? INT_MAX : math::abs(1 / ray.y), ray.z == 0 ? INT_MAX : math::abs(1 / ray.z));
+    constexpr float MAX_INT = static_cast<float>(std::numeric_limits<int>::max());
+    math::vec3 delta(ray.x == 0 ? MAX_INT : math::abs(1 / ray.x), ray.y == 0 ? MAX_INT : math::abs(1 / ray.y),
+                     ray.z == 0 ? MAX_INT : math::abs(1 / ray.z));
     Point3 map = {math::floor(pos.x), math::floor(pos.y), math::floor(pos.z)};
     Point3 step;
     math::vec3 side;
@@ -105,7 +123,8 @@ std::optional<TerrainRaycastResult> TerrainService::CastRay(math::vec3 pos, math
     int dim = 0;
     while (dist < maxDist)
     {
-        auto value = GetBlock(map.x, map.y, map.z);
+        uint32_t value;
+        if (!TryGetBlock(map.x, map.y, map.z, value)) break;
         if (BlockRegistry::GetBlockId(value) != 0)
         {
             TerrainRaycastResult res {

@@ -67,7 +67,7 @@ void DebugScene2::Enter(PresentationContext context)
     //}
 
     static int chunkCount = 32;
-    Graphics::ChunkAllocator gpuBufferAllocator;
+    // Graphics::ChunkAllocator gpuBufferAllocator;
 
     auto generate_terrain = [](int cx, int cy, int cz, int x, int y, int z)
     {
@@ -133,42 +133,42 @@ void DebugScene2::Enter(PresentationContext context)
     meshBuilder.BuildChunkMeshes(terrainData, blocks, terrainPresData);
     LOG_DEBUG("end generate mesh");
 
-    terrainPresData.terrainMesh =
-        context.backend.AllocateGPUBuffer<BufferUsage::Storage>(chunkCount * 4 * Terrain::CHUNK_STORE_BYTE_SIZE);
-    auto bundle = context.assetPool;
-    context.renderer.EnableTerrainPass2(context, terrainPresData.terrainMesh);
+    // terrainPresData.terrainMesh =
+    //     context.backend.AllocateGPUBuffer<BufferUsage::Storage>(chunkCount * 4 * Terrain::CHUNK_STORE_BYTE_SIZE);
+    // auto bundle = context.assetPool;
+    // context.renderer.EnableTerrainPass2(context, terrainPresData.terrainMesh);
 
-    int active_count = chunkCount - 23;
-    LOG_INFO("total used size: {} {}", active_count, active_count * Terrain::CHUNK_STORE_BYTE_SIZE * 4);
-    int currentSlot = 0;
-    auto event = context.streamingManager.CreateResourceBundle(
-        [&]
-        {
-            isTerrainReady = true;
-            auto& world = gameWorld.Get().world;
-            auto pe = world.view<ECS::PlayerViewPanel>().front();
-            world.emplace<ECS::UIFocus>(pe);
-        });
-    while (!terrainPresData.uploadMeshQueue.empty() && currentSlot < active_count)
-    {
-        auto [chunkHandle, builtMeshHandle] = std::move(terrainPresData.uploadMeshQueue.front());
-        terrainPresData.uploadMeshQueue.pop();
-        auto builtMesh = terrainPresData.builtChunkMeshes.Get(builtMeshHandle);
-        auto chunkCoord = terrainData.chunks.Get(chunkHandle)->Coords;
-        context.streamingManager.UploadBuffer<UploadType::Async, BufferUsage::Storage>(
-            builtMesh->quads, terrainPresData.terrainMesh, currentSlot * Terrain::CHUNK_STORE_BYTE_SIZE, event);
-        testSlots.push_back(Graphics::PTerrainMesh{currentSlot * Terrain::CHUNK_STORE_BYTE_SIZE,
-                                                   static_cast<uint32_t>(builtMesh->quads.size()) * 6, chunkCoord.x,
-                                                   chunkCoord.y, chunkCoord.z});
-        currentSlot += 4;
-        assert(builtMesh->quads.size() * sizeof(Terrain::TexturedQuad) <= Terrain::CHUNK_STORE_BYTE_SIZE * 4);
-        LOG_DEBUG("looking at chunk ({}, {}, {}), data size: {} kb", chunkCoord.x, chunkCoord.y, chunkCoord.z,
-                  (float)(builtMesh->quads.size() * sizeof(Terrain::TexturedQuad)) / 1024.f);
-    }
-    LOG_DEBUG("used slots {}", currentSlot);
+    // int active_count = chunkCount - 23;
+    // LOG_INFO("total used size: {} {}", active_count, active_count * Terrain::CHUNK_STORE_BYTE_SIZE * 4);
+    // int currentSlot = 0;
+    // auto event = context.streamingManager.CreateResourceBundle(
+    //     [&]
+    //     {
+    //         isTerrainReady = true;
+    //         auto& world = gameWorld.Get().world;
+    //         auto pe = world.view<ECS::PlayerViewPanel>().front();
+    //         world.emplace<ECS::UIFocus>(pe);
+    //     });
+    // while (!terrainPresData.uploadMeshQueue.empty() && currentSlot < active_count)
+    // {
+    //     auto [chunkHandle, builtMeshHandle] = std::move(terrainPresData.uploadMeshQueue.front());
+    //     terrainPresData.uploadMeshQueue.pop();
+    //     auto builtMesh = terrainPresData.builtChunkMeshes.Get(builtMeshHandle);
+    //     auto chunkCoord = terrainData.chunks.Get(chunkHandle)->Coords;
+    //     context.streamingManager.UploadBuffer<UploadType::Async, BufferUsage::Storage>(
+    //         builtMesh->quads, terrainPresData.terrainMesh, currentSlot * Terrain::CHUNK_STORE_BYTE_SIZE, event);
+    //     testSlots.push_back(Graphics::PTerrainMesh{currentSlot * Terrain::CHUNK_STORE_BYTE_SIZE,
+    //                                                static_cast<uint32_t>(builtMesh->quads.size()) * 6, chunkCoord.x,
+    //                                                chunkCoord.y, chunkCoord.z});
+    //     currentSlot += 4;
+    //     assert(builtMesh->quads.size() * sizeof(Terrain::TexturedQuad) <= Terrain::CHUNK_STORE_BYTE_SIZE * 4);
+    //     LOG_DEBUG("looking at chunk ({}, {}, {}), data size: {} kb", chunkCoord.x, chunkCoord.y, chunkCoord.z,
+    //               (float)(builtMesh->quads.size() * sizeof(Terrain::TexturedQuad)) / 1024.f);
+    // }
+    // LOG_DEBUG("used slots {}", currentSlot);
 }
 
-void DebugScene2::Exit(PresentationContext context) { context.renderer.DisableTerrainPass2(context); }
+void DebugScene2::Exit(PresentationContext context) {}
 
 void DebugScene2::Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut)
 {
@@ -209,34 +209,30 @@ void DebugScene3::Initialize(PresentationContext context)
     m_gameWorld.Register<SubsystemPlayerInput>();
     m_gameWorld.Register<SubsystemCamera>();
     m_gameWorld.Register<SubsystemDebugInfo>();
+    m_gameWorld.Register<SubsystemPlayer>();
 
     auto swapExtend = context.backend.SwapchainExtend();
     auto rect = UIRect{0, {0, 0}, swapExtend};
     auto e = PlayerInputData::CreatePlayerViewPanel(m_gameWorld.Get().world, rect);
 
-    m_blocks.RegisterBlock("dirt", {"Dirt", {2, 2, 2, 2, 2, 2}, 1});
-    m_blocks.RegisterBlock("wood", {"Wood", {4, 4, 4, 4, 4, 4}, 1});
-    m_blocks.RegisterBlock("stone", {"Stone", {5, 5, 5, 5, 5, 5}, 1});
+    auto& blocks = m_gameWorld.Get().blocks;
+    blocks.RegisterBlock("dirt", {"Dirt", {2, 2, 2, 2, 2, 2}, 1});
+    blocks.RegisterBlock("wood", {"Wood", {4, 4, 4, 4, 4, 4}, 1});
+    blocks.RegisterBlock("stone", {"Stone", {5, 5, 5, 5, 5, 5}, 1});
 }
 
 void DebugScene3::Enter(PresentationContext context)
 {
-    Terrain::TerrainDesc desc{};
-    desc.chunkViewDistance = 4;
-    m_terrain.Initialize(desc, {0, 0, 0});
-    context.renderer.EnableTerrainPass2(context, m_terrain.GetOrCreateTerrainMesh(context.backend));
     m_gameWorld.Initialize(context);
 }
 
 void DebugScene3::Exit(PresentationContext context)
 {
-    context.renderer.DisableTerrainPass2(context);
 }
 
 void DebugScene3::Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut)
 {
-    m_terrain.Update(m_blocks, {0, 0});
-    m_terrain.Present(m_blocks, {}, context.streamingManager, frameOut.presentationWorld);
+    auto& blocks = m_gameWorld.Get().blocks;
 
     m_gameWorld.Update(context, frame);
     m_gameWorld.Present(context, frameOut);

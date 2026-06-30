@@ -39,6 +39,7 @@ class BlockRegistry
     void RegisterBlock(std::string blockIdName, BlockConfig config);
     static uint16_t GetBlockId(uint32_t blockValue);
     uint16_t GetBlockId(const std::string blockIdName) const;
+    const std::string& GetBlockDisplayName(uint16_t blockIdx) const;
     bool IsOpaque(uint16_t blockIdx) const;
     const std::array<uint8_t, 6>& GetTextureSlot(uint16_t blockIdx) const;
 

@@ -2,109 +2,48 @@
 
 #include <array>
 #include <cassert>
-#include <entt/entt.hpp>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
 #include <optional>
 
+#include "Engine/entt.hpp"
 #include "BlockManager.hpp"
 #include "Engine/ClassHelper.hpp"
 #include "Engine/Graphics/ChunkAllocator.hpp"
+#include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/ObjectType.hpp"
 #include "Engine/ResourcePool.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
+#include "Engine/Terrain/TerrainView.hpp"
 
 #define USE_TERRAIN_MESH_V2
 
 namespace OneGame::Engine
 {
 class StreamingManager;
+struct PresentationContext;
+struct FrameOutputData;
+namespace ECS
+{
+struct TerrainContext;
+};
 
 namespace Graphics
 {
 class IGraphicsBackend;
 class PTerrainMesh;
+namespace DCA
+{
+class DynamicChunkAllocator;
+}
 }  // namespace Graphics
 }  // namespace OneGame::Engine
 
 namespace OneGame::Engine::Terrain
 {
-
-enum class TerrainObject
-{
-    Chunk,
-    BuiltChunkMesh,
-    MeshingWorkerContext,
-};
-
-using ChunkHandle = ResourceHandle<TerrainObject::Chunk>;
-using BuiltMeshHandle = ResourceHandle<TerrainObject::BuiltChunkMesh>;
-using MeshingWorkerContextHandle = ResourceHandle<TerrainObject::MeshingWorkerContext>;
-
-struct LocalPoint3
-{
-    int8_t x, y, z;
-};
-
-struct Point3
-{
-    int32_t x, y, z;
-
-    bool operator==(const Point3& other) const noexcept { return x == other.x && y == other.y && z == other.z; }
-
-    Point3 operator+(const Point3& other) const noexcept { return {x + other.x, y + other.y, z + other.z}; }
-
-    Point3 operator-(const Point3& other) const noexcept { return {x - other.x, y - other.y, z - other.z}; }
-    
-    const int32_t& operator[](size_t index) const
-    {
-        switch(index)
-        {
-        case 0:
-            return x;
-        case 1:
-            return y;
-        case 2:
-            return z;
-        }
-        return 0.f;
-    }
-};
-    
-constexpr Point3 perFaceOffset[6] = {
-    {0, 0, 1}, {0, 0, -1}, {0, 1, 0}, {0, -1, 0}, {1, 0, 0}, {-1, 0, 0},
-};
-
-struct Point3Hash
-{
-    size_t operator()(const Point3& p) const noexcept
-    {
-        size_t hx = std::hash<int32_t>{}(p.x);
-        size_t hy = std::hash<int32_t>{}(p.y);
-        size_t hz = std::hash<int32_t>{}(p.z);
-
-        // Mix the hashes
-        size_t seed = hx;
-        seed ^= hy + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-        seed ^= hz + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-
-        return seed;
-    }
-};
-
-enum class ChunkState
-{
-    GeneratingTerrain,
-    Persistent,
-    PendingDestroy,
-};
-
-inline size_t GetBlockIndex(uint8_t x, uint8_t y, uint8_t z)
-{
-    return ((size_t)x << CHUNK_SHIFT_X) + ((size_t)y << CHUNK_SHIFT_Y) + ((size_t)z << CHUNK_SHIFT_Z);
-}
+using TerrainContext = ECS::TerrainContext;
 
 struct BuiltChunkMesh
 {
@@ -115,47 +54,6 @@ struct BuiltChunkMesh
 struct BuiltChunkMesh2
 {
     std::vector<TexturedQuad> quads;
-};
-
-struct AllocatedChunkSlot
-{
-    uint32_t slot;
-    uint32_t size;  // always 1, 2, 4
-    uint32_t indexCount;
-
-    bool operator==(const AllocatedChunkSlot& other) const noexcept
-    {
-        return slot == other.slot && size == other.size && indexCount == other.indexCount;
-    }
-};
-
-struct AllocatedChunkSlotHasher
-{
-    std::size_t operator()(const AllocatedChunkSlot& slot) const noexcept
-    {
-        return (static_cast<uint64_t>(slot.slot) << 3) | slot.size;
-    }
-};
-
-struct ChunkData
-{
-    // 16384 bytes
-    uint32_t data[CHUNK_SIZE_TOTAL] = {};
-    Point3 Coords = {};
-    ChunkState state = ChunkState::GeneratingTerrain;
-
-   public:
-    ChunkData(Point3 coords) { Coords = coords; }
-
-    uint32_t GetBlock(uint8_t x, uint8_t y, uint8_t z)
-    {
-        assert(0 <= x && x < CHUNK_SIZE_X);
-        assert(0 <= y && y < CHUNK_SIZE_Y);
-        assert(0 <= z && z < CHUNK_SIZE_Z);
-        return data[GetBlockIndex(x, y, z)];
-    }
-
-    void SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value) { data[GetBlockIndex(x, y, z)] = value; }
 };
 
 struct PaletteCompressedChunk
@@ -188,13 +86,6 @@ struct PaletteCompressedChunk
     uint32_t Get(int x, int y, int z) const { return palette[data[GetBlockIndex(x, y, z)]]; }
 };
 
-struct LocalUpdateBlockCmd
-{
-    uint32_t value;
-    LocalPoint3 coord;
-    bool touchesBorder;
-};
-
 struct BuiltMesh
 {
     ChunkHandle handle;
@@ -214,79 +105,6 @@ struct ChunkMeshingWorkerContext
     BuiltMeshHandle chunkMeshHandle;
 };
 
-class ChunkDataCollection
-{
-   public:
-    const ChunkData* Get(ChunkHandle chunk) const { return chunkData.Get(chunk); }
-
-    std::tuple<ChunkHandle, const ChunkData*> Get(Point3 coord) const
-    {
-        auto it = coordToChunks.find(coord);
-        if (it != coordToChunks.end())
-        {
-            return {it->second, Get(it->second)};
-        }
-        return {{}, nullptr};
-    }
-
-    ChunkData* Get(ChunkHandle chunk) { return chunkData.Get(chunk); }
-
-    std::tuple<ChunkHandle, ChunkData*> Get(Point3 coord)
-    {
-        auto it = coordToChunks.find(coord);
-        if (it != coordToChunks.end())
-        {
-            return {it->second, Get(it->second)};
-        }
-        return {{}, nullptr};
-    }
-
-    ChunkHandle AllocateChunk(Point3 coord)
-    {
-        auto it = coordToChunks.find(coord);
-        if (it != coordToChunks.end())
-        {
-            return it->second;
-        }
-        auto res = chunkData.Create(coord);
-        coordToChunks.emplace(coord, res);
-        return res;
-    }
-
-    void FreeChunk(Point3 coord)
-    {
-        auto it = coordToChunks.find(coord);
-        if (it != coordToChunks.end())
-        {
-            chunkData.Destroy(it->second);
-            coordToChunks.erase(it);
-        }
-    }
-
-    void FreeChunk(ChunkHandle handle)
-    {
-        auto data = chunkData.Get(handle);
-        coordToChunks.erase(data->Coords);
-        chunkData.Destroy(handle);
-    }
-
-   private:
-    ResourcePool<TerrainObject::Chunk, ChunkData> chunkData;
-    std::unordered_map<Point3, ChunkHandle, Point3Hash> coordToChunks;
-};
-
-// allocate chunk -> generate terrain queue -> build mesh queue -> built chunk
-// meshes -> upload with streaming manager -> remove built chunk meshes ->
-// resident chunk any state -> destroy chunk
-struct TerrainData
-{
-    ChunkDataCollection chunks;
-    std::queue<ChunkHandle> generateTerrainQueue;
-    std::unordered_set<Point3, Point3Hash> chunksToDestroy;
-    std::unordered_map<ChunkHandle, std::vector<LocalUpdateBlockCmd>, HandleHash<ChunkHandle>> blockModificationQueue;
-    std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> dirtyChunks;
-};
-
 struct TerrainPresentationData
 {
     std::queue<ChunkHandle> buildMeshQueue;
@@ -294,9 +112,7 @@ struct TerrainPresentationData
     ResourcePool<TerrainObject::BuiltChunkMesh, BuiltChunkMesh2> builtChunkMeshes;
 
     std::queue<std::tuple<ChunkHandle, BuiltMeshHandle>> uploadMeshQueue;
-    GPUBufferHandle terrainMesh;
-
-    std::unordered_map<ChunkHandle, AllocatedChunkSlot, HandleHash<ChunkHandle>> residentChunks;
+    std::unordered_map<ChunkHandle, Graphics::PTerrainMesh, HandleHash<ChunkHandle>> residentChunks;
 };
 
 void ExecuteBuildChunkMeshJob(const ChunkMeshingWorkerContext* _context, BuiltChunkMesh* context,
@@ -323,7 +139,7 @@ class TerrainUpdateScheduler
     void InitialUpdate(TerrainData& terrain, Point3 chunkOrigin);
     void QueueChunksForMeshing(TerrainData& terrain, TerrainPresentationData& pdata);
     void UpdateChunkVisibility(TerrainData& data, TerrainPresentationData& pdata, std::array<math::vec3, 6> frustum,
-                               entt::registry& presentationWorld);
+                               entt::registry& presentationWorld, Graphics::PGameViewTag view);
     void SetChunkViewDistance(int val) { m_chunkViewDistance = val; }
 
    private:
@@ -334,11 +150,7 @@ class TerrainUploader
 {
    public:
     void SetMaxNumChunks(uint32_t maxNumChunks);
-    void CreateTerrainMesh(TerrainPresentationData& terrain, Graphics::IGraphicsBackend& backend);
-    void UploadTerrain(TerrainPresentationData& terrain, StreamingManager& sm);
-
-   private:
-    Graphics::ChunkAllocator m_chunkAllocator;
+    void UploadTerrain(TerrainPresentationData& terrain, PresentationContext& ctx);
 };
 
 struct TerrainDesc
@@ -358,43 +170,18 @@ class TerrainGenerator
     int terrainGenChunkBudget = 8;
 };
 
-struct VisibleChunkMeshes
-{
-    std::tuple<GPUBufferHandle, GPUBufferHandle> gpuBuffers;
-    std::unordered_set<AllocatedChunkSlot, AllocatedChunkSlotHasher>& meshes;
-};
-
-struct TerrainRaycastResult
-{
-    uint8_t hitFace;
-    Point3 hitPos;
-    uint32_t hitBlockValue;
-};
-
-class TerrainService
+class TerrainService : public TerrainView
 {
    public:
     NO_COPY(TerrainService);
     ~TerrainService() = default;
 
-    void Initialize(const TerrainDesc& desc, Point3 chunkOrigin);
-    uint32_t GetBlock(int x, int y, int z);
-    void SetBlock(int x, int y, int z, uint32_t value);
-    std::tuple<ChunkHandle, ChunkData*> GetChunk(Point3 chunkCoord);
-    ChunkData* GetChunk(ChunkHandle handle);
-    void SubmitChunk(ChunkHandle handle);
-
-    void Update(BlockRegistry& blocks, Point3 chunkOrigin);
-    void Present(BlockRegistry& blocks, std::array<math::vec3, 6> frustum, StreamingManager& sm,
-                 entt::registry& presentationWorld);
-    void UploadBuiltChunks(StreamingManager& stream);
-
-    GPUBufferHandle GetOrCreateTerrainMesh(Graphics::IGraphicsBackend& backend);
-
-    std::optional<TerrainRaycastResult> CastRay(math::vec3 pos, math::vec3 ray, float maxDist = 20.f);
+    void Initialize(const TerrainDesc& desc, TerrainContext& ctx);
+    void Update(TerrainContext& ctx);
+    void Present(TerrainContext& ctx, PresentationContext& pctx, FrameOutputData& frameOut);
 
    private:
-    TerrainData m_terrainData;
+    void onPlayerCreated(entt::registry& world, entt::entity entity);
     TerrainPresentationData m_terrainPData;
     TerrainGenerator m_terrainGenerator;
     TerrainMeshBuilder m_terrainMeshBuilder;

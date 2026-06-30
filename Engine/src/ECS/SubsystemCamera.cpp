@@ -7,83 +7,66 @@
 
 namespace OneGame::Engine::ECS
 {
-struct ComponentCamera
+
+math::mat4 ComponentCamera::view() const { return math::lookAt(position, position + forward, glm::vec3(0, 1, 0)); }
+
+// math::vec3 ComponentCamera::toRay(math::vec2 input, float aspect) const
+// {
+//     float ndcX = input.x * 2.0f - 1.0f;
+//     float ndcY = 1.0f - input.y * 2.0f;
+
+//     float tanHalfFov = tanf(fovY * 0.5f);
+
+//     float viewX = ndcX * aspect * tanHalfFov;
+//     float viewY = ndcY * tanHalfFov;
+//     float viewZ = -1.0f;
+
+//     math::vec3 rayDir =
+//     viewX * camRight +
+//     viewY * camUp +
+//     viewZ * camForward;
+
+//     rayDir = normalize(rayDir);
+//     return rayDir;
+// }
+
+void ComponentCamera::ApplyDelta(float dsx, float dsy, float dwx, float dwz)
 {
-    float yaw;
-    float pitch;
-    math::vec3 position;
-    glm::vec3 forward;
+    yaw += dsx;
+    pitch += dsy;
+    pitch = math::clamp(pitch, -math::radians(89.0f), math::radians(89.0f));
 
-    entt::entity playerInputData;
+    forward.x = cos(pitch) * sin(yaw);
+    forward.y = sin(pitch);
+    forward.z = cos(pitch) * cos(yaw);
+    forward = math::normalize(forward);
 
-    math::mat4 view() const
-    {
-        return math::lookAt(position, position + forward, glm::vec3(0, 1, 0));
-        ;
-    }
+    glm::vec3 worldUp = {0, 1, 0};
 
-    void ApplyDelta(float dsx, float dsy, float dwx, float dwz)
-    {
-        yaw += dsx;
-        pitch += dsy;
-        pitch = math::clamp(pitch, -math::radians(89.0f), math::radians(89.0f));
+    glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
 
-        forward.x = cos(pitch) * sin(yaw);
-        forward.y = sin(pitch);
-        forward.z = cos(pitch) * cos(yaw);
-        forward = math::normalize(forward);
+    position += dwx * math::cross(forward, glm::vec3(0, 1, 0)) + dwz * forward;
+}
 
-        glm::vec3 worldUp = {0, 1, 0};
-
-        // Horizontal movement direction
-        // glm::vec3 flatForward = forward;
-        // flatForward.y = 0.0f;
-        // flatForward = glm::normalize(flatForward);
-
-        // glm::vec3 right = glm::normalize(glm::cross(flatForward, worldUp));
-
-        // position += dwx * right + dwz * flatForward;
-
-        glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
-
-        position += dwx * math::cross(forward, glm::vec3(0, 1, 0)) + dwz * forward;
-    }
-};
 
 void SubsystemCamera::Initialize(GameWorldContext& game, AppContext ctx)
 {
-    auto camera = game.world.create();
-    ComponentCamera& cam = game.world.emplace<ComponentCamera>(camera);
-
-    cam.position = {20.f, 20.f, 20.f};
-
-    glm::vec3 target = {0.f, 0.f, 0.f};
-    cam.forward = glm::normalize(target - cam.position);
-
-    cam.yaw = std::atan2(cam.forward.x, cam.forward.z);
-    cam.pitch = std::asin(cam.forward.y);
-    cam.playerInputData = game.world.view<PlayerInputData>().front();
 }
 
 void SubsystemCamera::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd)
 {
-    float dt = fd.dt;
-    auto cameraEntity = game.world.view<ComponentCamera>().front();
-    auto& camera = game.world.get<ComponentCamera>(cameraEntity);
-
-    auto& data = game.world.get<const PlayerInputData>(camera.playerInputData);
-
-    camera.ApplyDelta(data.panDelta.x, data.panDelta.y, data.moveDelta.x, data.moveDelta.y);
 }
 
 void SubsystemCamera::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
 {
-    auto e = fd.presentationWorld.create();
-    auto& view = fd.presentationWorld.emplace<Graphics::PViewTransform>(e);
-
-    auto cameraEntity = game.world.view<ComponentCamera>().front();
-    auto& camera = game.world.get<ComponentCamera>(cameraEntity);
-
-    view.view = camera.view();
+    using namespace Graphics;
+    for (auto [entity, view, rect, camera, pcamera] : game.world.view<PlayerViewPanel, UIRect, ComponentCamera, ComponentPerspectiveCamera>().each())
+    {
+        auto e = fd.presentationWorld.create();
+        fd.presentationWorld.emplace<PGameView>(e, view.activeSlot);
+        fd.presentationWorld.emplace<PRect>(e, math::floor(rect.pos.x), math::floor(rect.pos.y), static_cast<uint32_t>(math::ceil(rect.extent.x)), static_cast<uint32_t>(math::ceil(rect.extent.y)));
+        fd.presentationWorld.emplace<PViewTransform>(e, camera.view());
+        fd.presentationWorld.emplace<PPerspectiveTransform>(e, pcamera.fov, pcamera.aspect);
+    }
 }
 }  // namespace OneGame::Engine::ECS

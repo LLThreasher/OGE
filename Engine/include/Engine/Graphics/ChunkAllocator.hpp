@@ -10,12 +10,8 @@ class ChunkAllocator
 {
    public:
     // maxChunks must be divisible by 4
-    explicit ChunkAllocator() {}
-
-    void Initialize(uint32_t maxChunks)
+    explicit ChunkAllocator(uint32_t maxChunks)
     {
-        assert(maxChunks % 4 == 0);
-
         m_blockOrder.resize(maxChunks);
         // Initially everything is a size-4 block (order 2)
         for (uint32_t i = 0; i < maxChunks; i += 4)

@@ -29,13 +29,14 @@ void SubsystemDebugInfo::Present(const GameWorldContext& game, PresentationConte
     auto memUsage = ctx.backend.GetGPUMemoryUsage();
 
     auto& world = fd.presentationWorld;
-    auto gpuInfoEntity = world.create();
-    auto& gpuInfoText = world.emplace<Graphics::PDebugText>(gpuInfoEntity);
-    gpuInfoText.text = gpuInfo.name;
-    auto debugInfoEntity = world.create();
-    world.emplace<Graphics::PDebugText>(debugInfoEntity);
-    world.get<Graphics::PDebugText>(debugInfoEntity).text =
-        std::format("FPS {:.2f} ({:.2f} ms)\nGPU Heap 0: {} MB / {} MB", currentFPS, currentFrameTime,
-                    memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024);
+    AddDebugInfo(world, gpuInfo.name);
+    AddDebugInfo(world, std::format("FPS {:.2f} ({:.2f} ms)\nGPU Heap 0: {} MB / {} MB", currentFPS, currentFrameTime,
+                             memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024));
+}
+
+void AddDebugInfo(entt::registry& world, std::string_view msg)
+{
+    auto e = world.create();
+    world.emplace<Graphics::PDebugText>(e).text = msg;
 }
 }  // namespace OneGame::Engine::ECS

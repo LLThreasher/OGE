@@ -15,20 +15,23 @@ void VulkanCommandBuffer::Begin()
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     vkBeginCommandBuffer(m_cmd, &beginInfo);
+}
 
+void VulkanCommandBuffer::SetViewRect(int32_t x, int32_t y, uint32_t extentX, uint32_t extentY)
+{
     VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = (float)m_backend->m_swapchain.extent.width;
-    viewport.height = (float)m_backend->m_swapchain.extent.height;
+    viewport.x = x;
+    viewport.y = y;
+    viewport.width = extentX;
+    viewport.height = extentY;
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
     vkCmdSetViewport(m_cmd, 0, 1, &viewport);
 
     VkRect2D scissor{};
-    scissor.offset = {0, 0};
-    scissor.extent = m_backend->m_swapchain.extent;
+    scissor.offset = {x, y};
+    scissor.extent = {extentX, extentY};
 
     vkCmdSetScissor(m_cmd, 0, 1, &scissor);
 }

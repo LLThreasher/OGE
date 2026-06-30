@@ -43,7 +43,9 @@ PRIVATE
     "src/ECS/SubsystemDebugInfo.cpp"
     "src/ECS/SubsystemPlayerInput.cpp"
     "src/ECS/SubsystemUI.cpp"
-)
+    "src/Platform/PrintStackTrace.cpp"
+    "src/ECS/SubsystemPlayer.cpp"
+ )
 
 target_include_directories(Engine
     PUBLIC
@@ -64,6 +66,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     PRIVATE
         VULKAN_VALIDATION
     )
+    if (WIN32)
+        target_link_libraries(Engine PRIVATE dbghelp)
+    endif()
 endif()
 
 target_compile_definitions(Engine

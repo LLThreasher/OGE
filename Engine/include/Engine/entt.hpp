@@ -1,10 +1,7 @@
 #pragma once
 #include <iostream>
-#ifdef PLATFORM_WINDOWS
-#include <stacktrace>
-#endif
-
 #include "Engine/Logger.hpp"
+#include "Engine/PrintStackTrace.hpp"
 
 inline void handle_entt_assert_fail(const char* condition, const char* message, const char* file, int line)
 {
@@ -12,9 +9,7 @@ inline void handle_entt_assert_fail(const char* condition, const char* message, 
     LOG_ERROR("Condition: {}", condition);
     LOG_ERROR("Message: {}", message);
     LOG_ERROR("Location: {}:{}", file, line);
-#ifdef PLATFORM_WINDOWS
-    std::cerr << std::stacktrace::current() << std::endl;
-#endif
+    PrintStackTrace();
     std::abort();
 }
 

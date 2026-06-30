@@ -8,6 +8,7 @@
 #include "TerrainPass.hpp"
 #include "UIPass.hpp"
 #include "UniformArena.hpp"
+#include "ChunkAllocator2.hpp"
 
 namespace OneGame::Engine
 {
@@ -27,27 +28,37 @@ class Renderer
     NO_COPY(Renderer)
     void Initialize(AssetContext& assets);
     void Shutdown(AssetContext& assets);
-    void Prepare(AssetContext& assets, entt::registry& world, float deltaTime);
-    void Render(IGraphicsBackend& backend, float deltaTime);
+    void Render(AssetContext& assets, const entt::registry& world, float deltaTime);
 
     void EnableTerrainPass(AssetContext& assets, Mesh terrainMesh);
     void DisableTerrainPass(AssetContext& assets);
     void EnableTerrainPass2(AssetContext& assets, GPUBufferHandle storageBuf);
     void DisableTerrainPass2(AssetContext& assets);
 
+    GPUChunkedAllocation AllocateTerrainMesh(uint32_t size)
+    {
+        return chunkAllocator.Allocate(size);
+    }
+    GPUBufferRange ResolveTerrainMesh(IGraphicsBackend& backend, GPUChunkedAllocation alloc)
+    {
+        chunkAllocator.CreateBuffers(backend);
+        return chunkAllocator.Resolve(alloc);
+    }
+
    private:
     void Draw(DrawContext& ctx);
+    void RenderView(AssetContext& assets, DrawContext drawCtxt);
 
     std::function<void(Renderer*, DrawContext&)> currentDraw;
 
     UniformArena uniformArena;
+    DynamicChunkAllocator chunkAllocator;
+
     UIPass uiPass;
     TestPass testPass;
     DebugInfoPass debugInfoPass;
-    // TerrainPass terrainPass;
     TerrainPass2 terrainPass2;
 
-    bool enableTerrainPass = false;
     bool enableTerrainPass2 = false;
 };
 }  // namespace OneGame::Engine::Graphics

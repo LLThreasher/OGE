@@ -31,7 +31,6 @@ class DebugInfoPass : public BasicPass
    public:
     void Enable(IGraphicsBackend& backend, InitContext& ctx) override;
     void Disable(IGraphicsBackend& backend) override;
-    void Prepare(PrepareContext& context) override;
     void Draw(DrawContext& context) override;
 
    private:
@@ -66,7 +65,6 @@ class TestPass : public BasicPass
    public:
     void Enable(IGraphicsBackend& backend, InitContext& ctx) override;
     void Disable(IGraphicsBackend& backend) override;
-    void Prepare(PrepareContext& context) override;
     void Draw(DrawContext& context) override;
 
    private:

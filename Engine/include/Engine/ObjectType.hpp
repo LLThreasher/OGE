@@ -75,15 +75,6 @@ using MeshHandle = ResourceHandle<AssetType::Mesh>;
 using JobHandle = ResourceHandle<TempItem::Job>;
 using StreamingDoneEventHandle = ResourceHandle<TempItem::StreamingDoneEvent>;
 
-struct Mesh
-{
-    size_t indexCount;
-    GPUBufferHandle vertexBuffer;
-    size_t vOffset;
-    GPUBufferHandle indexBuffer;
-    size_t iOffset;
-};
-
 enum class StreamingObjects
 {
     ResourceBundle,
@@ -100,17 +91,35 @@ struct HandleHash
     }
 };
 
-struct StagingAllocation
+struct GPUBufferSpan
 {
     uint32_t offset;
     uint32_t size;
+};
+
+struct StagingAllocation : GPUBufferSpan
+{
     void* cpuPtr;
 };
 
-struct GPUBufferRange
+struct GPUChunkedAllocation
 {
-    uint32_t offset;
-    uint32_t size;
+    uint16_t chunkSizeIdx;
+    uint16_t blockIdx;
+    uint32_t slotOffset;
+};
+
+struct GPUBufferRange : GPUBufferSpan
+{
     GPUBufferHandle buffer;
+};
+
+struct Mesh
+{
+    GPUBufferHandle vertexBuffer;
+    uint32_t vOffset;
+    GPUBufferHandle indexBuffer;
+    uint32_t iOffset;
+    uint32_t indexCount;
 };
 }  // namespace OneGame::Engine

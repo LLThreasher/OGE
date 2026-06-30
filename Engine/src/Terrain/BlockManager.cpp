@@ -25,6 +25,11 @@ uint16_t BlockRegistry::GetBlockId(const std::string blockIdName) const { return
 
 uint16_t BlockRegistry::GetBlockId(uint32_t blockValue) { return blockValue & BLOCK_ID_MASK; }
 
+const std::string& BlockRegistry::GetBlockDisplayName(uint16_t blockIdx) const
+{
+    return m_blockDisplayNames[blockIdx];
+}
+
 bool BlockRegistry::IsOpaque(const uint16_t blockIdx) const {
     return m_blockFlags[blockIdx] & BLOCK_FLAG_OPAQUE_TO_MESHER;
 }

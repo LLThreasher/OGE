@@ -94,6 +94,11 @@ inline mat4 perspective(float fovRadians, float aspect, float nearPlane, float f
     return glm::perspective(fovRadians, aspect, nearPlane, farPlane);
 }
 
+inline mat4 perspective_rev_z(float fovRadians, float aspect, float nearPlane)
+{
+    return glm::infinitePerspectiveRH_ZO(fovRadians, aspect, nearPlane);
+}
+
 inline int ceil(float val)
 {
     return glm::ceil(val);

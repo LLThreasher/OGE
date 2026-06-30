@@ -15,7 +15,7 @@ entt::entity PlayerInputData::CreatePlayerViewPanel(entt::registry& gameWorld, U
 
 static math::vec2 ScreenSpaceToSufaceSpace(const UIRect rect, math::vec2 screenPos)
 {
-    return (screenPos - rect.pos) / rect.extend;
+    return (screenPos - rect.pos) / rect.extent;
 }
 
 void SubsystemPlayerInput::Initialize(GameWorldContext& game, AppContext ctx)

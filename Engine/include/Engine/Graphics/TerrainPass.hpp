@@ -7,6 +7,7 @@
 namespace OneGame::Engine::Graphics
 {
 
+class UniformArena;
 class TerrainPass : public IPass<Mesh>
 {
     struct UBO
@@ -19,7 +20,6 @@ class TerrainPass : public IPass<Mesh>
 
     void Enable(IGraphicsBackend& backend, InitContext& ctxt, Mesh terrainMesh) override;
     void Disable(IGraphicsBackend& backend) override;
-    void Prepare(PrepareContext& context) override;
     void Draw(DrawContext& context) override;
     void SetPalette(ColorRGBA8 colors[16]);
 
@@ -40,7 +40,14 @@ class TerrainPass : public IPass<Mesh>
     math::quat orientation;
 };
 
-class TerrainPass2 : public IPass<GPUBufferHandle>
+struct TerrainMesh
+{
+    uint32_t offset;
+    uint32_t indexCount;
+    Point3 coord;
+};
+
+class TerrainPass2 : public BasicPass
 {
     struct UBO
     {
@@ -50,19 +57,20 @@ class TerrainPass2 : public IPass<GPUBufferHandle>
    public:
     TerrainPass2() {}
 
-    void Enable(IGraphicsBackend& backend, InitContext& ctxt, GPUBufferHandle terrainMesh) override;
+    void Enable(IGraphicsBackend& backend, InitContext& ctxt) override;
     void Disable(IGraphicsBackend& backend) override;
-    void Prepare(PrepareContext& context) override;
     void Draw(DrawContext& context) override;
 
    private:
-    GPUBufferHandle storageBuffer;
-    std::vector<PTerrainMesh> activeChunkSlots;
+    GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend, UniformArena& arena, GPUBufferHandle storageBuffer, uint32_t chunkSize);
+
+    std::unordered_map<GPUBindingGroupHandle, std::vector<TerrainMesh>, HandleHash<GPUBindingGroupHandle>> activeChunkSlots;
     std::vector<UBO> ubos;
+    
+    std::unordered_map<GPUBufferHandle, GPUBindingGroupHandle, HandleHash<GPUBufferHandle>> cachedBindingGroups;
 
     GPUPipelineHandle pipelineHandle;
     GPUBindingGroupLayoutHandle bindingGroupLayout;
-    GPUBindingGroupHandle bindingGroup;
     GPUTextureHandle blockTexture;
 };
 }  // namespace OneGame::Engine::Graphics

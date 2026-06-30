@@ -100,7 +100,5 @@ public:
     virtual void Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut) override;
 private:
     ECS::GameWorld m_gameWorld;
-    Terrain::TerrainService m_terrain;
-    Terrain::BlockRegistry m_blocks;
 };
 }  // namespace OneGame::Engine

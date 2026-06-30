@@ -10,8 +10,8 @@ static entt::entity RunUIRaycast(entt::registry& gameWorld, math::vec2 pos)
     int maxZLevel = -1;
     for (auto [entity, rect] : gameWorld.view<UIRaycastTarget, const UIRect>().each())
     {
-        if (rect.pos.x < pos.x && rect.pos.y < pos.y && pos.x < rect.pos.x + rect.extend.x &&
-            pos.y < rect.pos.y + rect.extend.y)
+        if (rect.pos.x < pos.x && rect.pos.y < pos.y && pos.x < rect.pos.x + rect.extent.x &&
+            pos.y < rect.pos.y + rect.extent.y)
         {
             if (rect.zLevel > maxZLevel)
             {

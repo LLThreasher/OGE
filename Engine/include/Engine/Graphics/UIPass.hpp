@@ -108,7 +108,6 @@ class UIPass : public BasicPass
 
     void Enable(IGraphicsBackend& backend, InitContext& ctxt) override;
     void Disable(IGraphicsBackend& backend) override;
-    void Prepare(PrepareContext& ctx) override;
     void Draw(DrawContext& context) override;
 
    private:

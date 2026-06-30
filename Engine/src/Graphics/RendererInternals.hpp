@@ -4,6 +4,8 @@
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/Graphics/RingStagingBuffer.hpp"
 #include "Engine/Graphics/UniformArena.hpp"
+#include "Engine/Graphics/ChunkAllocator2.hpp"
+#include "Engine/Graphics/PresentationObjects.hpp"
 
 namespace OneGame::Engine
 {
@@ -20,17 +22,19 @@ struct InitContext
 
 struct DrawContext
 {
-    const IGraphicsBackend& backend;
-    float deltaTime;
+    IGraphicsBackend& backend;
     UniformArena& uniformArena;
+    DynamicChunkAllocator& chunkAllocator;
+    float deltaTime;
     ICommandList& drawCmd;
     ICommandList& transferCmd;
+    const entt::registry& world;
+    math::mat4& pvTransform;
+    entt::entity currentView;
 };
 
 struct PrepareContext
 {
-    const IGraphicsBackend& backend;
-    float deltaTime;
-    entt::registry& world;
 };
+
 }  // namespace OneGame::Engine::Graphics

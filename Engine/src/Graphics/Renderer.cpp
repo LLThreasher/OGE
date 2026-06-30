@@ -1,7 +1,7 @@
 #include "Engine/Graphics/Renderer.hpp"
 
-#include "Engine/GameAppState.hpp"
 #include "Engine/AssetBundle.hpp"
+#include "Engine/GameAppState.hpp"
 #include "stb_easy_font.h"
 
 #define LOGGER_NAME "Engine"
@@ -13,8 +13,9 @@ namespace OneGame::Engine::Graphics
 
 void Renderer::Initialize(AssetContext& assets)
 {
-    uniformArena.Initialize(
-        assets.backend, assets.backend.MaxUniformBufferSize() > 1024 * 1024 * 16 ? 1024 * 1024 * 16 : assets.backend.MaxUniformBufferSize());
+    uniformArena.Initialize(assets.backend, assets.backend.MaxUniformBufferSize() > 1024 * 1024 * 16
+                                                ? 1024 * 1024 * 16
+                                                : assets.backend.MaxUniformBufferSize());
     LOG_DEBUG("uniform arena created");
 
     InitContext ctx{assets, uniformArena};
@@ -24,34 +25,19 @@ void Renderer::Initialize(AssetContext& assets)
     // LOG_DEBUG("test pass created");
     // terrainPass.Enable(backend, ctx);
     // LOG_DEBUG("terrain pass created");
-    // terrainPass2.Enable(backend, ctx);
-    // LOG_DEBUG("terrain pass 2 created");
+    terrainPass2.Enable(assets.backend, ctx);
+    LOG_DEBUG("terrain pass 2 created");
     // uiPass.Initialize(backend, appCtxt);
 }
 
 void Renderer::Shutdown(AssetContext& assets)
 {
     // uiPass.Shutdown(backend);
-    // terrainPass2.Disable(backend);
+    terrainPass2.Disable(assets.backend);
     // terrainPass.Disable(backend);
     // testPass.Disable(backend);
     debugInfoPass.Disable(assets.backend);
-
     uniformArena.Shutdown(assets.backend);
-}
-
-void Renderer::Prepare(AssetContext& assets, entt::registry& world, float deltaTime)
-{
-    PrepareContext pc{
-        assets.backend,
-        deltaTime,
-        world,
-    };
-    // uiPass.Prepare(world);
-    terrainPass2.Prepare(pc);
-    // terrainPass.Prepare(pc);
-    debugInfoPass.Prepare(pc);
-    // testPass.Prepare(pc);
 }
 
 void Renderer::Draw(DrawContext& drawCtxt)
@@ -59,61 +45,97 @@ void Renderer::Draw(DrawContext& drawCtxt)
     // testPass.Draw(drawCtxt);
     // if (enableTerrainPass)
     //     terrainPass.Draw(drawCtxt);
-    if (enableTerrainPass2) terrainPass2.Draw(drawCtxt);
+    terrainPass2.Draw(drawCtxt);
     debugInfoPass.Draw(drawCtxt);
 }
 
-void Renderer::Render(IGraphicsBackend& backend, float deltaTime)
+void Renderer::RenderView(AssetContext& assets, DrawContext ctxt)
 {
-    auto& tCmd = backend.CreateCommandList(QueueType::Transfer);
+    auto pview = ctxt.currentView == entt::null ? nullptr : ctxt.world.try_get<PViewTransform>(ctxt.currentView);
+    math::mat4 view =
+        pview ? pview->view : math::lookAt(math::vec3(20, 20, 20), math::vec3(0, 0, 0), math::vec3(0, 1, 0));
+    auto pproj = ctxt.currentView == entt::null ? nullptr : ctxt.world.try_get<PPerspectiveTransform>(ctxt.currentView);
+    math::mat4 proj = math::get_perspective_rot(ctxt.backend.SwapchainPretransform()) *
+                      (pproj ? math::perspective_rev_z(pproj->fov, pproj->aspect, 0.1f)
+                             : math::perspective_rev_z(math::radians(45.0f), ctxt.backend.SwapchainAspect(), 0.1f));
+    ctxt.pvTransform = proj * view;
+
+    if (ctxt.currentView == entt::null)
+    {
+        auto extent = assets.backend.SwapchainExtend();
+        ctxt.drawCmd.SetViewRect(0, 0, extent.x, extent.y);
+    }
+    else
+    {
+        auto& rect = ctxt.world.get<PRect>(ctxt.currentView);
+        ctxt.drawCmd.SetViewRect(rect.posX, rect.posY, rect.extentX, rect.extentY);
+    }
+
+    Draw(ctxt);
+}
+
+void Renderer::Render(AssetContext& assets, const entt::registry& world, float deltaTime)
+{
+    auto& backend = assets.backend;
     auto& cmd = backend.CreateCommandList(QueueType::Present);
+    auto& tCmd = backend.CreateCommandList(QueueType::Transfer);
+
+    math::mat4 mat = math::identity();
+    DrawContext drawCtxt = {backend, uniformArena, chunkAllocator, deltaTime, cmd, tCmd, world, mat};
+
     cmd.Begin();
+    tCmd.Begin();
 
     ClearValues values{};
     values.colorClears[0] = {0.1f, 0.2f, 0.4f, 1.0f};
     values.depthClear = 0.0f;
     values.stencilClear = 0.f;
-    cmd.BeginRenderPass(backend.GetCurrentRenderPass(), backend.GetCurrentFrameBuffer(), values);
 
-    DrawContext drawCtxt = {
-        backend, deltaTime, uniformArena, cmd, tCmd,
-    };
+    drawCtxt.drawCmd.BeginRenderPass(backend.GetCurrentRenderPass(), backend.GetCurrentFrameBuffer(), values);
 
-    tCmd.Begin();
-    Draw(drawCtxt);
+    // draw default view
+    drawCtxt.currentView = entt::null;
+    RenderView(assets, drawCtxt);
+
+    for (auto entity : world.view<PGameView>())
+    {
+        drawCtxt.currentView = entity;
+        RenderView(assets, drawCtxt);
+    }
+
+    drawCtxt.drawCmd.EndRenderPass();
+
     tCmd.End();
-
-    cmd.EndRenderPass();
     cmd.End();
 
     uniformArena.Flush(backend);
     uniformArena.AdvanceFrame();
 }
 
-void Renderer::EnableTerrainPass(AssetContext& assets, Mesh terrainMesh)
-{
-    InitContext initCtx{assets, uniformArena};
-    // terrainPass.Enable(backend, initCtx, terrainMesh);
-    enableTerrainPass = true;
-}
+// void Renderer::EnableTerrainPass(AssetContext& assets, Mesh terrainMesh)
+// {
+//     InitContext initCtx{assets, uniformArena};
+//     // terrainPass.Enable(backend, initCtx, terrainMesh);
+//     enableTerrainPass = true;
+// }
 
-void Renderer::DisableTerrainPass(AssetContext& assets)
-{
-    // terrainPass.Disable(backend);
-    enableTerrainPass = false;
-}
+// void Renderer::DisableTerrainPass(AssetContext& assets)
+// {
+//     // terrainPass.Disable(backend);
+//     enableTerrainPass = false;
+// }
 
-void Renderer::EnableTerrainPass2(AssetContext& assets, GPUBufferHandle storageBuf)
-{
-    InitContext initCtx{assets, uniformArena};
-    terrainPass2.Enable(assets.backend, initCtx, storageBuf);
-    enableTerrainPass2 = true;
-}
+// void Renderer::EnableTerrainPass2(AssetContext& assets, GPUBufferHandle storageBuf)
+// {
+//     InitContext initCtx{assets, uniformArena};
+//     terrainPass2.Enable(assets.backend, initCtx);
+//     enableTerrainPass2 = true;
+// }
 
-void Renderer::DisableTerrainPass2(AssetContext& assets)
-{
-    terrainPass2.Disable(assets.backend);
-    enableTerrainPass2 = false;
-}
+// void Renderer::DisableTerrainPass2(AssetContext& assets)
+// {
+//     terrainPass2.Disable(assets.backend);
+//     enableTerrainPass2 = false;
+// }
 
 }  // namespace OneGame::Engine::Graphics

@@ -1,10 +1,12 @@
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/StreamingManager.hpp"
 #include "Engine/Terrain/Terrain.hpp"
+#include "Engine/GameAppState.hpp"
+#include "Engine/Graphics/Renderer.hpp"
 
 namespace OneGame::Engine::Terrain
 {
-void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, StreamingManager& sm)
+void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, PresentationContext& ctx)
 {
     while (!terrain.uploadMeshQueue.empty())
     {
@@ -12,34 +14,24 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, StreamingM
         terrain.uploadMeshQueue.pop();
         size_t quadCount = terrain.builtChunkMeshes.Get(chunkMesh)->quads.size();
         auto chunkByteSize = quadCount * sizeof(TexturedQuad);
-        int chunkNum = math::ceil((float)chunkByteSize / CHUNK_STORE_BYTE_SIZE);
-        assert(chunkNum <= 4);
-        if (chunkNum == 3) chunkNum = 4;
-        auto chunkSlot = m_chunkAllocator.Allocate(chunkNum);
-        AllocatedChunkSlot slot{(uint32_t)chunkSlot, (uint32_t)chunkNum, (uint32_t)quadCount * 6u};
-        
-        ResourceBundleHandle res = sm.CreateResourceBundle(
-            [chunk, chunkMesh, slot, &terrain]()
+        auto slot = ctx.renderer.AllocateTerrainMesh(chunkByteSize);
+        auto resolved = ctx.renderer.ResolveTerrainMesh(ctx.backend, slot);
+        Graphics::PTerrainMesh pterrain {slot, static_cast<uint32_t>(quadCount * 6)};
+
+        ResourceBundleHandle res = ctx.streamingManager.CreateResourceBundle(
+            [chunk, chunkMesh, pterrain, &terrain]()
             {
-                terrain.residentChunks.emplace(chunk, slot);
+                terrain.residentChunks.emplace(chunk, pterrain);
                 terrain.builtChunkMeshes.Destroy(chunkMesh);
             });
 
         auto mesh = terrain.builtChunkMeshes.Get(chunkMesh);
-        sm.UploadBuffer<UploadType::Async, Graphics::BufferUsage::Storage>(mesh->quads, terrain.terrainMesh, slot.slot * CHUNK_STORE_BYTE_SIZE, res);
+        ctx.streamingManager.UploadBuffer<UploadType::Async, Graphics::BufferUsage::Storage>(mesh->quads, resolved.buffer, resolved.offset, res);
     }
 }
 
 void TerrainUploader::SetMaxNumChunks(uint32_t maxNumChunks)
 {
-    m_chunkAllocator.Initialize(math::align(maxNumChunks, 4));
-}
-
-void TerrainUploader::CreateTerrainMesh(TerrainPresentationData& terrain, Graphics::IGraphicsBackend& backend)
-{
-    assert(32 * 1024 * 1024 >= m_chunkAllocator.GetMaxNumChunks() * CHUNK_STORE_BYTE_SIZE);
-    terrain.terrainMesh = backend.AllocateGPUBuffer<Graphics::BufferUsage::Storage>(
-        32 * 1024 * 1024);  // 32 mb, 1320 chunks, 8 chunk view distance
 }
 
 void TerrainUpdateScheduler::InitialUpdate(TerrainData& terrain, Point3 chunkOrigin)
@@ -85,17 +77,15 @@ void TerrainUpdateScheduler::QueueChunksForMeshing(TerrainData& terrain, Terrain
 }
 
 void TerrainUpdateScheduler::UpdateChunkVisibility(TerrainData& data, TerrainPresentationData& pdata,
-                                                   std::array<math::vec3, 6> frustum, entt::registry& presentationWorld)
+                                                   std::array<math::vec3, 6> frustum, entt::registry& presentationWorld, Graphics::PGameViewTag view)
 {
     for (auto [handle, slot] : pdata.residentChunks)
     {
         auto chunk = data.chunks.Get(handle);
         auto chunkEntity = presentationWorld.create();
-        Graphics::PTerrainMesh mesh{
-            slot.slot * CHUNK_STORE_BYTE_SIZE, slot.indexCount, chunk->Coords.x, chunk->Coords.y,
-            chunk->Coords.z,
-        };
-        presentationWorld.emplace<Graphics::PTerrainMesh>(chunkEntity, mesh);
+        presentationWorld.emplace<Graphics::PGameViewTag>(chunkEntity, view);
+        presentationWorld.emplace<Graphics::PTerrainMesh>(chunkEntity, slot);
+        presentationWorld.emplace<Point3>(chunkEntity, chunk->Coords);
     }
 }
 }  // namespace OneGame::Engine::Terrain

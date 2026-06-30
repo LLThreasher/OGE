@@ -20,6 +20,8 @@ class VulkanCommandBuffer final : public ICommandList
     void Begin() override;
     void End() override;
 
+    void SetViewRect(int32_t x, int32_t y, uint32_t extentX, uint32_t extentY) override;
+
     // ----- Render pass -----
     void BeginRenderPass(const GPURenderPassHandle renderPass, const GPUFrameBufferHandle frameBuffer,
                          const ClearValues& clearValues) override;

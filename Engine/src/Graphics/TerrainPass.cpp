@@ -12,174 +12,7 @@ namespace OneGame::Engine::Graphics
 {
 using namespace Terrain;
 
-// void TerrainPass::Enable(IGraphicsBackend& backend, InitContext& ctxt, Mesh
-// terrain)
-//{
-//	BindingGroupLayoutDesc layout{};
-//	layout.textureCount = 1;
-//	layout.bufferCount = 2;
-//	layout.dynamicBufferMask = 1 << 1;
-
-//	bindingGroupLayout = backend.CreateBindingGroupLayout(layout);
-//	blockTexture = ctxt.assets.LoadTexture("blocks.png");
-//	terrainMesh = terrain;
-
-//	{
-//		BufferDesc cpDesc{};
-//		cpDesc.memory = MemoryUsage::CPUToGPU;
-//		cpDesc.size = sizeof(ColorRGBA8) * 16;
-//		cpDesc.usage = BufferUsage::Uniform | BufferUsage::TransferDst;
-//		colorPaletteGpuBuffer = backend.CreateBuffer(cpDesc,
-//&colorPaletteStagingBuffer);
-
-//		assert(blockTexture.IsValid());
-//		assert(colorPaletteGpuBuffer.IsValid());
-//		assert(ctxt.uniformArena.GetBuffer().IsValid());
-
-//		BindingGroupDesc desc{};
-//		desc.layout = bindingGroupLayout;
-//		desc.textures.push_back(blockTexture);
-//		desc.buffers.push_back({ colorPaletteGpuBuffer,
-// sizeof(ColorRGBA8) * 16 }); 		desc.buffers.push_back({
-// ctxt.uniformArena.GetBuffer(), sizeof(UBO) }); 		bindingGroup =
-// backend.CreateBindingGroup(desc);
-//	}
-
-//	{
-//		GraphicsPipelineDesc desc{};
-//		ctxt.assets.LoadBlob("terrain.vert.spv", desc.vertexShader);
-//		ctxt.assets.LoadBlob("terrain.frag.spv", desc.fragmentShader);
-//		// packed xyz
-//		desc.vertexLayout.push_back(VertexAttributeFormat::Uint16);
-//		// packed light and color
-//		desc.vertexLayout.push_back(VertexAttributeFormat::Uint8);
-//		// packed material id
-//		desc.vertexLayout.push_back(VertexAttributeFormat::Uint8);
-
-//		desc.bindingGroupLayouts.push_back(bindingGroupLayout);
-//		desc.writeDepth = true;
-//		desc.blending = false;
-//		desc.depthTest = true;
-//		desc.depthCompareOp = DepthCompareOp::Less;
-//		desc.cullMode = CullMode::Back;
-//		pipelineHandle = backend.CreateGraphicsPipeline(desc);
-//	}
-
-//	ColorRGBA8 colors[16] = {
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE,
-//		COLOR_WHITE
-//	};
-//	SetPalette(colors);
-//}
-
-// void TerrainPass::Disable(IGraphicsBackend& backend)
-//{
-//	backend.DestroyBuffer(colorPaletteGpuBuffer);
-//	backend.DestroyPipeline(pipelineHandle);
-//	backend.DestroyBindingGroupLayout(bindingGroupLayout);
-// }
-
-// void TerrainPass::Draw(DrawContext& ctxt)
-//{
-//	if (activeChunkSlots.size() == 0)
-//		return;
-
-//	ctxt.drawCmd.BindGraphicsPipeline(pipelineHandle);
-
-//	auto uniformMemory = ctxt.uniformArena.Allocate(sizeof(UBO) *
-// ubos.size()); 	std::memcpy(uniformMemory.cpuPtr, ubos.data(), sizeof(UBO) *
-// ubos.size());
-
-//	for (uint32_t i = 0; i < ubos.size(); ++i)
-//	{
-//		uint32_t offset[1] = {
-// static_cast<uint32_t>(uniformMemory.offset + i * sizeof(UBO)) };
-//		ctxt.drawCmd.BindBindingGroup(bindingGroup, 0, offset);
-//		ctxt.drawCmd.BindVertexBuffer(terrainMesh.vertexBuffer,
-// activeChunkSlots[i].offset);
-//		ctxt.drawCmd.BindIndexBuffer(terrainMesh.indexBuffer,
-// activeChunkSlots[i].offset, IndexFormat::Uint16);
-//		ctxt.drawCmd.DrawIndexed(activeChunkSlots[i].indexCount);
-//	}
-//}
-
-// math::mat4 ComputeModelTransform(float time)
-//{
-//	float w1 = 1.0f;
-//	float w2 = 1.41421356237f; // sqrt(2)
-
-//	math::mat4 rx = math::rotate(math::mat4(1.0f), w1 * time, math::vec3(1,
-// 0, 0)); 	math::mat4 ry = math::rotate(math::mat4(1.0f), w2 * time,
-// math::vec3(0, 1, 0));
-
-//	return ry * rx;
-//}
-
-// void TerrainPass::Prepare(PrepareContext& context)
-//{
-//	math::mat4 view;
-//	{
-//		auto views = context.world.view<PViewTransform>();
-//		if (views.empty())
-//		{
-//			view = math::lookAt(
-//				math::vec3(20, 20, 20),
-//				math::vec3(0, 0, 0),
-//				math::vec3(0, 1, 0));
-//		}
-//		else
-//		{
-//			view =
-// context.world.get<PViewTransform>(views.front()).view;
-//		}
-//	}
-
-//	auto proj =
-// math::get_perspective_rot(context.backend.SwapchainPretransform()) *
-// math::perspective( 		math::radians(45.0f), 		context.backend.SwapchainAspect(),
-//		0.1f,
-//		100.f);
-
-//	activeChunkSlots.clear();
-//	ubos.clear();
-//	auto worldView = context.world.view<const PTerrainMesh>();
-//	for (auto [_, mesh] : worldView.each())
-//	{
-//		activeChunkSlots.push_back(mesh);
-
-//		auto model = math::translate(math::mat4(1.0f),
-// math::vec3(mesh.chunkX * CHUNK_SIZE_X, mesh.chunkY * CHUNK_SIZE_Y, mesh.chunkZ
-//* CHUNK_SIZE_Z));
-
-//		UBO ubo
-//		{
-//			proj * view * model
-//		};
-//		ubos.push_back(ubo);
-//	}
-//
-//}
-
-// void TerrainPass::SetPalette(ColorRGBA8 colors[16])
-//{
-//	memcpy(colorPaletteStagingBuffer, colors, 16 * sizeof(ColorRGBA8));
-// }
-
-void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt, GPUBufferHandle terrain)
+void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt)
 {
     BindingGroupLayoutDesc layout{};
     layout.textureCount = 1;
@@ -189,7 +22,6 @@ void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt, GPUBuffe
     bindingGroupLayout = backend.CreateBindingGroupLayout(layout);
 
     blockTexture = ctxt.assets.LoadTexture("blocks.png");
-    storageBuffer = terrain;
 
     {
         GraphicsPipelineDesc desc{};
@@ -204,72 +36,78 @@ void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt, GPUBuffe
         desc.cullMode = CullMode::Back;
         pipelineHandle = backend.CreateGraphicsPipeline(desc);
     }
+}
+
+GPUBindingGroupHandle TerrainPass2::GetOrCreateBindingGroup(IGraphicsBackend& backend, UniformArena& arena, GPUBufferHandle storageBuffer, uint32_t chunkSize)
+{
+    auto it = cachedBindingGroups.find(storageBuffer);
+    if (it != cachedBindingGroups.end())
+    {
+        return it->second;
+    }
+    else
     {
         BindingGroupDesc desc{};
         desc.layout = bindingGroupLayout;
         desc.textures.push_back(blockTexture);
-        desc.buffers.push_back({storageBuffer, MAXIMUM_QUAD_BYTE_SIZE});
-        desc.buffers.push_back({ctxt.uniformArena.GetBuffer(), sizeof(UBO)});
-        bindingGroup = backend.CreateBindingGroup(desc);
+        desc.buffers.push_back({storageBuffer, chunkSize});
+        desc.buffers.push_back({arena.GetBuffer(), sizeof(UBO)});
+        auto [newIt, inserted] = cachedBindingGroups.emplace(storageBuffer, backend.CreateBindingGroup(desc));
+        return newIt->second;
     }
 }
 
 void TerrainPass2::Disable(IGraphicsBackend& backend)
 {
-    backend.DestroyBuffer(storageBuffer);
     backend.DestroyPipeline(pipelineHandle);
     backend.DestroyBindingGroupLayout(bindingGroupLayout);
 }
 
 void TerrainPass2::Draw(DrawContext& ctxt)
 {
-    if (activeChunkSlots.size() == 0) return;
+    auto viewTy = ctxt.currentView == entt::null ? GameViewType::Overlay : ctxt.world.get<PGameView>(ctxt.currentView).type;
+    activeChunkSlots.clear();
+    auto worldView = ctxt.world.view<PTerrainMesh, Point3, PGameViewTag>();
+    for (auto [_, mesh, coord, vtag] : worldView.each())
+    {
+        if (!(static_cast<uint32_t>(vtag.type) & static_cast<uint32_t>(viewTy))) continue;
+        auto resolved = ctxt.chunkAllocator.Resolve(mesh.alloc);
+        auto group = GetOrCreateBindingGroup(ctxt.backend, ctxt.uniformArena, resolved.buffer, resolved.size);
+        auto it = activeChunkSlots.find(group);
+        if (it == activeChunkSlots.end())
+        {
+            std::vector<TerrainMesh> v;
+            auto [newIt, _] = activeChunkSlots.emplace(group, std::move(v));
+            it = newIt;
+        }
+        it->second.emplace_back(resolved.offset, mesh.indexCount, coord);
+    }
 
     ctxt.drawCmd.BindGraphicsPipeline(pipelineHandle);
-
-    auto uniformMemory = ctxt.uniformArena.Allocate(sizeof(UBO) * ubos.size());
-    std::memcpy(uniformMemory.cpuPtr, ubos.data(), sizeof(UBO) * ubos.size());
-
-    for (uint32_t i = 0; i < ubos.size(); ++i)
+    for (auto [bindingGroup, val] : activeChunkSlots)
     {
-        uint32_t offset[2] = {activeChunkSlots[i].offset,
-                              static_cast<uint32_t>(uniformMemory.offset + i * sizeof(UBO))};
-        ctxt.drawCmd.BindBindingGroup(bindingGroup, 0, offset);
-        ctxt.drawCmd.Draw(activeChunkSlots[i].indexCount);
-    }
-}
-
-void TerrainPass2::Prepare(PrepareContext& context)
-{
-    math::mat4 view;
-    {
-        auto views = context.world.view<PViewTransform>();
-        if (views.empty())
+        ubos.clear();
+        for (auto mesh : val)
         {
-            view = math::lookAt(math::vec3(20, 20, 20), math::vec3(0, 0, 0), math::vec3(0, 1, 0));
+            auto coord = mesh.coord;
+            auto model = math::translate(
+                math::mat4(1.0f),
+                math::vec3(coord.x * CHUNK_SIZE_X, coord.y * CHUNK_SIZE_Y, coord.z * CHUNK_SIZE_Z));
+            UBO ubo{ctxt.pvTransform * model};
+            ubos.push_back(ubo);
         }
-        else
+        if (ubos.size() == 0) continue;
+
+        auto uniformMemory = ctxt.uniformArena.Allocate(sizeof(UBO) * ubos.size());
+        std::memcpy(uniformMemory.cpuPtr, ubos.data(), sizeof(UBO) * ubos.size());
+
+        for (uint32_t i = 0; i < ubos.size(); ++i)
         {
-            view = context.world.get<PViewTransform>(views.front()).view;
+            uint32_t offset[2] = {val[i].offset,
+                                static_cast<uint32_t>(uniformMemory.offset + i * sizeof(UBO))};
+            ctxt.drawCmd.BindBindingGroup(bindingGroup, 0, offset);
+            ctxt.drawCmd.Draw(val[i].indexCount);
         }
-    }
-
-    auto proj = math::get_perspective_rot(context.backend.SwapchainPretransform()) *
-                math::perspective(math::radians(45.0f), context.backend.SwapchainAspect(), 100.f, 0.1f);
-
-    activeChunkSlots.clear();
-    ubos.clear();
-    auto worldView = context.world.view<const PTerrainMesh>();
-    for (auto [_, mesh] : worldView.each())
-    {
-        activeChunkSlots.push_back(mesh);
-
-        auto model = math::translate(
-            math::mat4(1.0f),
-            math::vec3(mesh.chunkX * CHUNK_SIZE_X, mesh.chunkY * CHUNK_SIZE_Y, mesh.chunkZ * CHUNK_SIZE_Z));
-
-        UBO ubo{proj * view * model};
-        ubos.push_back(ubo);
     }
 }
 }  // namespace OneGame::Engine::Graphics
