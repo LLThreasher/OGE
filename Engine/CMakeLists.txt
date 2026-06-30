@@ -34,6 +34,7 @@ PRIVATE
     "src/GameApp.cpp"
     "src/Graphics/DebugPass.cpp"
     "src/Platform/SDL3AssetLoader.cpp"
+    "src/Platform/SDL3Stopwatch.cpp"
     "src/AssetManager.cpp"
     "src/StreamingManager.cpp"
     "src/Input/InputSystem.cpp"

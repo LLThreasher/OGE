@@ -20,6 +20,8 @@ void SubsystemDebugInfo::Update(GameWorldContext& game, AppContext ctx, const Fr
         currentFrameTime *= 1000.f;
         accumTime = 0;
         frameCount = 0;
+
+        perfStatus = fd.perfStats;
     }
 }
 
@@ -30,7 +32,7 @@ void SubsystemDebugInfo::Present(const GameWorldContext& game, PresentationConte
 
     auto& world = fd.presentationWorld;
     AddDebugInfo(world, gpuInfo.name);
-    AddDebugInfo(world, std::format("FPS {:.2f} ({:.2f} ms)\nGPU Heap 0: {} MB / {} MB", currentFPS, currentFrameTime,
+    AddDebugInfo(world, std::format("FPS {:.2f} ({:.2f} ms | {:.2f} | {:.2f} | {:.2f} | {:.2f})\nGPU Heap 0: {} MB / {} MB", currentFPS, perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime, perfStatus.assetUploadTime, perfStatus.renderSubmitTime,
                              memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024));
 }
 

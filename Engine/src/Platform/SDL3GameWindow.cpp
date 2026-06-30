@@ -209,6 +209,7 @@ void SDL3GameWindow::Run(GameClientApp& app)
 
         uint64_t frameEndTicks = SDL_GetPerformanceCounter();
         elapsedS = (double)(frameEndTicks - frameStartTicks) / perfFrequency;
+        finalDeltaTime = elapsedS;
 
         if ((appFrameAction & AppFrameAction::WrapMouse) == AppFrameAction::WrapMouse)
         {

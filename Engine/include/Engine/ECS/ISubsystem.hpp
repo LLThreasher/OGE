@@ -76,7 +76,7 @@ math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamer
 DECLARE_SUBSYSTEM(Camera, void onViewPanelUpdate(entt::registry& world, entt::entity entity););
 
 DECLARE_SUBSYSTEM(DebugInfo, float currentFPS = 0.f; float currentFrameTime = 0.f; float accumTime = 0.f;
-                  uint64_t frameCount = 0;);
+                  uint64_t frameCount = 0; FramePerfStatus perfStatus;);
 
 void AddDebugInfo(entt::registry& presentationWorld, std::string_view msg);
 

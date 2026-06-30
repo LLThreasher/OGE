@@ -64,5 +64,7 @@ class GameClientApp
     std::vector<std::unique_ptr<ClientSceneBase>> m_allScenes;
     ClientSceneBase* m_nextScene = nullptr;
     ClientSceneBase* m_currentScene = nullptr;
+
+    FramePerfStatus m_perfStats;
 };
 }  // namespace OneGame::Engine

@@ -72,11 +72,25 @@ struct AppContext : AssetBase
 
 // world states are stored in scenes
 
+struct FramePerfStatus
+{
+    float inputProcessingTime;
+    float logicTime;
+    float assetUploadTime;
+    float renderSubmitTime;
+
+    float actualFrameTime()
+    {
+        return inputProcessingTime + logicTime + assetUploadTime + renderSubmitTime;
+    }
+};
+
 // this comes every frame
 struct FrameInputData
 {
     float dt;
     InputSystem& input;
+    FramePerfStatus perfStats;
 };
 
 // game states writes to this
