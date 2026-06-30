@@ -224,8 +224,8 @@ void SDL3GameWindow::Run(GameClientApp& app)
             if (elapsedS < FPS_60_TARGET_FRAME_DURATION_S)
             {
                 double delayS = FPS_60_TARGET_FRAME_DURATION_S - elapsedS;
-                SDL_Delay(static_cast<Uint32>(delayS));
-                finalDeltaTime = FPS_60_TARGET_FRAME_DURATION_S;
+                SDL_Delay(static_cast<Uint32>(delayS * 1000));
+                finalDeltaTime = delayS + elapsedS;
             }
             else
             {
