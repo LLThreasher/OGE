@@ -68,6 +68,7 @@ void DebugInfoPass::Disable(IGraphicsBackend& backend) {}
 
 void DebugInfoPass::Draw(DrawContext& ctx)
 {
+    if (ctx.currentView != entt::null) return;
     std::stringstream ss;
     auto view = ctx.world.view<PDebugText>();
     for (auto [_, dbgText] : view.each())

@@ -93,15 +93,15 @@ void Renderer::Render(AssetContext& assets, const entt::registry& world, float d
 
     drawCtxt.drawCmd.BeginRenderPass(backend.GetCurrentRenderPass(), backend.GetCurrentFrameBuffer(), values);
 
-    // draw default view
-    drawCtxt.currentView = entt::null;
-    RenderView(assets, drawCtxt);
-
     for (auto entity : world.view<PGameView>())
     {
         drawCtxt.currentView = entity;
         RenderView(assets, drawCtxt);
     }
+
+    // draw overlay
+    drawCtxt.currentView = entt::null;
+    RenderView(assets, drawCtxt);
 
     drawCtxt.drawCmd.EndRenderPass();
 

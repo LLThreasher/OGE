@@ -212,6 +212,7 @@ void DebugScene3::Initialize(PresentationContext context)
     m_gameWorld.Register<SubsystemPlayer>();
 
     auto swapExtend = context.backend.SwapchainExtend();
+    swapExtend.x /= 2;
     auto rect = UIRect{0, {0, 0}, swapExtend};
     auto e = PlayerInputData::CreatePlayerViewPanel(m_gameWorld.Get().world, rect);
 
