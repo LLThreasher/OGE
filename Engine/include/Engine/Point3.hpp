@@ -54,25 +54,23 @@ struct Point3Hash
         return seed;
     }
 };
-}
+}  // namespace OneGame::Engine
 
 namespace std
 {
-    template <>
-    struct formatter<OneGame::Engine::Point3>
+template <>
+struct formatter<OneGame::Engine::Point3>
+{
+    template <class Context>
+    constexpr auto parse(Context& ctx)
     {
-        constexpr auto parse(format_parse_context& ctx)
-        {
-            return ctx.begin();
-        }
+        return ctx.begin();
+    }
 
-        auto format(const OneGame::Engine::Point3& p, format_context& ctx) const
-        {
-            return format_to(
-                ctx.out(),
-                "({}, {}, {})",
-                p.x, p.y, p.z
-            );
-        }
-    };
-}
+    template <class Context>
+    auto format(const OneGame::Engine::Point3& p, Context& ctx) const
+    {
+        return format_to(ctx.out(), "({}, {})", p.x, p.y);
+    }
+};
+}  // namespace std

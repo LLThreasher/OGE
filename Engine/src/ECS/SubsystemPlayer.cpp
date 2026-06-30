@@ -1,6 +1,7 @@
 #include "Engine/ECS/ISubsystem.hpp"
 #include "Engine/Terrain/TerrainView.hpp"
 #include "Engine/Terrain/BlockManager.hpp"
+#include "Engine/Point3.hpp"
 #include <format>
 
 
@@ -26,7 +27,16 @@ void SubsystemPlayer::Present(const GameWorldContext& game, PresentationContext 
     {
         auto player = game.world.get<ComponentPlayer>(players.front());
         if (player.lookingAt.has_value())
-            AddDebugInfo(fd.presentationWorld, std::format("Looking at {} {} {}[{}]", player.lookingAt->hitPos, player.lookingAt->hitFace, game.blocks.GetBlockDisplayName(game.blocks.GetBlockId(player.lookingAt->hitBlockValue)), player.lookingAt->hitBlockValue));
+            AddDebugInfo(
+                fd.presentationWorld,
+                std::format("Looking at {} {} {}[{}]", player.lookingAt->hitPos, player.lookingAt->hitFace,
+                            game.blocks.GetBlockDisplayName(game.blocks.GetBlockId(player.lookingAt->hitBlockValue)),
+                            player.lookingAt->hitBlockValue));
+        //AddDebugInfo(
+        //    fd.presentationWorld,
+        //    std::format("Looking at {} {} {}[{}]", player.lookingAt->hitPos, player.lookingAt->hitFace,
+        //                game.blocks.GetBlockDisplayName(game.blocks.GetBlockId(player.lookingAt->hitBlockValue)),
+        //                player.lookingAt->hitBlockValue));
     }
 }
 }  // namespace OneGame::Engine::ECS

@@ -14,7 +14,8 @@ extern "C" {
 		SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
 
 		auto window = CreateGameWindow("OneGame", 0, 0);
-		auto app = GameApp();
+        auto backend = CreateBackend(BackendType::Vulkan);
+        auto app = GameClientApp(*backend);
 
 		window->Run(app);
 		return 0;
