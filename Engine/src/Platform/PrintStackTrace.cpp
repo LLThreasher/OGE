@@ -26,4 +26,8 @@ void PrintStackTrace()
 
     free(symbol);
 }
+#else
+void PrintStackTrace()
+{
+}
 #endif

@@ -78,6 +78,14 @@ AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
 {
     AppFrameAction appRes = AppFrameAction::WaitFPS60;
     auto res = m_backend.BeginFrame();
+
+    if (m_backend.SwapchainRecreated())
+    {
+        auto swapExtend = m_backend.SwapchainExtent();
+        auto swapPretransform = m_backend.SwapchainPretransform();
+        m_dispatcher.enqueue<SurfaceRecreateEvent>(swapExtend, swapPretransform);
+    }
+    
     if (res == BeginFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
     if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;
 
@@ -136,12 +144,13 @@ AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
     return appRes;
 }
 
-void GameClientApp::OnResize(int width, int height) { m_backend.Resize(width, height); }
+void GameClientApp::OnResize(int width, int height)
+{
+    m_backend.Resize(width, height);
+}
 
 void GameClientApp::OnWindowRecreate(Graphics::WindowHandle* handle)
 {
     m_backend.RecreateSurface(handle);
-    auto swapExtend = m_backend.SwapchainExtend();
-    m_dispatcher.enqueue<SurfaceRecreateEvent>(swapExtend.x, swapExtend.y);
 }
 }  // namespace OneGame::Engine

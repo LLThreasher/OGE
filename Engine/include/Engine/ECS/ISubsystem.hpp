@@ -4,23 +4,25 @@
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math.hpp"
+#include "Engine/Point2.hpp"
 #include "Engine/Terrain/TerrainView.hpp"
 
 #define DECLARE_SUBSYSTEM(Name, ...)                                                                       \
-class Subsystem##Name : public ISubsystem                                                                  \
-{                                                                                                          \
-    public:                                                                                                 \
-    void Initialize(GameWorldContext& game, AppContext ctx) override;                                  \
-    void Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd) override;            \
-    void Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd) override; \
-                                                                                                            \
-    private:                                                                                                \
-    __VA_ARGS__                                                                                            \
-};
+    class Subsystem##Name : public SubsystemBase                                                           \
+    {                                                                                                      \
+       public:                                                                                             \
+        void Initialize(GameWorldContext& game, AppContext ctx) override;                                  \
+        void Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd) override;            \
+        void Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd) override; \
+                                                                                                           \
+       private:                                                                                            \
+        __VA_ARGS__                                                                                        \
+    };
+
 
 namespace OneGame::Engine::Terrain
 {
-    class BlockRegistry;
+class BlockRegistry;
 }
 
 namespace OneGame::Engine::ECS
@@ -28,22 +30,27 @@ namespace OneGame::Engine::ECS
 
 struct TerrainContext
 {
-	entt::registry& world;
+    entt::registry& world;
     Terrain::BlockRegistry& blocks;
 };
 
 struct GameWorldContext : TerrainContext
 {
-	Terrain::TerrainView& terrain;
+    Terrain::TerrainView& terrain;
 };
 
+template <typename TData>
 class ISubsystem
 {
    public:
     virtual ~ISubsystem() = default;
-    virtual void Initialize(GameWorldContext& game, AppContext ctx) = 0;
-    virtual void Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd) = 0;
-    virtual void Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd) = 0;
+    virtual void Initialize(TData& game, AppContext ctx) = 0;
+    virtual void Update(TData& game, AppContext ctx, const FrameInputData& fd) = 0;
+    virtual void Present(const TData& game, PresentationContext ctx, FrameOutputData& fd) = 0;
+};
+
+class SubsystemBase : public ISubsystem<GameWorldContext>
+{
 };
 
 struct ComponentCamera
@@ -53,7 +60,7 @@ struct ComponentCamera
     math::vec3 position;
     glm::vec3 forward;
     entt::entity targetPanel;
-    
+
     math::mat4 view() const;
     void ApplyDelta(float dsx, float dsy, float dwx, float dwz);
 };
@@ -66,7 +73,7 @@ struct ComponentPerspectiveCamera
 
 math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamera, math::vec2 pos);
 
-DECLARE_SUBSYSTEM(Camera);
+DECLARE_SUBSYSTEM(Camera, void onViewPanelUpdate(entt::registry& world, entt::entity entity););
 
 DECLARE_SUBSYSTEM(DebugInfo, float currentFPS = 0.f; float currentFrameTime = 0.f; float accumTime = 0.f;
                   uint64_t frameCount = 0;);
@@ -74,6 +81,7 @@ DECLARE_SUBSYSTEM(DebugInfo, float currentFPS = 0.f; float currentFrameTime = 0.
 void AddDebugInfo(entt::registry& presentationWorld, std::string_view msg);
 
 struct UIRect;
+struct ScreenRect;
 struct PlayerInputData
 {
     math::vec2 moveDelta;
@@ -82,12 +90,12 @@ struct PlayerInputData
     math::vec2 diggingPos;
     bool placing;
     math::vec2 placingPos;
-
-    static entt::entity CreatePlayerViewPanel(entt::registry& gameWorld, UIRect& rect);
 };
-DECLARE_SUBSYSTEM(PlayerInput, void onUIGainFocus(entt::registry& gameWorld, entt::entity entity);
-                  void onUILoseFocus(entt::registry& gameWorld, entt::entity entity);
-                  std::optional<entt::entity> playerInputUsingKeyMouse; bool isKeyMouseUsed = false;);
+DECLARE_SUBSYSTEM(PlayerInput,
+    void onCreateInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
+    void onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
+    void onEraseInputSourceWidget(entt::registry& gameWorld, entt::entity entity);
+    bool isKeyMouseUsed = false; bool previousIsKeyMouseUsed = false;);
 
 struct UIDrag
 {
@@ -122,11 +130,20 @@ struct UIRect
     math::vec2 extent;
 };
 
-namespace InputSource
+struct UIRoot
 {
-constexpr uint8_t Widget = 1 << 0;
-constexpr uint8_t KeyMouse = 1 << 1;
-};  // namespace InputSource
+};
+
+struct UIParent
+{
+    entt::entity parent;
+};
+
+struct ScreenRect
+{
+    Point2 pos;
+    UPoint2 extent;
+};
 
 struct InputSourceWidget
 {
@@ -134,31 +151,48 @@ struct InputSourceWidget
     entt::entity viewWidget;
 };
 
-struct PlayerViewPanel
+struct InputSourceKeyMouse
 {
-    union
-    {
-        InputSourceWidget widgetInput;
-    };
-    uint8_t source;
+};
+
+struct ViewPanel
+{
     Graphics::GameViewType activeSlot = Graphics::GameViewType::Slot0;
+    entt::entity activeCamera = entt::null;
 };
 
 // Handle drags and UI rendering
-DECLARE_SUBSYSTEM(UI, std::array<entt::entity, PointerIdx::COUNT> activeDrags;
-                  void onCreateUIRect(entt::registry& gameWorld, entt::entity entity););
+DECLARE_SUBSYSTEM(UI, std::array<entt::entity, PointerIdx::COUNT> activeDrags;);
+
+struct ComponentPhysicBody
+{
+    math::vec3 pos;
+    math::vec3 velocity;
+};
 
 struct ComponentPlayer
 {
-    entt::entity playerInputEntity;
     std::optional<Terrain::TerrainRaycastResult> lookingAt;
 
-    static entt::entity CreatePlayer(entt::registry& world, entt::entity playerViewPanel)
+    static entt::entity CreatePlayer(entt::registry& world)
     {
         auto res = world.create();
-        world.emplace<ComponentPlayer>(res, playerViewPanel);
+        world.emplace<ComponentPhysicBody>(res);
+        world.emplace<ComponentCamera>(res);
+        world.emplace<ComponentPerspectiveCamera>(res);
+        world.emplace<ComponentPlayer>(res);
+        world.emplace<PlayerInputData>(res);
         return res;
     }
 };
 DECLARE_SUBSYSTEM(Player);
 }  // namespace OneGame::Engine::ECS
+
+namespace OneGame::Engine::UI
+{
+math::vec2 ScreenSpaceToRelSpace(const ECS::ScreenRect rect, math::vec2 screenPos);
+ECS::ScreenRect UIRectToScreenRect(entt::registry& world, entt::entity rect);
+math::vec2 ScreenSpaceToRelSpace(entt::registry& world, entt::entity rectEntity, math::vec2 screenPos);
+entt::entity CastRay(entt::registry& gameWorld, math::vec2 pos);
+entt::entity CreateGameView(entt::registry& game, const ECS::UIRect rect);
+}

@@ -117,7 +117,7 @@ void DebugInfoPass::Draw(DrawContext& ctx)
 
     if (ctx.backend.SwapchainRecreated())
     {
-        auto extent = ctx.backend.SwapchainExtend();
+        auto extent = ctx.backend.SwapchainExtent();
         math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
                                 pushConstant.offset);
     }

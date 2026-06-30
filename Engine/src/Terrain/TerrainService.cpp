@@ -3,14 +3,14 @@
 #include "Engine/Terrain/BlockManager.hpp"
 #include "Engine/Terrain/Terrain.hpp"
 #include "Engine/GameAppState.hpp"
-#include "Engine/ECS/ISubsystem.hpp"
 
 namespace OneGame::Engine::Terrain
 {
 using namespace ECS;
 
-void TerrainService::Initialize(const TerrainDesc& desc, TerrainContext& ctx)
+void TerrainService::Initialize(TerrainContext& ctx, AppContext actx)
 {
+    auto [entity, desc] = *ctx.world.view<TerrainDesc>().each().begin();
     m_terrainGenerator.SetTerrainGenChunkBudget(desc.terrainGenChunkBudget);
     m_terrainMeshBuilder.SetVertexBudget(desc.meshingQuadBudget);
     m_terrainUploader.SetMaxNumChunks((desc.chunkViewDistance + 1) * (desc.chunkViewDistance + 1) * 6);
@@ -20,27 +20,22 @@ void TerrainService::Initialize(const TerrainDesc& desc, TerrainContext& ctx)
 
 void TerrainService::onPlayerCreated(entt::registry& world, entt::entity entity)
 {
-    // TODO: replace with physic body position
-    auto view = world.get<ComponentPlayer>(entity).playerInputEntity;
-    auto pos = world.get<ComponentCamera>(view).position;
+    auto pos = world.get<ComponentCamera>(entity).position;
     Point3 ipos = {math::floor(pos.x) / CHUNK_SIZE_X, math::floor(pos.y) / CHUNK_SIZE_Y, math::floor(pos.z) / CHUNK_SIZE_Z};
     m_terrainUpdateScheduler.InitialUpdate(m_terrainData, ipos);
 }
 
-void TerrainService::Update(TerrainContext& ctx)
+void TerrainService::Update(TerrainContext& ctx, AppContext actx, const FrameInputData& fd)
 {
     m_terrainGenerator.GenerateTerrain(m_terrainData, ctx.blocks);
 }
 
-void TerrainService::Present(TerrainContext& ctx, PresentationContext& pctx, FrameOutputData& frameOut)
+void TerrainService::Present(const TerrainContext& ctx, PresentationContext pctx, FrameOutputData& frameOut)
 {
     m_terrainUpdateScheduler.QueueChunksForMeshing(m_terrainData, m_terrainPData);
     m_terrainMeshBuilder.BuildChunkMeshes(m_terrainData, ctx.blocks, m_terrainPData);
     m_terrainUploader.UploadTerrain(m_terrainPData, pctx);
-    for (auto [_, player] : ctx.world.view<PlayerViewPanel>().each())
-    {
-        m_terrainUpdateScheduler.UpdateChunkVisibility(m_terrainData, m_terrainPData, {}, frameOut.presentationWorld, Graphics::PGameViewTag(player.activeSlot));
-    }
+    m_terrainUpdateScheduler.SubmitVisibleChunks(m_terrainData, m_terrainPData, ctx, frameOut);
 }
 
 uint32_t TerrainView::GetBlock(int x, int y, int z)

@@ -3,6 +3,8 @@
 #include "Engine/AssetBundle.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/entt.hpp"
+#include "Engine/Point2.hpp"
+#include "Engine/Math.hpp"
 
 namespace OneGame::Engine
 {
@@ -65,6 +67,7 @@ struct AssetBase
 struct AppContext : AssetBase
 {
     entt::dispatcher& events;
+    const Graphics::IGraphicsBackend* backend = nullptr;
 };
 
 // world states are stored in scenes
@@ -117,8 +120,7 @@ struct PresentationContext : AssetContext
     entt::dispatcher& events;
     Graphics::Renderer& renderer;
 
-    operator AppContext() const { return {assetManager, events}; }
-    operator AppContext() { return {assetManager, events}; }
+    operator AppContext() const { return {assetManager, events, &backend}; }
 };
 
 // relationship:
@@ -129,7 +131,7 @@ struct PresentationContext : AssetContext
 
 struct SurfaceRecreateEvent
 {
-    float swapchainWidth;
-    float swapchainHeight;
+    UPoint2 swapchainExtent;
+    math::Orientation swapchainPretransform;
 };
 }  // namespace OneGame::Engine

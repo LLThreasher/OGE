@@ -21,9 +21,7 @@ void DebugScene2::Initialize(PresentationContext context)
     gameWorld.Register<SubsystemCamera>();
     gameWorld.Register<SubsystemDebugInfo>();
 
-    auto swapExtend = context.backend.SwapchainExtend();
-    auto rect = UIRect{0, {0, 0}, swapExtend};
-    auto e = PlayerInputData::CreatePlayerViewPanel(gameWorld.Get().world, rect);
+    auto e = UI::CreateGameView(gameWorld.Get().world, {0, math::vec2{0, 0}, math::vec2{1, 1}});
 }
 
 void DebugScene2::Enter(PresentationContext context)
@@ -185,21 +183,22 @@ void DebugScene2::Update(PresentationContext context, const FrameInputData& fram
     gameWorld.Update(context, frame);
     gameWorld.Present(context, frameOut);
 
-    if (frame.input.IsKeyDown(KeyCode::KY_G))
-    {
-        auto& gworld = gameWorld.Get().world;
-        auto pe = gworld.view<ECS::PlayerViewPanel>().front();
-        gworld.get_or_emplace<ECS::UIFocus>(pe);
-    }
-    else if (frame.input.IsKeyDown(KeyCode::KY_ESCAPE))
-    {
-        auto& gworld = gameWorld.Get().world;
-        auto pe = gworld.view<ECS::PlayerViewPanel>().front();
-        if (gworld.all_of<ECS::UIFocus>(pe))
-        {
-            gworld.erase<ECS::UIFocus>(pe);
-        }
-    }
+    // if (frame.input.IsKeyDown(KeyCode::KY_G))
+    // {
+    //     auto& gworld = gameWorld.Get().world;
+    //     auto pe = gworld.view<ECS::PlayerInputSource>().front();
+    //     gworld.patch<ECS::PlayerInputSource>(pe, [](auto& in){
+    //         in.source |= ECS::InputSource::KeyMouse;
+    //     });
+    // }
+    // else if (frame.input.IsKeyDown(KeyCode::KY_ESCAPE))
+    // {
+    //     auto& gworld = gameWorld.Get().world;
+    //     auto pe = gworld.view<ECS::PlayerInputSource>().front();
+    //     gworld.patch<ECS::PlayerInputSource>(pe, [](auto& in){
+    //         in.source &= ~ECS::InputSource::KeyMouse;
+    //     });
+    // }
 }
 
 void DebugScene3::Initialize(PresentationContext context)
@@ -211,20 +210,39 @@ void DebugScene3::Initialize(PresentationContext context)
     m_gameWorld.Register<SubsystemDebugInfo>();
     m_gameWorld.Register<SubsystemPlayer>();
 
-    auto swapExtend = context.backend.SwapchainExtend();
-    swapExtend.x /= 2;
-    auto rect = UIRect{0, {0, 0}, swapExtend};
-    auto e = PlayerInputData::CreatePlayerViewPanel(m_gameWorld.Get().world, rect);
-
     auto& blocks = m_gameWorld.Get().blocks;
     blocks.RegisterBlock("dirt", {"Dirt", {2, 2, 2, 2, 2, 2}, 1});
     blocks.RegisterBlock("wood", {"Wood", {4, 4, 4, 4, 4, 4}, 1});
     blocks.RegisterBlock("stone", {"Stone", {5, 5, 5, 5, 5, 5}, 1});
+
+    Terrain::TerrainDesc desc{};
+    desc.chunkViewDistance = 4;
+    m_gameWorld.Get().world.emplace<Terrain::TerrainDesc>(m_gameWorld.Get().world.create(), desc);
 }
 
 void DebugScene3::Enter(PresentationContext context)
 {
+    using namespace ECS;
     m_gameWorld.Initialize(context);
+    auto vpe = UI::CreateGameView(m_gameWorld.Get().world, {0, math::vec2{0, 0}, math::vec2{1, 1}});
+
+    auto& world = m_gameWorld.Get().world;
+    auto player = ComponentPlayer::CreatePlayer(world);
+    {
+        ComponentCamera& cam = world.get<ComponentCamera>(player);
+        cam.position = {20.f, 20.f, 20.f};
+
+        glm::vec3 target = {0.f, 0.f, 0.f};
+        cam.forward = glm::normalize(target - cam.position);
+
+        cam.yaw = std::atan2(cam.forward.x, cam.forward.z);
+        cam.pitch = std::asin(cam.forward.y);
+
+        ComponentPerspectiveCamera& pcam = world.get<ComponentPerspectiveCamera>(player);
+        pcam.fov = math::radians(45.f);
+    }
+    world.get<ViewPanel>(vpe).activeCamera = player;
+    world.patch<ViewPanel>(vpe);
 }
 
 void DebugScene3::Exit(PresentationContext context)
@@ -241,17 +259,16 @@ void DebugScene3::Update(PresentationContext context, const FrameInputData& fram
     if (frame.input.IsKeyDown(KeyCode::KY_G))
     {
         auto& gworld = m_gameWorld.Get().world;
-        auto pe = gworld.view<ECS::PlayerViewPanel>().front();
-        gworld.get_or_emplace<ECS::UIFocus>(pe);
+        auto pe = gworld.view<ECS::PlayerInputData>().front();
+        assert(gworld.valid(pe));
+        gworld.get_or_emplace<ECS::InputSourceKeyMouse>(pe);
     }
     else if (frame.input.IsKeyDown(KeyCode::KY_ESCAPE))
     {
         auto& gworld = m_gameWorld.Get().world;
-        auto pe = gworld.view<ECS::PlayerViewPanel>().front();
-        if (gworld.all_of<ECS::UIFocus>(pe))
-        {
-            gworld.erase<ECS::UIFocus>(pe);
-        }
+        auto pe = gworld.view<ECS::PlayerInputData>().front();
+        if (gworld.all_of<ECS::InputSourceKeyMouse>(pe))
+            gworld.erase<ECS::InputSourceKeyMouse>(pe);
     }
 }
 }  // namespace OneGame::Engine

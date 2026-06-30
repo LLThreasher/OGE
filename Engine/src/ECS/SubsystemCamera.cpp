@@ -51,6 +51,23 @@ void ComponentCamera::ApplyDelta(float dsx, float dsy, float dwx, float dwz)
 
 void SubsystemCamera::Initialize(GameWorldContext& game, AppContext ctx)
 {
+    game.world.on_construct<ScreenRect>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
+    game.world.on_update<ScreenRect>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
+    game.world.on_construct<ViewPanel>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
+    game.world.on_update<ViewPanel>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
+}
+
+void SubsystemCamera::onViewPanelUpdate(entt::registry& world, entt::entity entity)
+{
+    auto [vp, rect] = world.try_get<ViewPanel, ScreenRect>(entity);
+    if (vp != nullptr && rect != nullptr)
+    {
+        auto camEntity = vp->activeCamera;
+        if (auto pcam = world.try_get<ComponentPerspectiveCamera>(camEntity))
+        {
+            pcam->aspect = (float)rect->extent.x / (float)rect->extent.y;
+        }
+    }
 }
 
 void SubsystemCamera::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd)
@@ -60,13 +77,15 @@ void SubsystemCamera::Update(GameWorldContext& game, AppContext ctx, const Frame
 void SubsystemCamera::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
 {
     using namespace Graphics;
-    for (auto [entity, view, rect, camera, pcamera] : game.world.view<PlayerViewPanel, UIRect, ComponentCamera, ComponentPerspectiveCamera>().each())
+    for (auto [entity, view, rect] : game.world.view<ViewPanel, ScreenRect>().each())
     {
         auto e = fd.presentationWorld.create();
         fd.presentationWorld.emplace<PGameView>(e, view.activeSlot);
-        fd.presentationWorld.emplace<PRect>(e, math::floor(rect.pos.x), math::floor(rect.pos.y), static_cast<uint32_t>(math::ceil(rect.extent.x)), static_cast<uint32_t>(math::ceil(rect.extent.y)));
-        fd.presentationWorld.emplace<PViewTransform>(e, camera.view());
-        fd.presentationWorld.emplace<PPerspectiveTransform>(e, pcamera.fov, pcamera.aspect);
+        fd.presentationWorld.emplace<PRect>(e, rect.pos.x, rect.pos.y, rect.extent.x, rect.extent.y);
+        if (auto camera = game.world.try_get<ComponentCamera>(view.activeCamera))
+            fd.presentationWorld.emplace<PViewTransform>(e, camera->view());
+        if (auto pcamera = game.world.try_get<ComponentPerspectiveCamera>(view.activeCamera))
+            fd.presentationWorld.emplace<PPerspectiveTransform>(e, pcamera->fov, pcamera->aspect);
     }
 }
 }  // namespace OneGame::Engine::ECS

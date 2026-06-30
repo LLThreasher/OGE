@@ -166,6 +166,13 @@ void SDL3GameWindow::Run(GameClientApp& app)
                     waitingSurface = false;
                 }
                 break;
+                case SDL_EVENT_WINDOW_RESIZED:
+                {
+                    int new_width = event.window.data1;
+                    int new_height = event.window.data2;
+                    app.OnResize(new_width, new_height);
+                }
+                break;
                 case SDL_EVENT_KEY_DOWN:
                     m_input.SetKey(GetEngineKey(event.key.key), true);
                     break;

@@ -19,10 +19,8 @@ class GameWorld
 
     void Initialize(AppContext ctx)
     {
-        Terrain::TerrainDesc desc{};
-        desc.chunkViewDistance = 4;
         GameWorldContext game = Get();
-        m_terrain.Initialize(desc, game);
+        m_terrain.Initialize(game, ctx);
         for (auto& ptr : m_subsystems)
         {
             ptr->Initialize(game, ctx);
@@ -32,7 +30,7 @@ class GameWorld
     void Update(AppContext app, const FrameInputData& frame)
     {
         GameWorldContext game = Get();
-        m_terrain.Update(game);
+        m_terrain.Update(game, app, frame);
         for (auto& ptr : m_subsystems)
         {
             ptr->Update(game, app, frame);
@@ -52,7 +50,7 @@ class GameWorld
     GameWorldContext Get() { return {m_world, m_blocks, m_terrain}; }
 
    private:
-    std::vector<std::unique_ptr<ISubsystem>> m_subsystems;
+    std::vector<std::unique_ptr<SubsystemBase>> m_subsystems;
     entt::registry m_world;
     Terrain::BlockRegistry m_blocks;
     Terrain::TerrainService m_terrain;

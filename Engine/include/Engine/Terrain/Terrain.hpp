@@ -17,6 +17,7 @@
 #include "Engine/ResourcePool.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "Engine/Terrain/TerrainView.hpp"
+#include "Engine/ECS/ISubsystem.hpp"
 
 #define USE_TERRAIN_MESH_V2
 
@@ -138,12 +139,12 @@ class TerrainUpdateScheduler
    public:
     void InitialUpdate(TerrainData& terrain, Point3 chunkOrigin);
     void QueueChunksForMeshing(TerrainData& terrain, TerrainPresentationData& pdata);
-    void UpdateChunkVisibility(TerrainData& data, TerrainPresentationData& pdata, std::array<math::vec3, 6> frustum,
-                               entt::registry& presentationWorld, Graphics::PGameViewTag view);
+    void SubmitVisibleChunks(TerrainData& data, TerrainPresentationData& pdata, const TerrainContext& tctx, FrameOutputData& fd);
     void SetChunkViewDistance(int val) { m_chunkViewDistance = val; }
 
    private:
     int m_chunkViewDistance = 4;
+    std::unordered_map<entt::entity, uint32_t> playerToView;
 };
 
 class TerrainUploader
@@ -170,15 +171,15 @@ class TerrainGenerator
     int terrainGenChunkBudget = 8;
 };
 
-class TerrainService : public TerrainView
+class TerrainService : public TerrainView, ECS::ISubsystem<TerrainContext>
 {
    public:
     NO_COPY(TerrainService);
     ~TerrainService() = default;
 
-    void Initialize(const TerrainDesc& desc, TerrainContext& ctx);
-    void Update(TerrainContext& ctx);
-    void Present(TerrainContext& ctx, PresentationContext& pctx, FrameOutputData& frameOut);
+    void Initialize(TerrainContext& ctx, AppContext actx) override;
+    void Update(TerrainContext& ctx, AppContext actx, const FrameInputData& fd) override;
+    void Present(const TerrainContext& ctx, PresentationContext pctx, FrameOutputData& fd) override;
 
    private:
     void onPlayerCreated(entt::registry& world, entt::entity entity);

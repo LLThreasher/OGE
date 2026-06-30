@@ -62,7 +62,7 @@ void Renderer::RenderView(AssetContext& assets, DrawContext ctxt)
 
     if (ctxt.currentView == entt::null)
     {
-        auto extent = assets.backend.SwapchainExtend();
+        auto extent = assets.backend.SwapchainExtent();
         ctxt.drawCmd.SetViewRect(0, 0, extent.x, extent.y);
     }
     else

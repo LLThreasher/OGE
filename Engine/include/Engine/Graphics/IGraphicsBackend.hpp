@@ -9,6 +9,7 @@
 
 #include "Engine/ClassHelper.hpp"
 #include "Engine/Math.hpp"
+#include "Engine/Point2.hpp"
 #include "Engine/ObjectType.hpp"
 
 /*
@@ -607,7 +608,7 @@ class IGraphicsBackend
     virtual uint32_t CurrentFrameIndex() const = 0;
 
     virtual float SwapchainAspect() const = 0;
-    virtual math::vec2 SwapchainExtend() const = 0;
+    virtual UPoint2 SwapchainExtent() const = 0;
     virtual math::Orientation SwapchainPretransform() const = 0;
     virtual bool SwapchainRecreated() const = 0;
 

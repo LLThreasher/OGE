@@ -115,11 +115,11 @@ uint32_t VulkanBackend::CurrentFrameIndex() const { return m_frameIndex; }
 
 float VulkanBackend::SwapchainAspect() const
 {
-    auto extend = SwapchainExtend();
-    return extend.x / extend.y;
+    auto extend = SwapchainExtent();
+    return (float)extend.x / (float)extend.y;
 }
 
-math::vec2 VulkanBackend::SwapchainExtend() const { return {m_swapchain.extent.width, m_swapchain.extent.height}; }
+UPoint2 VulkanBackend::SwapchainExtent() const { return {m_swapchain.extent.width, m_swapchain.extent.height}; }
 
 math::Orientation VulkanBackend::SwapchainPretransform() const { return m_swapchain.currentTransform; }
 

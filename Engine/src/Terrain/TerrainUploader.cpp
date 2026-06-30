@@ -76,16 +76,41 @@ void TerrainUpdateScheduler::QueueChunksForMeshing(TerrainData& terrain, Terrain
     }
 }
 
-void TerrainUpdateScheduler::UpdateChunkVisibility(TerrainData& data, TerrainPresentationData& pdata,
-                                                   std::array<math::vec3, 6> frustum, entt::registry& presentationWorld, Graphics::PGameViewTag view)
+static bool IsVisibleToPlayer(Point3 chunkCoord, entt::registry& gameWorld, entt::entity player)
 {
+    return true;
+}
+
+void TerrainUpdateScheduler::SubmitVisibleChunks(TerrainData& data, TerrainPresentationData& pdata, const TerrainContext& tctx, FrameOutputData& fd)
+{
+    playerToView.clear();
+    uint32_t baseView = 0;
+    for (auto [entity, view] : tctx.world.view<ECS::ViewPanel>().each())
+    {
+        if (!tctx.world.all_of<ECS::ComponentPlayer>(view.activeCamera))
+        {
+            baseView |= static_cast<uint32_t>(view.activeSlot);
+        }
+        else
+        {
+            playerToView.emplace(view.activeCamera, static_cast<uint32_t>(view.activeSlot));
+        }
+    }
     for (auto [handle, slot] : pdata.residentChunks)
     {
         auto chunk = data.chunks.Get(handle);
-        auto chunkEntity = presentationWorld.create();
-        presentationWorld.emplace<Graphics::PGameViewTag>(chunkEntity, view);
-        presentationWorld.emplace<Graphics::PTerrainMesh>(chunkEntity, slot);
-        presentationWorld.emplace<Point3>(chunkEntity, chunk->Coords);
+        uint32_t currentView = baseView;
+        for (auto entity : tctx.world.view<ECS::ComponentPlayer>())
+        {
+            auto it = playerToView.find(entity);
+            if (it != playerToView.end() && IsVisibleToPlayer(chunk->Coords, tctx.world, entity))
+                currentView |= it->second;
+        }
+
+        auto chunkEntity = fd.presentationWorld.create();
+        fd.presentationWorld.emplace<Graphics::PGameViewTag>(chunkEntity, Graphics::GameViewType{currentView});
+        fd.presentationWorld.emplace<Graphics::PTerrainMesh>(chunkEntity, slot);
+        fd.presentationWorld.emplace<Point3>(chunkEntity, chunk->Coords);
     }
 }
 }  // namespace OneGame::Engine::Terrain

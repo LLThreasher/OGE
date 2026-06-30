@@ -4,90 +4,68 @@
 
 namespace OneGame::Engine::ECS
 {
-entt::entity PlayerInputData::CreatePlayerViewPanel(entt::registry& gameWorld, UIRect& rect)
-{
-    auto res = gameWorld.create();
-    gameWorld.emplace<PlayerInputData>(res);
-    gameWorld.emplace<PlayerViewPanel>(res);
-    gameWorld.emplace<UIRect>(res, rect);
-    return res;
-}
-
-static math::vec2 ScreenSpaceToSufaceSpace(const UIRect rect, math::vec2 screenPos)
-{
-    return (screenPos - rect.pos) / rect.extent;
-}
-
 void SubsystemPlayerInput::Initialize(GameWorldContext& game, AppContext ctx)
 {
-    game.world.on_construct<UIFocus>().connect<&SubsystemPlayerInput::onUIGainFocus>(this);
-    game.world.on_destroy<UIFocus>().connect<&SubsystemPlayerInput::onUILoseFocus>(this);
+    game.world.on_construct<InputSourceKeyMouse>().connect<&SubsystemPlayerInput::onCreateInputSourceKeyMouse>(this);
+    game.world.on_destroy<InputSourceKeyMouse>().connect<&SubsystemPlayerInput::onEraseInputSourceKeyMouse>(this);
+    game.world.on_destroy<InputSourceWidget>().connect<&SubsystemPlayerInput::onEraseInputSourceWidget>(this);
 }
 
-void SubsystemPlayerInput::onUIGainFocus(entt::registry& gameWorld, entt::entity entity)
+void SubsystemPlayerInput::onCreateInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity)
 {
-    if (auto panel = gameWorld.try_get<PlayerViewPanel>(entity))
+    isKeyMouseUsed = true;
+}
+
+void SubsystemPlayerInput::onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity)
+{
+    isKeyMouseUsed = gameWorld.view<InputSourceKeyMouse>().size() > 1;
+    if (!gameWorld.any_of<InputSourceWidget>(entity))
     {
-        // connect player control here
-        if (!playerInputUsingKeyMouse.has_value())
-        {
-            panel->source |= InputSource::KeyMouse;
-            playerInputUsingKeyMouse = entity;
-            LOG_DEBUG("set playerInputUsingKeyMouse");
-        }
+        gameWorld.replace<PlayerInputData>(entity, PlayerInputData{});
     }
 }
 
-void SubsystemPlayerInput::onUILoseFocus(entt::registry& gameWorld, entt::entity entity)
+void SubsystemPlayerInput::onEraseInputSourceWidget(entt::registry& gameWorld, entt::entity entity)
 {
-    if (auto panel = gameWorld.try_get<PlayerViewPanel>(entity))
+    if (!gameWorld.any_of<InputSourceKeyMouse>(entity))
     {
-        if (playerInputUsingKeyMouse == entity)
-        {
-            panel->source &= ~InputSource::KeyMouse;
-            playerInputUsingKeyMouse.reset();
-        }
-        auto& input = gameWorld.get<PlayerInputData>(entity);
-        input.moveDelta = {0, 0};
-        input.panDelta = {0, 0};
+        gameWorld.replace<PlayerInputData>(entity, PlayerInputData{});
     }
 }
 
 void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& f)
 {
-    for (auto [entity, prect, panel, data] :
-         game.world.view<const UIRect, const PlayerViewPanel, PlayerInputData>().each())
+    for (auto [entity, data] :
+         game.world.view<PlayerInputData>().each())
     {
         // handle touch
-        if (panel.source & InputSource::Widget)
+        if (auto widgetInput = game.world.try_get<InputSourceWidget>(entity))
         {
             // handle move
             {
-                auto& rect = game.world.get<UIRect>(panel.widgetInput.moveWidget);
-                auto drag = game.world.try_get<UIDrag>(panel.widgetInput.moveWidget);
+                auto drag = game.world.try_get<UIDrag>(widgetInput->moveWidget);
                 if (drag != nullptr)
                 {
                     auto touchIdx = PointerIdx::TouchIdxFromPtrIdx(drag->inputIndex);
                     math::vec2 pos = {f.input.GetTouchX(touchIdx), f.input.GetTouchY(touchIdx)};
-                    data.moveDelta = ScreenSpaceToSufaceSpace(rect, pos - drag->dragStartPos);
+                    data.moveDelta = UI::ScreenSpaceToRelSpace(game.world, widgetInput->moveWidget, pos - drag->dragStartPos);
                 }
             }
             // handle pan
             {
-                auto& rect = game.world.get<UIRect>(panel.widgetInput.viewWidget);
-                auto drag = game.world.try_get<UIDrag>(panel.widgetInput.viewWidget);
+                auto drag = game.world.try_get<UIDrag>(widgetInput->viewWidget);
                 if (drag != nullptr)
                 {
                     auto touchIdx = PointerIdx::TouchIdxFromPtrIdx(drag->inputIndex);
                     math::vec2 posDelta = {f.input.GetTouchDX(touchIdx), f.input.GetTouchDY(touchIdx)};
-                    data.panDelta = ScreenSpaceToSufaceSpace(rect, posDelta);
+                    data.panDelta = UI::ScreenSpaceToRelSpace(game.world, widgetInput->viewWidget, posDelta);
                 }
             }
         }
-        // handle keyboard
-        if (panel.source & InputSource::KeyMouse)
+        // handle keyboard 
+        if (game.world.any_of<InputSourceKeyMouse>(entity))
         {
-            data.panDelta = ScreenSpaceToSufaceSpace(prect, {f.input.GetMouseDX(), -f.input.GetMouseDY()});
+            data.panDelta = 0.001f * math::vec2{f.input.GetMouseDX(), -f.input.GetMouseDY()};
             if (f.input.IsKeyDown(KeyCode::KY_W))
                 data.moveDelta.y = 1.0f;
             else if (f.input.IsKeyDown(KeyCode::KY_S))
@@ -108,21 +86,21 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
 
 void SubsystemPlayerInput::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& f)
 {
-    if (playerInputUsingKeyMouse.has_value() && !isKeyMouseUsed)
+    if (isKeyMouseUsed && !previousIsKeyMouseUsed)
     {
         SceneAction a{};
         a.type = SceneActionType::SetMouseWarpping;
         a.setMouseWarpping.enabled = true;
         f.outSceneActions.emplace_back(a);
-        isKeyMouseUsed = true;
+        previousIsKeyMouseUsed = true;
     }
-    if (!playerInputUsingKeyMouse.has_value() && isKeyMouseUsed)
+    if (!isKeyMouseUsed && previousIsKeyMouseUsed)
     {
         SceneAction a{};
         a.type = SceneActionType::SetMouseWarpping;
         a.setMouseWarpping.enabled = false;
         f.outSceneActions.emplace_back(a);
-        isKeyMouseUsed = false;
+        previousIsKeyMouseUsed = false;
     }
 }
 }  // namespace OneGame::Engine::ECS
