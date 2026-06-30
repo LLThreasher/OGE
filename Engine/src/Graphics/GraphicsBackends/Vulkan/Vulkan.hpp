@@ -536,7 +536,7 @@ class VulkanBackend final : public IGraphicsBackend
 
     VulkanRenderPass CreateRenderPassInternal(VulkanRenderPassDesc&);
     void CreateSyncObjects(int);
-    void RecreateSwapchain();
+    bool RecreateSwapchain();
     void DestroySwapchain(VkSwapchainKHR&);
     void DestroySurface();
     VkShaderModule CreateShaderModule(const std::vector<char>& code);

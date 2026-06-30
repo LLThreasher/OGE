@@ -728,9 +728,9 @@ void VulkanBackend::DestroySurface()
     }
 }
 
-void VulkanBackend::RecreateSwapchain()
+bool VulkanBackend::RecreateSwapchain()
 {
-    if (m_device.physicalDevice == VK_NULL_HANDLE) return;
+    if (m_device.physicalDevice == VK_NULL_HANDLE) return false;
 
     // Handle swapchain recreation on window resize
     VkSurfaceCapabilitiesKHR capabilities;
@@ -758,7 +758,7 @@ void VulkanBackend::RecreateSwapchain()
     if (m_swapchain.extent.width == 0 || m_swapchain.extent.height == 0)
     {
         LOG_DEBUG("abort RecreateSwapchain: (0, 0) extend");
-        return;
+        return false;
     }
 
     m_swapchain.nextExtent = m_swapchain.extent;
@@ -887,6 +887,7 @@ void VulkanBackend::RecreateSwapchain()
     LOG_DEBUG("swapchain frame buffer created");
     CreateSyncObjects(swapchainImageCount);
     LOG_DEBUG("Sync objects created");
+    return true;
 }
 
 void VulkanBackend::Resize(uint32_t windowWidth, uint32_t windowHeight)
@@ -1000,8 +1001,10 @@ BeginFrameAction VulkanBackend::BeginFrame()
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         LOG_DEBUG("recreating swapchain: VK_ERROR_OUT_OF_DATE_KHR");
-        RecreateSwapchain();
-        return BeginFrameAction::SkipFrame;
+        if (RecreateSwapchain())
+            return BeginFrameAction::SkipFrame;
+        else
+            return BeginFrameAction::RecreateSurface;
     }
     else if (result == VK_ERROR_SURFACE_LOST_KHR)
     {
@@ -1107,8 +1110,10 @@ EndFrameAction VulkanBackend::EndFrame()
             result == VK_ERROR_OUT_OF_DATE_KHR, result == VK_SUBOPTIMAL_KHR,
             m_swapchain.nextExtent.width != m_swapchain.extent.width ||
                 m_swapchain.nextExtent.height != m_swapchain.extent.height);
-        RecreateSwapchain();
-        return EndFrameAction::RecreateSwapchain;
+        if (RecreateSwapchain())
+            return EndFrameAction::RecreateSwapchain;
+        else
+            return EndFrameAction::RecreateSurface;
     }
     else if (result != VK_SUCCESS)
     {
