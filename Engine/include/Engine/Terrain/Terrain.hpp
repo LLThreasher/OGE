@@ -152,6 +152,8 @@ class TerrainUploader
    public:
     void SetMaxNumChunks(uint32_t maxNumChunks);
     void UploadTerrain(TerrainPresentationData& terrain, PresentationContext& ctx);
+private:
+    std::queue<GPUChunkedAllocation> m_allocationsToFree;
 };
 
 struct TerrainDesc

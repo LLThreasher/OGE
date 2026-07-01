@@ -44,6 +44,10 @@ class Renderer
         chunkAllocator.CreateBuffers(backend);
         return chunkAllocator.Resolve(alloc);
     }
+    void FreeTerrainMesh(GPUChunkedAllocation alloc)
+    {
+        chunkAllocator.Free(alloc);
+    }
 
    private:
     void Draw(DrawContext& ctx);

@@ -73,6 +73,13 @@ class DynamicChunkAllocator
         return {0xffff};
     }
 
+    void Free(GPUChunkedAllocation alloc)
+    {
+        assert(alloc.chunkSizeIdx < CHUNK_SIZE_COUNT);
+        assert(alloc.blockIdx < allocatorPerChunk[alloc.chunkSizeIdx].size());
+        allocatorPerChunk[alloc.chunkSizeIdx][alloc.blockIdx].Free(alloc.slotOffset, 1);
+    }
+
     GPUBufferRange Resolve(GPUChunkedAllocation alloc)
     {
         return {

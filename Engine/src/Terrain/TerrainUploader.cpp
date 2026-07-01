@@ -21,8 +21,13 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, Presentati
         Graphics::PTerrainMesh pterrain {slot, static_cast<uint32_t>(quadCount * 6)};
 
         ResourceBundleHandle res = ctx.streamingManager.CreateResourceBundle(
-            [chunk, chunkMesh, pterrain, &terrain]()
+            [chunk, chunkMesh, pterrain, ctx, &terrain]()
             {
+                auto it = terrain.residentChunks.find(chunk);;
+                if (it != terrain.residentChunks.end())
+                {
+                    ctx.renderer.FreeTerrainMesh(it->second.alloc);
+                }
                 terrain.residentChunks.insert_or_assign(chunk, pterrain);
                 terrain.builtChunkMeshes.Destroy(chunkMesh);
             });

@@ -142,38 +142,29 @@ std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos, math::v
         step.z = 1;
         side.z = (map.z + 1 - pos.z) * delta.z;
     }
+
     int dist = 0;
     int dim = 0;
+    int lastDim = -1;
     while (dist < maxDist)
     {
-        uint32_t value;
-        if (!TryGetBlock(map.x, map.y, map.z, value)) break;
-        if (BlockRegistry::GetBlockId(value) != 0)
-        {
-            TerrainRaycastResult res {
-                (uint8_t)(dim + (step[dim] + 1) * 3 / 2),
-                map,
-                value,
-            };
-            return res;
-        }
-
         size_t dim;
+
+        float temp;
+        if (side.x < side.y)
         {
-            float temp;
-            if (side.x < side.y)
-            {
-                temp = side.x;
-                dim = 0;
-            }
-            else
-            {
-                temp = side.y;
-                dim = 1;
-            }
-            if (side.z < temp)
-                dim = 2;
+            temp = side.x;
+            dim = 0;
         }
+        else
+        {
+            temp = side.y;
+            dim = 1;
+        }
+        if (side.z < temp)
+            dim = 2;
+
+        // step first
         switch (dim)
         {
             case 0:
@@ -189,6 +180,26 @@ std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos, math::v
                 side.z += delta.z;
                 break;
         }
+
+        lastDim = dim;
+
+        uint32_t value;
+        if (!TryGetBlock(map.x, map.y, map.z, value)) break;
+
+        if (BlockRegistry::GetBlockId(value) != 0)
+        {
+            uint8_t face =
+                (lastDim == 0) ? (step.x > 0 ? 1 : 0) :
+                (lastDim == 1) ? (step.y > 0 ? 3 : 2) :
+                                (step.z > 0 ? 5 : 4);
+
+            return TerrainRaycastResult{
+                face,
+                map,
+                value
+            };
+        }
+
         dist++;
     }
     return {};

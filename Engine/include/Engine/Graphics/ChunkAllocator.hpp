@@ -12,6 +12,7 @@ class ChunkAllocator
     // maxChunks must be divisible by 4
     explicit ChunkAllocator(uint32_t maxChunks)
     {
+        m_totalChunks = maxChunks;
         m_blockOrder.resize(maxChunks);
         // Initially everything is a size-4 block (order 2)
         for (uint32_t i = 0; i < maxChunks; i += 4)

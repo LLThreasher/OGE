@@ -27,7 +27,7 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
             {
                 auto blockId = game.blocks.GetBlockId("stone");
                 auto blockValue = blockId;
-                game.terrain.SetBlock(player.lookingAt->hitPos.x, player.lookingAt->hitPos.y, player.lookingAt->hitPos.z, blockValue);
+                game.terrain.SetBlock(player.lookingAt->hitPos + perFaceOffset[player.lookingAt->hitFace], blockValue);
             }
         }
     }
@@ -35,16 +35,16 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
 
 void SubsystemPlayer::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
 {
-    auto players = game.world.view<ComponentPlayer>();
-    if (!players.empty())
-    {
-        auto player = game.world.get<ComponentPlayer>(players.front());
-        if (player.lookingAt.has_value())
-            AddDebugInfo(
-                fd.presentationWorld,
-                std::format("Looking at {} {} {}[{}]", player.lookingAt->hitPos, player.lookingAt->hitFace,
-                            game.blocks.GetBlockDisplayName(game.blocks.GetBlockId(player.lookingAt->hitBlockValue)),
-                            player.lookingAt->hitBlockValue));
-    }
+    // auto players = game.world.view<ComponentPlayer>();
+    // if (!players.empty())
+    // {
+    //     auto player = game.world.get<ComponentPlayer>(players.front());
+    //     if (player.lookingAt.has_value())
+    //         AddDebugInfo(
+    //             fd.presentationWorld,
+    //             std::format("Looking at {} {} {}[{}]", player.lookingAt->hitPos, player.lookingAt->hitFace,
+    //                         game.blocks.GetBlockDisplayName(game.blocks.GetBlockId(player.lookingAt->hitBlockValue)),
+    //                         player.lookingAt->hitBlockValue));
+    // }
 }
 }  // namespace OneGame::Engine::ECS

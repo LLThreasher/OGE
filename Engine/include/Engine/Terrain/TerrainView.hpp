@@ -154,6 +154,18 @@ struct TerrainRaycastResult
 class TerrainView
 {
    public:
+    uint32_t GetBlock(Point3 pos)
+    {
+        return GetBlock(pos.x, pos.y, pos.z);
+    }
+    bool TryGetBlock(Point3 pos, uint32_t& value)
+    {
+        return TryGetBlock(pos.x, pos.y, pos.z, value);
+    }
+    void SetBlock(Point3 pos, uint32_t value)
+    {
+        SetBlock(pos.x, pos.y, pos.z, value);
+    }
     uint32_t GetBlock(int x, int y, int z);
     bool TryGetBlock(int x, int y, int z, uint32_t& value);
     void SetBlock(int x, int y, int z, uint32_t value);

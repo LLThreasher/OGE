@@ -63,6 +63,8 @@ inline int32_t MaskHasBlock(const uint32_t* masks, int32_t x, int32_t y, int32_t
     return (masks[MaskIndex(z + 1, y + 1)] & (1 << (x + 1))) != 0 ? 1 : 0;
 }
 
+inline uint8_t VertexAO(uint8_t corner, uint8_t s1, uint8_t s2) { return (s1 & s2) ? 3 : (s1 + s2 + corner); }
+
 void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltChunkMesh2* context,
                                const BlockRegistry& blocks)
 {
@@ -95,27 +97,24 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[0];
 
                 // -X face
-                TexturedQuad quad{(uint8_t)x,
-                                  (uint8_t)wy,
-                                  (uint8_t)wz,
-                                  0u,
-                                  texSlot,
-                                  COLOR_WHITE,
-                                  {0xF, 0xF, 0xF, 0xF},
-                                  {
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy - 1, wz - 1) +
-                                                           MaskHasBlock(masks, x - 1, wy - 1, wz) +
-                                                           MaskHasBlock(masks, x - 1, wy, wz - 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy - 1, wz + 1) +
-                                                           MaskHasBlock(masks, x - 1, wy - 1, wz) +
-                                                           MaskHasBlock(masks, x - 1, wy, wz + 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy + 1, wz + 1) +
-                                                           MaskHasBlock(masks, x - 1, wy + 1, wz) +
-                                                           MaskHasBlock(masks, x - 1, wy, wz + 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy + 1, wz - 1) +
-                                                           MaskHasBlock(masks, x - 1, wy + 1, wz) +
-                                                           MaskHasBlock(masks, x - 1, wy, wz - 1)),
-                                  }};
+                TexturedQuad quad{
+                    (uint8_t)x,
+                    (uint8_t)wy,
+                    (uint8_t)wz,
+                    0u,
+                    texSlot,
+                    COLOR_WHITE,
+                    {0xF, 0xF, 0xF, 0xF},
+                    {
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz - 1), MaskHasBlock(masks, x - 1, wy - 1, wz),
+                                 MaskHasBlock(masks, x - 1, wy, wz - 1)),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz + 1), MaskHasBlock(masks, x - 1, wy - 1, wz),
+                                 MaskHasBlock(masks, x - 1, wy, wz + 1)),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz + 1), MaskHasBlock(masks, x - 1, wy + 1, wz),
+                                 MaskHasBlock(masks, x - 1, wy, wz + 1)),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz - 1), MaskHasBlock(masks, x - 1, wy + 1, wz),
+                                 MaskHasBlock(masks, x - 1, wy, wz - 1)),
+                    }};
                 context->quads.emplace_back(quad);
             }
 
@@ -132,27 +131,24 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[1];
 
                 // +X face
-                TexturedQuad quad{(uint8_t)x,
-                                  (uint8_t)wy,
-                                  (uint8_t)wz,
-                                  1u,
-                                  texSlot,
-                                  COLOR_WHITE,
-                                  {0xF, 0xF, 0xF, 0xF},
-                                  {
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy - 1, wz + 1) +
-                                                           MaskHasBlock(masks, x + 1, wy - 1, wz) +
-                                                           MaskHasBlock(masks, x + 1, wy, wz + 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy - 1, wz - 1) +
-                                                           MaskHasBlock(masks, x + 1, wy - 1, wz) +
-                                                           MaskHasBlock(masks, x + 1, wy, wz - 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy + 1, wz - 1) +
-                                                           MaskHasBlock(masks, x + 1, wy + 1, wz) +
-                                                           MaskHasBlock(masks, x + 1, wy, wz - 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy + 1, wz + 1) +
-                                                           MaskHasBlock(masks, x + 1, wy + 1, wz) +
-                                                           MaskHasBlock(masks, x + 1, wy, wz + 1)),
-                                  }};
+                TexturedQuad quad{
+                    (uint8_t)x,
+                    (uint8_t)wy,
+                    (uint8_t)wz,
+                    1u,
+                    texSlot,
+                    COLOR_WHITE,
+                    {0xF, 0xF, 0xF, 0xF},
+                    {
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz + 1), MaskHasBlock(masks, x + 1, wy - 1, wz),
+                                 MaskHasBlock(masks, x + 1, wy, wz + 1)),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz - 1), MaskHasBlock(masks, x + 1, wy - 1, wz),
+                                 MaskHasBlock(masks, x + 1, wy, wz - 1)),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz - 1), MaskHasBlock(masks, x + 1, wy + 1, wz),
+                                 MaskHasBlock(masks, x + 1, wy, wz - 1)),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz + 1), MaskHasBlock(masks, x + 1, wy + 1, wz),
+                                 MaskHasBlock(masks, x + 1, wy, wz + 1)),
+                    }};
                 context->quads.emplace_back(quad);
             }
 
@@ -169,27 +165,24 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[2];
 
                 // +Y face
-                TexturedQuad quad{(uint8_t)x,
-                                  (uint8_t)wy,
-                                  (uint8_t)wz,
-                                  2u,
-                                  texSlot,
-                                  COLOR_WHITE,
-                                  {0xF, 0xF, 0xF, 0xF},
-                                  {
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy + 1, wz + 1) +
-                                                           MaskHasBlock(masks, x, wy + 1, wz + 1) +
-                                                           MaskHasBlock(masks, x - 1, wy + 1, wz)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy + 1, wz + 1) +
-                                                           MaskHasBlock(masks, x, wy + 1, wz + 1) +
-                                                           MaskHasBlock(masks, x + 1, wy + 1, wz)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy + 1, wz - 1) +
-                                                           MaskHasBlock(masks, x, wy + 1, wz - 1) +
-                                                           MaskHasBlock(masks, x + 1, wy + 1, wz)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy + 1, wz - 1) +
-                                                           MaskHasBlock(masks, x, wy + 1, wz - 1) +
-                                                           MaskHasBlock(masks, x - 1, wy + 1, wz)),
-                                  }};
+                TexturedQuad quad{
+                    (uint8_t)x,
+                    (uint8_t)wy,
+                    (uint8_t)wz,
+                    2u,
+                    texSlot,
+                    COLOR_WHITE,
+                    {0xF, 0xF, 0xF, 0xF},
+                    {
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1), 
+                                 MaskHasBlock(masks, x - 1, wy + 1, wz)),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1), 
+                                 MaskHasBlock(masks, x + 1, wy + 1, wz)),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1), 
+                                 MaskHasBlock(masks, x + 1, wy + 1, wz)),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1), 
+                                 MaskHasBlock(masks, x - 1, wy + 1, wz)),
+                    }};
                 context->quads.emplace_back(quad);
             }
 
@@ -206,27 +199,24 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[3];
 
                 // -Y face
-                TexturedQuad quad{(uint8_t)x,
-                                  (uint8_t)wy,
-                                  (uint8_t)wz,
-                                  3u,
-                                  texSlot,
-                                  COLOR_WHITE,
-                                  {0xF, 0xF, 0xF, 0xF},
-                                  {
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy - 1, wz - 1) +
-                                                           MaskHasBlock(masks, x, wy - 1, wz - 1) +
-                                                           MaskHasBlock(masks, x - 1, wy - 1, wz)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy - 1, wz + 1) +
-                                                           MaskHasBlock(masks, x, wy - 1, wz + 1) +
-                                                           MaskHasBlock(masks, x + 1, wy - 1, wz)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy - 1, wz - 1) +
-                                                           MaskHasBlock(masks, x, wy - 1, wz - 1) +
-                                                           MaskHasBlock(masks, x + 1, wy - 1, wz)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy - 1, wz + 1) +
-                                                           MaskHasBlock(masks, x, wy - 1, wz + 1) +
-                                                           MaskHasBlock(masks, x - 1, wy - 1, wz)),
-                                  }};
+                TexturedQuad quad{
+                    (uint8_t)x,
+                    (uint8_t)wy,
+                    (uint8_t)wz,
+                    3u,
+                    texSlot,
+                    COLOR_WHITE,
+                    {0xF, 0xF, 0xF, 0xF},
+                    {
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz - 1), MaskHasBlock(masks, x, wy - 1, wz - 1),
+                                 MaskHasBlock(masks, x - 1, wy - 1, wz)),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz + 1), MaskHasBlock(masks, x, wy - 1, wz + 1),
+                                 MaskHasBlock(masks, x + 1, wy - 1, wz)),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz - 1), MaskHasBlock(masks, x, wy - 1, wz - 1),
+                                 MaskHasBlock(masks, x + 1, wy - 1, wz)),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz + 1), MaskHasBlock(masks, x, wy - 1, wz + 1),
+                                 MaskHasBlock(masks, x - 1, wy - 1, wz)),
+                    }};
                 context->quads.emplace_back(quad);
             }
 
@@ -243,27 +233,24 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[4];
 
                 // +Z face
-                TexturedQuad quad{(uint8_t)x,
-                                  (uint8_t)wy,
-                                  (uint8_t)wz,
-                                  4u,
-                                  texSlot,
-                                  COLOR_WHITE,
-                                  {0xF, 0xF, 0xF, 0xF},
-                                  {
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy - 1, wz + 1) +
-                                                           MaskHasBlock(masks, x, wy - 1, wz + 1) +
-                                                           MaskHasBlock(masks, x - 1, wy, wz + 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy - 1, wz + 1) +
-                                                           MaskHasBlock(masks, x, wy - 1, wz + 1) +
-                                                           MaskHasBlock(masks, x + 1, wy, wz + 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy + 1, wz + 1) +
-                                                           MaskHasBlock(masks, x, wy + 1, wz + 1) +
-                                                           MaskHasBlock(masks, x + 1, wy, wz + 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy + 1, wz + 1) +
-                                                           MaskHasBlock(masks, x, wy + 1, wz + 1) +
-                                                           MaskHasBlock(masks, x - 1, wy, wz + 1)),
-                                  }};
+                TexturedQuad quad{
+                    (uint8_t)x,
+                    (uint8_t)wy,
+                    (uint8_t)wz,
+                    4u,
+                    texSlot,
+                    COLOR_WHITE,
+                    {0xF, 0xF, 0xF, 0xF},
+                    {
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz + 1), MaskHasBlock(masks, x, wy - 1, wz + 1),
+                                 MaskHasBlock(masks, x - 1, wy, wz + 1)),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz + 1), MaskHasBlock(masks, x, wy - 1, wz + 1),
+                                 MaskHasBlock(masks, x + 1, wy, wz + 1)),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1),
+                                 MaskHasBlock(masks, x + 1, wy, wz + 1)),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1),
+                                 MaskHasBlock(masks, x - 1, wy, wz + 1)),
+                    }};
                 context->quads.emplace_back(quad);
             }
 
@@ -280,27 +267,24 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[5];
 
                 // -Z face
-                TexturedQuad quad{(uint8_t)x,
-                                  (uint8_t)wy,
-                                  (uint8_t)wz,
-                                  5u,
-                                  texSlot,
-                                  COLOR_WHITE,
-                                  {0xF, 0xF, 0xF, 0xF},
-                                  {
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy - 1, wz - 1) +
-                                                           MaskHasBlock(masks, x, wy - 1, wz - 1) +
-                                                           MaskHasBlock(masks, x + 1, wy, wz - 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy - 1, wz - 1) +
-                                                           MaskHasBlock(masks, x, wy - 1, wz - 1) +
-                                                           MaskHasBlock(masks, x - 1, wy, wz - 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x - 1, wy + 1, wz - 1) +
-                                                           MaskHasBlock(masks, x, wy + 1, wz - 1) +
-                                                           MaskHasBlock(masks, x - 1, wy, wz - 1)),
-                                      static_cast<uint8_t>(MaskHasBlock(masks, x + 1, wy + 1, wz - 1) +
-                                                           MaskHasBlock(masks, x, wy + 1, wz - 1) +
-                                                           MaskHasBlock(masks, x + 1, wy, wz - 1)),
-                                  }};
+                TexturedQuad quad{
+                    (uint8_t)x,
+                    (uint8_t)wy,
+                    (uint8_t)wz,
+                    5u,
+                    texSlot,
+                    COLOR_WHITE,
+                    {0xF, 0xF, 0xF, 0xF},
+                    {
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz - 1), MaskHasBlock(masks, x, wy - 1, wz - 1),
+                                 MaskHasBlock(masks, x + 1, wy, wz - 1)),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz - 1), MaskHasBlock(masks, x, wy - 1, wz - 1),
+                                 MaskHasBlock(masks, x - 1, wy, wz - 1)),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1),
+                                 MaskHasBlock(masks, x - 1, wy, wz - 1)),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1),
+                                 MaskHasBlock(masks, x + 1, wy, wz - 1)),
+                    }};
                 context->quads.emplace_back(quad);
             }
         }
