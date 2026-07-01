@@ -78,6 +78,16 @@ class ChunkDataCollection
 
     ChunkData* Get(ChunkHandle chunk) { return chunkData.Get(chunk); }
 
+    ChunkHandle GetHandle(Point3 coord)
+    {
+        auto it = coordToChunks.find(coord);
+        if (it != coordToChunks.end())
+        {
+            return it->second;
+        }
+        return {};
+    }
+
     std::tuple<ChunkHandle, ChunkData*> Get(Point3 coord)
     {
         auto it = coordToChunks.find(coord);

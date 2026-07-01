@@ -3,6 +3,8 @@
 #include "Engine/Terrain/Terrain.hpp"
 #include "Engine/GameAppState.hpp"
 #include "Engine/Graphics/Renderer.hpp"
+#include "Engine/Logger.hpp"
+#include "Engine/Formaters.hpp"
 
 namespace OneGame::Engine::Terrain
 {
@@ -21,7 +23,7 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, Presentati
         ResourceBundleHandle res = ctx.streamingManager.CreateResourceBundle(
             [chunk, chunkMesh, pterrain, &terrain]()
             {
-                terrain.residentChunks.emplace(chunk, pterrain);
+                terrain.residentChunks.insert_or_assign(chunk, pterrain);
                 terrain.builtChunkMeshes.Destroy(chunkMesh);
             });
 
@@ -52,12 +54,19 @@ void TerrainUpdateScheduler::InitialUpdate(TerrainData& terrain, Point3 chunkOri
 void TerrainUpdateScheduler::QueueChunksForMeshing(TerrainData& terrain, TerrainPresentationData& pdata)
 {
     std::vector<ChunkHandle> toRemove;
+    std::vector<ChunkHandle> toMesh;
     for (auto handle : terrain.dirtyChunks)
     {
         auto chunk = terrain.chunks.Get(handle);
+        if (!chunk || chunk->state != ChunkState::Persistent)
+        {
+            toRemove.push_back(handle);
+            continue;
+        }
         bool fullNeighbors = true;
         for (int i = 0; i < 6; ++i)
         {
+            if (i == FACE_DOWN && chunk->Coords.y == 0) continue;
             auto neighborCoord = perFaceOffset[i] + chunk->Coords;
             auto [handle, chunk] = terrain.chunks.Get(neighborCoord);
             if (!chunk || chunk->state != ChunkState::Persistent)
@@ -67,9 +76,13 @@ void TerrainUpdateScheduler::QueueChunksForMeshing(TerrainData& terrain, Terrain
             }
         }
         if (!fullNeighbors) continue;
-        toRemove.push_back(handle);
+        toMesh.push_back(handle);
     }
     for (auto handle : toRemove)
+    {
+        terrain.dirtyChunks.erase(handle);
+    }
+    for (auto handle : toMesh)
     {
         pdata.buildMeshQueue.push(handle);
         terrain.dirtyChunks.erase(handle);

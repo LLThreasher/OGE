@@ -70,7 +70,7 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 }
             }
         }
-        // handle keyboard 
+        // handle keyboard & mouse
         if (game.world.any_of<InputSourceKeyMouse>(entity))
         {
             data.panDelta = 0.001f * math::vec2{f.input.GetMouseDX(), -f.input.GetMouseDY()};
@@ -88,6 +88,25 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 data.moveDelta.x = 0.f;
             data.moveDelta *= f.dt;
             data.moveDelta *= 5.f;
+
+            if (f.input.IsMouseDown(MouseButton::Left))
+            {
+                data.digging = true;
+                data.diggingPos = math::vec2{0.5f, 0.5f};
+            }
+            else
+            {
+                data.digging = false;
+            }
+            if (f.input.IsMouseDown(MouseButton::Right))
+            {
+                data.placing = true;
+                data.placingPos = math::vec2{0.5f, 0.5f};
+            }
+            else
+            {
+                data.placing = false;
+            }
         }
     }
 }

@@ -17,6 +17,19 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
     {
         camera.ApplyDelta(input.panDelta.x, input.panDelta.y, input.moveDelta.x, input.moveDelta.y);
         player.lookingAt = game.terrain.CastRay(camera.position, camera.forward);
+        if (player.lookingAt.has_value())
+        {
+            if (input.digging)
+            {
+                game.terrain.SetBlock(player.lookingAt->hitPos.x, player.lookingAt->hitPos.y, player.lookingAt->hitPos.z, 0);
+            }
+            if (input.placing)
+            {
+                auto blockId = game.blocks.GetBlockId("stone");
+                auto blockValue = blockId;
+                game.terrain.SetBlock(player.lookingAt->hitPos.x, player.lookingAt->hitPos.y, player.lookingAt->hitPos.z, blockValue);
+            }
+        }
     }
 }
 

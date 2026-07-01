@@ -6,22 +6,32 @@
 
 namespace OneGame::Engine::ECS
 {
-void SubsystemDebugInfo::Initialize(GameWorldContext& game, AppContext ctx) {}
+void SubsystemDebugInfo::Initialize(GameWorldContext& game, AppContext ctx)
+{
+    frameCount = 0;
+    accumTime = 0.f;
+    currentFPS = 0.f;
+    currentFrameTime = 0.f;
+    perfStatus = {};
+    totalPerfStatus = {};
+}
 
 void SubsystemDebugInfo::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd)
 {
     ++frameCount;
     accumTime += fd.dt;
+    totalPerfStatus = totalPerfStatus + fd.perfStats;
 
     if (accumTime >= 1.f)
     {
+        perfStatus = totalPerfStatus / frameCount;
+        totalPerfStatus = {};
+        
         currentFrameTime = accumTime / frameCount;
         currentFPS = 1 / currentFrameTime;
         currentFrameTime *= 1000.f;
         accumTime = 0;
         frameCount = 0;
-
-        perfStatus = fd.perfStats;
     }
 }
 

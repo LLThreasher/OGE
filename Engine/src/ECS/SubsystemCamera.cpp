@@ -74,7 +74,7 @@ void ComponentCamera::ApplyDelta(float dsx, float dsy, float dwx, float dwz)
 
     glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
 
-    position += dwx * math::cross(forward, glm::vec3(0, 1, 0)) + dwz * forward;
+    position += dwx * math::normalize(math::cross(forward, glm::vec3(0, 1, 0))) + dwz * forward;
 }
 
 

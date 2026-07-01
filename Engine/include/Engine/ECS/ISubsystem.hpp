@@ -5,6 +5,7 @@
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/Point2.hpp"
+#include "Engine/Rect.hpp"
 #include "Engine/Terrain/TerrainView.hpp"
 
 #define DECLARE_SUBSYSTEM(Name, ...)                                                                       \
@@ -78,12 +79,12 @@ math::vec2 RayToPitchYaw(math::vec3 ray);
 DECLARE_SUBSYSTEM(Camera, void onViewPanelUpdate(entt::registry& world, entt::entity entity););
 
 DECLARE_SUBSYSTEM(DebugInfo, float currentFPS = 0.f; float currentFrameTime = 0.f; float accumTime = 0.f;
-                  uint64_t frameCount = 0; FramePerfStatus perfStatus;);
+                  uint64_t frameCount = 0; FramePerfStatus totalPerfStatus; FramePerfStatus perfStatus;);
 
 void AddDebugInfo(entt::registry& presentationWorld, std::string_view msg);
 
-struct UIRect;
-struct ScreenRect;
+using UIRect = FRect;
+using ScreenRect = IRect;
 struct PlayerInputData
 {
     math::vec2 moveDelta;
@@ -122,6 +123,11 @@ struct UIDragRelease
     entt::entity dragStart;
 };
 
+struct UIZLevel
+{
+    int zLevel = 0;
+};
+
 struct UIRaycastTarget
 {
 };
@@ -134,13 +140,6 @@ struct UIRaycastHit
 {
 };
 
-struct UIRect
-{
-    int zLevel;
-    math::vec2 pos;
-    math::vec2 extent;
-};
-
 struct UIRoot
 {
 };
@@ -148,12 +147,6 @@ struct UIRoot
 struct UIParent
 {
     entt::entity parent;
-};
-
-struct ScreenRect
-{
-    Point2 pos;
-    UPoint2 extent;
 };
 
 struct InputSourceWidget

@@ -75,7 +75,7 @@ void main()
     gl_Position = uMVP * vec4(aPosition, 1.0);
 
     float light = float((v.fst >> (16u + (cur_idx << 2u))) & 15u) / 15.0;
-    float ao = float(10 - ((v.sec >> (24u + (cur_idx << 1u))) & 3u)) / 10.0;
+    float ao = float(4u - ((v.sec >> (24u + (cur_idx << 1u))) & 3u)) / 4.0;
     v_Light = light * ao;
     
     uint color_r = v.sec    & 31u;

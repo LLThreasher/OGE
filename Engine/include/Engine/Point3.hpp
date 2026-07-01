@@ -53,7 +53,7 @@ using LocalPoint3 = IntTriple<int8_t>;
 using Point3 = IntTriple<int32_t>;
 
 constexpr Point3 perFaceOffset[6] = {
-    {0, 0, 1}, {0, 0, -1}, {0, 1, 0}, {0, -1, 0}, {1, 0, 0}, {-1, 0, 0},
+    {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
 };
 
 }  // namespace OneGame::Engine

@@ -46,6 +46,7 @@ PRIVATE
     "src/ECS/SubsystemUI.cpp"
     "src/Platform/PrintStackTrace.cpp"
     "src/ECS/SubsystemPlayer.cpp"
+    "src/Graphics/SubmissionQueue.cpp"
  )
 
 target_include_directories(Engine

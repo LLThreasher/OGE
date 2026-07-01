@@ -65,6 +65,6 @@ class GameClientApp
     ClientSceneBase* m_nextScene = nullptr;
     ClientSceneBase* m_currentScene = nullptr;
 
-    FramePerfStatus m_perfStats;
+    FramePerfStatus m_perfStats = {};
 };
 }  // namespace OneGame::Engine

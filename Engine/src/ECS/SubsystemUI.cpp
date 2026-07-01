@@ -38,14 +38,14 @@ entt::entity CastRayScreenSpace(entt::registry& gameWorld, math::vec2 pos)
 {
     entt::entity resultEntity = entt::null;
     int maxZLevel = -1;
-    for (auto [entity, rect, srect] : gameWorld.view<UIRaycastTarget, const UIRect, const ScreenRect>().each())
+    for (auto [entity, rect, zLevel, srect] : gameWorld.view<UIRaycastTarget, const UIRect, const UIZLevel, const ScreenRect>().each())
     {
         if (srect.pos.x < pos.x && srect.pos.y < pos.y && pos.x < srect.pos.x + srect.extent.x &&
             pos.y < srect.pos.y + srect.extent.y)
         {
-            if (rect.zLevel > maxZLevel)
+            if (zLevel.zLevel > maxZLevel)
             {
-                maxZLevel = rect.zLevel;
+                maxZLevel = zLevel.zLevel;
                 resultEntity = entity;
             }
         }
@@ -140,6 +140,10 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
 {
     game.world.clear<UIDragRelease>();
     game.world.clear<UIRaycastHit>();
+    if (!game.world.view<InputSourceKeyMouse>().empty())
+    {
+        return;
+    }
     // handle mouse drag
     math::vec2 mousePos{f.input.GetMouseX(), f.input.GetMouseY()};
     auto mouseEntityHit = UI::CastRayScreenSpace(game.world, mousePos);
@@ -147,7 +151,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
     {
         for (auto button : ALL_MOUSE_BUTTONS)
         {
-            if (f.input.IsMousePressed(button) && game.world.valid(mouseEntityHit))
+            if (f.input.IsMousePressed(button) && game.world.valid(mouseEntityHit) && !game.world.all_of<UIDrag>(mouseEntityHit))
             {
                 auto relMousePos = UI::ScreenSpaceToRelSpace(game.world, mousePos);
                 auto& drag = game.world.emplace<UIDrag>(mouseEntityHit);
@@ -195,7 +199,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
             entt::entity hit = UI::CastRayRelSpace(game.world, pos);
             entt::entity edrag = activeDrags[ptrIdx];
 
-            if (game.world.valid(hit))
+            if (game.world.valid(hit) && !game.world.all_of<UIDrag>(hit))
             {
                 //LOG_DEBUG("Touch {} drag start at ({}, {})", pidx, f.input.GetTouchX(pidx), f.input.GetTouchY(pidx));
                 auto& drag = game.world.emplace<UIDrag>(hit);

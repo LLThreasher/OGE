@@ -62,9 +62,37 @@ bool TerrainView::TryGetBlock(int x, int y, int z, uint32_t& value)
 void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
 {
     Point3 chunkCoord = {x >> 4, y >> 4, z >> 4};
-    auto [_, chunk] = GetChunk(chunkCoord);
+    auto [handle, chunk] = GetChunk(chunkCoord);
     assert(chunk != nullptr);
-    if (chunk != nullptr) return chunk->SetBlock(x & 0xF, y & 0xF, z & 0xF, value);
+    if (chunk != nullptr)
+    {
+        m_terrainData.dirtyChunks.insert(handle);
+        if ((x & 0xF) == 0)
+        {
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x - 1, chunkCoord.y, chunkCoord.z}));
+        }
+        else if ((x & 0xF) == 15)
+        {
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x + 1, chunkCoord.y, chunkCoord.z}));
+        }
+        if ((y & 0xF) == 0)
+        {
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y - 1, chunkCoord.z}));
+        }
+        else if ((y & 0xF) == 15)
+        {
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y + 1, chunkCoord.z}));
+        }
+        if ((z & 0xF) == 0)
+        {
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z - 1}));
+        }
+        else if ((z & 0xF) == 15)
+        {
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z + 1}));
+        }
+        return chunk->SetBlock(x & 0xF, y & 0xF, z & 0xF, value);
+    }
 }
 
 std::tuple<ChunkHandle, ChunkData*> TerrainView::GetChunk(Point3 chunkCoord)

@@ -96,7 +96,20 @@ inline mat4 perspective(float fovRadians, float aspect, float nearPlane, float f
 
 inline mat4 perspective_rev_z(float fovRadians, float aspect, float nearPlane)
 {
-    return glm::infinitePerspectiveRH_ZO(fovRadians, aspect, nearPlane);
+    using T = float;
+    T const range = tan(fovRadians / static_cast<T>(2)) * nearPlane;
+    T const left = -range * aspect;
+    T const right = range * aspect;
+    T const bottom = -range;
+    T const top = range;
+
+    glm::mat4 Result(static_cast<T>(0));
+    Result[0][0] = (static_cast<T>(2) * nearPlane) / (right - left);
+    Result[1][1] = (static_cast<T>(2) * nearPlane) / (top - bottom);
+    Result[2][2] = static_cast<T>(0);
+    Result[2][3] = - static_cast<T>(1);
+    Result[3][2] = nearPlane;
+    return Result;
 }
 
 inline int ceil(float val)

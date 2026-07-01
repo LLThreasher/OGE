@@ -28,6 +28,9 @@ void main()
    vec3 finalColor = texColor.rgb * v_Color * v_Light;
    
    FragColor = vec4(finalColor, texColor.a);
+
+   // float d = gl_FragCoord.z;
+   // FragColor = vec4(d, d, d, 1.0);
    // FragColor = vec4(vec3(1.0, 0.0, 0.0), 1.0); // Debug: solid red
 }
 

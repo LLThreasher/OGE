@@ -6,13 +6,12 @@
 #include "Engine/ObjectType.hpp"
 #include "Engine/Point2.hpp"
 #include "Engine/Point3.hpp"
+#include "Engine/Rect.hpp"
 
 namespace OneGame::Engine::Graphics
 {
-struct PDebugRect
+struct PDebugRect : IRect
 {
-    Point2 pos;
-    UPoint2 extent;
     ColorRGBA8 color = COLOR_WHITE;
 };
 
@@ -30,10 +29,8 @@ struct PGameViewTag
     GameViewType type;
 };
 
-struct PGameView
+struct PGameView : IRect
 {
-    Point2 pos;
-    UPoint2 extent;
     GameViewType type;
 };
 
@@ -57,6 +54,13 @@ struct PDebugText
 struct PTerrainMesh
 {
     GPUChunkedAllocation alloc;
+    uint32_t indexCount;
+};
+
+struct PGeneralMesh
+{
+    GPUBufferRange vertices;
+    GPUBufferRange indices;
     uint32_t indexCount;
 };
 }  // namespace OneGame::Engine::Graphics

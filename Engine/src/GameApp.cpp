@@ -77,23 +77,11 @@ void GameClientApp::Shutdown()
 
 AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
 {
-    FramePerfStatus perfStats;
+    FramePerfStatus perfStats{};
     auto watch = stopwatch::start();
     AppFrameAction appRes = AppFrameAction::WaitFPS60;
-    auto res = m_backend.BeginFrame();
 
-    if (res == BeginFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
-    if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;
-
-    if (m_backend.SwapchainRecreated())
-    {
-        auto swapExtend = m_backend.SwapchainExtent();
-        auto swapPretransform = m_backend.SwapchainPretransform();
-        m_dispatcher.trigger<SurfaceRecreateEvent>({swapExtend, swapPretransform});
-    }
     m_dispatcher.update();
-
-    perfStats.inputProcessingTime = watch.restart();
 
     PresentationContext pctx = PresentCtx();
 
@@ -123,14 +111,27 @@ AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
 
     perfStats.logicTime = watch.restart();
 
+    auto res = m_backend.BeginFrame();
+    if (res == BeginFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
+    if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;
+
+    perfStats.inputProcessingTime = watch.restart();
+
     auto& tcmd = m_backend.CreateCommandList(QueueType::Transfer);
     tcmd.Begin();
     m_streamingManager.RunUploadStep(m_backend, tcmd);
     tcmd.End();
 
+    if (m_backend.SwapchainRecreated())
+    {
+        auto swapExtend = m_backend.SwapchainExtent();
+        auto swapPretransform = m_backend.SwapchainPretransform();
+        m_dispatcher.enqueue<SurfaceRecreateEvent>({swapExtend, swapPretransform});
+    }
+    m_renderer.Render(pctx, m_presentationWorld, dt);
+
     perfStats.assetUploadTime = watch.restart();
 
-    m_renderer.Render(pctx, m_presentationWorld, dt);
     auto endRes = m_backend.EndFrame();
 
     perfStats.renderSubmitTime = watch.restart();

@@ -39,7 +39,7 @@ void UIPass::Enable(IGraphicsBackend& backend, InitContext& ctxt)
         desc.writeDepth = false;
         desc.blending = true;
         desc.depthTest = false;
-        desc.depthCompareOp = DepthCompareOp::Less;
+        desc.depthCompareOp = DepthCompareOp::Never;
         desc.cullMode = CullMode::Back;
         pipelineHandle = backend.CreateGraphicsPipeline(desc);
     }

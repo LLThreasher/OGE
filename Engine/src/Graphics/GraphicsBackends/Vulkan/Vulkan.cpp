@@ -988,16 +988,16 @@ BeginFrameAction VulkanBackend::BeginFrame()
 {
     FrameData& frame = m_frames[m_frameIndex];
 
-    // Wait for previous frame to finish
-    vkWaitForFences(m_device.device, 1, &frame.inFlightFence, VK_TRUE, UINT64_MAX);
-
     VkDevice& device = m_device.device;
     VkSwapchainKHR& swapchain = m_swapchain.swapchain;
 
-    // 2️⃣ Acquire next swapchain image
+    // Acquire next swapchain image
     VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, frame.imageAvailableAndTransferComplete[0],
                                             VK_NULL_HANDLE, &m_imageIndex);
 
+    // Wait for previous frame to finish
+    vkWaitForFences(m_device.device, 1, &frame.inFlightFence, VK_TRUE, UINT64_MAX);
+    
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         LOG_DEBUG("recreating swapchain: VK_ERROR_OUT_OF_DATE_KHR");
@@ -1025,7 +1025,7 @@ BeginFrameAction VulkanBackend::BeginFrame()
 
     vkResetFences(m_device.device, 1, &frame.inFlightFence);
 
-    // 3️⃣ Reset command pool
+    // Reset command pool
     vkResetCommandPool(device, frame.pool, 0);
     frame.cmdUsedCount[0] = 0;
     frame.cmdUsedCount[1] = 0;

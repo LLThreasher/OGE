@@ -21,7 +21,7 @@ void DebugScene2::Initialize(PresentationContext context)
     gameWorld.Register<SubsystemCamera>();
     gameWorld.Register<SubsystemDebugInfo>();
 
-    auto e = UI::CreateGameView(gameWorld.Get().world, {0, math::vec2{0, 0}, math::vec2{1, 1}});
+    auto e = UI::CreateGameView(gameWorld.Get().world, {math::vec2{0, 0}, math::vec2{1, 1}});
 }
 
 void DebugScene2::Enter(PresentationContext context)
@@ -216,7 +216,7 @@ void DebugScene3::Initialize(PresentationContext context)
     blocks.RegisterBlock("stone", {"Stone", {5, 5, 5, 5, 5, 5}, 1});
 
     Terrain::TerrainDesc desc{};
-    desc.chunkViewDistance = 4;
+    desc.chunkViewDistance = 1;
     m_gameWorld.Get().world.emplace<Terrain::TerrainDesc>(m_gameWorld.Get().world.create(), desc);
 }
 
@@ -224,7 +224,7 @@ void DebugScene3::Enter(PresentationContext context)
 {
     using namespace ECS;
     m_gameWorld.Initialize(context);
-    auto vpe = UI::CreateGameView(m_gameWorld.Get().world, {0, math::vec2{0, 0}, math::vec2{1, 1}});
+    auto vpe = UI::CreateGameView(m_gameWorld.Get().world, {math::vec2{0, 0}, math::vec2{1, 1}});
 
     auto& world = m_gameWorld.Get().world;
     auto player = ComponentPlayer::CreatePlayer(world);
@@ -244,17 +244,26 @@ void DebugScene3::Enter(PresentationContext context)
     world.get<ViewPanel>(vpe).activeCamera = player;
     world.patch<ViewPanel>(vpe);
 
+    // put something in the middle of the screen
+    auto cubeEntity = world.create();
+    world.emplace<UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.01f, 0.01f * context.backend.SwapchainAspect()});
+    world.emplace<UIZLevel>(cubeEntity, 1);
+    world.emplace<UIRaycastTarget>(cubeEntity);
+
     // create move widget
     auto scaledX = 0.3f;
     auto scaledY = scaledX * context.backend.SwapchainAspect();
-    auto mvWidget = world.create();
-    world.emplace<UIRect>(mvWidget, 1, math::vec2{0.0f, 1.f - scaledY},
-                          math::vec2{scaledX, scaledY});
-    world.emplace<UIRaycastTarget>(mvWidget);
 
     auto lookWidget = world.create();
-    world.emplace<UIRect>(lookWidget, 0, math::vec2{0.0f, 0.0f}, math::vec2{1.0f, 1.0f});
+    world.emplace<UIRect>(lookWidget, math::vec2{0.0f, 0.0f}, math::vec2{1.0f, 1.0f});
+    world.emplace<UIZLevel>(lookWidget, 0);
     world.emplace<UIRaycastTarget>(lookWidget);
+    
+    auto mvWidget = world.create();
+    world.emplace<UIRect>(mvWidget, math::vec2{0.0f, 1.f - scaledY},
+                          math::vec2{scaledX, scaledY});
+    world.emplace<UIZLevel>(mvWidget, 1);
+    world.emplace<UIRaycastTarget>(mvWidget);
 
     world.emplace<InputSourceWidget>(player, mvWidget, lookWidget);
 }
