@@ -35,6 +35,21 @@ KeyCode GetEngineKey(SDL_Keycode sdlKey)
     return KeyCode::KY_UNASSIGNED;
 }
 
+static MouseButton GetEngineMouseButton(uint8_t sdlButton)
+{
+    switch (sdlButton)
+    {
+        case SDL_BUTTON_LEFT:
+            return MouseButton::Left;
+        case SDL_BUTTON_RIGHT:
+            return MouseButton::Right;
+        case SDL_BUTTON_MIDDLE:
+            return MouseButton::Middle;
+        default:
+            return MouseButton::Button3;
+    }
+}
+
 class SDL3GameWindow : public IGameWindow
 {
    public:
@@ -94,12 +109,16 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
     map[SDLK_Z] = KeyCode::KY_Z;
 
     LOG_INFO("SDL3 GameWindow Created");
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     // 1. Initialize SDL
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
     // 2. Create window with SDL_WINDOW_VULKAN flag
-    // m_window = SDL_CreateWindow(name.c_str(), 0, 0, SDL_WINDOW_FULLSCREEN);
+#ifdef PLATFORM_ANDROID
+    m_window = SDL_CreateWindow(name.c_str(), 0, 0, SDL_WINDOW_FULLSCREEN);
+#else
     m_window = SDL_CreateWindow(name.c_str(), 1920, 1080, SDL_WINDOW_RESIZABLE);
+#endif
 }
 
 Graphics::WindowHandle SDL3GameWindow::GetCurrentWindow()
@@ -178,6 +197,12 @@ void SDL3GameWindow::Run(GameClientApp& app)
                     break;
                 case SDL_EVENT_KEY_UP:
                     m_input.SetKey(GetEngineKey(event.key.key), false);
+                    break;
+                case SDL_EVENT_MOUSE_BUTTON_DOWN:
+                    m_input.SetMouseButton(GetEngineMouseButton(event.button.button), true);
+                    break;
+                case SDL_EVENT_MOUSE_BUTTON_UP:
+                    m_input.SetMouseButton(GetEngineMouseButton(event.button.button), false);
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
                     m_input.SetMouseDelta(event.motion.xrel, event.motion.yrel);

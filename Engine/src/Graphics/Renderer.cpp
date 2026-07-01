@@ -67,8 +67,8 @@ void Renderer::RenderView(AssetContext& assets, DrawContext ctxt)
     }
     else
     {
-        auto& rect = ctxt.world.get<PRect>(ctxt.currentView);
-        ctxt.drawCmd.SetViewRect(rect.posX, rect.posY, rect.extentX, rect.extentY);
+        auto& rect = ctxt.world.get<PGameView>(ctxt.currentView);
+        ctxt.drawCmd.SetViewRect(rect.pos.x, rect.pos.y, rect.extent.x, rect.extent.y);
     }
 
     Draw(ctxt);

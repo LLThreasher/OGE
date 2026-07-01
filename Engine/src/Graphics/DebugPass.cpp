@@ -5,6 +5,7 @@
 #include "Engine/GameAppState.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
+#include "Engine/StreamingManager.hpp"
 #include "RendererInternals.hpp"
 #include "stb_easy_font.h"
 
@@ -62,6 +63,18 @@ void DebugInfoPass::Enable(IGraphicsBackend& backend, InitContext& ctx)
     iBuf.size = NUM_DEBUG_INDICES * sizeof(uint16_t);
     indexBuffer = backend.CreateBuffer(iBuf);
     LOG_DEBUG("debug ibuff created");
+
+    uint16_t* iptr = indices;
+    for (size_t i = 0; i < NUM_DEBUG_INDICES / 6; i++)
+    {
+        *(iptr++) = i * 4;
+        *(iptr++) = i * 4 + 1;
+        *(iptr++) = i * 4 + 2;
+        *(iptr++) = i * 4 + 2;
+        *(iptr++) = i * 4 + 3;
+        *(iptr++) = i * 4;
+    }
+    ctx.assets.streamingManager.UploadBuffer<UploadType::Immediate, BufferUsage::Index>(std::as_bytes(std::span(indices, NUM_DEBUG_INDICES)), indexBuffer);
 }
 
 void DebugInfoPass::Disable(IGraphicsBackend& backend) {}
@@ -99,20 +112,12 @@ void DebugInfoPass::Draw(DrawContext& ctx)
     numQuads += stb_easy_font_print(10.f, 60.f, const_cast<char*>(cs), NULL, &vertices[4],
                                     (NUM_DEBUG_VERTICES - 4) * sizeof(Vertex));
 
-    uint16_t* iptr = indices;
     for (size_t i = 0; i < numQuads; i++)
     {
         vertices[i * 4 + 0].pos *= 3;
         vertices[i * 4 + 1].pos *= 3;
         vertices[i * 4 + 2].pos *= 3;
         vertices[i * 4 + 3].pos *= 3;
-
-        *(iptr++) = i * 4;
-        *(iptr++) = i * 4 + 1;
-        *(iptr++) = i * 4 + 2;
-        *(iptr++) = i * 4 + 2;
-        *(iptr++) = i * 4 + 3;
-        *(iptr++) = i * 4;
     }
 
     if (ctx.backend.SwapchainRecreated())
@@ -121,14 +126,43 @@ void DebugInfoPass::Draw(DrawContext& ctx)
         math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
                                 pushConstant.offset);
     }
+
+    for (auto [entity, rect] : ctx.world.view<PDebugRect>().each())
+    {
+        static float m = 4.f;
+        auto& r = rect;
+        size_t i = numQuads * 4;
+      
+        vertices[i + 0] = {{r.pos.x, r.pos.y, 0.f}, r.color};
+        vertices[i + 1] = {{r.pos.x + r.extent.x, r.pos.y, 0.f}, r.color};
+        vertices[i + 2] = {{r.pos.x + r.extent.x, r.pos.y + m, 0.f}, r.color};
+        vertices[i + 3] = {{r.pos.x, r.pos.y + m, 0.f}, r.color};
+
+        vertices[i + 4] = {{r.pos.x + r.extent.x - m, r.pos.y, 0.f}, r.color};
+        vertices[i + 5] = {{r.pos.x + r.extent.x, r.pos.y, 0.f}, r.color};
+        vertices[i + 6] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y, 0.f}, r.color};
+        vertices[i + 7] = {{r.pos.x + r.extent.x - m, r.pos.y + r.extent.y, 0.f}, r.color};
+
+        vertices[i + 8 ] = {{r.pos.x, r.pos.y + r.extent.y - m, 0.f}, r.color};
+        vertices[i + 9 ] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y - m, 0.f}, r.color};
+        vertices[i + 10] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y, 0.f}, r.color};
+        vertices[i + 11] = {{r.pos.x, r.pos.y + r.extent.y, 0.f}, r.color};
+
+        vertices[i + 12] = {{r.pos.x, r.pos.y, 0.f}, r.color};
+        vertices[i + 13] = {{r.pos.x + m, r.pos.y, 0.f}, r.color};
+        vertices[i + 14] = {{r.pos.x + m, r.pos.y + r.extent.y, 0.f}, r.color};
+        vertices[i + 15] = {{r.pos.x, r.pos.y + r.extent.y, 0.f}, r.color};
+
+        numQuads += 4;
+    }
     if (numQuads == 0) return;
 
     auto& tCmd = ctx.transferCmd;
     auto& cmd = ctx.drawCmd;
     tCmd.UpdateBuffer(vertexBuffer, 0, numQuads * 4 * sizeof(Vertex), vertices);
-    tCmd.UpdateBuffer(indexBuffer, 0, numQuads * 6 * sizeof(uint16_t), indices);
+    //tCmd.UpdateBuffer(indexBuffer, 0, numQuads * 6 * sizeof(uint16_t), indices);
     tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
-    tCmd.BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
+    //tCmd.BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
 
     cmd.BindGraphicsPipeline(pipeline);
     cmd.PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));

@@ -386,6 +386,12 @@ enum class FrontFace
     CCW,
 };
 
+enum class PrimitiveTopology
+{
+    TriangleList,
+    LineList,
+};
+
 struct PushConstantRangeDesc
 {
     uint32_t offset = 0;
@@ -398,13 +404,13 @@ struct GraphicsPipelineDesc
     std::vector<char> vertexShader;
     std::vector<char> fragmentShader;
     std::vector<VertexAttributeFormat> vertexLayout;
-    VertexAttributeFormat indexFormat;
-    bool depthTest;
-    bool writeDepth;
-    DepthCompareOp depthCompareOp;
-    bool blending;
-    CullMode cullMode;
-    FrontFace frontFace;
+    PrimitiveTopology topology      = PrimitiveTopology::TriangleList;
+    bool depthTest                  = false;
+    bool writeDepth                 = false;
+    DepthCompareOp depthCompareOp   = DepthCompareOp::Never;
+    bool blending                   = false;
+    CullMode cullMode               = CullMode::None;
+    FrontFace frontFace             = FrontFace::CW;
 
     std::vector<PushConstantRangeDesc> pushConstants;
     std::vector<GPUBindingGroupLayoutHandle> bindingGroupLayouts;

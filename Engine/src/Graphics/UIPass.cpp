@@ -65,7 +65,11 @@ void UIPass::Enable(IGraphicsBackend& backend, InitContext& ctxt)
 
 void UIPass::Disable(IGraphicsBackend& backend) {}
 
-void UIPass::Draw(DrawContext& context) {}
+void UIPass::Draw(DrawContext& context)
+{
+
+}
+
 }  // namespace OneGame::Engine::Graphics
 
 /*

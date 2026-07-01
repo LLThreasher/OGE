@@ -32,11 +32,6 @@ void SubsystemPlayer::Present(const GameWorldContext& game, PresentationContext 
                 std::format("Looking at {} {} {}[{}]", player.lookingAt->hitPos, player.lookingAt->hitFace,
                             game.blocks.GetBlockDisplayName(game.blocks.GetBlockId(player.lookingAt->hitBlockValue)),
                             player.lookingAt->hitBlockValue));
-        //AddDebugInfo(
-        //    fd.presentationWorld,
-        //    std::format("Looking at {} {} {}[{}]", player.lookingAt->hitPos, player.lookingAt->hitFace,
-        //                game.blocks.GetBlockDisplayName(game.blocks.GetBlockId(player.lookingAt->hitBlockValue)),
-        //                player.lookingAt->hitBlockValue));
     }
 }
 }  // namespace OneGame::Engine::ECS

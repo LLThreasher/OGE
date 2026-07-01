@@ -100,8 +100,18 @@ DECLARE_SUBSYSTEM(PlayerInput,
 struct UIDrag
 {
     int inputIndex = -1;
-    MouseButton dragStartButton;
+    MouseButton dragStartButton = MouseButton::Left;
+    entt::entity onTopOf = entt::null;
     math::vec2 dragStartPos;
+    math::vec2 dragLastPos;
+    math::vec2 dragDelta = {};
+
+    void UpdateDrag(math::vec2 pos, entt::entity onTopOf)
+    {
+        dragDelta = pos - dragLastPos;
+        dragLastPos = pos;
+        onTopOf = onTopOf;
+    }
 };
 
 struct UIDragRelease
@@ -120,7 +130,6 @@ struct UIFocus
 
 struct UIRaycastHit
 {
-    entt::entity dragStart;
 };
 
 struct UIRect
@@ -191,8 +200,11 @@ DECLARE_SUBSYSTEM(Player);
 namespace OneGame::Engine::UI
 {
 math::vec2 ScreenSpaceToRelSpace(const ECS::ScreenRect rect, math::vec2 screenPos);
-ECS::ScreenRect UIRectToScreenRect(entt::registry& world, entt::entity rect);
 math::vec2 ScreenSpaceToRelSpace(entt::registry& world, entt::entity rectEntity, math::vec2 screenPos);
-entt::entity CastRay(entt::registry& gameWorld, math::vec2 pos);
+math::vec2 ScreenSpaceToRelSpace(entt::registry& world, math::vec2 screenPos);
+Point2 RelSpaceToScreenSpace(entt::registry& world, math::vec2 relPos);
+ECS::ScreenRect UIRectToScreenRect(entt::registry& world, entt::entity rect);
+entt::entity CastRayScreenSpace(entt::registry& gameWorld, math::vec2 pos);
+entt::entity CastRayRelSpace(entt::registry& gameWorld, math::vec2 pos);
 entt::entity CreateGameView(entt::registry& game, const ECS::UIRect rect);
 }

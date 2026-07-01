@@ -37,6 +37,8 @@ struct IntPair
     operator math::vec2() const {
         return {x, y};
     }
+
+    static IntPair<T> FromVec2(const math::vec2& v) { return {static_cast<T>(v.x), static_cast<T>(v.y)}; }
 };
 
 template<typename T>
@@ -55,13 +57,8 @@ struct IntPairHash
     }
 };
 
-struct Point2 : IntPair<int32_t>
-{
-};
-
-struct UPoint2 : IntPair<uint32_t>
-{
-};
+using Point2 = IntPair<int32_t>;
+using UPoint2 = IntPair<uint32_t>;
 }
 
 namespace std
@@ -69,12 +66,14 @@ namespace std
     template <>
     struct formatter<OneGame::Engine::Point2>
     {
-        constexpr auto parse(format_parse_context& ctx)
+        template <typename Context>
+        constexpr auto parse(Context& ctx)
         {
             return ctx.begin();
         }
 
-        auto format(const OneGame::Engine::Point2& p, format_context& ctx) const
+        template <typename Context>
+        auto format(const OneGame::Engine::Point2& p, Context& ctx) const
         {
             return format_to(
                 ctx.out(),
@@ -87,12 +86,14 @@ namespace std
     template <>
     struct formatter<OneGame::Engine::UPoint2>
     {
-        constexpr auto parse(format_parse_context& ctx)
+        template <typename Context>
+        constexpr auto parse(Context& ctx)
         {
             return ctx.begin();
         }
 
-        auto format(const OneGame::Engine::UPoint2& p, format_context& ctx) const
+        template <typename Context>
+        auto format(const OneGame::Engine::UPoint2& p, Context& ctx) const
         {
             return format_to(
                 ctx.out(),

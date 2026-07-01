@@ -243,6 +243,20 @@ void DebugScene3::Enter(PresentationContext context)
     }
     world.get<ViewPanel>(vpe).activeCamera = player;
     world.patch<ViewPanel>(vpe);
+
+    // create move widget
+    auto scaledX = 0.3f;
+    auto scaledY = scaledX * context.backend.SwapchainAspect();
+    auto mvWidget = world.create();
+    world.emplace<UIRect>(mvWidget, 1, math::vec2{0.0f, 1.f - scaledY},
+                          math::vec2{scaledX, scaledY});
+    world.emplace<UIRaycastTarget>(mvWidget);
+
+    auto lookWidget = world.create();
+    world.emplace<UIRect>(lookWidget, 0, math::vec2{0.0f, 0.0f}, math::vec2{1.0f, 1.0f});
+    world.emplace<UIRaycastTarget>(lookWidget);
+
+    world.emplace<InputSourceWidget>(player, mvWidget, lookWidget);
 }
 
 void DebugScene3::Exit(PresentationContext context)

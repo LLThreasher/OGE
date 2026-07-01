@@ -4,26 +4,16 @@
 #include "Engine/entt.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/ObjectType.hpp"
+#include "Engine/Point2.hpp"
 #include "Engine/Point3.hpp"
 
 namespace OneGame::Engine::Graphics
 {
-struct PRect
+struct PDebugRect
 {
-    int32_t posX;
-    int32_t posY;
-    uint32_t extentX;
-    uint32_t extentY;
-};
-
-struct PDefaultGameView
-{
-static entt::entity Get(const entt::registry& world)
-{
-    auto view = world.view<PDefaultGameView>();
-    assert(!view.empty());
-    return view.front();
-}
+    Point2 pos;
+    UPoint2 extent;
+    ColorRGBA8 color = COLOR_WHITE;
 };
 
 enum class GameViewType : uint32_t
@@ -42,6 +32,8 @@ struct PGameViewTag
 
 struct PGameView
 {
+    Point2 pos;
+    UPoint2 extent;
     GameViewType type;
 };
 

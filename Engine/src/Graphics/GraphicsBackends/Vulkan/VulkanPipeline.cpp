@@ -103,7 +103,15 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
     //
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    switch (desc.topology)
+    {
+        case PrimitiveTopology::TriangleList:
+            inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+            break;
+        case PrimitiveTopology::LineList:
+            inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+            break;
+    }
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
     //

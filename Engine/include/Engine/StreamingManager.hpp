@@ -71,7 +71,7 @@ class StreamingManager
   size_t UploadBuffer(const std::vector<TData>& data, const GPUBufferHandle handle, const size_t gpuOffset = 0,
                       ResourceBundleHandle resBundle = {})
   {
-    return UploadBuffer<uploadType, usage>(std::as_bytes(std::span(data)), handle, gpuOffset, resBundle);
+      return UploadBuffer<uploadType, usage>(std::as_bytes(std::span(data)), handle, gpuOffset, resBundle);
   }
 
   template <UploadType uploadType>

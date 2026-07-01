@@ -10,7 +10,7 @@
       "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
         "BUILD_ANDROID": true,
-        "MAX_FRAMES_IN_FLIGHT": "1"
+        "MAX_FRAMES_IN_FLIGHT": "2"
       },
       "environment": {
         "JAVA_HOME": "D:/Android/openjdk/jdk-21.0.2"

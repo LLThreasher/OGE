@@ -46,9 +46,12 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 auto drag = game.world.try_get<UIDrag>(widgetInput->moveWidget);
                 if (drag != nullptr)
                 {
-                    auto touchIdx = PointerIdx::TouchIdxFromPtrIdx(drag->inputIndex);
-                    math::vec2 pos = {f.input.GetTouchX(touchIdx), f.input.GetTouchY(touchIdx)};
-                    data.moveDelta = UI::ScreenSpaceToRelSpace(game.world, widgetInput->moveWidget, pos - drag->dragStartPos);
+                    data.moveDelta = drag->dragLastPos - drag->dragStartPos;
+                    data.moveDelta = -data.moveDelta;
+                }
+                else
+                {
+                    data.moveDelta = math::vec2{0, 0};
                 }
             }
             // handle pan
@@ -56,9 +59,12 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 auto drag = game.world.try_get<UIDrag>(widgetInput->viewWidget);
                 if (drag != nullptr)
                 {
-                    auto touchIdx = PointerIdx::TouchIdxFromPtrIdx(drag->inputIndex);
-                    math::vec2 posDelta = {f.input.GetTouchDX(touchIdx), f.input.GetTouchDY(touchIdx)};
-                    data.panDelta = UI::ScreenSpaceToRelSpace(game.world, widgetInput->viewWidget, posDelta);
+                    data.panDelta = drag->dragDelta;
+                    data.panDelta.x = -data.panDelta.x;
+                }
+                else
+                {
+                    data.panDelta = math::vec2{0, 0};
                 }
             }
         }

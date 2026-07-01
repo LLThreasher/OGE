@@ -80,8 +80,7 @@ void SubsystemCamera::Present(const GameWorldContext& game, PresentationContext 
     for (auto [entity, view, rect] : game.world.view<ViewPanel, ScreenRect>().each())
     {
         auto e = fd.presentationWorld.create();
-        fd.presentationWorld.emplace<PGameView>(e, view.activeSlot);
-        fd.presentationWorld.emplace<PRect>(e, rect.pos.x, rect.pos.y, rect.extent.x, rect.extent.y);
+        fd.presentationWorld.emplace<PGameView>(e, rect.pos, rect.extent, view.activeSlot);
         if (auto camera = game.world.try_get<ComponentCamera>(view.activeCamera))
             fd.presentationWorld.emplace<PViewTransform>(e, camera->view());
         if (auto pcamera = game.world.try_get<ComponentPerspectiveCamera>(view.activeCamera))
