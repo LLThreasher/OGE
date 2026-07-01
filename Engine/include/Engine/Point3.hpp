@@ -3,21 +3,26 @@
 #include <cassert>
 #include <cinttypes>
 #include <unordered_map>
-#include <format>
+
+#include "Engine/Math.hpp"
+#include "Engine/TypeTraits.hpp"
 
 namespace OneGame::Engine
 {
-struct Point3
+template <typename T>
+struct IntTriple
 {
-    int32_t x, y, z;
+    T x, y, z;
 
-    bool operator==(const Point3& other) const noexcept { return x == other.x && y == other.y && z == other.z; }
+    bool operator==(const IntTriple<T>& other) const noexcept { return x == other.x && y == other.y && z == other.z; }
 
-    Point3 operator+(const Point3& other) const noexcept { return {x + other.x, y + other.y, z + other.z}; }
+    template <typename U>
+    IntTriple<wider_t<T, U>> operator+(const IntTriple<U>& other) const noexcept { return {x + other.x, y + other.y, z + other.z}; }
 
-    Point3 operator-(const Point3& other) const noexcept { return {x - other.x, y - other.y, z - other.z}; }
+    template <typename U>
+    IntTriple<wider_t<T, U>> operator-(const IntTriple<U>& other) const noexcept { return {x - other.x, y - other.y, z - other.z}; }
 
-    const int32_t& operator[](size_t index) const
+    const T& operator[](size_t index) const
     {
         switch (index)
         {
@@ -32,15 +37,32 @@ struct Point3
                 return x;
         }
     }
+
+    operator math::vec3() const {
+        return {x, y, z};
+    }
+
+    operator IntTriple<int32_t>() const {
+        return {static_cast<int32_t>(x), static_cast<int32_t>(y), static_cast<int32_t>(z)};
+    }
+
+    static IntTriple<T> FromVec3(const math::vec3& v) { return {static_cast<T>(v.x), static_cast<T>(v.y), static_cast<T>(v.z)}; }
 };
+
+using LocalPoint3 = IntTriple<int8_t>;
+using Point3 = IntTriple<int32_t>;
 
 constexpr Point3 perFaceOffset[6] = {
     {0, 0, 1}, {0, 0, -1}, {0, 1, 0}, {0, -1, 0}, {1, 0, 0}, {-1, 0, 0},
 };
 
-struct Point3Hash
+}  // namespace OneGame::Engine
+namespace std
 {
-    size_t operator()(const Point3& p) const noexcept
+template <>
+struct hash<OneGame::Engine::Point3>
+{
+    size_t operator()(const OneGame::Engine::Point3& p) const noexcept
     {
         size_t hx = std::hash<int32_t>{}(p.x);
         size_t hy = std::hash<int32_t>{}(p.y);
@@ -54,23 +76,4 @@ struct Point3Hash
         return seed;
     }
 };
-}  // namespace OneGame::Engine
-
-namespace std
-{
-template <>
-struct formatter<OneGame::Engine::Point3>
-{
-    template <class Context>
-    constexpr auto parse(Context& ctx)
-    {
-        return ctx.begin();
-    }
-
-    template <class Context>
-    auto format(const OneGame::Engine::Point3& p, Context& ctx) const
-    {
-        return format_to(ctx.out(), "({}, {})", p.x, p.y);
-    }
-};
-}  // namespace std
+}

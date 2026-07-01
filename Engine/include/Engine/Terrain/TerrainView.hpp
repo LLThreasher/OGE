@@ -21,11 +21,6 @@ using ChunkHandle = ResourceHandle<TerrainObject::Chunk>;
 using BuiltMeshHandle = ResourceHandle<TerrainObject::BuiltChunkMesh>;
 using MeshingWorkerContextHandle = ResourceHandle<TerrainObject::MeshingWorkerContext>;
 
-struct LocalPoint3
-{
-    int8_t x, y, z;
-};
-
 struct LocalUpdateBlockCmd
 {
     uint32_t value;
@@ -124,7 +119,7 @@ class ChunkDataCollection
 
    private:
     ResourcePool<TerrainObject::Chunk, ChunkData> chunkData;
-    std::unordered_map<Point3, ChunkHandle, Point3Hash> coordToChunks;
+    std::unordered_map<Point3, ChunkHandle> coordToChunks;
 };
 
 // allocate chunk -> generate terrain queue -> build mesh queue -> built chunk
@@ -134,7 +129,7 @@ struct TerrainData
 {
     ChunkDataCollection chunks;
     std::queue<ChunkHandle> generateTerrainQueue;
-    std::unordered_set<Point3, Point3Hash> chunksToDestroy;
+    std::unordered_set<Point3> chunksToDestroy;
     std::unordered_map<ChunkHandle, std::vector<LocalUpdateBlockCmd>, HandleHash<ChunkHandle>> blockModificationQueue;
     std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> dirtyChunks;
 };

@@ -3,9 +3,9 @@
 #include <cassert>
 #include <cinttypes>
 #include <unordered_map>
-#include <format>
 
 #include "Engine/Math.hpp"
+#include "Engine/TypeTraits.hpp"
 
 namespace OneGame::Engine
 {
@@ -16,9 +16,10 @@ struct IntPair
 
     bool operator==(const IntPair<T>& other) const noexcept { return x == other.x && y == other.y; }
 
-    IntPair<T> operator+(const IntPair<T>& other) const noexcept { return {x + other.x, y + other.y}; }
-
-    IntPair<T> operator-(const IntPair<T>& other) const noexcept { return {x - other.x, y - other.y}; }
+    template <typename U>
+    IntPair<wider_t<T, U>> operator+(const IntPair<U>& other) const noexcept { return {x + other.x, y + other.y}; }
+    template <typename U>
+    IntPair<wider_t<T, U>> operator-(const IntPair<U>& other) const noexcept { return {x - other.x, y - other.y}; }
 
     const T& operator[](size_t index) const
     {
@@ -38,23 +39,11 @@ struct IntPair
         return {x, y};
     }
 
-    static IntPair<T> FromVec2(const math::vec2& v) { return {static_cast<T>(v.x), static_cast<T>(v.y)}; }
-};
-
-template<typename T>
-struct IntPairHash
-{
-    size_t operator()(const IntPair<T>& p) const noexcept
-    {
-        size_t hx = std::hash<int32_t>{}(p.x);
-        size_t hy = std::hash<int32_t>{}(p.y);
-
-        // Mix the hashes
-        size_t seed = hx;
-        seed ^= hy + 0x9e3779b9 + (seed << 6) + (seed >> 2);
-
-        return seed;
+    operator IntPair<int32_t>() const {
+        return {static_cast<int32_t>(x), static_cast<int32_t>(y)};
     }
+
+    static IntPair<T> FromVec2(const math::vec2& v) { return {static_cast<T>(v.x), static_cast<T>(v.y)}; }
 };
 
 using Point2 = IntPair<int32_t>;
@@ -63,43 +52,20 @@ using UPoint2 = IntPair<uint32_t>;
 
 namespace std
 {
-    template <>
-    struct formatter<OneGame::Engine::Point2>
+template <>
+struct hash<OneGame::Engine::Point2>
+{
+    size_t operator()(const OneGame::Engine::Point2& p) const noexcept
     {
-        template <typename Context>
-        constexpr auto parse(Context& ctx)
-        {
-            return ctx.begin();
-        }
-
-        template <typename Context>
-        auto format(const OneGame::Engine::Point2& p, Context& ctx) const
-        {
-            return format_to(
-                ctx.out(),
-                "({}, {})",
-                p.x, p.y
-            );
-        }
-    };
-    
-    template <>
-    struct formatter<OneGame::Engine::UPoint2>
+        return static_cast<size_t>(p.x) << 32 | p.y;
+    }
+};
+template <>
+struct hash<OneGame::Engine::UPoint2>
+{
+    size_t operator()(const OneGame::Engine::UPoint2& p) const noexcept
     {
-        template <typename Context>
-        constexpr auto parse(Context& ctx)
-        {
-            return ctx.begin();
-        }
-
-        template <typename Context>
-        auto format(const OneGame::Engine::UPoint2& p, Context& ctx) const
-        {
-            return format_to(
-                ctx.out(),
-                "({}, {})",
-                p.x, p.y
-            );
-        }
-    };
-}
+        return static_cast<size_t>(p.x) << 32 | p.y;
+    }
+};
+}  // namespace std
