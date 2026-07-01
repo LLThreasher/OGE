@@ -73,6 +73,8 @@ struct ComponentPerspectiveCamera
 
 math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamera, math::vec2 pos);
 
+math::vec2 RayToPitchYaw(math::vec3 ray);
+
 DECLARE_SUBSYSTEM(Camera, void onViewPanelUpdate(entt::registry& world, entt::entity entity););
 
 DECLARE_SUBSYSTEM(DebugInfo, float currentFPS = 0.f; float currentFrameTime = 0.f; float accumTime = 0.f;

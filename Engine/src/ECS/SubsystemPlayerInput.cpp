@@ -59,8 +59,10 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 auto drag = game.world.try_get<UIDrag>(widgetInput->viewWidget);
                 if (drag != nullptr)
                 {
-                    data.panDelta = drag->dragDelta;
-                    data.panDelta.x = -data.panDelta.x;
+                    auto pcam = game.world.get<ComponentPerspectiveCamera>(entity);
+                    auto vfov = pcam.fov;
+                    auto hfov = -2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
+                    data.panDelta = drag->dragDelta * math::vec2{hfov, vfov};
                 }
                 else
                 {

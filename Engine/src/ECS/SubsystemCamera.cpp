@@ -10,6 +10,35 @@ namespace OneGame::Engine::ECS
 
 math::mat4 ComponentCamera::view() const { return math::lookAt(position, position + forward, glm::vec3(0, 1, 0)); }
 
+math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamera, math::vec2 pos)
+{
+    float ndcX = pos.x * 2.0f - 1.0f;
+    float ndcY = 1.0f - pos.y * 2.0f;
+
+    float tanHalfFov = tanf(pcamera.fov * 0.5f);
+
+    float viewX = ndcX * pcamera.aspect * tanHalfFov;
+    float viewY = ndcY * tanHalfFov;
+    float viewZ = -1.0f;
+
+    //math::vec3 up;
+    //math::vec3 rayDir = viewX * math::cross(up, camera.forward) +
+    //viewY * up +
+    //viewZ * camera.forward;
+
+    math::vec3 rayDir = {viewX, viewY, viewZ};
+
+    rayDir = normalize(rayDir);
+    return rayDir;
+}
+
+math::vec2 RayToPitchYaw(math::vec3 ray)
+{
+    float pitch = asinf(ray.y);
+    float yaw = atan2f(ray.x, -ray.z);
+    return math::vec2(yaw, pitch);
+}
+
 // math::vec3 ComponentCamera::toRay(math::vec2 input, float aspect) const
 // {
 //     float ndcX = input.x * 2.0f - 1.0f;
