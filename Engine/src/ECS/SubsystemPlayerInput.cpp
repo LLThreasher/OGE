@@ -60,15 +60,15 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 auto drag = game.world.try_get<UIDrag>(widgetInput->viewWidget);
                 if (drag != nullptr)
                 {
-                    if (drag->deltaTime > 0.5f && (data.digging || math::dist_sq(static_cast<math::vec2>(UI::RelSpaceToScreenSpace(game.world, drag->dragStartPos)), static_cast<math::vec2>(UI::RelSpaceToScreenSpace(game.world, drag->dragLastPos))) < 64.f))
+                    if (drag->deltaTime > 0.5f && (data.get<PlayerAction::Digging>() || drag->IsHold(game.world)))
                     {
-                        data.digging = true;
-                        data.diggingPos = drag->dragLastPos;
+                        data.set<PlayerAction::Digging>();
+                        data.actionPos= drag->dragLastPos;
                         data.panDelta = math::vec2{0, 0};
                     }
                     else
                     {
-                        data.digging = false;
+                        data.unset<PlayerAction::Digging>();
                         auto pcam = game.world.get<ComponentPerspectiveCamera>(entity);
                         auto vfov = pcam.fov;
                         auto hfov = -2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
@@ -77,18 +77,18 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 }
                 else
                 {
+                    data.unset<PlayerAction::Digging>();
                     data.panDelta = math::vec2{0, 0};
-                    data.digging = false;
                 }
                 auto dragRl = game.world.try_get<UIDragRelease>(widgetInput->viewWidget);
-                if (dragRl != nullptr && dragRl->drag.deltaTime < 0.25f && math::dist_sq({0.f, 0.f}, static_cast<math::vec2>(UI::RelSpaceToScreenSpace(game.world, dragRl->drag.dragDelta))) < 64.f)
+                if (dragRl != nullptr && dragRl->dragStart == widgetInput->viewWidget && dragRl->drag.IsClick(game.world))
                 {
-                    data.placing = true;
-                    data.placingPos = dragRl->drag.dragLastPos;
+                    data.set<PlayerAction::Placing>();
+                    data.actionPos = dragRl->drag.dragLastPos;
                 }
                 else
                 {
-                    data.placing = false;
+                    data.unset<PlayerAction::Placing>();
                 }
             }
         }
@@ -117,21 +117,21 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
             
             if (f.input.IsMouseDown(MouseButton::Left))
             {
-                data.digging = true;
-                data.diggingPos = {0.5f, 0.5f};
+                data.set<PlayerAction::Digging>();
+                data.actionPos = {0.5f, 0.5f};
             }
             else
             {
-                data.digging = false;
+                data.unset<PlayerAction::Digging>();
             }
             if (f.input.IsMouseDown(MouseButton::Right))
             {
-                data.placing = true;
-                data.placingPos = {0.5f, 0.5f};
+                data.set<PlayerAction::Placing>();
+                data.actionPos = {0.5f, 0.5f};
             }
             else
             {
-                data.placing = false;
+                data.unset<PlayerAction::Placing>();
             }
         }
     }

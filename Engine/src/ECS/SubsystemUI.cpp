@@ -21,7 +21,7 @@ entt::entity CreateGameView(entt::registry& game, const UIRect rect)
     }
     if (freeSlots.empty())
     {
-        assert(false && "too much view panels");
+        assert(false && "too many view panels");
     }
     auto res = game.create();
     game.emplace<ViewPanel>(res).activeSlot = *freeSlots.begin();
@@ -29,16 +29,17 @@ entt::entity CreateGameView(entt::registry& game, const UIRect rect)
     return res;
 }
 
-entt::entity CastRayRelSpace(entt::registry& gameWorld, math::vec2 pos)
+entt::entity CastRayRelSpace(const entt::registry& gameWorld, math::vec2 pos)
 {
     return CastRayScreenSpace(gameWorld, RelSpaceToScreenSpace(gameWorld, pos));
 }
 
-entt::entity CastRayScreenSpace(entt::registry& gameWorld, math::vec2 pos)
+entt::entity CastRayScreenSpace(const entt::registry& gameWorld, math::vec2 pos)
 {
     entt::entity resultEntity = entt::null;
     int maxZLevel = -1;
-    for (auto [entity, rect, zLevel, srect] : gameWorld.view<UIRaycastTarget, const UIRect, const UIZLevel, const ScreenRect>().each())
+    for (auto [entity, rect, zLevel, srect] :
+         gameWorld.view<UIRaycastTarget, const UIRect, const UIZLevel, const ScreenRect>().each())
     {
         if (srect.pos.x < pos.x && srect.pos.y < pos.y && pos.x < srect.pos.x + srect.extent.x &&
             pos.y < srect.pos.y + srect.extent.y)
@@ -53,7 +54,7 @@ entt::entity CastRayScreenSpace(entt::registry& gameWorld, math::vec2 pos)
     return resultEntity;
 }
 
-ScreenRect UIRectToScreenRect(entt::registry& world, entt::entity rect)
+ScreenRect UIRectToScreenRect(const entt::registry& world, entt::entity rect)
 {
     if (auto sr = world.try_get<ScreenRect>(rect))
     {
@@ -80,25 +81,25 @@ math::vec2 ScreenSpaceToRelSpace(const ScreenRect rect, math::vec2 screenPos)
     return (screenPos - static_cast<math::vec2>(rect.pos)) / static_cast<math::vec2>(rect.extent);
 }
 
-math::vec2 ScreenSpaceToRelSpace(entt::registry& world, entt::entity rectEntity, math::vec2 screenPos)
+math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, entt::entity rectEntity, math::vec2 screenPos)
 {
     auto rect = UIRectToScreenRect(world, rectEntity);
     return ScreenSpaceToRelSpace(rect, screenPos);
 }
 
-math::vec2 ScreenSpaceToRelSpace(entt::registry& world, math::vec2 screenPos)
+math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, math::vec2 screenPos)
 {
     auto rectE = world.view<UIRoot>().front();
     return ScreenSpaceToRelSpace(world, rectE, screenPos);
 }
 
-Point2 RelSpaceToScreenSpace(entt::registry& world, math::vec2 relPos)
+Point2 RelSpaceToScreenSpace(const entt::registry& world, math::vec2 relPos)
 {
     auto root = world.view<UIRoot>().front();
     auto rect = UIRectToScreenRect(world, root);
     return Point2::FromVec2(relPos * static_cast<math::vec2>(rect.extent) + static_cast<math::vec2>(rect.pos));
 }
-}
+}  // namespace OneGame::Engine::UI
 
 namespace OneGame::Engine::ECS
 {
@@ -143,13 +144,15 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
 
     // handle mouse drag
     math::vec2 mousePos{f.input.GetMouseX(), f.input.GetMouseY()};
-    auto mouseEntityHit = game.world.view<InputSourceKeyMouse>().empty() ? UI::CastRayScreenSpace(game.world, mousePos) : entt::null;
+    auto mouseEntityHit =
+        game.world.view<InputSourceKeyMouse>().empty() ? UI::CastRayScreenSpace(game.world, mousePos) : entt::null;
     // mouseEntityHit = game.world.valid(mouseEntityHit) ? mouseEntityHit : game.world.view<UIRoot>().front();
     if (activeDrags[PointerIdx::MOUSE] == entt::null)
     {
         for (auto button : ALL_MOUSE_BUTTONS)
         {
-            if (f.input.IsMousePressed(button) && game.world.valid(mouseEntityHit) && !game.world.all_of<UIDrag>(mouseEntityHit))
+            if (f.input.IsMousePressed(button) && game.world.valid(mouseEntityHit) &&
+                !game.world.all_of<UIDrag>(mouseEntityHit))
             {
                 auto relMousePos = UI::ScreenSpaceToRelSpace(game.world, mousePos);
                 auto& drag = game.world.emplace<UIDrag>(mouseEntityHit);
@@ -175,8 +178,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
             activeDrags[PointerIdx::MOUSE] = entt::null;
         }
     }
-    if (game.world.valid(mouseEntityHit))
-        game.world.get_or_emplace<UIRaycastHit>(mouseEntityHit);
+    if (game.world.valid(mouseEntityHit)) game.world.get_or_emplace<UIRaycastHit>(mouseEntityHit);
 
     // handle touch drag
     uint32_t pressedTouchMask = f.input.GetPressedTouchIdMask();
@@ -186,7 +188,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
         int ptrIdx = PointerIdx::PtrIdxFromTouchIdx(pidx);
         if (game.world.valid(activeDrags[ptrIdx]))
         {
-            //LOG_DEBUG("Touch {} drag at ({}, {})", pidx, f.input.GetTouchX(pidx), f.input.GetTouchY(pidx));
+            // LOG_DEBUG("Touch {} drag at ({}, {})", pidx, f.input.GetTouchX(pidx), f.input.GetTouchY(pidx));
             math::vec2 pos{f.input.GetTouchX(pidx), f.input.GetTouchY(pidx)};
             entt::entity hit = UI::CastRayRelSpace(game.world, pos);
             game.world.get<UIDrag>(activeDrags[ptrIdx]).UpdateDrag(pos, hit, f.dt);
@@ -200,7 +202,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
 
             if (game.world.valid(hit) && !game.world.all_of<UIDrag>(hit))
             {
-                //LOG_DEBUG("Touch {} drag start at ({}, {})", pidx, f.input.GetTouchX(pidx), f.input.GetTouchY(pidx));
+                // LOG_DEBUG("Touch {} drag start at ({}, {})", pidx, f.input.GetTouchX(pidx), f.input.GetTouchY(pidx));
                 auto& drag = game.world.emplace<UIDrag>(hit);
                 drag.inputIndex = ptrIdx;
                 drag.dragStartPos = pos;
@@ -212,13 +214,12 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
         }
         if (releasedTouchMask & (1 << pidx) && game.world.valid(activeDrags[ptrIdx]))
         {
-            //LOG_DEBUG("Touch {} released at ({}, {})", pidx, f.input.GetTouchX(pidx), f.input.GetTouchY(pidx));
+            // LOG_DEBUG("Touch {} released at ({}, {})", pidx, f.input.GetTouchX(pidx), f.input.GetTouchY(pidx));
             math::vec2 pos{f.input.GetTouchX(pidx), f.input.GetTouchY(pidx)};
             entt::entity& e = activeDrags[ptrIdx];
             auto resultE = UI::CastRayRelSpace(game.world, pos);
             auto& drag = game.world.get<UIDrag>(e);
-            if (game.world.valid(resultE))
-                game.world.emplace<UIDragRelease>(resultE, drag, e);
+            if (game.world.valid(resultE)) game.world.emplace<UIDragRelease>(resultE, drag, e);
             game.world.erase<UIDrag>(e);
             e = entt::null;
         }
@@ -230,7 +231,10 @@ void SubsystemUI::Present(const GameWorldContext& game, PresentationContext ctx,
     for (auto [entity, rect] : game.world.view<UIRaycastTarget, ScreenRect>().each())
     {
         auto r = f.presentationWorld.create();
-        f.presentationWorld.emplace<Graphics::PDebugRect>(r, rect.pos, rect.extent, game.world.all_of<UIDrag>(entity) ? COLOR_GREEN : game.world.all_of<UIRaycastHit>(entity) ? COLOR_RED : COLOR_WHITE);
+        f.presentationWorld.emplace<Graphics::PDebugRect>(r, rect.pos, rect.extent,
+                                                          game.world.all_of<UIDrag>(entity)         ? COLOR_GREEN
+                                                          : game.world.all_of<UIRaycastHit>(entity) ? COLOR_RED
+                                                                                                    : COLOR_WHITE);
     }
 }
 }  // namespace OneGame::Engine::ECS

@@ -20,6 +20,23 @@
         __VA_ARGS__                                                                                        \
     };
 
+namespace OneGame::Engine::ECS
+{
+using UIRect = FRect;
+using ScreenRect = IRect;
+}
+
+namespace OneGame::Engine::UI
+{
+math::vec2 ScreenSpaceToRelSpace(const ECS::ScreenRect rect, math::vec2 screenPos);
+math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, entt::entity rectEntity, math::vec2 screenPos);
+math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, math::vec2 screenPos);
+Point2 RelSpaceToScreenSpace(const entt::registry& world, math::vec2 relPos);
+ECS::ScreenRect UIRectToScreenRect(const entt::registry& world, entt::entity rect);
+entt::entity CastRayScreenSpace(const entt::registry& gameWorld, math::vec2 pos);
+entt::entity CastRayRelSpace(const entt::registry& gameWorld, math::vec2 pos);
+entt::entity CreateGameView(entt::registry& game, ECS::UIRect rect);
+}
 
 namespace OneGame::Engine::Terrain
 {
@@ -83,22 +100,47 @@ DECLARE_SUBSYSTEM(DebugInfo, float currentFPS = 0.f; float currentFrameTime = 0.
 
 void AddDebugInfo(entt::registry& presentationWorld, std::string_view msg);
 
-using UIRect = FRect;
-using ScreenRect = IRect;
+enum class PlayerAction : uint32_t
+{
+    Digging = 0,
+    Placing,
+};
 struct PlayerInputData
 {
     math::vec2 moveDelta;
     math::vec2 panDelta;
-    bool digging;
-    math::vec2 diggingPos;
-    bool placing;
-    math::vec2 placingPos;
+    math::vec2 actionPos;
+    uint8_t actionMask;
+
+    template<PlayerAction action>
+    inline bool get() const
+    {
+        return actionMask & (1 << static_cast<uint32_t>(action));
+    }
+
+    template<PlayerAction action>
+    inline void set()
+    {
+        actionMask |= (1 << static_cast<uint32_t>(action));
+    }
+
+    template<PlayerAction action>
+    inline void unset()
+    {
+        actionMask &= ~(1 << static_cast<uint32_t>(action));
+    }
 };
+
 DECLARE_SUBSYSTEM(PlayerInput,
     void onCreateInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
     void onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
     void onEraseInputSourceWidget(entt::registry& gameWorld, entt::entity entity);
     bool isKeyMouseUsed = false; bool previousIsKeyMouseUsed = false;);
+
+struct UISprite
+{
+    GPUTextureHandle texture;
+};
 
 struct UIDrag
 {
@@ -116,6 +158,18 @@ struct UIDrag
         dragLastPos = pos;
         onTopOf = onTopOf;
         deltaTime += dt;
+    }
+
+    bool IsHold(const entt::registry& world, int pixelRadiusSqr = 200) const
+    {
+        auto diff = UI::RelSpaceToScreenSpace(world, dragStartPos - dragLastPos);
+        return diff.x * diff.x + diff.y * diff.y < pixelRadiusSqr;
+    }
+
+    bool IsClick(const entt::registry& world, float duration = 0.25f, int pixelRadiusSqr = 200) const
+    {
+        if (deltaTime > duration) return false;
+        return IsHold(world, pixelRadiusSqr);
     }
 };
 
@@ -193,15 +247,3 @@ struct ComponentPlayer
 };
 DECLARE_SUBSYSTEM(Player);
 }  // namespace OneGame::Engine::ECS
-
-namespace OneGame::Engine::UI
-{
-math::vec2 ScreenSpaceToRelSpace(const ECS::ScreenRect rect, math::vec2 screenPos);
-math::vec2 ScreenSpaceToRelSpace(entt::registry& world, entt::entity rectEntity, math::vec2 screenPos);
-math::vec2 ScreenSpaceToRelSpace(entt::registry& world, math::vec2 screenPos);
-Point2 RelSpaceToScreenSpace(entt::registry& world, math::vec2 relPos);
-ECS::ScreenRect UIRectToScreenRect(entt::registry& world, entt::entity rect);
-entt::entity CastRayScreenSpace(entt::registry& gameWorld, math::vec2 pos);
-entt::entity CastRayRelSpace(entt::registry& gameWorld, math::vec2 pos);
-entt::entity CreateGameView(entt::registry& game, const ECS::UIRect rect);
-}

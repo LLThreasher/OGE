@@ -17,15 +17,15 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
     {
         camera.ApplyDelta(input.panDelta.x, input.panDelta.y, input.moveDelta.x, input.moveDelta.y);
         // player.lookingAt = game.terrain.CastRay(camera.position, camera.forward);
-        if (input.digging)
+        if (input.get<PlayerAction::Digging>())
         {
-            auto raycastResult = game.terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.diggingPos));
+            auto raycastResult = game.terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.actionPos));
             if (raycastResult.has_value())
                 game.terrain.SetBlock(raycastResult.value().hitPos, 0);
         }
-        if (input.placing)
+        if (input.get<PlayerAction::Placing>())
         {
-            auto raycastResult = game.terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.placingPos));
+            auto raycastResult = game.terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.actionPos));
             if (raycastResult.has_value())
             {
                 auto blockId = game.blocks.GetBlockId("stone");
