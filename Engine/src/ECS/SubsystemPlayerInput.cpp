@@ -60,7 +60,7 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 auto drag = game.world.try_get<UIDrag>(widgetInput->viewWidget);
                 if (drag != nullptr)
                 {
-                    if (drag->deltaTime > 0.5f)
+                    if (drag->deltaTime > 0.5f && (data.digging || math::dist_sq(static_cast<math::vec2>(UI::RelSpaceToScreenSpace(game.world, drag->dragStartPos)), static_cast<math::vec2>(UI::RelSpaceToScreenSpace(game.world, drag->dragLastPos))) < 64.f))
                     {
                         data.digging = true;
                         data.diggingPos = drag->dragLastPos;
