@@ -4,7 +4,7 @@ namespace OneGame::Engine::Terrain
 {
 BlockRegistry::BlockRegistry()
 {
-    RegisterBlock("air", {"Air", {}, 0});
+    RegisterBlock("air", {});
 }
 
 void BlockRegistry::RegisterBlock(std::string blockIdName, BlockConfig config)
@@ -16,7 +16,18 @@ void BlockRegistry::RegisterBlock(std::string blockIdName, BlockConfig config)
     m_idNameToBlockId[blockIdName] = m_nextIdx;
     m_blockDisplayNames[m_nextIdx] = config.blockDisplayName;
     m_blockFlags[m_nextIdx] = config.blockFlags;
-    m_textureSlots[m_nextIdx] = config.textureSlotPerFace;
+    for (int i = 0; i < 6; ++i)
+    {
+        auto& id = config.textureSlotPerFace[i];
+        auto it = m_blockTextureIds.find(id);
+        if (it == m_blockTextureIds.end())
+        {
+            auto [newIt, succ] = m_blockTextureIds.insert_or_assign(id, m_blockTextureArray.size());
+            it = newIt;
+            m_blockTextureArray.push_back(id);
+        }
+        m_textureSlots[m_nextIdx][i] = it->second;
+    }
 
     m_nextIdx += 1;
 }

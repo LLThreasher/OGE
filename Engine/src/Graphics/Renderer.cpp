@@ -49,6 +49,18 @@ void Renderer::Draw(DrawContext& drawCtxt)
     debugInfoPass.Draw(drawCtxt);
 }
 
+// void Renderer::EnableTerrainPass(AssetContext& assets, const std::vector<std::string>& textureIdArray)
+// {
+//     auto copyIdArray = textureIdArray;
+//     while (copyIdArray.size() < 256)
+//     {
+//         copyIdArray.emplace_back("invalid.png");
+//     }
+//     auto tex = assets.LoadTextureArray(BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE, copyIdArray);
+//     InitContext ctx = {assets, uniformArena};
+//     terrainPass2.Enable(assets.backend, ctx, tex);
+// }
+
 void Renderer::RenderView(AssetContext& assets, DrawContext ctxt)
 {
     auto pview = ctxt.currentView == entt::null ? nullptr : ctxt.world.try_get<PViewTransform>(ctxt.currentView);

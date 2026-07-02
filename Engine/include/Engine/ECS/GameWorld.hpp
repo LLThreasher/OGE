@@ -27,6 +27,8 @@ class GameWorld
         }
     }
 
+    void InitializeWithPresent(PresentationContext ctx);
+
     void Update(AppContext app, const FrameInputData& frame)
     {
         GameWorldContext game = Get();

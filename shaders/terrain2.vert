@@ -9,6 +9,7 @@ struct Vertex
 layout(location = 0) out vec2 v_LocalUV;
 layout(location = 1) out float v_Light;
 layout(location = 2) out vec3 v_Color;
+layout(location = 3) flat out uint u_Layer;
 
 layout(set = 0, binding = 2) uniform ObjectBlock
 {
@@ -57,10 +58,10 @@ const vec3 faceTable[24] =
 };
 
 const vec2 uvTable[4] = vec2[](
-    vec2(0.0, 0.0), // corner 0
-    vec2(1.0, 0.0), // corner 1
-    vec2(1.0, 1.0), // corner 2
-    vec2(0.0, 1.0)  // corner 3
+    vec2(1.0, 1.0), // corner 0
+    vec2(0.0, 1.0), // corner 1
+    vec2(0.0, 0.0), // corner 2
+    vec2(1.0, 0.0)  // corner 3
 );
 
 void main()
@@ -84,12 +85,15 @@ void main()
     v_Color = vec3(float(color_r) / 31.0, float(color_g) / 31.0, float(color_b) / 31.0);
     
     uint texSlot = (v.sec >> 16u) & 255u;
+    u_Layer = texSlot;
     
     const float tileSize = 1.0 / 16.0;
     
-    uint tileX = texSlot & 15u;
-    uint tileY = texSlot >> 4u;
+    // uint tileX = texSlot & 15u;
+    // uint tileY = texSlot >> 4u;
+    // 
+    // vec2 tileOffset = vec2(tileX, tileY) * tileSize;
+    // v_LocalUV = tileOffset + uvTable[cur_idx] * tileSize;
     
-    vec2 tileOffset = vec2(tileX, tileY) * tileSize;
-    v_LocalUV = tileOffset + uvTable[cur_idx] * tileSize;
+    v_LocalUV = uvTable[cur_idx];
 }

@@ -7,6 +7,8 @@
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
 #include "Engine/GameAppState.hpp"
+#include "Engine/StreamingManager.hpp"
+#include "Engine/AssetManager.hpp"
 
 namespace OneGame::Engine::Graphics
 {
@@ -21,7 +23,17 @@ void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt)
     layout.storageBufferMask = 0b01;
     bindingGroupLayout = backend.CreateBindingGroupLayout(layout);
 
-    blockTexture = ctxt.assets.LoadTexture("blocks.png");
+    blockTexture = ctxt.assets.backend.AllocateGPUTexture(BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE, 256);
+    auto invalidBlockTextureBlob = ctxt.assets.assetManager.LoadTexture("invalid.png");
+    for (int i = 0; i < 256; ++i)
+    {
+        ctxt.assets.streamingManager.UploadTexture<UploadType::Immediate>(invalidBlockTextureBlob->data, blockTexture, i);
+    }
+    
+    // auto tex = ctxt.assets.assetManager.LoadTexture("invalid.png");
+    // auto& info = tex->info;
+    // blockTexture = backend.AllocateGPUTexture(info.width, info.height);
+    // ctxt.assets.streamingManager.UploadTexture<UploadType::Immediate>(tex->data, blockTexture, 0);
 
     {
         GraphicsPipelineDesc desc{};
@@ -36,6 +48,11 @@ void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt)
         desc.cullMode = CullMode::Back;
         pipelineHandle = backend.CreateGraphicsPipeline(desc);
     }
+}
+
+void TerrainPass2::UpdateBlockTexture(AssetContext& assets, const std::string& id, uint32_t slot)
+{
+    assets.streamingManager.UploadTexture<UploadType::Immediate>(assets.assetManager.LoadTexture(id)->data, blockTexture, slot);
 }
 
 GPUBindingGroupHandle TerrainPass2::GetOrCreateBindingGroup(IGraphicsBackend& backend, UniformArena& arena, GPUBufferHandle storageBuffer, uint32_t chunkSize)
@@ -60,7 +77,12 @@ GPUBindingGroupHandle TerrainPass2::GetOrCreateBindingGroup(IGraphicsBackend& ba
 void TerrainPass2::Disable(IGraphicsBackend& backend)
 {
     backend.DestroyPipeline(pipelineHandle);
+    for (auto [buf, bg] : cachedBindingGroups)
+    {
+        backend.DestroyBindingGroup(bg);
+    }
     backend.DestroyBindingGroupLayout(bindingGroupLayout);
+    backend.DestroyTexture(blockTexture);
 }
 
 void TerrainPass2::Draw(DrawContext& ctxt)

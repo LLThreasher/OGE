@@ -45,7 +45,8 @@ class VulkanCommandBuffer final : public ICommandList
     virtual void CopyBuffer(GPUBufferHandle src, GPUBufferHandle dst, uint64_t size, uint64_t srcOffset = 0,
                             uint64_t dstOffset = 0) override;
 
-    virtual void CopyBufferToTexture(GPUBufferHandle src, GPUTextureHandle dst, uint32_t bufferOffset) override;
+    virtual void CopyBufferToTexture(GPUBufferHandle src, GPUTextureHandle dst, uint32_t bufferOffset,
+                                     uint32_t baseTextureLayer = 0, uint32_t mipLevel = 0) override;
 
     // ----- Drawing -----
     void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0,
@@ -67,7 +68,7 @@ class VulkanCommandBuffer final : public ICommandList
     // ----- Barriers -----
     void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after) override;
 
-    void TextureBarrier(GPUTextureHandle, TextureState) override;
+    void TextureBarrier(GPUTextureHandle, TextureState, uint32_t baseLayer = 0, uint32_t layerCount = 1) override;
 
     VkCommandBuffer GetVulkanCommandBuffer() const { return m_cmd; }
     QueueType GetQueueType() const { return m_queueType; }

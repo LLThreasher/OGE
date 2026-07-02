@@ -123,9 +123,9 @@ void StreamingManager::UploadBuffer(uint32_t fidx, BufferUploadDesc& desc, IComm
 
 void StreamingManager::UploadTexture(uint32_t fidx, BufferUploadDesc& desc, ICommandList& transferCmd)
 {
-    transferCmd.TextureBarrier(desc.gpuTexture, Graphics::TextureState::TransferDst);
-    transferCmd.CopyBufferToTexture(m_ringStagingBuffer.GetBuffer(), desc.gpuTexture, desc.staging.alloc.offset);
-    transferCmd.TextureBarrier(desc.gpuTexture, Graphics::TextureState::ShaderRead);
+    transferCmd.TextureBarrier(desc.gpuTexture, Graphics::TextureState::TransferDst, desc.gpuBufferOffset);
+    transferCmd.CopyBufferToTexture(m_ringStagingBuffer.GetBuffer(), desc.gpuTexture, desc.staging.alloc.offset, desc.gpuBufferOffset);
+    transferCmd.TextureBarrier(desc.gpuTexture, Graphics::TextureState::ShaderRead, desc.gpuBufferOffset);
     m_stagingAllocationToFree[fidx].emplace(desc.bundle, desc.staging.alloc);
 }
 

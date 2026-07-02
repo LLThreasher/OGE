@@ -332,6 +332,7 @@ struct TextureDesc
     uint32_t height = 1;
     uint32_t depth = 1;
     uint32_t mipLevels = 1;
+    uint32_t layers = 1;
 
     TextureFormat format = TextureFormat::BGRA8Unorm;
     TextureUsage usage = TextureUsage::Sampled;
@@ -544,7 +545,7 @@ class ICommandList
     virtual void CopyBuffer(GPUBufferHandle src, GPUBufferHandle dst, uint64_t size, uint64_t srcOffset = 0,
                             uint64_t dstOffset = 0) = 0;
 
-    virtual void CopyBufferToTexture(GPUBufferHandle src, GPUTextureHandle dst, uint32_t bufferOffset) = 0;
+    virtual void CopyBufferToTexture(GPUBufferHandle src, GPUTextureHandle dst, uint32_t bufferOffset, uint32_t baseTextureLayer = 0, uint32_t mipLevel = 0) = 0;
 
     // ----- Drawing -----
     virtual void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0,
@@ -566,7 +567,7 @@ class ICommandList
     // ----- Barriers -----
     virtual void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after) = 0;
 
-    virtual void TextureBarrier(GPUTextureHandle, TextureState) = 0;
+    virtual void TextureBarrier(GPUTextureHandle, TextureState, uint32_t baseLayer = 0, uint32_t layerCount = 1) = 0;
 };
 
 enum class BackendType
@@ -655,12 +656,13 @@ class IGraphicsBackend
     virtual void DestroyTexture(GPUTextureHandle) = 0;
 
     template <TextureFormat format = TextureFormat::RGBA8Unorm>
-    GPUTextureHandle AllocateGPUTexture(const size_t width, const size_t height)
+    GPUTextureHandle AllocateGPUTexture(uint32_t width, uint32_t height, uint32_t layers = 1)
     {
         TextureDesc texDesc{};
         texDesc.width = width;
         texDesc.height = height;
         texDesc.format = format;
+        texDesc.layers = layers;
         texDesc.usage = TextureUsage::TransferDst | TextureUsage::Sampled;
         return CreateTexture(texDesc);
     }

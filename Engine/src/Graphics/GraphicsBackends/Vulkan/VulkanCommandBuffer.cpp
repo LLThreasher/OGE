@@ -6,6 +6,9 @@
 #include "VulkanPipeline.hpp"
 #include "VulkanTexture.hpp"
 
+#define LOGGER_NAME "Vulkan"
+#include "Engine/Logger.hpp"
+
 namespace OneGame::Engine::Graphics::Vulkan
 {
 void VulkanCommandBuffer::Begin()
@@ -145,11 +148,17 @@ void VulkanCommandBuffer::CopyBuffer(GPUBufferHandle srcHandle, GPUBufferHandle 
     copyRegion.dstOffset = dstOffset;
     copyRegion.size = size;
 
+    if (size == 0)
+    {
+        LOG_WARN("CopyBuffer was provded size == 0 buffer");
+        return;
+    }
+
     vkCmdCopyBuffer(m_cmd, src->buffer, dst->buffer, 1, &copyRegion);
 }
 
 void VulkanCommandBuffer::CopyBufferToTexture(GPUBufferHandle srcHandle, GPUTextureHandle dstHandle,
-                                              uint32_t bufferOffset)
+                                              uint32_t bufferOffset, uint32_t baseTextureLayer, uint32_t mipLevel)
 {
     VulkanBuffer* src = m_backend->m_buffers.Get(srcHandle);
     VulkanTexture* texture = m_backend->m_textures.Get(dstHandle);
@@ -160,8 +169,8 @@ void VulkanCommandBuffer::CopyBufferToTexture(GPUBufferHandle srcHandle, GPUText
     region.bufferImageHeight = 0;
 
     region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.mipLevel = 0;
-    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.mipLevel = mipLevel;
+    region.imageSubresource.baseArrayLayer = baseTextureLayer;
     region.imageSubresource.layerCount = 1;
 
     region.imageExtent.width = texture->width;
@@ -238,11 +247,12 @@ void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage befo
                          0, nullptr);
 }
 
-void VulkanCommandBuffer::TextureBarrier(GPUTextureHandle handle, TextureState newState)
+void VulkanCommandBuffer::TextureBarrier(GPUTextureHandle handle, TextureState newState, uint32_t baseLayer, uint32_t layerCount)
 {
+    assert(layerCount == 1);
     VulkanTexture* texture = m_backend->m_textures.Get(handle);
 
-    TextureState oldState = texture->currentState;
+    TextureState oldState = texture->currentStatePerLayer[baseLayer];
 
     if (oldState == newState) return;  // no transition needed
 
@@ -263,12 +273,12 @@ void VulkanCommandBuffer::TextureBarrier(GPUTextureHandle handle, TextureState n
     barrier.subresourceRange.aspectMask = texture->aspect;
     barrier.subresourceRange.baseMipLevel = 0;
     barrier.subresourceRange.levelCount = texture->mipLevels;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.baseArrayLayer = baseLayer;
+    barrier.subresourceRange.layerCount = layerCount;
 
     vkCmdPipelineBarrier(m_cmd, ToVkPipelineStage(oldState), ToVkPipelineStage(newState), 0, 0, nullptr, 0, nullptr, 1,
                          &barrier);
 
-    texture->currentState = newState;
+    texture->currentStatePerLayer[baseLayer] = newState;
 }
 }  // namespace OneGame::Engine::Graphics::Vulkan

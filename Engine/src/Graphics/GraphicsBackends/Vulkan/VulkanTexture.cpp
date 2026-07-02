@@ -18,15 +18,10 @@ GPUTextureHandle VulkanBackend::CreateTexture(const TextureDesc& desc)
 
     VkImageUsageFlags usage = 0;
     if (HasFlag(desc.usage, TextureUsage::Sampled)) usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-
     if (HasFlag(desc.usage, TextureUsage::Storage)) usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-
     if (HasFlag(desc.usage, TextureUsage::ColorAttachment)) usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-
     if (HasFlag(desc.usage, TextureUsage::DepthAttachment)) usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-
     if (HasFlag(desc.usage, TextureUsage::TransferSrc)) usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-
     if (HasFlag(desc.usage, TextureUsage::TransferDst)) usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
     VkFormat vkFormat;
@@ -35,12 +30,12 @@ GPUTextureHandle VulkanBackend::CreateTexture(const TextureDesc& desc)
     GetVkFormatAndAspect(desc.format, vkFormat, aspectMask);
 
     VulkanTexture texture;
-    CreateTextureInternal(desc.width, desc.height, desc.depth, desc.mipLevels, usage, vkFormat, aspectMask, texture);
+    CreateTextureInternal(desc.width, desc.height, desc.depth, desc.layers, desc.mipLevels, usage, vkFormat, aspectMask, texture);
 
     return m_textures.Create(texture);
 }
 
-void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint32_t depth, uint32_t mipLevels,
+void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint32_t depth, uint32_t layers, uint32_t mipLevels,
                                           VkImageUsageFlags vkUsage, VkFormat vkFormat, VkImageAspectFlags aspectMask,
                                           VulkanTexture& result)
 {
@@ -49,6 +44,7 @@ void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint3
     result.mipLevels = mipLevels;
     result.format = vkFormat;
     result.aspect = aspectMask;
+    result.currentStatePerLayer.resize(layers);
 
     // --- Image Create Info ---
     VkImageCreateInfo ici{};
@@ -57,7 +53,7 @@ void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint3
     ici.format = vkFormat;
     ici.extent = {width, height, depth};
     ici.mipLevels = mipLevels;
-    ici.arrayLayers = 1;
+    ici.arrayLayers = layers;
     ici.samples = VK_SAMPLE_COUNT_1_BIT;
     ici.tiling = VK_IMAGE_TILING_OPTIMAL;
     ici.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
@@ -74,13 +70,13 @@ void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint3
     VkImageViewCreateInfo ivci{};
     ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     ivci.image = result.image;
-    ivci.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    ivci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
     ivci.format = vkFormat;
     ivci.subresourceRange.aspectMask = aspectMask;
     ivci.subresourceRange.baseMipLevel = 0;
     ivci.subresourceRange.levelCount = mipLevels;
     ivci.subresourceRange.baseArrayLayer = 0;
-    ivci.subresourceRange.layerCount = 1;
+    ivci.subresourceRange.layerCount = layers;
 
     VK_CHECK_RESULT(vkCreateImageView(m_device.device, &ivci, nullptr, &result.view));
 
@@ -94,23 +90,6 @@ void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint3
     samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-
-    // VkPhysicalDeviceFeatures features;
-    // vkGetPhysicalDeviceFeatures(m_device.physicalDevice, &features);
-
-    // if (!features.samplerAnisotropy)
-    //{
-    //     samplerInfo.anisotropyEnable = VK_FALSE;
-    // }
-    // else
-    //{
-    //     VkPhysicalDeviceProperties props;
-    //     vkGetPhysicalDeviceProperties(m_device.physicalDevice, &props);
-    //     float maxSupported =
-    //         props.limits.maxSamplerAnisotropy;
-    //     samplerInfo.anisotropyEnable = VK_TRUE;
-    //     samplerInfo.maxAnisotropy = 8.0f < maxSupported ? 8.0f : maxSupported;
-    // }
 
     samplerInfo.anisotropyEnable = VK_FALSE;
 

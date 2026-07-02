@@ -3,8 +3,9 @@
 layout(location = 0) in vec2 v_LocalUV;
 layout(location = 1) in float v_Light;
 layout(location = 2) in vec3 v_Color;
+layout(location = 3) flat in uint u_Layer;
 
-layout(set = 0, binding = 0) uniform sampler2D uTexture;
+layout(set = 0, binding = 0) uniform sampler2DArray uTexture;
 
 layout(location = 0) out vec4 FragColor;
 
@@ -22,7 +23,8 @@ void main()
 {
    vec2 atlasUV = v_LocalUV;
    
-   vec4 texColor = texture(uTexture, atlasUV);
+   vec4 texColor = texture(uTexture, vec3(atlasUV, u_Layer));
+   //vec4 texColor = texture(uTexture, atlasUV);
    
    // ---- Final shading ----
    vec3 finalColor = texColor.rgb * v_Color * v_Light;

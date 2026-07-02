@@ -30,10 +30,10 @@ class Renderer
     void Shutdown(AssetContext& assets);
     void Render(AssetContext& assets, const entt::registry& world, float deltaTime);
 
-    void EnableTerrainPass(AssetContext& assets, Mesh terrainMesh);
-    void DisableTerrainPass(AssetContext& assets);
-    void EnableTerrainPass2(AssetContext& assets, GPUBufferHandle storageBuf);
-    void DisableTerrainPass2(AssetContext& assets);
+    void UpdateBlockTexture(AssetContext& assets, const std::string& id, uint32_t slot)
+    {
+        terrainPass2.UpdateBlockTexture(assets, id, slot);
+    }
 
     GPUChunkedAllocation AllocateTerrainMesh(uint32_t size)
     {

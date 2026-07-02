@@ -44,6 +44,7 @@ PRIVATE
     "src/ECS/SubsystemDebugInfo.cpp"
     "src/ECS/SubsystemPlayerInput.cpp"
     "src/ECS/SubsystemUI.cpp"
+    "src/ECS/GameWorld.cpp"
     "src/Platform/PrintStackTrace.cpp"
     "src/ECS/SubsystemPlayer.cpp"
  )

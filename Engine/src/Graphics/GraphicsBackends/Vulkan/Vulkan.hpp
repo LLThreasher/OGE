@@ -540,7 +540,7 @@ class VulkanBackend final : public IGraphicsBackend
     void DestroySwapchain(VkSwapchainKHR&);
     void DestroySurface();
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
-    void CreateTextureInternal(uint32_t width, uint32_t height, uint32_t depth, uint32_t mipLevels,
+    void CreateTextureInternal(uint32_t width, uint32_t height, uint32_t depth, uint32_t layers, uint32_t mipLevels,
                                VkImageUsageFlags vkUsage, VkFormat vkFormat, VkImageAspectFlags aspectMask,
                                VulkanTexture& result);
     void DestroyTextureInternal(VulkanTexture& texture);

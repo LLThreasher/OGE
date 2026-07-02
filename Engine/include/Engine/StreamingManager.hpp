@@ -75,10 +75,10 @@ class StreamingManager
   }
 
   template <UploadType uploadType>
-  size_t UploadTexture(const std::vector<char>& data, const GPUTextureHandle handle, const size_t gpuOffset = 0,
+  size_t UploadTexture(const std::vector<char>& data, const GPUTextureHandle handle, const size_t layer = 0,
                        ResourceBundleHandle resBundle = {})
   {
-    return UploadBuffer<uploadType, BufferUsage::None>(std::as_bytes(std::span(data)), handle, gpuOffset, resBundle);
+    return UploadBuffer<uploadType, BufferUsage::None>(std::as_bytes(std::span(data)), handle, layer, resBundle);
   }
 
   void RunUploadStep(Graphics::IGraphicsBackend&, Graphics::ICommandList&);

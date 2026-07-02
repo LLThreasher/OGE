@@ -17,7 +17,7 @@ struct VulkanTexture
     VkSampler sampler = VK_NULL_HANDLE;
     VmaAllocation allocation = nullptr;
 
-    TextureState currentState = TextureState::Undefined;
+    std::vector<TextureState> currentStatePerLayer;
 
     VkFormat format = VK_FORMAT_UNDEFINED;
     VkImageAspectFlags aspect = VK_IMAGE_ASPECT_NONE;

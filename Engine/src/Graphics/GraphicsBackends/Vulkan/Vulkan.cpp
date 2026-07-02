@@ -874,7 +874,7 @@ bool VulkanBackend::RecreateSwapchain()
     for (int i = 0; i < swapchainImageCount; ++i)
     {
         VulkanTexture depthTexture;
-        CreateTextureInternal(m_swapchain.extent.width, m_swapchain.extent.height, 1, 1,
+        CreateTextureInternal(m_swapchain.extent.width, m_swapchain.extent.height, 1, 1, 1,
                               VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT,
                               m_device.depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT, depthTexture);
         m_swapchain.depthTextures[i] = m_textures.Create(depthTexture);
@@ -991,13 +991,13 @@ BeginFrameAction VulkanBackend::BeginFrame()
     VkDevice& device = m_device.device;
     VkSwapchainKHR& swapchain = m_swapchain.swapchain;
 
+    // Wait for previous frame to finish
+    vkWaitForFences(m_device.device, 1, &frame.inFlightFence, VK_TRUE, UINT64_MAX);
+    
     // Acquire next swapchain image
     VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, frame.imageAvailableAndTransferComplete[0],
                                             VK_NULL_HANDLE, &m_imageIndex);
 
-    // Wait for previous frame to finish
-    vkWaitForFences(m_device.device, 1, &frame.inFlightFence, VK_TRUE, UINT64_MAX);
-    
     if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         LOG_DEBUG("recreating swapchain: VK_ERROR_OUT_OF_DATE_KHR");

@@ -4,8 +4,14 @@
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "IPass.hpp"
 
+namespace OneGame::Engine
+{
+    struct AssetContext;
+};
 namespace OneGame::Engine::Graphics
 {
+
+constexpr uint32_t BLOCK_TEXTURE_SIZE = 16;
 
 class UniformArena;
 class TerrainPass : public IPass<Mesh>
@@ -57,6 +63,7 @@ class TerrainPass2 : public BasicPass
    public:
     TerrainPass2() {}
 
+    void UpdateBlockTexture(AssetContext& assets, const std::string& id, uint32_t slot);
     void Enable(IGraphicsBackend& backend, InitContext& ctxt) override;
     void Disable(IGraphicsBackend& backend) override;
     void Draw(DrawContext& context) override;

@@ -126,7 +126,7 @@ void DebugScene2::Enter(PresentationContext context)
     //	}
     // }
     BlockRegistry blocks;
-    blocks.RegisterBlock("dirt", {"Dirt", {0, 1, 2, 3, 4, 5}, 1});
+    blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1});
     meshBuilder.SetVertexBudget(192 * 1024 * 1024);
     meshBuilder.BuildChunkMeshes(terrainData, blocks, terrainPresData);
     LOG_DEBUG("end generate mesh");
@@ -211,9 +211,9 @@ void DebugScene3::Initialize(PresentationContext context)
     m_gameWorld.Register<SubsystemPlayer>();
 
     auto& blocks = m_gameWorld.Get().blocks;
-    blocks.RegisterBlock("dirt", {"Dirt", {2, 2, 2, 2, 2, 2}, 1});
-    blocks.RegisterBlock("wood", {"Wood", {4, 4, 4, 4, 4, 4}, 1});
-    blocks.RegisterBlock("stone", {"Stone", {5, 5, 5, 5, 5, 5}, 1});
+    blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1});
+    blocks.RegisterBlock("wood", {"Wood", "wood_plank.png", 1});
+    blocks.RegisterBlock("stone", {"Stone", "green_stone.png", 1});
 
     Terrain::TerrainDesc desc{};
     desc.chunkViewDistance = 1;
@@ -223,7 +223,7 @@ void DebugScene3::Initialize(PresentationContext context)
 void DebugScene3::Enter(PresentationContext context)
 {
     using namespace ECS;
-    m_gameWorld.Initialize(context);
+    m_gameWorld.InitializeWithPresent(context);
     auto vpe = UI::CreateGameView(m_gameWorld.Get().world, {math::vec2{0, 0}, math::vec2{1, 1}});
 
     auto& world = m_gameWorld.Get().world;
