@@ -19,14 +19,12 @@ math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamer
 
     float viewX = ndcX * pcamera.aspect * tanHalfFov;
     float viewY = ndcY * tanHalfFov;
-    float viewZ = -1.0f;
+    float viewZ = 1.0f;
 
-    //math::vec3 up;
-    //math::vec3 rayDir = viewX * math::cross(up, camera.forward) +
-    //viewY * up +
-    //viewZ * camera.forward;
-
-    math::vec3 rayDir = {viewX, viewY, viewZ};
+    math::vec3 up = {0, 1, 0};
+    math::vec3 right = math::normalize(math::cross(up, camera.forward));
+    math::vec3 normUp = math::normalize(math::cross(camera.forward, right));
+    math::vec3 rayDir = viewX * right + viewY * normUp + viewZ * camera.forward;
 
     rayDir = normalize(rayDir);
     return rayDir;
@@ -77,7 +75,6 @@ void ComponentCamera::ApplyDelta(float dsx, float dsy, float dwx, float dwz)
     position += dwx * math::normalize(math::cross(forward, glm::vec3(0, 1, 0))) + dwz * forward;
 }
 
-
 void SubsystemCamera::Initialize(GameWorldContext& game, AppContext ctx)
 {
     game.world.on_construct<ScreenRect>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
@@ -99,9 +96,7 @@ void SubsystemCamera::onViewPanelUpdate(entt::registry& world, entt::entity enti
     }
 }
 
-void SubsystemCamera::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd)
-{
-}
+void SubsystemCamera::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd) {}
 
 void SubsystemCamera::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
 {

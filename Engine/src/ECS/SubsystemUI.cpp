@@ -140,13 +140,11 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
 {
     game.world.clear<UIDragRelease>();
     game.world.clear<UIRaycastHit>();
-    if (!game.world.view<InputSourceKeyMouse>().empty())
-    {
-        return;
-    }
+
     // handle mouse drag
     math::vec2 mousePos{f.input.GetMouseX(), f.input.GetMouseY()};
-    auto mouseEntityHit = UI::CastRayScreenSpace(game.world, mousePos);
+    auto mouseEntityHit = game.world.view<InputSourceKeyMouse>().empty() ? UI::CastRayScreenSpace(game.world, mousePos) : entt::null;
+    // mouseEntityHit = game.world.valid(mouseEntityHit) ? mouseEntityHit : game.world.view<UIRoot>().front();
     if (activeDrags[PointerIdx::MOUSE] == entt::null)
     {
         for (auto button : ALL_MOUSE_BUTTONS)
@@ -159,6 +157,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
                 drag.dragStartPos = relMousePos;
                 drag.dragLastPos = relMousePos;
                 drag.onTopOf = mouseEntityHit;
+                drag.dragStartButton = button;
                 activeDrags[PointerIdx::MOUSE] = mouseEntityHit;
                 break;
             }
@@ -167,7 +166,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
     else
     {
         UIDrag& mouseDrag = game.world.get<UIDrag>(activeDrags[PointerIdx::MOUSE]);
-        mouseDrag.UpdateDrag(UI::ScreenSpaceToRelSpace(game.world, mousePos), mouseEntityHit);
+        mouseDrag.UpdateDrag(UI::ScreenSpaceToRelSpace(game.world, mousePos), mouseEntityHit, f.dt);
         if (f.input.IsMouseReleased(mouseDrag.dragStartButton))
         {
             if (game.world.valid(mouseEntityHit))
@@ -190,7 +189,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
             //LOG_DEBUG("Touch {} drag at ({}, {})", pidx, f.input.GetTouchX(pidx), f.input.GetTouchY(pidx));
             math::vec2 pos{f.input.GetTouchX(pidx), f.input.GetTouchY(pidx)};
             entt::entity hit = UI::CastRayRelSpace(game.world, pos);
-            game.world.get<UIDrag>(activeDrags[ptrIdx]).UpdateDrag(pos, hit);
+            game.world.get<UIDrag>(activeDrags[ptrIdx]).UpdateDrag(pos, hit, f.dt);
             if (game.world.valid(hit)) game.world.get_or_emplace<UIRaycastHit>(hit);
         }
         else if (pressedTouchMask & (1 << pidx))

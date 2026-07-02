@@ -13,21 +13,24 @@ void SubsystemPlayer::Initialize(GameWorldContext& game, AppContext ctx)
 
 void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd)
 {
-    for (auto [entity, camera, input, player] : game.world.view<ComponentCamera, const PlayerInputData, ComponentPlayer>().each())
+    for (auto [entity, camera, pcam, input, player] : game.world.view<ComponentCamera, const ComponentPerspectiveCamera, const PlayerInputData, ComponentPlayer>().each())
     {
         camera.ApplyDelta(input.panDelta.x, input.panDelta.y, input.moveDelta.x, input.moveDelta.y);
-        player.lookingAt = game.terrain.CastRay(camera.position, camera.forward);
-        if (player.lookingAt.has_value())
+        // player.lookingAt = game.terrain.CastRay(camera.position, camera.forward);
+        if (input.digging)
         {
-            if (input.digging)
-            {
-                game.terrain.SetBlock(player.lookingAt->hitPos.x, player.lookingAt->hitPos.y, player.lookingAt->hitPos.z, 0);
-            }
-            if (input.placing)
+            auto raycastResult = game.terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.diggingPos));
+            if (raycastResult.has_value())
+                game.terrain.SetBlock(raycastResult.value().hitPos, 0);
+        }
+        if (input.placing)
+        {
+            auto raycastResult = game.terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.placingPos));
+            if (raycastResult.has_value())
             {
                 auto blockId = game.blocks.GetBlockId("stone");
                 auto blockValue = blockId;
-                game.terrain.SetBlock(player.lookingAt->hitPos + perFaceOffset[player.lookingAt->hitFace], blockValue);
+                game.terrain.SetBlock(raycastResult->hitPos + perFaceOffset[raycastResult->hitFace], blockValue);
             }
         }
     }

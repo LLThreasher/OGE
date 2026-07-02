@@ -107,13 +107,15 @@ struct UIDrag
     entt::entity onTopOf = entt::null;
     math::vec2 dragStartPos;
     math::vec2 dragLastPos;
+    float deltaTime = 0.f;
     math::vec2 dragDelta = {};
 
-    void UpdateDrag(math::vec2 pos, entt::entity onTopOf)
+    void UpdateDrag(math::vec2 pos, entt::entity onTopOf, float dt)
     {
         dragDelta = pos - dragLastPos;
         dragLastPos = pos;
         onTopOf = onTopOf;
+        deltaTime += dt;
     }
 };
 

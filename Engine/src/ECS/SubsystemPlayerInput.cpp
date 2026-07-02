@@ -1,6 +1,7 @@
 #include "Engine/ECS/ISubsystem.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/Math.hpp"
+#include "Engine/Formaters.hpp"
 
 namespace OneGame::Engine::ECS
 {
@@ -59,21 +60,41 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 auto drag = game.world.try_get<UIDrag>(widgetInput->viewWidget);
                 if (drag != nullptr)
                 {
-                    auto pcam = game.world.get<ComponentPerspectiveCamera>(entity);
-                    auto vfov = pcam.fov;
-                    auto hfov = -2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
-                    data.panDelta = drag->dragDelta * math::vec2{hfov, vfov};
+                    if (drag->deltaTime > 0.5f)
+                    {
+                        data.digging = true;
+                        data.diggingPos = drag->dragLastPos;
+                        data.panDelta = math::vec2{0, 0};
+                    }
+                    else
+                    {
+                        data.digging = false;
+                        auto pcam = game.world.get<ComponentPerspectiveCamera>(entity);
+                        auto vfov = pcam.fov;
+                        auto hfov = -2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
+                        data.panDelta = drag->dragDelta * math::vec2{hfov, vfov};   
+                    }
                 }
                 else
                 {
                     data.panDelta = math::vec2{0, 0};
+                    data.digging = false;
+                }
+                auto dragRl = game.world.try_get<UIDragRelease>(widgetInput->viewWidget);
+                if (dragRl != nullptr && dragRl->drag.deltaTime < 0.25f && math::dist_sq({0.f, 0.f}, static_cast<math::vec2>(UI::RelSpaceToScreenSpace(game.world, dragRl->drag.dragDelta))) < 64.f)
+                {
+                    data.placing = true;
+                    data.placingPos = dragRl->drag.dragLastPos;
+                }
+                else
+                {
+                    data.placing = false;
                 }
             }
         }
         // handle keyboard & mouse
         if (game.world.any_of<InputSourceKeyMouse>(entity))
         {
-            data.panDelta = 0.001f * math::vec2{f.input.GetMouseDX(), -f.input.GetMouseDY()};
             if (f.input.IsKeyDown(KeyCode::KY_W))
                 data.moveDelta.y = 1.0f;
             else if (f.input.IsKeyDown(KeyCode::KY_S))
@@ -89,10 +110,15 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
             data.moveDelta *= f.dt;
             data.moveDelta *= 5.f;
 
+            auto pcam = game.world.get<ComponentPerspectiveCamera>(entity);
+            auto vfov = -pcam.fov;
+            auto hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
+            data.panDelta = UI::ScreenSpaceToRelSpace(game.world, math::vec2{f.input.GetMouseDX(), f.input.GetMouseDY()}) * math::vec2{hfov, vfov};
+            
             if (f.input.IsMouseDown(MouseButton::Left))
             {
                 data.digging = true;
-                data.diggingPos = math::vec2{0.5f, 0.5f};
+                data.diggingPos = {0.5f, 0.5f};
             }
             else
             {
@@ -101,7 +127,7 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
             if (f.input.IsMouseDown(MouseButton::Right))
             {
                 data.placing = true;
-                data.placingPos = math::vec2{0.5f, 0.5f};
+                data.placingPos = {0.5f, 0.5f};
             }
             else
             {
