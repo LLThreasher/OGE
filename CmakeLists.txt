@@ -97,6 +97,16 @@ set(SDL_CAMERA OFF CACHE BOOL "Disable SDL_CAMERA support" FORCE)
 set(SDL_TEST OFF CACHE BOOL "Disable SDL_TEST support" FORCE)
 set(SDL_TESTS OFF CACHE BOOL "Disable SDL_TESTS support" FORCE)
 
+if(CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC" OR MSVC)
+    # Target only optimized configurations
+    set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /OPT:REF /OPT:ICF")
+    set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL "${CMAKE_EXE_LINKER_FLAGS_MINSIZEREL} /OPT:REF /OPT:ICF")
+    
+    # Inject code generation optimizations
+    add_compile_options("$<$<CONFIG:RELEASE>:/Gy;/Gw>")
+    add_compile_options("$<$<CONFIG:MINSIZEREL>:/Gy;/Gw>")
+endif()
+
 if (BUILD_ANDROID)
     if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	    set(GRADLEW_COMMAND gradlew.bat)

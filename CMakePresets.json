@@ -44,7 +44,7 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang-cl.exe",
         "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "MAX_FRAMES_IN_FLIGHT": "1"
+        "MAX_FRAMES_IN_FLIGHT": "3"
       },
       "condition": {
         "type": "equals",

@@ -80,6 +80,7 @@ AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
     FramePerfStatus perfStats{};
     auto watch = stopwatch::start();
     AppFrameAction appRes = AppFrameAction::WaitFPS60;
+    // AppFrameAction appRes = AppFrameAction::None;
 
     m_dispatcher.update();
 
