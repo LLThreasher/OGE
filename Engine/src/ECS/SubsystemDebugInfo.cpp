@@ -1,7 +1,7 @@
 #include <format>
 
 #include "Engine/ECS/ISubsystem.hpp"
-#include "Engine/Graphics/PresentationObjects.hpp"
+#include "Engine/Graphics/SubmissionQueue.hpp"
 #include "Engine/Math.hpp"
 
 namespace OneGame::Engine::ECS
@@ -37,18 +37,12 @@ void SubsystemDebugInfo::Update(GameWorldContext& game, AppContext ctx, const Fr
 
 void SubsystemDebugInfo::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
 {
+    using namespace Graphics;
     auto gpuInfo = ctx.backend.GetGPUInfo();
     auto memUsage = ctx.backend.GetGPUMemoryUsage();
 
-    auto& world = fd.presentationWorld;
-    AddDebugInfo(world, gpuInfo.name);
-    AddDebugInfo(world, std::format("FPS {:.2f} ({:.2f} ms | {:.2f} | {:.2f} | {:.2f} | {:.2f})\nGPU Heap 0: {} MB / {} MB", currentFPS, perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime, perfStatus.assetUploadTime, perfStatus.renderSubmitTime,
+    fd.graphicQueue.Add<CmdDrawDebugText>(GameViewType::Overlay, gpuInfo.name);
+    fd.graphicQueue.Add<CmdDrawDebugText>(GameViewType::Overlay, std::format("FPS {:.2f} ({:.2f} ms | {:.2f} | {:.2f} | {:.2f} | {:.2f})\nGPU Heap 0: {} MB / {} MB", currentFPS, perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime, perfStatus.assetUploadTime, perfStatus.renderSubmitTime,
                              memUsage.heapUsage[0] / 1024 / 1024, memUsage.heapBudget[0] / 1024 / 1024));
-}
-
-void AddDebugInfo(entt::registry& world, std::string_view msg)
-{
-    auto e = world.create();
-    world.emplace<Graphics::PDebugText>(e).text = msg;
 }
 }  // namespace OneGame::Engine::ECS

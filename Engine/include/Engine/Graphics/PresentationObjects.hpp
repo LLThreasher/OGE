@@ -22,6 +22,14 @@ enum class GameViewType : uint32_t
     Slot1 = 1 << 2,
     Slot2 = 1 << 3,
     Slot3 = 1 << 4,
+    All = Overlay | Slot0 | Slot1 | Slot2 | Slot3,
+};
+
+static constexpr std::array<GameViewType, 4> ALL_GAME_VIEWS = {
+    GameViewType::Slot0,
+    GameViewType::Slot1,
+    GameViewType::Slot2,
+    GameViewType::Slot3,
 };
 
 struct PGameViewTag

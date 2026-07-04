@@ -170,13 +170,13 @@ void DebugScene2::Exit(PresentationContext context) {}
 
 void DebugScene2::Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut)
 {
-    auto& world = frameOut.presentationWorld;
+    using namespace Graphics;
+    auto& world = frameOut.graphicQueue;
     if (isTerrainReady)
     {
         for (auto& slot : testSlots)
         {
-            auto chunkEntity = world.create();
-            world.emplace<Graphics::PTerrainMesh>(chunkEntity, slot);
+            world.Add<CmdDrawTerrainMeshOpaque>(GameViewType::Overlay, slot);
         }
     }
 

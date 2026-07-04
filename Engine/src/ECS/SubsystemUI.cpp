@@ -1,5 +1,5 @@
 #include "Engine/ECS/ISubsystem.hpp"
-#include "Engine/Graphics/PresentationObjects.hpp"
+#include "Engine/Graphics/SubmissionQueue.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/Point2.hpp"
 
@@ -12,7 +12,7 @@ bool UIDrag::IsHold(const entt::registry& world, int pixelRadiusSqr) const
     return diff.x * diff.x + diff.y * diff.y < pixelRadiusSqr;
 }
 
-} // namespace OneGame::Engine::ECS
+}  // namespace OneGame::Engine::ECS
 
 namespace OneGame::Engine::UI
 {
@@ -162,8 +162,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
     {
         for (auto button : ALL_MOUSE_BUTTONS)
         {
-            if (f.input.IsMousePressed(button) && game.valid(mouseEntityHit) &&
-                !game.all_of<UIDrag>(mouseEntityHit))
+            if (f.input.IsMousePressed(button) && game.valid(mouseEntityHit) && !game.all_of<UIDrag>(mouseEntityHit))
             {
                 auto relMousePos = UI::ScreenSpaceToRelSpace(game, mousePos);
                 auto& drag = game.emplace<UIDrag>(mouseEntityHit);
@@ -239,13 +238,13 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
 
 void SubsystemUI::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& f)
 {
+    using namespace Graphics;
     for (auto [entity, rect] : game.view<UIRaycastTarget, ScreenRect>().each())
     {
-        auto r = f.presentationWorld.create();
-        f.presentationWorld.emplace<Graphics::PDebugRect>(r, rect.pos, rect.extent,
-                                                          game.all_of<UIDrag>(entity)         ? COLOR_GREEN
-                                                          : game.all_of<UIRaycastHit>(entity) ? COLOR_RED
-                                                                                                    : COLOR_WHITE);
+        f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay, rect,
+                                             game.all_of<UIDrag>(entity)         ? COLOR_GREEN
+                                             : game.all_of<UIRaycastHit>(entity) ? COLOR_RED
+                                                                                 : COLOR_WHITE);
     }
 }
 }  // namespace OneGame::Engine::ECS

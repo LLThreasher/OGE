@@ -103,12 +103,16 @@ void SubsystemCamera::Present(const GameWorldContext& game, PresentationContext 
     using namespace Graphics;
     for (auto [entity, view, rect] : game.view<ViewPanel, ScreenRect>().each())
     {
-        auto e = fd.presentationWorld.create();
-        fd.presentationWorld.emplace<PGameView>(e, rect.pos, rect.extent, view.activeSlot);
+        CmdAddView cmdview{};
+        cmdview.rect = rect;
         if (auto camera = game.try_get<ComponentCamera>(view.activeCamera))
-            fd.presentationWorld.emplace<PViewTransform>(e, camera->view());
+            cmdview.view = camera->view();
         if (auto pcamera = game.try_get<ComponentPerspectiveCamera>(view.activeCamera))
-            fd.presentationWorld.emplace<PPerspectiveTransform>(e, pcamera->fov, pcamera->aspect);
+        {
+            cmdview.fov = pcamera->fov;
+            cmdview.aspect = pcamera->aspect;
+        }
+        fd.graphicQueue.Add<CmdAddView>(view.activeSlot, cmdview);
     }
 }
 }  // namespace OneGame::Engine::ECS

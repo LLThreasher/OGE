@@ -93,7 +93,7 @@ AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
         m_perfStats,
     };
     FrameOutputData frameOut{
-        m_presentationWorld,
+        m_graphicsSubmissionQueue,
         outSceneActions,
     };
     if (m_nextScene != nullptr)
@@ -107,7 +107,7 @@ AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
         m_nextScene = nullptr;
     }
     assert(m_currentScene != nullptr);
-    m_presentationWorld.clear();
+    m_graphicsSubmissionQueue.Clear();
     m_currentScene->Update(pctx, frame, frameOut);
 
     perfStats.logicTime = watch.restart();
@@ -129,7 +129,7 @@ AppFrameAction GameClientApp::Update(float dt, InputSystem& input)
         auto swapPretransform = m_backend.SwapchainPretransform();
         m_dispatcher.enqueue<SurfaceRecreateEvent>({swapExtend, swapPretransform});
     }
-    m_renderer.Render(pctx, m_presentationWorld, dt);
+    m_renderer.Render(pctx, m_graphicsSubmissionQueue, dt);
 
     perfStats.assetUploadTime = watch.restart();
 

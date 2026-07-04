@@ -9,6 +9,7 @@
 #include "UIPass.hpp"
 #include "UniformArena.hpp"
 #include "ChunkAllocator2.hpp"
+#include "SubmissionQueue.hpp"
 
 namespace OneGame::Engine
 {
@@ -28,7 +29,7 @@ class Renderer
     NO_COPY(Renderer)
     void Initialize(AssetContext& assets);
     void Shutdown(AssetContext& assets);
-    void Render(AssetContext& assets, const entt::registry& world, float deltaTime);
+    void Render(AssetContext& assets, SubmissionQueue& world, float deltaTime);
 
     void UpdateBlockTexture(AssetContext& assets, const std::string& id, uint32_t slot)
     {

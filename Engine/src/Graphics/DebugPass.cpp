@@ -81,10 +81,9 @@ void DebugInfoPass::Disable(IGraphicsBackend& backend) {}
 
 void DebugInfoPass::Draw(DrawContext& ctx)
 {
-    if (ctx.currentView != entt::null) return;
     std::stringstream ss;
-    auto view = ctx.world.view<PDebugText>();
-    for (auto [_, dbgText] : view.each())
+    auto texts = ctx.world.Get<CmdDrawDebugText>();
+    for (auto& dbgText : texts)
     {
         ss << dbgText.text << std::endl;
     }
@@ -127,31 +126,32 @@ void DebugInfoPass::Draw(DrawContext& ctx)
                                 pushConstant.offset);
     }
 
-    for (auto [entity, rect] : ctx.world.view<PDebugRect>().each())
+    for (auto rect : ctx.world.Get<CmdDrawDebugRect>())
     {
         static float m = 4.f;
-        auto& r = rect;
+        auto& r = rect.rect;
+        auto& color = rect.color;
         size_t i = numQuads * 4;
       
-        vertices[i + 0] = {{r.pos.x, r.pos.y, 0.f}, r.color};
-        vertices[i + 1] = {{r.pos.x + r.extent.x, r.pos.y, 0.f}, r.color};
-        vertices[i + 2] = {{r.pos.x + r.extent.x, r.pos.y + m, 0.f}, r.color};
-        vertices[i + 3] = {{r.pos.x, r.pos.y + m, 0.f}, r.color};
+        vertices[i + 0] = {{r.pos.x, r.pos.y, 0.f}, color};
+        vertices[i + 1] = {{r.pos.x + r.extent.x, r.pos.y, 0.f}, color};
+        vertices[i + 2] = {{r.pos.x + r.extent.x, r.pos.y + m, 0.f}, color};
+        vertices[i + 3] = {{r.pos.x, r.pos.y + m, 0.f}, color};
 
-        vertices[i + 4] = {{r.pos.x + r.extent.x - m, r.pos.y, 0.f}, r.color};
-        vertices[i + 5] = {{r.pos.x + r.extent.x, r.pos.y, 0.f}, r.color};
-        vertices[i + 6] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y, 0.f}, r.color};
-        vertices[i + 7] = {{r.pos.x + r.extent.x - m, r.pos.y + r.extent.y, 0.f}, r.color};
+        vertices[i + 4] = {{r.pos.x + r.extent.x - m, r.pos.y, 0.f}, color};
+        vertices[i + 5] = {{r.pos.x + r.extent.x, r.pos.y, 0.f}, color};
+        vertices[i + 6] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y, 0.f}, color};
+        vertices[i + 7] = {{r.pos.x + r.extent.x - m, r.pos.y + r.extent.y, 0.f}, color};
 
-        vertices[i + 8 ] = {{r.pos.x, r.pos.y + r.extent.y - m, 0.f}, r.color};
-        vertices[i + 9 ] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y - m, 0.f}, r.color};
-        vertices[i + 10] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y, 0.f}, r.color};
-        vertices[i + 11] = {{r.pos.x, r.pos.y + r.extent.y, 0.f}, r.color};
+        vertices[i + 8 ] = {{r.pos.x, r.pos.y + r.extent.y - m, 0.f}, color};
+        vertices[i + 9 ] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y - m, 0.f}, color};
+        vertices[i + 10] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y, 0.f}, color};
+        vertices[i + 11] = {{r.pos.x, r.pos.y + r.extent.y, 0.f}, color};
 
-        vertices[i + 12] = {{r.pos.x, r.pos.y, 0.f}, r.color};
-        vertices[i + 13] = {{r.pos.x + m, r.pos.y, 0.f}, r.color};
-        vertices[i + 14] = {{r.pos.x + m, r.pos.y + r.extent.y, 0.f}, r.color};
-        vertices[i + 15] = {{r.pos.x, r.pos.y + r.extent.y, 0.f}, r.color};
+        vertices[i + 12] = {{r.pos.x, r.pos.y, 0.f}, color};
+        vertices[i + 13] = {{r.pos.x + m, r.pos.y, 0.f}, color};
+        vertices[i + 14] = {{r.pos.x + m, r.pos.y + r.extent.y, 0.f}, color};
+        vertices[i + 15] = {{r.pos.x, r.pos.y + r.extent.y, 0.f}, color};
 
         numQuads += 4;
     }
@@ -270,7 +270,6 @@ void TestPass::Disable(IGraphicsBackend& backend) {}
 
 void TestPass::Draw(DrawContext& context)
 {
-    if (context.currentView != entt::null) return;
     m_Time += context.deltaTime;
     UBO ubo{};
     ubo.model =

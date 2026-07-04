@@ -59,7 +59,7 @@ class GameClientApp
     StreamingManager m_streamingManager;
     AssetPool m_assetPool;
 
-    entt::registry m_presentationWorld;
+    Graphics::SubmissionQueue m_graphicsSubmissionQueue;
 
     std::vector<std::unique_ptr<ClientSceneBase>> m_allScenes;
     ClientSceneBase* m_nextScene = nullptr;

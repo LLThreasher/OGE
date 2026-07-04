@@ -6,6 +6,7 @@
 #include "Engine/Graphics/UniformArena.hpp"
 #include "Engine/Graphics/ChunkAllocator2.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
+#include "Engine/Graphics/SubmissionQueue.hpp"
 
 namespace OneGame::Engine
 {
@@ -28,9 +29,8 @@ struct DrawContext
     float deltaTime;
     ICommandList& drawCmd;
     ICommandList& transferCmd;
-    const entt::registry& world;
-    math::mat4& pvTransform;
-    entt::entity currentView;
+    SingleSubmissionQueue& world;
+    math::mat4 pvTransform;
 };
 
 struct PrepareContext

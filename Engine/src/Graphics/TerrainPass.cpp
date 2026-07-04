@@ -87,12 +87,11 @@ void TerrainPass2::Disable(IGraphicsBackend& backend)
 
 void TerrainPass2::Draw(DrawContext& ctxt)
 {
-    auto viewTy = ctxt.currentView == entt::null ? GameViewType::Overlay : ctxt.world.get<PGameView>(ctxt.currentView).type;
     activeChunkSlots.clear();
-    auto worldView = ctxt.world.view<PTerrainMesh, Point3, PGameViewTag>();
-    for (auto [_, mesh, coord, vtag] : worldView.each())
+    for (auto& cmd : ctxt.world.Get<CmdDrawTerrainMeshOpaque>())
     {
-        if (!(static_cast<uint32_t>(vtag.type) & static_cast<uint32_t>(viewTy))) continue;
+        auto& mesh = cmd.terrainMesh;
+        auto& coord = cmd.coords;
         auto resolved = ctxt.chunkAllocator.Resolve(mesh.alloc);
         auto group = GetOrCreateBindingGroup(ctxt.backend, ctxt.uniformArena, resolved.buffer, resolved.size);
         auto it = activeChunkSlots.find(group);

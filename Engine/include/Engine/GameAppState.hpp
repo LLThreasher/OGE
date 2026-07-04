@@ -5,6 +5,7 @@
 #include "Engine/entt.hpp"
 #include "Engine/Point2.hpp"
 #include "Engine/Math.hpp"
+#include "Engine/Graphics/SubmissionQueue.hpp"
 
 namespace OneGame::Engine
 {
@@ -116,7 +117,7 @@ struct FrameInputData
 // game states writes to this
 struct FrameOutputData
 {
-    entt::registry& presentationWorld;
+    Graphics::SubmissionQueue& graphicQueue;
     std::vector<SceneAction>& outSceneActions;
 };
 

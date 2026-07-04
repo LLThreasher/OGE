@@ -5,6 +5,7 @@
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Logger.hpp"
 #include "Engine/Formaters.hpp"
+#include "Engine/Graphics/SubmissionQueue.hpp"
 
 namespace OneGame::Engine::Terrain
 {
@@ -101,6 +102,8 @@ static bool IsVisibleToPlayer(Point3 chunkCoord, const entt::registry& gameWorld
 
 void TerrainUpdateScheduler::SubmitVisibleChunks(const TerrainData& data, TerrainPresentationData& pdata, const TerrainContext& tctx, FrameOutputData& fd)
 {
+    using namespace Graphics;
+
     playerToView.clear();
     uint32_t baseView = 0;
     for (auto [entity, view] : tctx.view<ECS::ViewPanel>().each())
@@ -125,10 +128,7 @@ void TerrainUpdateScheduler::SubmitVisibleChunks(const TerrainData& data, Terrai
                 currentView |= it->second;
         }
 
-        auto chunkEntity = fd.presentationWorld.create();
-        fd.presentationWorld.emplace<Graphics::PGameViewTag>(chunkEntity, Graphics::GameViewType{currentView});
-        fd.presentationWorld.emplace<Graphics::PTerrainMesh>(chunkEntity, slot);
-        fd.presentationWorld.emplace<Point3>(chunkEntity, chunk->Coords);
+        fd.graphicQueue.Add<CmdDrawTerrainMeshOpaque>(GameViewType{currentView}, slot, chunk->Coords);
     }
 }
 }  // namespace OneGame::Engine::Terrain

@@ -63,37 +63,26 @@ void Renderer::Draw(DrawContext& drawCtxt)
 
 void Renderer::RenderView(AssetContext& assets, DrawContext ctxt)
 {
-    auto pview = ctxt.currentView == entt::null ? nullptr : ctxt.world.try_get<PViewTransform>(ctxt.currentView);
-    math::mat4 view =
-        pview ? pview->view : math::lookAt(math::vec3(20, 20, 20), math::vec3(0, 0, 0), math::vec3(0, 1, 0));
-    auto pproj = ctxt.currentView == entt::null ? nullptr : ctxt.world.try_get<PPerspectiveTransform>(ctxt.currentView);
+    auto& views = ctxt.world.Get<CmdAddView>();
+    if (views.empty()) return;
+    auto cmdview = views[0];
     math::mat4 proj = math::get_perspective_rot(ctxt.backend.SwapchainPretransform()) *
-                      (pproj ? math::perspective_rev_z(pproj->fov, pproj->aspect, 0.1f)
-                             : math::perspective_rev_z(math::radians(45.0f), ctxt.backend.SwapchainAspect(), 0.1f));
-    ctxt.pvTransform = proj * view;
+                      (math::perspective_rev_z(cmdview.fov, cmdview.aspect == 0.f ? assets.backend.SwapchainAspect() : cmdview.aspect, 0.1f));
+    ctxt.pvTransform = proj * cmdview.view;
 
-    if (ctxt.currentView == entt::null)
-    {
-        auto extent = assets.backend.SwapchainExtent();
-        ctxt.drawCmd.SetViewRect(0, 0, extent.x, extent.y);
-    }
-    else
-    {
-        auto& rect = ctxt.world.get<PGameView>(ctxt.currentView);
-        ctxt.drawCmd.SetViewRect(rect.pos.x, rect.pos.y, rect.extent.x, rect.extent.y);
-    }
+    auto& rect = cmdview.rect;
+    ctxt.drawCmd.SetViewRect(rect.pos.x, rect.pos.y, rect.extent.x, rect.extent.y);
 
     Draw(ctxt);
 }
 
-void Renderer::Render(AssetContext& assets, const entt::registry& world, float deltaTime)
+void Renderer::Render(AssetContext& assets, SubmissionQueue& world, float deltaTime)
 {
     auto& backend = assets.backend;
     auto& cmd = backend.CreateCommandList(QueueType::Present);
     auto& tCmd = backend.CreateCommandList(QueueType::Transfer);
 
-    math::mat4 mat = math::identity();
-    DrawContext drawCtxt = {backend, uniformArena, chunkAllocator, deltaTime, cmd, tCmd, world, mat};
+    world.Add<CmdAddView>(GameViewType::Overlay, IRect{{0, 0}, assets.backend.SwapchainExtent()});
 
     cmd.Begin();
     tCmd.Begin();
@@ -103,19 +92,21 @@ void Renderer::Render(AssetContext& assets, const entt::registry& world, float d
     values.depthClear = 0.0f;
     values.stencilClear = 0.f;
 
-    drawCtxt.drawCmd.BeginRenderPass(backend.GetCurrentRenderPass(), backend.GetCurrentFrameBuffer(), values);
+    cmd.BeginRenderPass(backend.GetCurrentRenderPass(), backend.GetCurrentFrameBuffer(), values);
 
-    for (auto entity : world.view<PGameView>())
+    for (auto view : ALL_GAME_VIEWS)
     {
-        drawCtxt.currentView = entity;
+        DrawContext drawCtxt = {backend, uniformArena, chunkAllocator, deltaTime, cmd, tCmd, world.GetSingle(view)};
         RenderView(assets, drawCtxt);
     }
 
     // draw overlay
-    drawCtxt.currentView = entt::null;
-    RenderView(assets, drawCtxt);
+    {
+        DrawContext drawCtxt = {backend, uniformArena, chunkAllocator, deltaTime, cmd, tCmd, world.GetSingle(GameViewType::Overlay)};
+        RenderView(assets, drawCtxt);
+    }
 
-    drawCtxt.drawCmd.EndRenderPass();
+    cmd.EndRenderPass();
 
     tCmd.End();
     cmd.End();
