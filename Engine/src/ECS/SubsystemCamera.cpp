@@ -36,26 +36,6 @@ math::vec2 RayToPitchYaw(math::vec3 ray)
     return math::vec2(yaw, pitch);
 }
 
-// math::vec3 ComponentCamera::toRay(math::vec2 input, float aspect) const
-// {
-//     float ndcX = input.x * 2.0f - 1.0f;
-//     float ndcY = 1.0f - input.y * 2.0f;
-
-//     float tanHalfFov = tanf(fovY * 0.5f);
-
-//     float viewX = ndcX * aspect * tanHalfFov;
-//     float viewY = ndcY * tanHalfFov;
-//     float viewZ = -1.0f;
-
-//     math::vec3 rayDir =
-//     viewX * camRight +
-//     viewY * camUp +
-//     viewZ * camForward;
-
-//     rayDir = normalize(rayDir);
-//     return rayDir;
-// }
-
 void ComponentCamera::ApplyDelta(float dsx, float dsy, float dwx, float dwz)
 {
     yaw += dsx;

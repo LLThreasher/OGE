@@ -4,6 +4,7 @@ add_subdirectory(stb)
 add_subdirectory(vma)
 add_subdirectory(entt)
 add_subdirectory(freetype)
+add_subdirectory(enet)
 
 target_compile_definitions(spdlog PUBLIC SPDLOG_USE_STD_FORMAT)
 

@@ -46,7 +46,7 @@ PRIVATE
     "src/ECS/SubsystemUI.cpp"
     "src/ECS/GameWorld.cpp"
     "src/Platform/PrintStackTrace.cpp"
-    "src/ECS/SubsystemPlayer.cpp"
+    "src/ECS/GameWorld.cpp"
  )
 
 target_include_directories(Engine
@@ -97,6 +97,7 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
             freetype
             stb
             vma
+            enet
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_sources(Engine
@@ -121,6 +122,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
             freetype
             stb
             vma
+            enet
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
     target_compile_definitions(Engine
@@ -141,6 +143,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
             freetype
             stb
             vma
+            enet
     )
 endif()
 

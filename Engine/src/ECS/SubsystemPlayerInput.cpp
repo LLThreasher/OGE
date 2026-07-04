@@ -70,8 +70,8 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                     {
                         data.unset<PlayerAction::Digging>();
                         auto pcam = game.get<ComponentPerspectiveCamera>(entity);
-                        auto vfov = pcam.fov;
-                        auto hfov = -2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
+                        auto vfov = -pcam.fov;
+                        auto hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
                         data.panDelta = drag->dragDelta * math::vec2{hfov, vfov};   
                     }
                 }
