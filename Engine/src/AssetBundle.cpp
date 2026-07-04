@@ -4,6 +4,7 @@
 #include "Engine/AssetManager.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/StreamingManager.hpp"
+#include "Engine/GraphicState.hpp"
 
 namespace OneGame::Engine
 {

@@ -9,7 +9,9 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_mouse.h>
 
-#include "Engine/GameApp.hpp"
+#include "Engine/Input/InputSystem.hpp"
+#include "Engine/Graphics/IGraphicsBackend.hpp"
+#include "Engine/WindowedGameApp.hpp"
 #include "Engine/Platform/IGameWindow.hpp"
 #include "Engine/Timer.hpp"
 
@@ -55,7 +57,7 @@ class SDL3GameWindow : public IGameWindow
    public:
     SDL3GameWindow(std::string name, int width, int height);
 
-    void Run(GameClientApp&) override;
+    void Run(GameGraphicApp&) override;
 
    private:
     void PollEvents();
@@ -142,7 +144,7 @@ Graphics::WindowHandle SDL3GameWindow::GetCurrentWindow()
     return handle;
 }
 
-void SDL3GameWindow::Run(GameClientApp& app)
+void SDL3GameWindow::Run(GameGraphicApp& app)
 {
     SDL_ShowWindow(m_window);
     try

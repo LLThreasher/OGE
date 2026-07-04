@@ -5,7 +5,9 @@
 #include "Engine/Platform/IGameWindow.hpp"
 
 #define LOGGER_NAME "Engine"
-#include "Engine/GameApp.hpp"
+#include "Engine/Input/InputSystem.hpp"
+#include "Engine/Graphics/IGraphicsBackend.hpp"
+#include "Engine/WindowedGameApp.hpp"
 #include "Engine/Input/Keyboard.hpp"
 #include "Engine/Logger.hpp"
 #include "Engine/Timer.hpp"
@@ -29,7 +31,7 @@ class Win32GameWindow : public IGameWindow
    public:
     Win32GameWindow(std::string name, int width, int height);
 
-    void Run(GameClientApp&) override;
+    void Run(GameGraphicApp&) override;
 
    private:
     void PollEvents();
@@ -53,7 +55,7 @@ Win32GameWindow::Win32GameWindow(std::string name, int width, int height)
                             nullptr, nullptr, GetModuleHandle(nullptr), nullptr);
 }
 
-void Win32GameWindow::Run(GameClientApp& app)
+void Win32GameWindow::Run(GameGraphicApp& app)
 {
     ShowWindow(m_hwnd, SW_SHOW);
 

@@ -2,6 +2,7 @@
 
 #include "Engine/AssetBundle.hpp"
 #include "Engine/GameAppState.hpp"
+#include "Engine/GraphicState.hpp"
 #include "stb_easy_font.h"
 
 #define LOGGER_NAME "Engine"

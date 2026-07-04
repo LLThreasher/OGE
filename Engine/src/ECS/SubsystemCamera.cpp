@@ -1,5 +1,5 @@
-#include "Engine/ECS/ISubsystem.hpp"
-#include "Engine/Graphics/PresentationObjects.hpp"
+
+#include "Engine/ECS/Components.hpp"
 #include "Engine/Math.hpp"
 
 #define LOGGER_NAME "Engine"
@@ -54,44 +54,4 @@ void ComponentCamera::ApplyDelta(float dsx, float dsy, float dwx, float dwz)
     position += dwx * math::normalize(math::cross(forward, glm::vec3(0, 1, 0))) + dwz * forward;
 }
 
-void SubsystemCamera::Initialize(GameWorldContext& game, AppContext ctx)
-{
-    game.on_construct<ScreenRect>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
-    game.on_update<ScreenRect>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
-    game.on_construct<ViewPanel>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
-    game.on_update<ViewPanel>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
-}
-
-void SubsystemCamera::onViewPanelUpdate(entt::registry& world, entt::entity entity)
-{
-    auto [vp, rect] = world.try_get<ViewPanel, ScreenRect>(entity);
-    if (vp != nullptr && rect != nullptr)
-    {
-        auto camEntity = vp->activeCamera;
-        if (auto pcam = world.try_get<ComponentPerspectiveCamera>(camEntity))
-        {
-            pcam->aspect = (float)rect->extent.x / (float)rect->extent.y;
-        }
-    }
-}
-
-void SubsystemCamera::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd) {}
-
-void SubsystemCamera::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
-{
-    using namespace Graphics;
-    for (auto [entity, view, rect] : game.view<ViewPanel, ScreenRect>().each())
-    {
-        CmdAddView cmdview{};
-        cmdview.rect = rect;
-        if (auto camera = game.try_get<ComponentCamera>(view.activeCamera))
-            cmdview.view = camera->view();
-        if (auto pcamera = game.try_get<ComponentPerspectiveCamera>(view.activeCamera))
-        {
-            cmdview.fov = pcamera->fov;
-            cmdview.aspect = pcamera->aspect;
-        }
-        fd.graphicQueue.Add<CmdAddView>(view.activeSlot, cmdview);
-    }
-}
 }  // namespace OneGame::Engine::ECS

@@ -7,6 +7,7 @@
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
 #include "Engine/GameAppState.hpp"
+#include "Engine/GraphicState.hpp"
 #include "Engine/StreamingManager.hpp"
 #include "Engine/AssetManager.hpp"
 

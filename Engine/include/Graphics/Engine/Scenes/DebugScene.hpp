@@ -3,17 +3,15 @@
 #include <string>
 
 #include "Engine/ECS/GameWorld.hpp"
+#include "Engine/ECS/GameRenderer.hpp"
 #include "Engine/GameAppState.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
-#include "Engine/Terrain/Terrain.hpp"
-#include "IScene.hpp"
+#include "Engine/Terrain/TerrainService.hpp"
+#include "Engine/Terrain/TerrainRenderer.hpp"
+#include "Engine/IClientScene.hpp"
 
 namespace OneGame::Engine
 {
-namespace ECS
-{
-class SubsystemDebugInfo;
-}
 
 const std::vector<Terrain::TexturedQuad> chunk_zero_quads = {
     {0, 0, 0, 0, 0, COLOR_WHITE, {0xF, 0xF, 0xF, 0xF}, {0, 0, 0, 0}},
@@ -71,34 +69,16 @@ const std::vector<uint16_t> chunk_zero_indices = {
     20, 21, 22, 22, 23, 20   // bottom
 };
 
-class DebugScene2 : public ClientSceneBase
-{
-   public:
-    DebugScene2() {}
-    virtual void Initialize(PresentationContext context) override;
-    virtual void Enter(PresentationContext context) override;
-    virtual void Exit(PresentationContext context) override;
-    virtual void Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut) override;
-
-   protected:
-    std::vector<Graphics::PTerrainMesh> testSlots;
-    Terrain::TerrainData terrainData;
-    Terrain::TerrainPresentationData terrainPresData;
-    Terrain::TerrainMeshBuilder meshBuilder;
-
-    ECS::GameWorld gameWorld;
-
-    bool isTerrainReady = false;
-};
-
 class DebugScene3 : public ClientSceneBase
 {
 public:
+    DebugScene3() : m_gameRenderer(m_gameWorld) {}
     virtual void Initialize(PresentationContext context) override;
     virtual void Enter(PresentationContext context) override;
     virtual void Exit(PresentationContext context) override;
     virtual void Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut) override;
 private:
     ECS::GameWorld m_gameWorld;
+    ECS::GameRenderer m_gameRenderer;
 };
 }  // namespace OneGame::Engine

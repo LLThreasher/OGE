@@ -5,6 +5,7 @@
 
 #include "RendererInternals.hpp"
 #include "Engine/GameAppState.hpp"
+#include "Engine/GraphicState.hpp"
 
 namespace OneGame::Engine::Graphics
 {

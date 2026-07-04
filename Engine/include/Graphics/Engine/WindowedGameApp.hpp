@@ -1,42 +1,27 @@
 #pragma once
-#include <memory>
-#include <string>
 
+#include "Engine/GameAppState.hpp"
+#include "Engine/GraphicState.hpp"
+#include "Engine/StreamingManager.hpp"
 #include "Engine/AssetManager.hpp"
 #include "Engine/Graphics/Renderer.hpp"
-#include "Engine/Input/InputSystem.hpp"
-#include "Engine/Scenes/IScene.hpp"
-#include "Engine/StreamingManager.hpp"
-#include "Engine/TickScheduler.hpp"
-#include "Engine/entt.hpp"
 
 namespace OneGame::Engine
 {
+
+class ClientSceneBase;
+
 namespace Graphics
 {
-class WindowHandle;
-class IGraphicsBackend;
-}  // namespace Graphics
+    class IGraphicsBackend;
+    class WindowHandle;
+}
 
-class GameServerApp
+class GameGraphicApp
 {
    public:
-    void Initialize();
-    void Update(float dt);
-    void Shutdown();
-
-   private:
-    AssetManager assetManager;
-    entt::dispatcher dispatcher;
-
-    std::unique_ptr<IServerScene> m_serverScene;
-};
-
-class GameClientApp
-{
-   public:
-    GameClientApp(Graphics::IGraphicsBackend& backend);
-    ~GameClientApp();
+    GameGraphicApp(Graphics::IGraphicsBackend& backend);
+    ~GameGraphicApp();
 
     void Initialize(Graphics::WindowHandle* handle);
     AppFrameAction Update(float dt, InputSystem& input);
@@ -67,4 +52,4 @@ class GameClientApp
 
     FramePerfStatus m_perfStats = {};
 };
-}  // namespace OneGame::Engine
+}

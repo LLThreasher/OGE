@@ -10,14 +10,12 @@
 #include "Engine/entt.hpp"
 #include "BlockManager.hpp"
 #include "Engine/ClassHelper.hpp"
-#include "Engine/Graphics/ChunkAllocator.hpp"
-#include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/ObjectType.hpp"
 #include "Engine/ResourcePool.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "Engine/Terrain/TerrainView.hpp"
-#include "Engine/ECS/ISubsystem.hpp"
+#include "Engine/ECS/IRenderer.hpp"
 
 #define USE_TERRAIN_MESH_V2
 
@@ -45,12 +43,6 @@ class DynamicChunkAllocator;
 namespace OneGame::Engine::Terrain
 {
 using TerrainContext = ECS::TerrainContext;
-
-struct BuiltChunkMesh
-{
-    std::vector<Vertex> vertices;
-    std::vector<uint16_t> indices;
-};
 
 struct BuiltChunkMesh2
 {
@@ -116,9 +108,6 @@ struct TerrainPresentationData
     std::unordered_map<ChunkHandle, Graphics::PTerrainMesh, HandleHash<ChunkHandle>> residentChunks;
 };
 
-void ExecuteBuildChunkMeshJob(const ChunkMeshingWorkerContext* _context, BuiltChunkMesh* context,
-                              const BlockRegistry& blocks);
-
 class TerrainMeshBuilder
 {
    public:
@@ -134,16 +123,13 @@ class TerrainMeshBuilder
     uint32_t m_runningVertexCount = 0;
 };
 
-class TerrainUpdateScheduler
+class TerrainMeshScheduler
 {
    public:
-    void InitialUpdate(TerrainData& terrain, Point3 chunkOrigin);
     void QueueChunksForMeshing(const TerrainData& terrain, TerrainPresentationData& pdata, entt::dispatcher& events);
     void SubmitVisibleChunks(const TerrainData& data, TerrainPresentationData& pdata, const TerrainContext& tctx, FrameOutputData& fd);
-    void SetChunkViewDistance(int val) { m_chunkViewDistance = val; }
 
    private:
-    int m_chunkViewDistance = 4;
     std::unordered_map<entt::entity, uint32_t> playerToView;
 };
 
@@ -156,39 +142,24 @@ private:
     std::queue<GPUChunkedAllocation> m_allocationsToFree;
 };
 
-struct TerrainDesc
+struct TerrainRendererDesc
 {
-    int chunkViewDistance = 8;
     int meshingQuadBudget = 4096 * 4;
-    int terrainGenChunkBudget = 8;
 };
 
-class TerrainGenerator
+class TerrainRenderer : public ECS::RendererBase
 {
    public:
-    void GenerateTerrain(TerrainData& terrain, BlockRegistry& blocks);
-    void SetTerrainGenChunkBudget(int chunkBudget) { terrainGenChunkBudget = chunkBudget; }
+    NO_COPY(TerrainRenderer);
+    ~TerrainRenderer() = default;
+
+    void Initialize(TerrainContext& ctx, PresentationContext& actx) override;
+    void Present(const TerrainContext& ctx, PresentationContext& actx, FrameOutputData& fd) override;
 
    private:
-    int terrainGenChunkBudget = 8;
-};
-
-class TerrainService : public ECS::ISubsystem<TerrainContext>
-{
-   public:
-    NO_COPY(TerrainService);
-    ~TerrainService() = default;
-
-    void Initialize(TerrainContext& ctx, AppContext actx) override;
-    void Update(TerrainContext& ctx, AppContext actx, const FrameInputData& fd) override;
-    void Present(const TerrainContext& ctx, PresentationContext pctx, FrameOutputData& fd) override;
-
-   private:
-    void onPlayerCreated(entt::registry& world, entt::entity entity);
     TerrainPresentationData m_terrainPData;
-    TerrainGenerator m_terrainGenerator;
     TerrainMeshBuilder m_terrainMeshBuilder;
-    TerrainUpdateScheduler m_terrainUpdateScheduler;
     TerrainUploader m_terrainUploader;
+    TerrainMeshScheduler m_terrainMeshScheduler;
 };
 }  // namespace OneGame::Engine::Terrain

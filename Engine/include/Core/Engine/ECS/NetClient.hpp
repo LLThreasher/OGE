@@ -1,6 +1,7 @@
 #pragma once
 #include <enet/enet.h>
 
+#include "Engine/entt.hpp"
 #include "Engine/Logger.hpp"
 
 namespace OneGame::Engine
@@ -8,7 +9,7 @@ namespace OneGame::Engine
 class NetClient
 {
 public:
-    NetClient() = default;
+    NetClient(entt::dispatcher& events) : m_events(events) {}
 
     ~NetClient()
     {
@@ -89,7 +90,7 @@ public:
                     break;
 
                 case ENET_EVENT_TYPE_DISCONNECT:
-                    LOG_ERROR("Disconnected from server");
+                    LOG_INFO("Disconnected from server");
                     peer = nullptr;
                     break;
 
@@ -127,7 +128,7 @@ public:
             enet_host_destroy(host);
             host = nullptr;
             enet_deinitialize();
-            LOG_ERROR("Client shutdown");
+            LOG_INFO("Client shutdown");
         }
     }
 
@@ -169,5 +170,7 @@ private:
 private:
     ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
+
+    entt::dispatcher& m_events;
 };
 }

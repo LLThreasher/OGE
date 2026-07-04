@@ -3,6 +3,7 @@
 #include <sstream>
 
 #include "Engine/GameAppState.hpp"
+#include "Engine/GraphicState.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/StreamingManager.hpp"

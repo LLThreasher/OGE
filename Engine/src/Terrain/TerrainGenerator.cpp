@@ -1,4 +1,4 @@
-#include "Engine/Terrain/Terrain.hpp"
+#include "Engine/Terrain/TerrainService.hpp"
 
 namespace OneGame::Engine::Terrain
 {

@@ -37,19 +37,4 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
         }
     }
 }
-
-void SubsystemPlayer::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
-{
-    // auto players = game.view<ComponentPlayer>();
-    // if (!players.empty())
-    // {
-    //     auto player = game.get<ComponentPlayer>(players.front());
-    //     if (player.lookingAt.has_value())
-    //         AddDebugInfo(
-    //             fd.presentationWorld,
-    //             std::format("Looking at {} {} {}[{}]", player.lookingAt->hitPos, player.lookingAt->hitFace,
-    //                         game.blocks.GetBlockDisplayName(game.blocks.GetBlockId(player.lookingAt->hitBlockValue)),
-    //                         player.lookingAt->hitBlockValue));
-    // }
-}
 }  // namespace OneGame::Engine::ECS

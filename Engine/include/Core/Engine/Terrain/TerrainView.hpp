@@ -161,6 +161,7 @@ class TerrainService;
 class TerrainView
 {
     friend class TerrainService;
+    friend class TerrainRenderer;
    public:
     uint32_t GetBlock(Point3 pos)
     {

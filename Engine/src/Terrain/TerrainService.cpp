@@ -1,7 +1,7 @@
 #include <limits>
 
 #include "Engine/Terrain/BlockManager.hpp"
-#include "Engine/Terrain/Terrain.hpp"
+#include "Engine/Terrain/TerrainService.hpp"
 #include "Engine/GameAppState.hpp"
 
 namespace OneGame::Engine::Terrain
@@ -17,8 +17,6 @@ void TerrainService::Initialize(TerrainContext& ctx, AppContext actx)
 {
     auto desc = ctx.ctx().get<TerrainDesc>();
     m_terrainGenerator.SetTerrainGenChunkBudget(desc.terrainGenChunkBudget);
-    m_terrainMeshBuilder.SetVertexBudget(desc.meshingQuadBudget);
-    m_terrainUploader.SetMaxNumChunks((desc.chunkViewDistance + 1) * (desc.chunkViewDistance + 1) * 6);
     m_terrainUpdateScheduler.SetChunkViewDistance(desc.chunkViewDistance);
     actx.events.sink<ResolveDirtyChunkEvent>().connect<&TerrainView::HandleResolveDirtyChunk>(ctx);
     ctx.on_construct<ComponentPlayer>().connect<&TerrainService::onPlayerCreated>(this);
@@ -34,15 +32,6 @@ void TerrainService::onPlayerCreated(entt::registry& world, entt::entity entity)
 void TerrainService::Update(TerrainContext& ctx, AppContext actx, const FrameInputData& fd)
 {
     m_terrainGenerator.GenerateTerrain(ctx.ctx().get<Terrain::TerrainView>().m_terrainData, ctx.ctx().get<Terrain::BlockRegistry>());
-}
-
-void TerrainService::Present(const TerrainContext& ctx, PresentationContext pctx, FrameOutputData& frameOut)
-{
-    auto& terrainData = ctx.ctx().get<Terrain::TerrainView>().m_terrainData;
-    m_terrainUpdateScheduler.QueueChunksForMeshing(terrainData, m_terrainPData, pctx.events);
-    m_terrainMeshBuilder.BuildChunkMeshes(terrainData, ctx.ctx().get<Terrain::BlockRegistry>(), m_terrainPData);
-    m_terrainUploader.UploadTerrain(m_terrainPData, pctx);
-    m_terrainUpdateScheduler.SubmitVisibleChunks(terrainData, m_terrainPData, ctx, frameOut);
 }
 
 uint32_t TerrainView::GetBlock(int x, int y, int z)
@@ -211,4 +200,51 @@ std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos, math::v
     }
     return {};
 }
+
+
+void TerrainUpdateScheduler::InitialUpdate(
+    TerrainData& terrain,
+    Point3 chunkOrigin)
+{
+    const int radius = m_chunkViewDistance + 1;
+
+    int x = 0;
+    int z = 0;
+
+    int dx = 0;
+    int dz = -1;
+
+    const int maxSide = radius * 2 + 1;
+    const int maxSteps = maxSide * maxSide;
+
+    for (int i = 0; i < maxSteps; ++i)
+    {
+        if (std::abs(x) <= radius && std::abs(z) <= radius)
+        {
+            for (int y = 0; y <= 4; ++y)
+            {
+                Point3 coord = {
+                    chunkOrigin.x + x,
+                    y,
+                    chunkOrigin.z + z
+                };
+
+                auto handle = terrain.chunks.AllocateChunk(coord);
+                terrain.generateTerrainQueue.push(handle);
+            }
+        }
+
+        // Spiral turn logic
+        if (x == z || (x < 0 && x == -z) || (x > 0 && x == 1 - z))
+        {
+            int temp = dx;
+            dx = -dz;
+            dz = temp;
+        }
+
+        x += dx;
+        z += dz;
+    }
+}
+
 }  // namespace OneGame::Engine::Terrain

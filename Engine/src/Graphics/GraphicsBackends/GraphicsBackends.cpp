@@ -3,7 +3,6 @@
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Vulkan/Vulkan.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 #define LOGGER_NAME "Vulkan"

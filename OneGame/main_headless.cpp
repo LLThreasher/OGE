@@ -1,6 +1,4 @@
-#include "Engine/WindowedGameApp.hpp"
-#include "Engine/Platform/IGameWindow.hpp"
-#include "Engine/Graphics/IGraphicsBackend.hpp"
+#include "Engine/GameApp.hpp"
 
 using namespace OneGame::Engine;
 using namespace OneGame::Engine::Graphics;

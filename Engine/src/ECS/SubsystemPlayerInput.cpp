@@ -1,4 +1,7 @@
 #include "Engine/ECS/ISubsystem.hpp"
+#include "Engine/ECS/IRenderer.hpp"
+#include "Engine/ECS/GraphicalComponents.hpp"
+#include "Engine/GraphicState.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/Formaters.hpp"
@@ -7,19 +10,12 @@ namespace OneGame::Engine::ECS
 {
 void SubsystemPlayerInput::Initialize(GameWorldContext& game, AppContext ctx)
 {
-    game.on_construct<InputSourceKeyMouse>().connect<&SubsystemPlayerInput::onCreateInputSourceKeyMouse>(this);
     game.on_destroy<InputSourceKeyMouse>().connect<&SubsystemPlayerInput::onEraseInputSourceKeyMouse>(this);
     game.on_destroy<InputSourceWidget>().connect<&SubsystemPlayerInput::onEraseInputSourceWidget>(this);
 }
 
-void SubsystemPlayerInput::onCreateInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity)
-{
-    isKeyMouseUsed = true;
-}
-
 void SubsystemPlayerInput::onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity)
 {
-    isKeyMouseUsed = gameWorld.view<InputSourceKeyMouse>().size() > 1;
     if (!gameWorld.any_of<InputSourceWidget>(entity))
     {
         gameWorld.replace<PlayerInputData>(entity, PlayerInputData{});
@@ -137,7 +133,23 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
     }
 }
 
-void SubsystemPlayerInput::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& f)
+void PlayerInputRenderer::Initialize(GameWorldContext& game, PresentationContext& ctx)
+{
+    game.on_construct<InputSourceKeyMouse>().connect<&PlayerInputRenderer::onCreateInputSourceKeyMouse>(this);
+    game.on_destroy<InputSourceKeyMouse>().connect<&PlayerInputRenderer::onEraseInputSourceKeyMouse>(this);
+}
+
+void PlayerInputRenderer::onCreateInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity)
+{
+    isKeyMouseUsed = true;
+}
+
+void PlayerInputRenderer::onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity)
+{
+    isKeyMouseUsed = gameWorld.view<InputSourceKeyMouse>().size() > 1;
+}
+
+void PlayerInputRenderer::Present(const GameWorldContext& game, PresentationContext& ctx, FrameOutputData& f)
 {
     if (isKeyMouseUsed && !previousIsKeyMouseUsed)
     {

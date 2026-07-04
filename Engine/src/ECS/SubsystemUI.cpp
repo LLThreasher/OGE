@@ -1,5 +1,9 @@
 #include "Engine/ECS/ISubsystem.hpp"
+#include "Engine/ECS/GraphicalComponents.hpp"
+#include "Engine/ECS/IRenderer.hpp"
+#include "Engine/GraphicState.hpp"
 #include "Engine/Graphics/SubmissionQueue.hpp"
+#include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/Point2.hpp"
 
@@ -141,9 +145,6 @@ void SubsystemUI::Initialize(GameWorldContext& game, AppContext ctx)
     {
         entity = entt::null;
     }
-    auto rootView = game.create();
-    game.emplace<UIRoot>(rootView);
-    game.emplace<ScreenRect>(rootView, Point2{0, 0}, ctx.backend->SwapchainExtent());
     game.on_construct<UIRect>().connect<&onCreateUIRect>();
     ctx.events.sink<SurfaceRecreateEvent>().connect<&onSurfaceRecreate>(game);
 }
@@ -236,7 +237,11 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
     }
 }
 
-void SubsystemUI::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& f)
+void UIRenderer::Initialize(GameWorldContext& game, PresentationContext& ctx)
+{
+}
+
+void UIRenderer::Present(const GameWorldContext& game, PresentationContext& ctx, FrameOutputData& f)
 {
     using namespace Graphics;
     for (auto [entity, rect] : game.view<UIRaycastTarget, ScreenRect>().each())

@@ -1,12 +1,13 @@
 #include <format>
 
-#include "Engine/ECS/ISubsystem.hpp"
+#include "Engine/ECS/IRenderer.hpp"
 #include "Engine/Graphics/SubmissionQueue.hpp"
+#include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/Math.hpp"
 
 namespace OneGame::Engine::ECS
 {
-void SubsystemDebugInfo::Initialize(GameWorldContext& game, AppContext ctx)
+void DebugInfoRenderer::Initialize(GameWorldContext& game, PresentationContext& ctx)
 {
     frameCount = 0;
     accumTime = 0.f;
@@ -16,8 +17,9 @@ void SubsystemDebugInfo::Initialize(GameWorldContext& game, AppContext ctx)
     totalPerfStatus = {};
 }
 
-void SubsystemDebugInfo::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd)
+void DebugInfoRenderer::Present(const GameWorldContext& game, PresentationContext& ctx, FrameOutputData& fd)
 {
+    using namespace Graphics;
     ++frameCount;
     accumTime += fd.dt;
     totalPerfStatus = totalPerfStatus + fd.perfStats;
@@ -33,11 +35,7 @@ void SubsystemDebugInfo::Update(GameWorldContext& game, AppContext ctx, const Fr
         accumTime = 0;
         frameCount = 0;
     }
-}
-
-void SubsystemDebugInfo::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
-{
-    using namespace Graphics;
+    
     auto gpuInfo = ctx.backend.GetGPUInfo();
     auto memUsage = ctx.backend.GetGPUMemoryUsage();
 

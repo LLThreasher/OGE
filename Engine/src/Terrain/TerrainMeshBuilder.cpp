@@ -1,5 +1,5 @@
 #include "Engine/Terrain/BlockManager.hpp"
-#include "Engine/Terrain/Terrain.hpp"
+#include "Engine/Terrain/TerrainRenderer.hpp"
 
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"

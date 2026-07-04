@@ -8,7 +8,8 @@ namespace OneGame::Engine
 class NetServer
 {
 public:
-    NetServer() = default;
+    NetServer(entt::dispatcher& events) : m_events(events) {}
+    
     ~NetServer()
     {
         Shutdown();
@@ -136,5 +137,6 @@ private:
 
 private:
     ENetHost* host = nullptr;
+    entt::dispatcher& m_events;
 };
 }
