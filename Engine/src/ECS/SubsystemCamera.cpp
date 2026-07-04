@@ -12,7 +12,7 @@ math::mat4 ComponentCamera::view() const { return math::lookAt(position, positio
 
 math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamera, math::vec2 pos)
 {
-    float ndcX = pos.x * 2.0f - 1.0f;
+    float ndcX = -pos.x * 2.0f + 1.0f;
     float ndcY = 1.0f - pos.y * 2.0f;
 
     float tanHalfFov = tanf(pcamera.fov * 0.5f);

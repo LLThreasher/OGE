@@ -67,6 +67,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     target_compile_definitions(Engine
     PRIVATE
         VULKAN_VALIDATION
+        OGE_DEBUG
     )
     if (WIN32)
         target_link_libraries(Engine PRIVATE dbghelp)

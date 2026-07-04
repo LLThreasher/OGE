@@ -10,14 +10,14 @@ namespace DCA
 {
 constexpr uint32_t _1K = 1024;
 constexpr uint32_t _1M = 1024 * _1K;
-constexpr uint32_t CHUNK_SIZE_COUNT = 5;
+constexpr uint32_t CHUNK_SIZE_COUNT = 6;
 // max 128 KB per chunk
 constexpr uint32_t CHUNK_SIZES[] = {
-    8 * _1K, 16 * _1K, 32 * _1K, 64 * _1K, 128 * _1K,
+    4 * _1K, 8 * _1K, 16 * _1K, 32 * _1K, 64 * _1K, 128 * _1K,
 };
 // max 127 MB per chunk size -> 625 MB maximum
 constexpr uint32_t BLOCK_SIZES[] = {
-    4 * _1M, 8 * _1M, 16 * _1M, 32 * _1M, 64 * _1M,
+    2 * _1M, 4 * _1M, 8 * _1M, 16 * _1M, 32 * _1M, 64 * _1M,
 };
 
 class DynamicChunkAllocator
