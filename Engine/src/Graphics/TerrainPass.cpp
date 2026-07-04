@@ -37,8 +37,8 @@ void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt)
 
     {
         GraphicsPipelineDesc desc{};
-        ctxt.assets.LoadBlob("terrain2.vert.spv", desc.vertexShader);
-        ctxt.assets.LoadBlob("terrain2.frag.spv", desc.fragmentShader);
+        ctxt.assets.LoadBlob("terrain2.vert.opt.spv", desc.vertexShader);
+        ctxt.assets.LoadBlob("terrain2.frag.opt.spv", desc.fragmentShader);
 
         desc.bindingGroupLayouts.push_back(bindingGroupLayout);
         desc.writeDepth = true;

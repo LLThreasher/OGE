@@ -43,18 +43,48 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, Presentati
 
 void TerrainUploader::SetMaxNumChunks(uint32_t maxNumChunks) {}
 
-void TerrainUpdateScheduler::InitialUpdate(TerrainData& terrain, Point3 chunkOrigin)
+void TerrainUpdateScheduler::InitialUpdate(
+    TerrainData& terrain,
+    Point3 chunkOrigin)
 {
-    for (int x = -m_chunkViewDistance - 1; x <= m_chunkViewDistance + 1; ++x)
+    const int radius = m_chunkViewDistance + 1;
+
+    int x = 0;
+    int z = 0;
+
+    int dx = 0;
+    int dz = -1;
+
+    const int maxSide = radius * 2 + 1;
+    const int maxSteps = maxSide * maxSide;
+
+    for (int i = 0; i < maxSteps; ++i)
     {
-        for (int z = -m_chunkViewDistance - 1; z <= m_chunkViewDistance + 1; ++z)
+        if (std::abs(x) <= radius && std::abs(z) <= radius)
         {
             for (int y = 0; y <= 4; ++y)
             {
-                auto handle = terrain.chunks.AllocateChunk({x, y, z});
+                Point3 coord = {
+                    chunkOrigin.x + x,
+                    y,
+                    chunkOrigin.z + z
+                };
+
+                auto handle = terrain.chunks.AllocateChunk(coord);
                 terrain.generateTerrainQueue.push(handle);
             }
         }
+
+        // Spiral turn logic
+        if (x == z || (x < 0 && x == -z) || (x > 0 && x == 1 - z))
+        {
+            int temp = dx;
+            dx = -dz;
+            dz = temp;
+        }
+
+        x += dx;
+        z += dz;
     }
 }
 
