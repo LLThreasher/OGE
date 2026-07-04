@@ -16,11 +16,12 @@ PRIVATE
     "src/Input/InputSystem.cpp"
     "src/ECS/SubsystemPlayer.cpp"
     "src/Platform/PrintStackTrace.cpp"
+    "src/Platform/CLIRunner.cpp"
+    "src/TickScheduler.cpp"
  )
 
 target_sources(EngineGraphics
 PRIVATE
-    "src/Scenes/DebugScene.cpp"
     "src/ECS/SubsystemUI.cpp"
     "src/ECS/SubsystemCamera.cpp"
     "src/ECS/SubsystemPlayerInput.cpp"
@@ -54,7 +55,7 @@ PRIVATE
     "src/Graphics/TerrainPass.cpp"
     "src/Graphics/MeshBuilder.cpp"
     "src/Terrain/TerrainRenderer.cpp"
-    src/ECS/CameraRenderer.cpp
+    "src/ECS/CameraRenderer.cpp"
 )
 
 target_include_directories(EngineCore

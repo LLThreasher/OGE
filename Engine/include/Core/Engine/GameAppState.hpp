@@ -16,8 +16,6 @@ enum class AppFrameAction : uint32_t
     WaitSurface = 1,
     WrapMouse = 1 << 1,
     UnwrapMouse = 1 << 2,
-    WaitFPS30 = 1 << 3,
-    WaitFPS60 = 1 << 4,
 };
 
 inline AppFrameAction operator&(AppFrameAction a, AppFrameAction b)

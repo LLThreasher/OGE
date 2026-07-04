@@ -1,4 +1,4 @@
-#include "Engine/Scenes/DebugScene.hpp"
+#include "DebugScene.hpp"
 
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/Graphics/Renderer.hpp"
@@ -16,7 +16,7 @@
 
 namespace OneGame::Engine
 {
-void DebugScene3::Initialize(PresentationContext context)
+void DebugScene3::Initialize(PresentationContext& context)
 {
     using namespace ECS;
     m_gameWorld.Register<Terrain::TerrainService>();
@@ -40,7 +40,7 @@ void DebugScene3::Initialize(PresentationContext context)
     m_gameWorld.Get().ctx().emplace<Terrain::TerrainDesc>(desc);
 }
 
-void DebugScene3::Enter(PresentationContext context)
+void DebugScene3::Enter(PresentationContext& context)
 {
     using namespace ECS;
     m_gameWorld.Initialize(context);
@@ -89,11 +89,11 @@ void DebugScene3::Enter(PresentationContext context)
     world.emplace<InputSourceWidget>(player, mvWidget, lookWidget);
 }
 
-void DebugScene3::Exit(PresentationContext context)
+void DebugScene3::Exit(PresentationContext& context)
 {
 }
 
-void DebugScene3::Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut)
+void DebugScene3::Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut)
 {
     auto& blocks = m_gameWorld.Get();
 

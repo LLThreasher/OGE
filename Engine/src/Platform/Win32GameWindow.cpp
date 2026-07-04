@@ -26,7 +26,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-class Win32GameWindow : public IGameWindow
+class Win32GameWindow : public IAppRunner<GameGraphicApp>
 {
    public:
     Win32GameWindow(std::string name, int width, int height);

@@ -52,7 +52,7 @@ static MouseButton GetEngineMouseButton(uint8_t sdlButton)
     }
 }
 
-class SDL3GameWindow : public IGameWindow
+class SDL3GameWindow : public IAppRunner<GameGraphicApp>
 {
    public:
     SDL3GameWindow(std::string name, int width, int height);
@@ -246,19 +246,6 @@ void SDL3GameWindow::Run(GameGraphicApp& app)
         {
             SDL_SetWindowRelativeMouseMode(m_window, false);
         }
-        else if ((appFrameAction & AppFrameAction::WaitFPS60) == AppFrameAction::WaitFPS60)
-        {
-            if (elapsedS < FPS_60_TARGET_FRAME_DURATION_S)
-            {
-                double delayS = FPS_60_TARGET_FRAME_DURATION_S - elapsedS;
-                SDL_Delay(static_cast<Uint32>(delayS * 1000));
-                finalDeltaTime = delayS + elapsedS;
-            }
-            else
-            {
-                finalDeltaTime = elapsedS;
-            }
-        }
     }
 
     app.Shutdown();
@@ -266,9 +253,9 @@ void SDL3GameWindow::Run(GameGraphicApp& app)
     SDL_Quit();
 }
 
-std::unique_ptr<IGameWindow> CreateGameWindow(const std::string& title, int width, int height)
+std::unique_ptr<IAppRunner<GameGraphicApp>> CreateGameWindow(const std::string& title, int width, int height)
 {
-    return std::unique_ptr<IGameWindow>(new SDL3GameWindow(title, width, height));
+    return std::unique_ptr<IAppRunner<GameGraphicApp>>(new SDL3GameWindow(title, width, height));
 }
 }  // namespace OneGame::Engine
 #endif

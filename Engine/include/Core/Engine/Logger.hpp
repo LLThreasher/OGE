@@ -28,7 +28,16 @@ namespace OneGame::Engine
 class Logger
 {
    public:
-    static void Initialize();
+    template<typename Sink>
+    static void InitLogger(const char* loggerName, std::shared_ptr<Sink> sink)
+    {
+        spdlog::drop(loggerName);
+        auto logger = std::make_shared<spdlog::logger>(loggerName, sink);
+        logger->set_level(spdlog::level::trace);
+        logger->flush_on(spdlog::level::trace);
+        spdlog::register_logger(logger);
+    }
+
     static spdlog::logger* GetLogger(const char*);
 };
 }  // namespace OneGame::Engine

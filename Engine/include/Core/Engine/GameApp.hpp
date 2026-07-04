@@ -1,32 +1,39 @@
 #pragma once
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <typeindex>
+#include <typeinfo>
 
 #include "Engine/AssetManager.hpp"
 #include "Engine/Input/InputSystem.hpp"
-#include "Engine/IServerScene.hpp"
+#include "Engine/IScene.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/entt.hpp"
 
 namespace OneGame::Engine
 {
-namespace Graphics
-{
-class WindowHandle;
-class IGraphicsBackend;
-}  // namespace Graphics
 
-class GameApp
+using HeadlessScene = Scene<AppContext, const FrameData>;
+
+class GameHeadlessApp : public SceneRunner<AppContext, const FrameData>
 {
+    using Parent = SceneRunner<AppContext, const FrameData>;
    public:
+    GameHeadlessApp() : m_appContext({m_assetManager}, m_dispatcher) {}
     void Initialize();
-    AppFrameAction Update(float dt);
+    bool Update(float dt);
+    bool HandleCmd(std::string_view cmd);
     void Shutdown();
+   protected:
+    bool m_isrunning = true;
 
-   private:
-    AssetManager assetManager;
-    entt::dispatcher dispatcher;
+    AssetManager m_assetManager;
+    entt::dispatcher m_dispatcher;
+    AppContext m_appContext;
 
-    std::unique_ptr<ServerSceneBase> m_serverScene;
+    SceneRunner<AppContext> m_scenes;
+
+    std::unordered_map<std::string, std::function<bool(std::string_view)>> m_cmdRunners;
 };
 }  // namespace OneGame::Engine

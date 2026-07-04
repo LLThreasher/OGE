@@ -5,6 +5,7 @@
 #include "Engine/StreamingManager.hpp"
 #include "Engine/AssetManager.hpp"
 #include "Engine/Graphics/Renderer.hpp"
+#include "Engine/IScene.hpp"
 
 namespace OneGame::Engine
 {
@@ -17,7 +18,10 @@ namespace Graphics
     class WindowHandle;
 }
 
-class GameGraphicApp
+using WindowedScene = Scene<PresentationContext, const FrameInputData, FrameOutputData>;
+using WindowedSceneRunner = SceneRunner<PresentationContext, const FrameInputData, FrameOutputData>;
+
+class GameGraphicApp : public WindowedSceneRunner
 {
    public:
     GameGraphicApp(Graphics::IGraphicsBackend& backend);
@@ -31,7 +35,6 @@ class GameGraphicApp
     void OnResize(int width, int height);
 
    private:
-    void TransferToScene(uint32_t nextScene);
     PresentationContext PresentCtx();
     PresentationContext PresentCtx(AssetContext);
     AssetContext AssetCtx();
@@ -45,10 +48,6 @@ class GameGraphicApp
     AssetPool m_assetPool;
 
     Graphics::SubmissionQueue m_graphicsSubmissionQueue;
-
-    std::vector<std::unique_ptr<ClientSceneBase>> m_allScenes;
-    ClientSceneBase* m_nextScene = nullptr;
-    ClientSceneBase* m_currentScene = nullptr;
 
     FramePerfStatus m_perfStats = {};
 };

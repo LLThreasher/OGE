@@ -31,15 +31,15 @@ inline AssetContext GameGraphicApp::AssetCtx() { return {m_assetManager, m_strea
 
 GameGraphicApp::GameGraphicApp(IGraphicsBackend& backend) : m_backend(backend)
 {
-    m_allScenes.push_back(std::unique_ptr<ClientSceneBase>(new DebugScene3()));
-    TransferToScene(DEBUG_SCENE3);
+    RegisterScene<DebugScene3>();
+    SwitchToScene<DebugScene3>();
 }
 
 GameGraphicApp::~GameGraphicApp() = default;
 
 void GameGraphicApp::Initialize(WindowHandle* handle)
 {
-    m_backend.Initialize(BackendDesc{handle, FrameTimePreference::Unlimited});
+    m_backend.Initialize(BackendDesc{handle, FrameTimePreference::VSync});
     LOG_DEBUG("Backend created");
     m_streamingManager.Initialize(m_backend);
     LOG_DEBUG("StreamingManager created");
@@ -48,17 +48,7 @@ void GameGraphicApp::Initialize(WindowHandle* handle)
     LOG_DEBUG("Renderer created");
 
     PresentationContext ctx = PresentCtx(assets);
-
-    for (auto& scene : m_allScenes)
-    {
-        scene->Initialize(ctx);
-    }
-}
-
-void GameGraphicApp::TransferToScene(uint32_t scene)
-{
-    assert(scene < m_allScenes.size());
-    m_nextScene = m_allScenes[scene].get();
+    WindowedSceneRunner::Initialize(ctx);
 }
 
 void GameGraphicApp::Shutdown()
@@ -74,8 +64,7 @@ AppFrameAction GameGraphicApp::Update(float dt, InputSystem& input)
 {
     FramePerfStatus perfStats{};
     auto watch = stopwatch::start();
-    AppFrameAction appRes = AppFrameAction::WaitFPS60;
-    // AppFrameAction appRes = AppFrameAction::None;
+    AppFrameAction appRes = AppFrameAction::None;
 
     m_dispatcher.update();
 
@@ -93,19 +82,9 @@ AppFrameAction GameGraphicApp::Update(float dt, InputSystem& input)
         m_graphicsSubmissionQueue,
         outSceneActions,
     };
-    if (m_nextScene != nullptr)
-    {
-        if (m_currentScene != nullptr)
-        {
-            m_currentScene->Exit(pctx);
-        }
-        m_nextScene->Enter(pctx);
-        m_currentScene = m_nextScene;
-        m_nextScene = nullptr;
-    }
-    assert(m_currentScene != nullptr);
     m_graphicsSubmissionQueue.Clear();
-    m_currentScene->Update(pctx, frame, frameOut);
+
+    WindowedSceneRunner::Update(pctx, frame, frameOut);
 
     perfStats.logicTime = watch.restart();
 

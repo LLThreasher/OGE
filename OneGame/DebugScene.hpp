@@ -8,7 +8,7 @@
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/Terrain/TerrainService.hpp"
 #include "Engine/Terrain/TerrainRenderer.hpp"
-#include "Engine/IClientScene.hpp"
+#include "Engine/IScene.hpp"
 
 namespace OneGame::Engine
 {
@@ -69,14 +69,14 @@ const std::vector<uint16_t> chunk_zero_indices = {
     20, 21, 22, 22, 23, 20   // bottom
 };
 
-class DebugScene3 : public ClientSceneBase
+class DebugScene3 : public Scene<PresentationContext, const FrameInputData, FrameOutputData>
 {
 public:
     DebugScene3() : m_gameRenderer(m_gameWorld) {}
-    virtual void Initialize(PresentationContext context) override;
-    virtual void Enter(PresentationContext context) override;
-    virtual void Exit(PresentationContext context) override;
-    virtual void Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut) override;
+    virtual void Initialize(PresentationContext& context) override;
+    virtual void Enter(PresentationContext& context) override;
+    virtual void Exit(PresentationContext& context) override;
+    virtual void Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut) override;
 private:
     ECS::GameWorld m_gameWorld;
     ECS::GameRenderer m_gameRenderer;

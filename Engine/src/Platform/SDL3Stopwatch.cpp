@@ -1,4 +1,5 @@
 #include "Engine/Platform/Stopwatch.hpp"
+#ifdef USE_SDL3
 #include <SDL3/SDL.h>
 
 namespace OneGame::Engine
@@ -19,3 +20,4 @@ float stopwatch::restart()
 }
 
 } // namespace OneGame::Engine
+#endif

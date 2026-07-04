@@ -5,14 +5,17 @@
 namespace OneGame::Engine
 {
 class GameGraphicApp;
+class GameHeadlessApp;
 
-class IGameWindow
+template <typename AppType>
+class IAppRunner
 {
    public:
-    virtual ~IGameWindow() = default;
+    virtual ~IAppRunner() = default;
 
-    virtual void Run(GameGraphicApp& app) = 0;
+    virtual void Run(AppType& app) = 0;
 };
 
-std::unique_ptr<IGameWindow> CreateGameWindow(const std::string& title, int width, int height);
+std::unique_ptr<IAppRunner<GameGraphicApp>> CreateGameWindow(const std::string& title, int width, int height);
+std::unique_ptr<IAppRunner<GameHeadlessApp>> CreateCLIRunner();
 }  // namespace OneGame::Engine
