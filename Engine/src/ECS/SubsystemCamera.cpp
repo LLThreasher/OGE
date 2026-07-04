@@ -21,10 +21,9 @@ math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamer
     float viewY = ndcY * tanHalfFov;
     float viewZ = 1.0f;
 
-    math::vec3 up = {0, 1, 0};
-    math::vec3 right = math::normalize(math::cross(up, camera.forward));
-    math::vec3 normUp = math::normalize(math::cross(camera.forward, right));
-    math::vec3 rayDir = viewX * right + viewY * normUp + viewZ * camera.forward;
+    math::vec3 up = camera.up();
+    math::vec3 right = camera.right();
+    math::vec3 rayDir = viewX * right + viewY * up + viewZ * camera.forward;
 
     rayDir = normalize(rayDir);
     return rayDir;

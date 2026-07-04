@@ -13,9 +13,7 @@ namespace OneGame::Engine::Graphics
 
 void Renderer::Initialize(AssetContext& assets)
 {
-    uniformArena.Initialize(assets.backend, assets.backend.MaxUniformBufferSize() > 1024 * 1024 * 16
-                                                ? 1024 * 1024 * 16
-                                                : assets.backend.MaxUniformBufferSize());
+    uniformArena.Initialize(assets.backend, 1024 * 1024 * 32);
     LOG_DEBUG("uniform arena created");
 
     InitContext ctx{assets, uniformArena};
@@ -96,7 +94,7 @@ void Renderer::Render(AssetContext& assets, SubmissionQueue& world, float deltaT
 
     for (auto view : ALL_GAME_VIEWS)
     {
-        DrawContext drawCtxt = {backend, uniformArena, chunkAllocator, deltaTime, cmd, tCmd, world.GetSingle(view)};
+        DrawContext drawCtxt = {backend, uniformArena, chunkAllocator, deltaTime, cmd, tCmd, world.GetSingle(view), view};
         RenderView(assets, drawCtxt);
     }
 

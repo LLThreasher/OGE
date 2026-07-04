@@ -216,7 +216,7 @@ void DebugScene3::Initialize(PresentationContext context)
     blocks.RegisterBlock("stone", {"Stone", "green_stone.png", 1});
 
     Terrain::TerrainDesc desc{};
-    desc.chunkViewDistance = 1;
+    desc.chunkViewDistance = 16;
     m_gameWorld.Get().ctx().emplace<Terrain::TerrainDesc>(desc);
 }
 

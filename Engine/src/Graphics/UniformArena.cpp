@@ -10,6 +10,7 @@ namespace OneGame::Engine::Graphics
 {
 void UniformArena::Initialize(IGraphicsBackend& backend, uint32_t capacity)
 {
+    // capacity = backend.MaxUniformBufferSize() > capacity ? capacity : backend.MaxUniformBufferSize();
     m_capacityPerFrame = capacity;
     m_framesInFlight = backend.FramesInFlight();
     m_alignment = backend.UniformBufferAlignment();
@@ -17,7 +18,7 @@ void UniformArena::Initialize(IGraphicsBackend& backend, uint32_t capacity)
 
     BufferDesc desc{};
     desc.memory = MemoryUsage::CPUToGPU;
-    desc.usage = BufferUsage::Uniform | BufferUsage::TransferDst;
+    desc.usage = BufferUsage::Storage | BufferUsage::TransferDst;
     desc.size = m_capacityPerFrame * backend.FramesInFlight();
     m_gpuBuffer = backend.CreateBuffer(desc, &m_cpuBuffer);
 }

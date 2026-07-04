@@ -22,8 +22,19 @@ struct ComponentCamera
     float yaw;
     float pitch;
     math::vec3 position;
-    glm::vec3 forward;
+    math::vec3 forward;
     entt::entity targetPanel;
+
+    math::vec3 up() const
+    {
+        return glm::cross(right(), forward);
+    }
+
+    math::vec3 right() const
+    {
+        static glm::vec3 worldUp(0,1,0);
+        return glm::normalize(glm::cross(forward, worldUp));
+    }
 
     math::mat4 view() const;
     void ApplyDelta(float dsx, float dsy, float dwx, float dwz);

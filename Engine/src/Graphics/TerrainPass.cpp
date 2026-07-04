@@ -20,7 +20,7 @@ void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt)
     layout.textureCount = 1;
     layout.bufferCount = 2;
     layout.dynamicBufferMask = 0b11;
-    layout.storageBufferMask = 0b01;
+    layout.storageBufferMask = 0b11;
     bindingGroupLayout = backend.CreateBindingGroupLayout(layout);
 
     blockTexture = ctxt.assets.backend.AllocateGPUTexture(BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE, 256);

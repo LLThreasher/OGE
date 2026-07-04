@@ -30,6 +30,7 @@ struct DrawContext
     ICommandList& drawCmd;
     ICommandList& transferCmd;
     SingleSubmissionQueue& world;
+    GameViewType currentView;
     math::mat4 pvTransform;
 };
 

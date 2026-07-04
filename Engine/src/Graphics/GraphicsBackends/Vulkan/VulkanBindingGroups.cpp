@@ -6,6 +6,8 @@
 #include "VulkanBuffer.hpp"
 #include "VulkanTexture.hpp"
 
+#include "Engine/Logger.hpp"
+
 namespace OneGame::Engine::Graphics::Vulkan
 {
 GPUBindingGroupLayoutHandle VulkanBackend::CreateBindingGroupLayout(const BindingGroupLayoutDesc& desc)
@@ -101,8 +103,10 @@ GPUBindingGroupHandle VulkanBackend::CreateBindingGroup(const BindingGroupDesc& 
     allocInfo.descriptorSetCount = 1;
     allocInfo.pSetLayouts = &layout->layout;
 
-    if (vkAllocateDescriptorSets(m_device.device, &allocInfo, &group.descriptorSet) != VK_SUCCESS)
+    auto vkres = vkAllocateDescriptorSets(m_device.device, &allocInfo, &group.descriptorSet);
+    if (vkres != VK_SUCCESS)
     {
+        LOG_ERROR("Failed to allocate descriptor set {}", (void*)vkres);
         throw std::runtime_error("Failed to allocate descriptor set");
     }
 

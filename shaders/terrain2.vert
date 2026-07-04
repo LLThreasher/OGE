@@ -11,7 +11,7 @@ layout(location = 1) out float v_Light;
 layout(location = 2) out vec3 v_Color;
 layout(location = 3) flat out uint u_Layer;
 
-layout(set = 0, binding = 2) uniform ObjectBlock
+layout(set = 0, binding = 2) readonly buffer ObjectBlock
 {
     mat4 uMVP;  // 64 bytes
 };
