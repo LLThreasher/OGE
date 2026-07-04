@@ -100,8 +100,8 @@ target_link_libraries(EngineCore
         glm::glm
         spdlog::spdlog
         EnTT::EnTT
-    PRIVATE
         enet
+    PRIVATE
         stb
 )
 

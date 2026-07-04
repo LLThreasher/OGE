@@ -54,10 +54,15 @@ struct AssetBase
     bool LoadBlob(const std::string_view& id, std::vector<char>& data);
 };
 
-// Application states
-struct AppContext : AssetBase
+struct SceneContext
 {
     entt::dispatcher& events;
+    entt::meta_any& sceneArgs;
+};
+
+// Application states
+struct AppContext : AssetBase, SceneContext
+{
 };
 
 // world states are stored in scenes

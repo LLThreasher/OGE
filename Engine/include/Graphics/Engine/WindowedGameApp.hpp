@@ -49,6 +49,7 @@ class GameGraphicApp : public WindowedSceneRunner
 
     Graphics::SubmissionQueue m_graphicsSubmissionQueue;
 
+    entt::meta_any m_sceneArgs;
     FramePerfStatus m_perfStats = {};
 };
 }

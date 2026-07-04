@@ -9,8 +9,6 @@ namespace OneGame::Engine
 class NetClient
 {
 public:
-    NetClient(entt::dispatcher& events) : m_events(events) {}
-
     ~NetClient()
     {
         Shutdown();
@@ -49,6 +47,8 @@ public:
         ENetAddress address;
         enet_address_set_host(&address, ip);
         address.port = port;
+
+        LOG_INFO("connecting to host {} at port {}", ip, port);
 
         peer = enet_host_connect(host, &address, 2, 0);
 
@@ -170,7 +170,5 @@ private:
 private:
     ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
-
-    entt::dispatcher& m_events;
 };
 }

@@ -57,7 +57,7 @@ function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
         set(SPIRV_OPT "${ASSET_TARGET_DIR}/${FILE_NAME}.opt.spv")
 
         add_custom_command(
-            OUTPUT ${SPIRV}
+            OUTPUT ${SPIRV_OPT}
             COMMAND ${CMAKE_COMMAND} -E make_directory
                     ${ASSET_TARGET_DIR}
             COMMAND glslc -O ${SHADER} -o ${SPIRV}
@@ -67,7 +67,7 @@ function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
             VERBATIM
         )
 
-        list(APPEND SPIRV_FILES ${SPIRV})
+        list(APPEND SPIRV_FILES ${SPIRV_OPT})
 
     endforeach()
 
@@ -88,16 +88,6 @@ if(ENABLE_ASAN)
     add_compile_options(-fsanitize=address -fno-omit-frame-pointer -g)
     add_link_options(-fsanitize=address)
 endif()
-
-set(SDL_AUDIO OFF CACHE BOOL "Disable SDL_AUDIO support" FORCE)
-set(SDL_VULKAN OFF CACHE BOOL "Disable Vulkan support in SDL" FORCE)
-set(SDL_OPENGL OFF CACHE BOOL "Disable OpenGL support in SDL" FORCE)
-set(SDL_GPU OFF CACHE BOOL "Disable SDL_GPU support" FORCE)
-set(SDL_POWER OFF CACHE BOOL "Disable SDL_POWER support" FORCE)
-set(SDL_RENDERER OFF CACHE BOOL "Disable SDL_RENDERER support" FORCE)
-set(SDL_CAMERA OFF CACHE BOOL "Disable SDL_CAMERA support" FORCE)
-set(SDL_TEST OFF CACHE BOOL "Disable SDL_TEST support" FORCE)
-set(SDL_TESTS OFF CACHE BOOL "Disable SDL_TESTS support" FORCE)
 
 if(CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC" OR MSVC)
     # Target only optimized configurations

@@ -19,13 +19,14 @@ namespace OneGame
 void DebugScene3::Initialize(PresentationContext& context)
 {
     using namespace ECS;
+    m_gameWorld.CreateTerrain();
     m_gameWorld.Register<Terrain::TerrainService>();
     m_gameWorld.Register<SubsystemUI>();
     m_gameWorld.Register<SubsystemPlayerInput>();
     m_gameWorld.Register<SubsystemPlayer>();
 
-    m_gameRenderer.Register<Terrain::TerrainRenderer>();
     m_gameRenderer.Register<DebugInfoRenderer>();
+    m_gameRenderer.Register<Terrain::TerrainRenderer>();
     m_gameRenderer.Register<UIRenderer>();
     m_gameRenderer.Register<CameraRenderer>();
     m_gameRenderer.Register<PlayerInputRenderer>();

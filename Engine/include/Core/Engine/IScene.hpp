@@ -2,8 +2,8 @@
 
 #include <string>
 #include <typeindex>
-
-#include "Engine/GameAppState.hpp"
+#include <unordered_map>
+#include <memory>
 
 namespace OneGame::Engine
 {
@@ -33,13 +33,13 @@ public:
     template<typename TScene>
     void RegisterScene()
     {
-        m_scenes.emplace(typeid(TScene), new TScene());
+        m_scenes.emplace(std::type_index(typeid(TScene)), new TScene());
     }
 
     template<typename TScene>
     void SwitchToScene()
     {
-        m_nextScene = m_scenes.find(typeid(TScene))->second.get();
+        m_nextScene = m_scenes.find(std::type_index(typeid(TScene)))->second.get();
     }
 protected:
     void Initialize(TData& ctx)

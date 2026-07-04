@@ -1,13 +1,26 @@
+#pragma once
+#include "Engine/IScene.hpp"
+#include "Engine/ECS/GameWorld.hpp"
+#include "Engine/ECS/NetServer.hpp"
 
-class DebugClient : public Scene<PresentationContext, const FrameInputData, FrameOutputData>
+namespace OneGame
+{
+using namespace Engine;
+
+struct ServerArgs
+{
+    uint16_t port = 25567;
+    size_t maxClients = 10;
+};
+
+class DebugServer : public Scene<AppContext, const FrameData>
 {
 public:
-    DebugScene3() : m_gameRenderer(m_gameWorld) {}
-    virtual void Initialize(PresentationContext& context) override;
-    virtual void Enter(PresentationContext& context) override;
-    virtual void Exit(PresentationContext& context) override;
-    virtual void Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut) override;
+    virtual void Initialize(AppContext& ctx) override;
+    virtual void Enter(AppContext& ctx) override;
+    virtual void Update(AppContext& ctx, const FrameData& frame) override;
 private:
     ECS::GameWorld m_gameWorld;
-    ECS::GameRenderer m_gameRenderer;
+    NetServer m_server;
 };
+} // namespace OneGame

@@ -10,6 +10,7 @@
 #include "Engine/IScene.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/entt.hpp"
+#include "Engine/GameAppState.hpp"
 
 namespace OneGame::Engine
 {
@@ -20,13 +21,15 @@ class GameHeadlessApp : public SceneRunner<AppContext, const FrameData>
 {
     using Parent = SceneRunner<AppContext, const FrameData>;
    public:
-    GameHeadlessApp() : m_appContext({m_assetManager}, m_dispatcher) {}
+    GameHeadlessApp() : m_appContext({m_assetManager}, {m_dispatcher, m_sceneArgs}) {}
     void Initialize();
     bool Update(float dt);
     bool HandleCmd(std::string_view cmd);
     void Shutdown();
    protected:
     bool m_isrunning = true;
+
+    entt::meta_any m_sceneArgs;
 
     AssetManager m_assetManager;
     entt::dispatcher m_dispatcher;

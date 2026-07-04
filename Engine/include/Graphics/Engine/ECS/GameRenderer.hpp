@@ -7,6 +7,7 @@
 #include "Engine/Terrain/TerrainRenderer.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/GraphicState.hpp"
+#include "Engine/ECS/GameWorld.hpp"
 
 namespace OneGame::Engine::ECS
 {

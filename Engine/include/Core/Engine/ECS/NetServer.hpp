@@ -2,22 +2,16 @@
 #include <enet/enet.h>
 
 #include "Engine/Logger.hpp"
+#include "Engine/entt.hpp"
 
 namespace OneGame::Engine
 {
 class NetServer
 {
-public:
-    NetServer(entt::dispatcher& events) : m_events(events) {}
-    
-    ~NetServer()
-    {
-        Shutdown();
-    }
+   public:
+    ~NetServer() { Shutdown(); }
 
-    bool Initialize(uint16_t port,
-                    size_t maxClients,
-                    size_t channelCount = 2)
+    bool Initialize(uint16_t port, size_t maxClients, size_t channelCount = 2)
     {
         if (enet_initialize() != 0)
         {
@@ -29,12 +23,7 @@ public:
         address.host = ENET_HOST_ANY;
         address.port = port;
 
-        host = enet_host_create(
-            &address,
-            maxClients,
-            channelCount,
-            0,
-            0);
+        host = enet_host_create(&address, maxClients, channelCount, 0, 0);
 
         if (!host)
         {
@@ -47,7 +36,7 @@ public:
         return true;
     }
 
-    void Poll(uint32_t timeoutMs = 0)
+    void Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs = 0)
     {
         if (!host) return;
 
@@ -62,9 +51,7 @@ public:
                     break;
 
                 case ENET_EVENT_TYPE_RECEIVE:
-                    OnPacketReceived(event.peer,
-                                     event.packet->data,
-                                     event.packet->dataLength);
+                    OnPacketReceived(event.peer, event.packet->data, event.packet->dataLength);
 
                     enet_packet_destroy(event.packet);
                     break;
@@ -90,53 +77,31 @@ public:
         }
     }
 
-    void SendReliable(ENetPeer* peer,
-                      const void* data,
-                      size_t size,
-                      uint8_t channel = 0)
+    void SendReliable(ENetPeer* peer, const void* data, size_t size, uint8_t channel = 0)
     {
-        ENetPacket* packet = enet_packet_create(
-            data,
-            size,
-            ENET_PACKET_FLAG_RELIABLE);
+        ENetPacket* packet = enet_packet_create(data, size, ENET_PACKET_FLAG_RELIABLE);
 
         enet_peer_send(peer, channel, packet);
     }
 
-    void SendUnreliable(ENetPeer* peer,
-                        const void* data,
-                        size_t size,
-                        uint8_t channel = 1)
+    void SendUnreliable(ENetPeer* peer, const void* data, size_t size, uint8_t channel = 1)
     {
-        ENetPacket* packet = enet_packet_create(
-            data,
-            size,
-            0);
+        ENetPacket* packet = enet_packet_create(data, size, 0);
 
         enet_peer_send(peer, channel, packet);
     }
 
-private:
+   private:
+    void OnClientConnected(ENetPeer* peer) { LOG_INFO("Client connected"); }
 
-    void OnClientConnected(ENetPeer* peer)
-    {
-        LOG_INFO("Client connected");
-    }
+    void OnClientDisconnected(ENetPeer* peer) { LOG_INFO("Client disconnected"); }
 
-    void OnClientDisconnected(ENetPeer* peer)
-    {
-        LOG_INFO("Client disconnected");
-    }
-
-    void OnPacketReceived(ENetPeer* peer,
-                          uint8_t* data,
-                          size_t length)
+    void OnPacketReceived(ENetPeer* peer, uint8_t* data, size_t length)
     {
         LOG_INFO("Server received {} bytes", length);
     }
 
-private:
+   private:
     ENetHost* host = nullptr;
-    entt::dispatcher& m_events;
 };
-}
+}  // namespace OneGame::Engine

@@ -74,6 +74,8 @@ void CLIRunner::Run(GameHeadlessApp& app)
     auto color_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
     Logger::InitLogger("Engine", color_sink);
 
+    app.Initialize();
+
     std::atomic<bool> running = true;
     
     std::thread inputThread([&]()
@@ -118,6 +120,8 @@ void CLIRunner::Run(GameHeadlessApp& app)
 
     running = false;
     inputThread.join();
+
+    app.Shutdown();
 }
 
 std::unique_ptr<IAppRunner<GameHeadlessApp>> CreateCLIRunner()

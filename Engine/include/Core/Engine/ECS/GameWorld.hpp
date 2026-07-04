@@ -13,7 +13,7 @@ class GameWorld
 {
     friend class GameRenderer;
    public:
-    GameWorld()
+    void CreateTerrain()
     {
         GameWorldContext& game = Get();
         game.ctx().emplace<Terrain::BlockRegistry>();

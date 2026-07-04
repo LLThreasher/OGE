@@ -50,12 +50,11 @@ struct AssetContext : AssetBase
 
 // presentation context
 // writing presentation world requires this
-struct PresentationContext : AssetContext
+struct PresentationContext : AssetContext, SceneContext
 {
-    entt::dispatcher& events;
     Graphics::Renderer& renderer;
 
-    operator AppContext() const { return {assetManager, events}; }
+    operator AppContext() const { return {assetManager, events, sceneArgs}; }
 };
 
 struct SurfaceRecreateEvent

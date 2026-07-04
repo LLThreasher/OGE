@@ -3,6 +3,7 @@
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 
 #include "DebugScene.hpp"
+#include "Client.hpp"
 
 using namespace OneGame;
 using namespace OneGame::Engine;
@@ -16,7 +17,9 @@ int main(int argc, char* argv[]) {
 	auto window = CreateGameWindow("OneGame", 1280, 720);
 	auto backend = CreateBackend(BackendType::Vulkan);
 	auto app = GameGraphicApp(*backend);
-    app.RegisterScene<DebugScene3>();
-    app.SwitchToScene<DebugScene3>();
+	app.RegisterScene<DebugScene3>();
+	// app.SwitchToScene<DebugScene3>();
+	app.RegisterScene<DebugClient>();
+	app.SwitchToScene<DebugClient>();
 	window->Run(app);
 }
