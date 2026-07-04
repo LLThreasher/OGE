@@ -14,7 +14,7 @@
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
 
-namespace OneGame::Engine
+namespace OneGame
 {
 void DebugScene3::Initialize(PresentationContext& context)
 {

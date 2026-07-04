@@ -1,4 +1,5 @@
 add_executable(OneGame
+	"DebugClient.cpp"
 	"DebugScene.cpp"
 	"main.cpp"
 	  )
@@ -6,6 +7,7 @@ add_executable(OneGame
 target_link_libraries(OneGame PRIVATE EngineGraphics)
 
 add_executable(OneGameHeadless
+	"DebugServer.cpp"
 	"main_headless.cpp"
 	  )
 

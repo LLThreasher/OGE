@@ -4,7 +4,6 @@
 #include "Engine/GraphicState.hpp"
 #include "Engine/Graphics/DebugPass.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
-#include "Engine/Scenes/DebugScene.hpp"
 
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
@@ -31,8 +30,6 @@ inline AssetContext GameGraphicApp::AssetCtx() { return {m_assetManager, m_strea
 
 GameGraphicApp::GameGraphicApp(IGraphicsBackend& backend) : m_backend(backend)
 {
-    RegisterScene<DebugScene3>();
-    SwitchToScene<DebugScene3>();
 }
 
 GameGraphicApp::~GameGraphicApp() = default;

@@ -57,7 +57,7 @@ function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
         set(SPIRV_OPT "${ASSET_TARGET_DIR}/${FILE_NAME}.opt.spv")
 
         add_custom_command(
-            OUTPUT ${SPIRV_OPT}
+            OUTPUT ${SPIRV}
             COMMAND ${CMAKE_COMMAND} -E make_directory
                     ${ASSET_TARGET_DIR}
             COMMAND glslc -O ${SHADER} -o ${SPIRV}
@@ -67,7 +67,7 @@ function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
             VERBATIM
         )
 
-        list(APPEND SPIRV_FILES ${SPIRV_OPT})
+        list(APPEND SPIRV_FILES ${SPIRV})
 
     endforeach()
 

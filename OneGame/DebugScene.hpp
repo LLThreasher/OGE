@@ -10,8 +10,9 @@
 #include "Engine/Terrain/TerrainRenderer.hpp"
 #include "Engine/IScene.hpp"
 
-namespace OneGame::Engine
+namespace OneGame
 {
+using namespace OneGame::Engine;
 
 const std::vector<Terrain::TexturedQuad> chunk_zero_quads = {
     {0, 0, 0, 0, 0, COLOR_WHITE, {0xF, 0xF, 0xF, 0xF}, {0, 0, 0, 0}},
