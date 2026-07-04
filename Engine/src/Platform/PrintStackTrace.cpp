@@ -98,6 +98,24 @@ void PrintStackTrace()
 
     LOG_ERROR("{}", oss.str().c_str());
 }
+#elif defined(PLATFORM_DARWIN)
+#include <execinfo.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+void PrintStackTrace()
+{
+    const int max_frames = 64;
+    void* buffer[max_frames];
+
+    int frame_count = backtrace(buffer, max_frames);
+    char** symbols = backtrace_symbols(buffer, frame_count);
+
+    for (int i = 0; i < frame_count; ++i)
+        printf("%s\n", symbols[i]);
+
+    free(symbols);
+}
 #else
 void PrintStackTrace()
 {

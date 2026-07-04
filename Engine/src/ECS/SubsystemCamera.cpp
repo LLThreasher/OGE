@@ -77,10 +77,10 @@ void ComponentCamera::ApplyDelta(float dsx, float dsy, float dwx, float dwz)
 
 void SubsystemCamera::Initialize(GameWorldContext& game, AppContext ctx)
 {
-    game.world.on_construct<ScreenRect>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
-    game.world.on_update<ScreenRect>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
-    game.world.on_construct<ViewPanel>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
-    game.world.on_update<ViewPanel>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
+    game.on_construct<ScreenRect>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
+    game.on_update<ScreenRect>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
+    game.on_construct<ViewPanel>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
+    game.on_update<ViewPanel>().connect<&SubsystemCamera::onViewPanelUpdate>(this);
 }
 
 void SubsystemCamera::onViewPanelUpdate(entt::registry& world, entt::entity entity)
@@ -101,13 +101,13 @@ void SubsystemCamera::Update(GameWorldContext& game, AppContext ctx, const Frame
 void SubsystemCamera::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
 {
     using namespace Graphics;
-    for (auto [entity, view, rect] : game.world.view<ViewPanel, ScreenRect>().each())
+    for (auto [entity, view, rect] : game.view<ViewPanel, ScreenRect>().each())
     {
         auto e = fd.presentationWorld.create();
         fd.presentationWorld.emplace<PGameView>(e, rect.pos, rect.extent, view.activeSlot);
-        if (auto camera = game.world.try_get<ComponentCamera>(view.activeCamera))
+        if (auto camera = game.try_get<ComponentCamera>(view.activeCamera))
             fd.presentationWorld.emplace<PViewTransform>(e, camera->view());
-        if (auto pcamera = game.world.try_get<ComponentPerspectiveCamera>(view.activeCamera))
+        if (auto pcamera = game.try_get<ComponentPerspectiveCamera>(view.activeCamera))
             fd.presentationWorld.emplace<PPerspectiveTransform>(e, pcamera->fov, pcamera->aspect);
     }
 }

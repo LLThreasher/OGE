@@ -11,6 +11,13 @@ namespace OneGame::Engine::ECS
 class GameWorld
 {
    public:
+    GameWorld()
+    {
+        GameWorldContext& game = Get();
+        game.ctx().emplace<Terrain::BlockRegistry>();
+        game.ctx().emplace<Terrain::TerrainView>();
+    }
+
     template <typename TSubsystem>
     void Register()
     {
@@ -19,7 +26,7 @@ class GameWorld
 
     void Initialize(AppContext ctx)
     {
-        GameWorldContext game = Get();
+        GameWorldContext& game = Get();
         m_terrain.Initialize(game, ctx);
         for (auto& ptr : m_subsystems)
         {
@@ -31,7 +38,7 @@ class GameWorld
 
     void Update(AppContext app, const FrameInputData& frame)
     {
-        GameWorldContext game = Get();
+        GameWorldContext& game = Get();
         m_terrain.Update(game, app, frame);
         for (auto& ptr : m_subsystems)
         {
@@ -41,7 +48,7 @@ class GameWorld
 
     void Present(PresentationContext pctx, FrameOutputData& frameOut)
     {
-        GameWorldContext game = Get();
+        GameWorldContext& game = Get();
         m_terrain.Present(game, pctx, frameOut);
         for (auto& ptr : m_subsystems)
         {
@@ -49,12 +56,11 @@ class GameWorld
         }
     }
 
-    GameWorldContext Get() { return {m_world, m_blocks, m_terrain}; }
+    GameWorldContext& Get() { return m_world; }
 
    private:
     std::vector<std::unique_ptr<SubsystemBase>> m_subsystems;
     entt::registry m_world;
-    Terrain::BlockRegistry m_blocks;
     Terrain::TerrainService m_terrain;
 };
 }  // namespace OneGame::Engine::ECS

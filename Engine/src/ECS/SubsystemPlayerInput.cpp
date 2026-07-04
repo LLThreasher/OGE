@@ -7,9 +7,9 @@ namespace OneGame::Engine::ECS
 {
 void SubsystemPlayerInput::Initialize(GameWorldContext& game, AppContext ctx)
 {
-    game.world.on_construct<InputSourceKeyMouse>().connect<&SubsystemPlayerInput::onCreateInputSourceKeyMouse>(this);
-    game.world.on_destroy<InputSourceKeyMouse>().connect<&SubsystemPlayerInput::onEraseInputSourceKeyMouse>(this);
-    game.world.on_destroy<InputSourceWidget>().connect<&SubsystemPlayerInput::onEraseInputSourceWidget>(this);
+    game.on_construct<InputSourceKeyMouse>().connect<&SubsystemPlayerInput::onCreateInputSourceKeyMouse>(this);
+    game.on_destroy<InputSourceKeyMouse>().connect<&SubsystemPlayerInput::onEraseInputSourceKeyMouse>(this);
+    game.on_destroy<InputSourceWidget>().connect<&SubsystemPlayerInput::onEraseInputSourceWidget>(this);
 }
 
 void SubsystemPlayerInput::onCreateInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity)
@@ -37,14 +37,14 @@ void SubsystemPlayerInput::onEraseInputSourceWidget(entt::registry& gameWorld, e
 void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& f)
 {
     for (auto [entity, data] :
-         game.world.view<PlayerInputData>().each())
+         game.view<PlayerInputData>().each())
     {
         // handle touch
-        if (auto widgetInput = game.world.try_get<InputSourceWidget>(entity))
+        if (auto widgetInput = game.try_get<InputSourceWidget>(entity))
         {
             // handle move
             {
-                auto drag = game.world.try_get<UIDrag>(widgetInput->moveWidget);
+                auto drag = game.try_get<UIDrag>(widgetInput->moveWidget);
                 if (drag != nullptr)
                 {
                     data.moveDelta = drag->dragLastPos - drag->dragStartPos;
@@ -57,10 +57,10 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
             }
             // handle pan
             {
-                auto drag = game.world.try_get<UIDrag>(widgetInput->viewWidget);
+                auto drag = game.try_get<UIDrag>(widgetInput->viewWidget);
                 if (drag != nullptr)
                 {
-                    if (drag->deltaTime > 0.5f && (data.get<PlayerAction::Digging>() || drag->IsHold(game.world)))
+                    if (drag->deltaTime > 0.5f && (data.get<PlayerAction::Digging>() || drag->IsHold(game)))
                     {
                         data.set<PlayerAction::Digging>();
                         data.actionPos= drag->dragLastPos;
@@ -69,7 +69,7 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                     else
                     {
                         data.unset<PlayerAction::Digging>();
-                        auto pcam = game.world.get<ComponentPerspectiveCamera>(entity);
+                        auto pcam = game.get<ComponentPerspectiveCamera>(entity);
                         auto vfov = pcam.fov;
                         auto hfov = -2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
                         data.panDelta = drag->dragDelta * math::vec2{hfov, vfov};   
@@ -80,8 +80,8 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                     data.unset<PlayerAction::Digging>();
                     data.panDelta = math::vec2{0, 0};
                 }
-                auto dragRl = game.world.try_get<UIDragRelease>(widgetInput->viewWidget);
-                if (dragRl != nullptr && dragRl->dragStart == widgetInput->viewWidget && dragRl->drag.IsClick(game.world))
+                auto dragRl = game.try_get<UIDragRelease>(widgetInput->viewWidget);
+                if (dragRl != nullptr && dragRl->dragStart == widgetInput->viewWidget && dragRl->drag.IsClick(game))
                 {
                     data.set<PlayerAction::Placing>();
                     data.actionPos = dragRl->drag.dragLastPos;
@@ -93,7 +93,7 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
             }
         }
         // handle keyboard & mouse
-        if (game.world.any_of<InputSourceKeyMouse>(entity))
+        if (game.any_of<InputSourceKeyMouse>(entity))
         {
             if (f.input.IsKeyDown(KeyCode::KY_W))
                 data.moveDelta.y = 1.0f;
@@ -110,10 +110,10 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
             data.moveDelta *= f.dt;
             data.moveDelta *= 5.f;
 
-            auto pcam = game.world.get<ComponentPerspectiveCamera>(entity);
+            auto pcam = game.get<ComponentPerspectiveCamera>(entity);
             auto vfov = -pcam.fov;
             auto hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
-            data.panDelta = UI::ScreenSpaceToRelSpace(game.world, math::vec2{f.input.GetMouseDX(), f.input.GetMouseDY()}) * math::vec2{hfov, vfov};
+            data.panDelta = UI::ScreenSpaceToRelSpace(game, math::vec2{f.input.GetMouseDX(), f.input.GetMouseDY()}) * math::vec2{hfov, vfov};
             
             if (f.input.IsMouseDown(MouseButton::Left))
             {

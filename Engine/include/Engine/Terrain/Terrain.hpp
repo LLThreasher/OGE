@@ -28,7 +28,7 @@ struct PresentationContext;
 struct FrameOutputData;
 namespace ECS
 {
-struct TerrainContext;
+using TerrainContext = entt::registry;
 };
 
 namespace Graphics
@@ -138,8 +138,8 @@ class TerrainUpdateScheduler
 {
    public:
     void InitialUpdate(TerrainData& terrain, Point3 chunkOrigin);
-    void QueueChunksForMeshing(TerrainData& terrain, TerrainPresentationData& pdata);
-    void SubmitVisibleChunks(TerrainData& data, TerrainPresentationData& pdata, const TerrainContext& tctx, FrameOutputData& fd);
+    void QueueChunksForMeshing(const TerrainData& terrain, TerrainPresentationData& pdata, entt::dispatcher& events);
+    void SubmitVisibleChunks(const TerrainData& data, TerrainPresentationData& pdata, const TerrainContext& tctx, FrameOutputData& fd);
     void SetChunkViewDistance(int val) { m_chunkViewDistance = val; }
 
    private:
@@ -173,7 +173,7 @@ class TerrainGenerator
     int terrainGenChunkBudget = 8;
 };
 
-class TerrainService : public TerrainView, ECS::ISubsystem<TerrainContext>
+class TerrainService : public ECS::ISubsystem<TerrainContext>
 {
    public:
     NO_COPY(TerrainService);

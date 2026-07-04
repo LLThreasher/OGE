@@ -56,7 +56,7 @@ void TerrainUpdateScheduler::InitialUpdate(TerrainData& terrain, Point3 chunkOri
     }
 }
 
-void TerrainUpdateScheduler::QueueChunksForMeshing(TerrainData& terrain, TerrainPresentationData& pdata)
+void TerrainUpdateScheduler::QueueChunksForMeshing(const TerrainData& terrain, TerrainPresentationData& pdata, entt::dispatcher& events)
 {
     std::vector<ChunkHandle> toRemove;
     std::vector<ChunkHandle> toMesh;
@@ -85,27 +85,27 @@ void TerrainUpdateScheduler::QueueChunksForMeshing(TerrainData& terrain, Terrain
     }
     for (auto handle : toRemove)
     {
-        terrain.dirtyChunks.erase(handle);
+        events.enqueue<ResolveDirtyChunkEvent>(handle);
     }
     for (auto handle : toMesh)
     {
         pdata.buildMeshQueue.push(handle);
-        terrain.dirtyChunks.erase(handle);
+        events.enqueue<ResolveDirtyChunkEvent>(handle);
     }
 }
 
-static bool IsVisibleToPlayer(Point3 chunkCoord, entt::registry& gameWorld, entt::entity player)
+static bool IsVisibleToPlayer(Point3 chunkCoord, const entt::registry& gameWorld, entt::entity player)
 {
     return true;
 }
 
-void TerrainUpdateScheduler::SubmitVisibleChunks(TerrainData& data, TerrainPresentationData& pdata, const TerrainContext& tctx, FrameOutputData& fd)
+void TerrainUpdateScheduler::SubmitVisibleChunks(const TerrainData& data, TerrainPresentationData& pdata, const TerrainContext& tctx, FrameOutputData& fd)
 {
     playerToView.clear();
     uint32_t baseView = 0;
-    for (auto [entity, view] : tctx.world.view<ECS::ViewPanel>().each())
+    for (auto [entity, view] : tctx.view<ECS::ViewPanel>().each())
     {
-        if (!tctx.world.all_of<ECS::ComponentPlayer>(view.activeCamera))
+        if (!tctx.all_of<ECS::ComponentPlayer>(view.activeCamera))
         {
             baseView |= static_cast<uint32_t>(view.activeSlot);
         }
@@ -118,10 +118,10 @@ void TerrainUpdateScheduler::SubmitVisibleChunks(TerrainData& data, TerrainPrese
     {
         auto chunk = data.chunks.Get(handle);
         uint32_t currentView = baseView;
-        for (auto entity : tctx.world.view<ECS::ComponentPlayer>())
+        for (auto entity : tctx.view<ECS::ComponentPlayer>())
         {
             auto it = playerToView.find(entity);
-            if (it != playerToView.end() && IsVisibleToPlayer(chunk->Coords, tctx.world, entity))
+            if (it != playerToView.end() && IsVisibleToPlayer(chunk->Coords, tctx, entity))
                 currentView |= it->second;
         }
 

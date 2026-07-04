@@ -13,24 +13,26 @@ void SubsystemPlayer::Initialize(GameWorldContext& game, AppContext ctx)
 
 void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd)
 {
-    for (auto [entity, camera, pcam, input, player] : game.world.view<ComponentCamera, const ComponentPerspectiveCamera, const PlayerInputData, ComponentPlayer>().each())
+    auto& terrain = game.ctx().get<Terrain::TerrainView>();
+    auto& blocks = game.ctx().get<Terrain::BlockRegistry>();
+    for (auto [entity, camera, pcam, input, player] : game.view<ComponentCamera, const ComponentPerspectiveCamera, const PlayerInputData, ComponentPlayer>().each())
     {
         camera.ApplyDelta(input.panDelta.x, input.panDelta.y, input.moveDelta.x, input.moveDelta.y);
         // player.lookingAt = game.terrain.CastRay(camera.position, camera.forward);
         if (input.get<PlayerAction::Digging>())
         {
-            auto raycastResult = game.terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.actionPos));
+            auto raycastResult = terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.actionPos));
             if (raycastResult.has_value())
-                game.terrain.SetBlock(raycastResult.value().hitPos, 0);
+                terrain.SetBlock(raycastResult.value().hitPos, 0);
         }
         if (input.get<PlayerAction::Placing>())
         {
-            auto raycastResult = game.terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.actionPos));
+            auto raycastResult = terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.actionPos));
             if (raycastResult.has_value())
             {
-                auto blockId = game.blocks.GetBlockId("stone");
+                auto blockId = blocks.GetBlockId("stone");
                 auto blockValue = blockId;
-                game.terrain.SetBlock(raycastResult->hitPos + perFaceOffset[raycastResult->hitFace], blockValue);
+                terrain.SetBlock(raycastResult->hitPos + perFaceOffset[raycastResult->hitFace], blockValue);
             }
         }
     }
@@ -38,10 +40,10 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
 
 void SubsystemPlayer::Present(const GameWorldContext& game, PresentationContext ctx, FrameOutputData& fd)
 {
-    // auto players = game.world.view<ComponentPlayer>();
+    // auto players = game.view<ComponentPlayer>();
     // if (!players.empty())
     // {
-    //     auto player = game.world.get<ComponentPlayer>(players.front());
+    //     auto player = game.get<ComponentPlayer>(players.front());
     //     if (player.lookingAt.has_value())
     //         AddDebugInfo(
     //             fd.presentationWorld,

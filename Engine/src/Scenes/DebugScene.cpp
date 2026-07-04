@@ -21,7 +21,7 @@ void DebugScene2::Initialize(PresentationContext context)
     gameWorld.Register<SubsystemCamera>();
     gameWorld.Register<SubsystemDebugInfo>();
 
-    auto e = UI::CreateGameView(gameWorld.Get().world, {math::vec2{0, 0}, math::vec2{1, 1}});
+    auto e = UI::CreateGameView(gameWorld.Get(), {math::vec2{0, 0}, math::vec2{1, 1}});
 }
 
 void DebugScene2::Enter(PresentationContext context)
@@ -204,29 +204,29 @@ void DebugScene2::Update(PresentationContext context, const FrameInputData& fram
 void DebugScene3::Initialize(PresentationContext context)
 {
     using namespace ECS;
+    m_gameWorld.Register<SubsystemDebugInfo>();
     m_gameWorld.Register<SubsystemUI>();
     m_gameWorld.Register<SubsystemPlayerInput>();
     m_gameWorld.Register<SubsystemCamera>();
-    m_gameWorld.Register<SubsystemDebugInfo>();
     m_gameWorld.Register<SubsystemPlayer>();
 
-    auto& blocks = m_gameWorld.Get().blocks;
+    auto& blocks = m_gameWorld.Get().ctx().get<Terrain::BlockRegistry>();
     blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1});
     blocks.RegisterBlock("wood", {"Wood", "wood_plank.png", 1});
     blocks.RegisterBlock("stone", {"Stone", "green_stone.png", 1});
 
     Terrain::TerrainDesc desc{};
     desc.chunkViewDistance = 1;
-    m_gameWorld.Get().world.emplace<Terrain::TerrainDesc>(m_gameWorld.Get().world.create(), desc);
+    m_gameWorld.Get().ctx().emplace<Terrain::TerrainDesc>(desc);
 }
 
 void DebugScene3::Enter(PresentationContext context)
 {
     using namespace ECS;
     m_gameWorld.InitializeWithPresent(context);
-    auto vpe = UI::CreateGameView(m_gameWorld.Get().world, {math::vec2{0, 0}, math::vec2{1, 1}});
+    auto vpe = UI::CreateGameView(m_gameWorld.Get(), {math::vec2{0, 0}, math::vec2{1, 1}});
 
-    auto& world = m_gameWorld.Get().world;
+    auto& world = m_gameWorld.Get();
     auto player = ComponentPlayer::CreatePlayer(world);
     {
         ComponentCamera& cam = world.get<ComponentCamera>(player);
@@ -274,21 +274,21 @@ void DebugScene3::Exit(PresentationContext context)
 
 void DebugScene3::Update(PresentationContext context, const FrameInputData& frame, FrameOutputData& frameOut)
 {
-    auto& blocks = m_gameWorld.Get().blocks;
+    auto& blocks = m_gameWorld.Get();
 
     m_gameWorld.Update(context, frame);
     m_gameWorld.Present(context, frameOut);
 
     if (frame.input.IsKeyDown(KeyCode::KY_G))
     {
-        auto& gworld = m_gameWorld.Get().world;
+        auto& gworld = m_gameWorld.Get();
         auto pe = gworld.view<ECS::PlayerInputData>().front();
         assert(gworld.valid(pe));
         gworld.get_or_emplace<ECS::InputSourceKeyMouse>(pe);
     }
     else if (frame.input.IsKeyDown(KeyCode::KY_ESCAPE))
     {
-        auto& gworld = m_gameWorld.Get().world;
+        auto& gworld = m_gameWorld.Get();
         auto pe = gworld.view<ECS::PlayerInputData>().front();
         if (gworld.all_of<ECS::InputSourceKeyMouse>(pe))
             gworld.erase<ECS::InputSourceKeyMouse>(pe);

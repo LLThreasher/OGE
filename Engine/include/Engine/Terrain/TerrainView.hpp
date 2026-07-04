@@ -144,6 +144,11 @@ struct TerrainData
     std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> dirtyChunks;
 };
 
+struct ResolveDirtyChunkEvent
+{
+    ChunkHandle chunk;
+};
+
 struct TerrainRaycastResult
 {
     uint8_t hitFace;
@@ -151,8 +156,11 @@ struct TerrainRaycastResult
     uint32_t hitBlockValue;
 };
 
+class TerrainService;
+
 class TerrainView
 {
+    friend class TerrainService;
    public:
     uint32_t GetBlock(Point3 pos)
     {
@@ -176,6 +184,8 @@ class TerrainView
 
    protected:
     TerrainData m_terrainData;
+private:
+    static void HandleResolveDirtyChunk(entt::registry& world, ResolveDirtyChunkEvent e);
 };
 
 }

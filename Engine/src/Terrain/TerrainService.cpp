@@ -8,34 +8,41 @@ namespace OneGame::Engine::Terrain
 {
 using namespace ECS;
 
+void TerrainView::HandleResolveDirtyChunk(entt::registry& world, ResolveDirtyChunkEvent e)
+{
+    world.ctx().get<TerrainView>().m_terrainData.dirtyChunks.erase(e.chunk);
+}
+
 void TerrainService::Initialize(TerrainContext& ctx, AppContext actx)
 {
-    auto [entity, desc] = *ctx.world.view<TerrainDesc>().each().begin();
+    auto desc = ctx.ctx().get<TerrainDesc>();
     m_terrainGenerator.SetTerrainGenChunkBudget(desc.terrainGenChunkBudget);
     m_terrainMeshBuilder.SetVertexBudget(desc.meshingQuadBudget);
     m_terrainUploader.SetMaxNumChunks((desc.chunkViewDistance + 1) * (desc.chunkViewDistance + 1) * 6);
     m_terrainUpdateScheduler.SetChunkViewDistance(desc.chunkViewDistance);
-    ctx.world.on_construct<ComponentPlayer>().connect<&TerrainService::onPlayerCreated>(this);
+    actx.events.sink<ResolveDirtyChunkEvent>().connect<&TerrainView::HandleResolveDirtyChunk>(ctx);
+    ctx.on_construct<ComponentPlayer>().connect<&TerrainService::onPlayerCreated>(this);
 }
 
 void TerrainService::onPlayerCreated(entt::registry& world, entt::entity entity)
 {
     auto pos = world.get<ComponentCamera>(entity).position;
     Point3 ipos = {math::floor(pos.x) / CHUNK_SIZE_X, math::floor(pos.y) / CHUNK_SIZE_Y, math::floor(pos.z) / CHUNK_SIZE_Z};
-    m_terrainUpdateScheduler.InitialUpdate(m_terrainData, ipos);
+    m_terrainUpdateScheduler.InitialUpdate(world.ctx().get<Terrain::TerrainView>().m_terrainData, ipos);
 }
 
 void TerrainService::Update(TerrainContext& ctx, AppContext actx, const FrameInputData& fd)
 {
-    m_terrainGenerator.GenerateTerrain(m_terrainData, ctx.blocks);
+    m_terrainGenerator.GenerateTerrain(ctx.ctx().get<Terrain::TerrainView>().m_terrainData, ctx.ctx().get<Terrain::BlockRegistry>());
 }
 
 void TerrainService::Present(const TerrainContext& ctx, PresentationContext pctx, FrameOutputData& frameOut)
 {
-    m_terrainUpdateScheduler.QueueChunksForMeshing(m_terrainData, m_terrainPData);
-    m_terrainMeshBuilder.BuildChunkMeshes(m_terrainData, ctx.blocks, m_terrainPData);
+    auto& terrainData = ctx.ctx().get<Terrain::TerrainView>().m_terrainData;
+    m_terrainUpdateScheduler.QueueChunksForMeshing(terrainData, m_terrainPData, pctx.events);
+    m_terrainMeshBuilder.BuildChunkMeshes(terrainData, ctx.ctx().get<Terrain::BlockRegistry>(), m_terrainPData);
     m_terrainUploader.UploadTerrain(m_terrainPData, pctx);
-    m_terrainUpdateScheduler.SubmitVisibleChunks(m_terrainData, m_terrainPData, ctx, frameOut);
+    m_terrainUpdateScheduler.SubmitVisibleChunks(terrainData, m_terrainPData, ctx, frameOut);
 }
 
 uint32_t TerrainView::GetBlock(int x, int y, int z)
