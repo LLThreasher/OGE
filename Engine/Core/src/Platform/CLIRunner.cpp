@@ -4,7 +4,7 @@
 
 #include <spdlog/sinks/base_sink.h>
 
-#include "Engine/Platform/IGameWindow.hpp"
+#include "Engine/Platform/IAppRunner.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/Logger.hpp"
 #include "Engine/GameApp.hpp"
