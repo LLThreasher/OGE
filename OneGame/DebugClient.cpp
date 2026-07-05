@@ -27,6 +27,6 @@ void DebugClient::Enter(PresentationContext& context)
 
 void DebugClient::Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut)
 {
-    m_client.Poll();
+    m_client.Poll(context.events);
 }
 }

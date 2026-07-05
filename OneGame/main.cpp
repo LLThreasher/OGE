@@ -18,8 +18,8 @@ int main(int argc, char* argv[]) {
 	auto backend = CreateBackend(BackendType::Vulkan);
 	auto app = GameGraphicApp(*backend);
 	app.RegisterScene<DebugScene3>();
-	// app.SwitchToScene<DebugScene3>();
-	app.RegisterScene<DebugClient>();
-	app.SwitchToScene<DebugClient>();
+	app.SwitchToScene<DebugScene3>();
+	// app.RegisterScene<DebugClient>();
+	// app.SwitchToScene<DebugClient>();
 	window->Run(app);
 }
