@@ -1,6 +1,7 @@
 #include "Engine/Graphics/TerrainPass.hpp"
 
 #include "Engine/Graphics/IGraphicsBackend.hpp"
+#include "Engine/Terrain/TerrainDefs.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "Engine/entt.hpp"
 #include "RendererInternals.hpp"

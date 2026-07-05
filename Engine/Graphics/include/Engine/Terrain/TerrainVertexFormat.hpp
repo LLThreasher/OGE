@@ -22,14 +22,6 @@ static constexpr char YELLOW = 4;
 static constexpr char CYAN = 5;
 static constexpr char MAGENTA = 6;
 
-constexpr int CHUNK_SIZE_X = 16;
-constexpr int CHUNK_SIZE_Y = 16;
-constexpr int CHUNK_SIZE_Z = 16;
-constexpr int CHUNK_SIZE_TOTAL = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;
-constexpr int CHUNK_SHIFT_X = 0;
-constexpr int CHUNK_SHIFT_Y = 4;
-constexpr int CHUNK_SHIFT_Z = 8;
-
 static constexpr uint32_t CHUNK_VERTEX_BYTE_SIZE = 64 * 1024;  // 64 kb
 static constexpr uint32_t CHUNK_INDEX_BYTE_SIZE = 48 * 1024;   // 48 kb
 static constexpr uint32_t CHUNK_STORE_BYTE_SIZE = 25 * 1024;   // 25 kb

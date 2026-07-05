@@ -1,6 +1,5 @@
 #include "Engine/AssetManager.hpp"
 
-#include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "stb_image.h"
 
 namespace OneGame::Engine

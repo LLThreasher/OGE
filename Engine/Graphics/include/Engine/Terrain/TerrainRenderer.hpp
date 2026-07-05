@@ -8,7 +8,7 @@
 #include <optional>
 
 #include "Engine/entt.hpp"
-#include "BlockManager.hpp"
+#include "Engine/Terrain/BlockManager.hpp"
 #include "Engine/ClassHelper.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/ObjectType.hpp"

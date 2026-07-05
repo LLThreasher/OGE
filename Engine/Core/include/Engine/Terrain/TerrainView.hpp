@@ -5,7 +5,7 @@
 #include <queue>
 #include "Engine/Point3.hpp"
 #include "Engine/ResourcePool.hpp"
-#include "Engine/Terrain/TerrainVertexFormat.hpp"
+#include "Engine/Terrain/TerrainDefs.hpp"
 
 namespace OneGame::Engine::Terrain
 {
