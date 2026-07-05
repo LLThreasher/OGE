@@ -10,8 +10,13 @@ typedef _ENetHost ENetHost;
 namespace OneGame::Engine
 {
 
-struct OnDisconnectedFromServer
+enum class ClientStatus
 {
+    Connecting,
+    ConnectFailed,
+    Connected,
+    Disconnecting,
+    Disconnected,
 };
 
 struct OnClientPacketReceived
@@ -33,8 +38,10 @@ public:
     bool Connect(const char* ip,
                  uint16_t port,
                  uint32_t timeoutMs = 5000);
+    
+    ClientStatus Status() {return status;}
 
-    void Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs = 0);
+    void Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs = 0);
 
     void Disconnect(uint32_t timeoutMs = 3000);
 
@@ -56,6 +63,8 @@ private:
     }
 
 private:
+    float connectWaitTime;
+    ClientStatus status;
     ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
 };

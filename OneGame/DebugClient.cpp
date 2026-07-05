@@ -22,11 +22,13 @@ void DebugClient::Enter(PresentationContext& context)
     auto args = context.sceneArgs.try_cast<ClientArgs>();
     if (!args) {args = &_args;}
     m_client.Initialize();
-    m_client.Connect("127.0.0.1", args->port, args->timeout);
+    m_client.Connect(args->ip.c_str(), args->port, args->timeout);
 }
 
 void DebugClient::Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut)
 {
-    m_client.Poll(context.events);
+    if (m_client.Status() == ClientStatus::Disconnected || m_client.Status() == ClientStatus::ConnectFailed) return;
+    m_client.Poll(context.events, frame.dt);
+    if (m_client.Status() == ClientStatus::Disconnecting || m_client.Status() == ClientStatus::Connecting) return;
 }
 }
