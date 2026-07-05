@@ -21,7 +21,7 @@ enum class ClientState
 {
     WaitingConnect,
     WaitingConfig,
-    RecievedConfig,
+    ReceivedConfig,
     Available,
     Disconnected,
 };
@@ -35,11 +35,13 @@ public:
     virtual void Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut) override;
 private:
     void onClientConnected(OnClientConnected&);
-    void onPacketRecieved(OnClientPacketReceived&);
+    void onClientDisconnected(OnClientDisconnected&);
+    void onClientConnectionTimeout(OnClientConnectionTimeout&);
+    void onPacketReceived(OnClientPacketReceived&);
+    
     ECS::GameWorld m_gameWorld;
     ECS::GameRenderer m_gameRenderer;
     ClientState m_state = ClientState::WaitingConnect;
-    InputNetworkPusher m_networkInputPusher;
-    NetworkPuller m_networkPuller;
+    GameClient m_client;
 };
 } // namespace OneGame

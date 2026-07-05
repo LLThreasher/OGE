@@ -43,20 +43,26 @@ class TimedWorldSnapshot
     void Acknowledge(PeerHandle peer, uint32_t generation);
 };
 
-class GameServer
+class IWorldObserver
+{
+    virtual void Initialize(entt::registry& world, entt::dispatcher& dispatcher) = 0;
+    virtual void Update(entt::registry& world) = 0;
+};
+
+class GameServer : public IWorldObserver
 {
    public:
-    void Initialize(entt::registry& world, entt::dispatcher& dispatcher);
-    void Update(entt::registry& world);
+    void Initialize(entt::registry& world, entt::dispatcher& dispatcher) override;
+    void Update(entt::registry& world) override;
     void HandleNewClient(Net::Buffer& buf, entt::registry& world);
     void HandleInputPacket(Net::Buffer& buf, entt::registry& world);
 };
 
-class GameClient
+class GameClient final : public IWorldObserver
 {
    public:
-    void Initialize(entt::registry& world, entt::dispatcher& dispatcher);
-    void Update(entt::registry& world);
+    void Initialize(entt::registry& world, entt::dispatcher& dispatcher) override;
+    void Update(entt::registry& world) override;
     void HandleInitPacket(Net::Buffer& buf, entt::registry& world);
     void HandlePacket(Net::Buffer& buf, entt::registry& world);
 };

@@ -41,18 +41,18 @@ void NetServer::Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs)
         {
             case ENET_EVENT_TYPE_CONNECT:
                 OnClientConnected(event.peer);
-                dispatcher.trigger<NetPeerConnected>({event.peer});
+                dispatcher.trigger<OnServerReceiveConnect>({event.peer});
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
                 OnPacketReceived(event.peer, event.packet->data, event.packet->dataLength);
-                dispatcher.trigger<NetPacketReceived>({event.peer, event.packet->data, event.packet->dataLength});
+                dispatcher.trigger<OnServerReceivePacket>({event.peer, event.packet->data, event.packet->dataLength});
                 enet_packet_destroy(event.packet);
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT:
                 OnClientDisconnected(event.peer);
-                dispatcher.trigger<NetPeerDisconnected>({event.peer});
+                dispatcher.trigger<OnServerReceiveDisconnect>({event.peer});
                 break;
 
             default:

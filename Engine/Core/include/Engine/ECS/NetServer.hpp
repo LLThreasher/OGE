@@ -10,17 +10,17 @@ typedef _ENetHost ENetHost;
 namespace OneGame::Engine
 {
 
-struct NetPeerConnected
+struct OnServerReceiveConnect
 {
     ENetPeer* peer;
 };
 
-struct NetPeerDisconnected
+struct OnServerReceiveDisconnect
 {
     ENetPeer* peer;
 };
 
-struct NetPacketReceived
+struct OnServerReceivePacket
 {
     ENetPeer* peer;
     uint8_t* data;

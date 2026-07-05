@@ -28,11 +28,20 @@ void DebugClient::Enter(PresentationContext& ctx)
     auto& client = m_gameWorld.Get().ctx().get<NetClient>();
     client.Initialize();
     client.Connect(args->ip.c_str(), args->port, args->timeout);
+    m_client.Initialize(m_gameWorld.Get(), ctx.events);
 
-    ctx.events.sink<OnClientPacketReceived>().connect<&DebugClient::onPacketRecieved>(this);
+    ctx.events.sink<OnClientPacketReceived>().connect<&DebugClient::onPacketReceived>(this);
     ctx.events.sink<OnClientConnected>().connect<&DebugClient::onClientConnected>(this);
 
     m_state = ClientState::WaitingConnect;
+}
+
+void DebugClient::onClientDisconnected(OnClientDisconnected&)
+{
+}
+
+void DebugClient::onClientConnectionTimeout(OnClientConnectionTimeout&)
+{
 }
 
 void DebugClient::onClientConnected(OnClientConnected&)
@@ -40,17 +49,17 @@ void DebugClient::onClientConnected(OnClientConnected&)
     m_state = ClientState::WaitingConfig;
 }
 
-void DebugClient::onPacketRecieved(OnClientPacketReceived& packet)
+void DebugClient::onPacketReceived(OnClientPacketReceived& packet)
 {
     Net::Buffer buf{packet.data, packet.length};
     if (m_state == ClientState::WaitingConfig)
     {
-        m_networkPuller.HandleInitPacket(buf, m_gameWorld.Get());
-        m_state = ClientState::RecievedConfig;
+        m_client.HandleInitPacket(buf, m_gameWorld.Get());
+        m_state = ClientState::ReceivedConfig;
     }
     else if (m_state != ClientState::Disconnected)
     {
-        m_networkPuller.HandlePacket(buf, m_gameWorld.Get());
+        m_client.HandlePacket(buf, m_gameWorld.Get());
     }
 }
 
@@ -65,7 +74,7 @@ void DebugClient::Update(PresentationContext& ctx, const FrameInputData& frame, 
         m_gameWorld.Update(ctx, frame);
         m_gameRenderer.Present(ctx, frameOut);
     }
-    else if (m_state == ClientState::RecievedConfig)
+    else if (m_state == ClientState::ReceivedConfig)
     {
         m_gameWorld.Initialize(ctx);
         m_gameRenderer.Initialize(ctx);
