@@ -50,14 +50,14 @@ struct ChunkData
    public:
     ChunkData(Point3 coords) { Coords = coords; }
 
-    uint32_t GetBlock(uint8_t x, uint8_t y, uint8_t z)
+    uint32_t GetBlock(uint8_t x, uint8_t y, uint8_t z) const
     {
         assert(0 <= x && x < CHUNK_SIZE_X);
         assert(0 <= y && y < CHUNK_SIZE_Y);
         assert(0 <= z && z < CHUNK_SIZE_Z);
         return data[GetBlockIndex(x, y, z)];
     }
-
+    
     void SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value) { data[GetBlockIndex(x, y, z)] = value; }
 };
 
@@ -193,11 +193,11 @@ class TerrainView
     friend class TerrainService;
     friend class TerrainRenderer;
    public:
-    uint32_t GetBlock(Point3 pos)
+    uint32_t GetBlock(Point3 pos) const
     {
         return GetBlock(pos.x, pos.y, pos.z);
     }
-    bool TryGetBlock(Point3 pos, uint32_t& value)
+    bool TryGetBlock(Point3 pos, uint32_t& value) const
     {
         return TryGetBlock(pos.x, pos.y, pos.z, value);
     }
@@ -205,10 +205,12 @@ class TerrainView
     {
         SetBlock(pos.x, pos.y, pos.z, value);
     }
-    uint32_t GetBlock(int x, int y, int z);
-    bool TryGetBlock(int x, int y, int z, uint32_t& value);
+    uint32_t GetBlock(int x, int y, int z) const;
+    bool TryGetBlock(int x, int y, int z, uint32_t& value) const;
     void SetBlock(int x, int y, int z, uint32_t value);
+    std::tuple<ChunkHandle, const ChunkData*> GetChunk(Point3 chunkCoord) const;
     std::tuple<ChunkHandle, ChunkData*> GetChunk(Point3 chunkCoord);
+    const ChunkData* GetChunk(ChunkHandle handle) const;
     ChunkData* GetChunk(ChunkHandle handle);
     void SubmitChunk(ChunkHandle handle);
     std::optional<TerrainRaycastResult> CastRay(math::vec3 pos, math::vec3 ray, float maxDist = 20.f);

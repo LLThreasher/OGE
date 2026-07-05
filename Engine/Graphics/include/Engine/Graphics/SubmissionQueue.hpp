@@ -6,6 +6,7 @@
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/ObjectType.hpp"
 #include "Engine/Rect.hpp"
+#include "Engine/ECS/SubmissionGroup.hpp"
 
 namespace OneGame::Engine::Graphics
 {
@@ -40,27 +41,6 @@ struct CmdAddView
     math::mat4 view = math::lookAt(math::vec3(20, 20, 20), math::vec3(0, 0, 0), math::vec3(0, 1, 0));
     float fov = math::radians(45.0f);
     float aspect = 0.f;
-};
-
-template <typename... TCommands>
-struct SubmissionGroup
-{
-    std::tuple<std::vector<TCommands>...> buckets;
-
-    template <typename T, typename... Args>
-    void Add(Args&&... args)
-    {
-        auto& bucket = std::get<std::vector<T>>(buckets);
-        bucket.emplace_back(std::forward<Args>(args)...);
-    }
-
-    template <typename T>
-    std::vector<T>& Get()
-    {
-        return std::get<std::vector<std::decay_t<T>>>(buckets);
-    }
-
-    void Clear() { (std::get<std::vector<TCommands>>(buckets).clear(), ...); }
 };
 
 template <typename SubmissionGroupT>

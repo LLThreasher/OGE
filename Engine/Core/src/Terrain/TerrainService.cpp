@@ -34,7 +34,7 @@ void TerrainService::Update(TerrainContext& ctx, AppContext actx, const FrameInp
     m_terrainGenerator.GenerateTerrain(ctx.ctx().get<Terrain::TerrainView>().m_terrainData, ctx.ctx().get<Terrain::BlockRegistry>());
 }
 
-uint32_t TerrainView::GetBlock(int x, int y, int z)
+uint32_t TerrainView::GetBlock(int x, int y, int z) const
 {
     Point3 chunkCoord = {x >> 4, y >> 4, z >> 4};
     auto [_, chunk] = GetChunk(chunkCoord);
@@ -43,7 +43,7 @@ uint32_t TerrainView::GetBlock(int x, int y, int z)
     return 0;
 }
 
-bool TerrainView::TryGetBlock(int x, int y, int z, uint32_t& value)
+bool TerrainView::TryGetBlock(int x, int y, int z, uint32_t& value) const
 {
     Point3 chunkCoord = {x >> 4, y >> 4, z >> 4};
     auto [_, chunk] = GetChunk(chunkCoord);
@@ -91,11 +91,17 @@ void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
     }
 }
 
+std::tuple<ChunkHandle, const ChunkData*> TerrainView::GetChunk(Point3 chunkCoord) const
+{
+    return m_terrainData.chunks.Get(chunkCoord);
+}
+
 std::tuple<ChunkHandle, ChunkData*> TerrainView::GetChunk(Point3 chunkCoord)
 {
     return m_terrainData.chunks.Get(chunkCoord);
 }
 
+const ChunkData* TerrainView::GetChunk(ChunkHandle handle) const { return m_terrainData.chunks.Get(handle); }
 ChunkData* TerrainView::GetChunk(ChunkHandle handle) { return m_terrainData.chunks.Get(handle); }
 
 void TerrainView::SubmitChunk(ChunkHandle handle) { m_terrainData.dirtyChunks.insert(handle); }
