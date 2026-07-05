@@ -132,6 +132,36 @@ class ChunkDataCollection
     std::unordered_map<Point3, ChunkHandle> coordToChunks;
 };
 
+struct PaletteCompressedChunk
+{
+    std::vector<uint32_t> palette;
+    uint8_t data[CHUNK_SIZE_TOTAL];
+
+    static PaletteCompressedChunk FromChunkData(const ChunkData& c)
+    {
+        PaletteCompressedChunk result;
+        std::unordered_map<uint32_t, uint8_t> palette_map;
+        for (size_t i = 0; i < CHUNK_SIZE_TOTAL; ++i)
+        {
+            auto it = palette_map.find(c.data[i]);
+            if (it == palette_map.end())
+            {
+                palette_map.emplace(c.data[i], result.palette.size());
+                result.data[i] = result.palette.size();
+                result.palette.push_back(c.data[i]);
+            }
+            else
+            {
+                result.data[i] = it->second;
+            }
+        }
+        assert(result.palette.size() <= 255);
+        return result;
+    }
+
+    uint32_t Get(int x, int y, int z) const { return palette[data[GetBlockIndex(x, y, z)]]; }
+};
+
 // allocate chunk -> generate terrain queue -> build mesh queue -> built chunk
 // meshes -> upload with streaming manager -> remove built chunk meshes ->
 // resident chunk any state -> destroy chunk
