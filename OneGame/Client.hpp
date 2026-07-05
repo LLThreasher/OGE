@@ -4,6 +4,7 @@
 #include "Engine/ECS/GameRenderer.hpp"
 #include "Engine/ECS/GameWorld.hpp"
 #include "Engine/ECS/NetClient.hpp"
+#include "Engine/ECS/GameNetSerializer.hpp"
 
 namespace OneGame
 {
@@ -16,6 +17,15 @@ struct ClientArgs
     uint32_t timeout = 5000;
 };
 
+enum class ClientState
+{
+    WaitingConnect,
+    WaitingConfig,
+    RecievedConfig,
+    Available,
+    Disconnected,
+};
+
 class DebugClient : public Scene<PresentationContext, const FrameInputData, FrameOutputData>
 {
 public:
@@ -24,8 +34,12 @@ public:
     virtual void Enter(PresentationContext& context) override;
     virtual void Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut) override;
 private:
+    void onClientConnected(OnClientConnected&);
+    void onPacketRecieved(OnClientPacketReceived&);
     ECS::GameWorld m_gameWorld;
     ECS::GameRenderer m_gameRenderer;
-    NetClient m_client;
+    ClientState m_state = ClientState::WaitingConnect;
+    InputNetworkPusher m_networkInputPusher;
+    NetworkPuller m_networkPuller;
 };
 } // namespace OneGame

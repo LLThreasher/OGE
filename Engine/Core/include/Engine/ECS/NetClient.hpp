@@ -13,10 +13,21 @@ namespace OneGame::Engine
 enum class ClientStatus
 {
     Connecting,
-    ConnectFailed,
     Connected,
     Disconnecting,
     Disconnected,
+};
+
+struct OnClientConnectionTimeout
+{
+};
+
+struct OnClientConnected
+{
+};
+
+struct OnClientDisconnected
+{
 };
 
 struct OnClientPacketReceived
@@ -64,7 +75,7 @@ private:
 
 private:
     float connectWaitTime;
-    ClientStatus status;
+    ClientStatus status = ClientStatus::Disconnected;
     ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
 };

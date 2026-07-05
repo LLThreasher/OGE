@@ -13,3 +13,6 @@
 [submodule "3rdparty/freetype"]
 	path = 3rdparty/freetype
 	url = https://github.com/freetype/freetype.git
+[submodule "3rdparty/enet"]
+	path = 3rdparty/enet
+	url = https://github.com/Lixue9jiu/enet.git

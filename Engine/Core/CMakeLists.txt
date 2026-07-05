@@ -19,6 +19,7 @@ PRIVATE
     src/TickScheduler.cpp
     src/Net/NetServer.cpp
     src/Net/NetClient.cpp
+    src/ECS/GameNetSerializer.cpp
  )
 
 target_include_directories(EngineCore

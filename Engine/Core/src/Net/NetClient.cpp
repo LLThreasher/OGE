@@ -56,8 +56,9 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
         enet_peer_reset(peer);
         peer = nullptr;
         LOG_INFO("Connection timeout");
-        status = ClientStatus::ConnectFailed;
+        status = ClientStatus::Disconnected;
     }
+    
     connectWaitTime -= dt * 1000.f;
 
     ENetEvent event;

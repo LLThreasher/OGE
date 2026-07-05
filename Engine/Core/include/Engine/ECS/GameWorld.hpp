@@ -5,6 +5,8 @@
 #include "Engine/entt.hpp"
 #include "ISubsystem.hpp"
 #include "Engine/Terrain/TerrainService.hpp"
+#include "Engine/ECS/NetServer.hpp"
+#include "Engine/ECS/NetClient.hpp"
 
 namespace OneGame::Engine::ECS
 {
@@ -15,9 +17,19 @@ class GameWorld
    public:
     void CreateTerrain()
     {
-        GameWorldContext& game = Get();
-        game.ctx().emplace<Terrain::BlockRegistry>();
-        game.ctx().emplace<Terrain::TerrainView>();
+        m_world.ctx().emplace<Terrain::BlockRegistry>();
+        m_world.ctx().emplace<Terrain::TerrainView>();
+        m_world.ctx().emplace<Terrain::TerrainDesc>();
+    }
+
+    void CreateServer()
+    {
+        m_world.ctx().emplace<NetServer>();
+    }
+
+    void CreateClient()
+    {
+        m_world.ctx().emplace<NetClient>();
     }
 
     template <typename TSubsystem>

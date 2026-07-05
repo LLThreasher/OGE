@@ -6,10 +6,10 @@
 namespace OneGame::Engine::Net
 {
 
-class NetBuffer
+class Buffer
 {
 public:
-    NetBuffer(uint8_t* memory, size_t size)
+    Buffer(uint8_t* memory, size_t size)
         : data(memory), capacity(size) {}
 
     template<typename T>
@@ -47,56 +47,56 @@ private:
     size_t readPos = 0;
 };
 
-struct NetInt
+struct Int
 {
     int value;
 
-    void Serialize(NetBuffer& buffer)
+    void Serialize(Buffer& buffer)
     {
         buffer.Write<int>(value);
     }
 
-    void Deserialize(NetBuffer& buffer)
+    void Deserialize(Buffer& buffer)
     {
         value = buffer.Read<int>();
     }
 };
 
-struct NetFloat
+struct Float
 {
     float value;
 
-    void Serialize(NetBuffer& buffer)
+    void Serialize(Buffer& buffer)
     {
         buffer.Write<float>(value);
     }
 
-    void Deserialize(NetBuffer& buffer)
+    void Deserialize(Buffer& buffer)
     {
         value = buffer.Read<float>();
     }
 };
 
-struct NetBool
+struct Bool
 {
     bool value;
 
-    void Serialize(NetBuffer& buffer)
+    void Serialize(Buffer& buffer)
     {
         buffer.Write<bool>(value);
     }
 
-    void Deserialize(NetBuffer& buffer)
+    void Deserialize(Buffer& buffer)
     {
         value = buffer.Read<bool>();
     }
 };
 
 template<typename Derived>
-class NetObject
+class Object
 {
 public:
-    void Serialize(NetBuffer& buffer)
+    void Serialize(Buffer& buffer)
     {
         static_cast<Derived*>(this)->VisitFields(
             [&](auto& field)
@@ -105,7 +105,7 @@ public:
             });
     }
 
-    void Deserialize(NetBuffer& buffer)
+    void Deserialize(Buffer& buffer)
     {
         static_cast<Derived*>(this)->VisitFields(
             [&](auto& field)

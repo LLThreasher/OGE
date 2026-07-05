@@ -36,6 +36,7 @@ class GameRenderer
         {
             ctx.renderer.UpdateBlockTexture(ctx, blkArray[i], i);
         }
+        
         for (auto& ptr : m_subsystems)
         {
             ptr->Initialize(m_world, ctx);
