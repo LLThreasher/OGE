@@ -132,7 +132,7 @@ static void onSurfaceRecreate(entt::registry& world, SurfaceRecreateEvent& event
 {
     world.clear<ScreenRect>();
     auto root = world.view<UIRoot>().front();
-    world.emplace<ScreenRect>(root, Point2{0, 0}, event.swapchainExtent);
+    world.emplace<ScreenRect>(root, ScreenRect{I16Point2{0, 0}, event.swapchainExtent});
     for (auto e : world.view<UIRect>())
     {
         onCreateUIRect(world, e);
@@ -246,10 +246,15 @@ void UIRenderer::Present(const GameWorldContext& game, PresentationContext& ctx,
     using namespace Graphics;
     for (auto [entity, rect] : game.view<UIRaycastTarget, ScreenRect>().each())
     {
-        f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay, rect,
+        f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay, CmdDrawDebugRect{rect,
                                              game.all_of<UIDrag>(entity)         ? COLOR_GREEN
                                              : game.all_of<UIRaycastHit>(entity) ? COLOR_RED
-                                                                                 : COLOR_WHITE);
+                                                                                 : COLOR_WHITE});
+    }
+
+    for (auto [entity, uisp, rect] : game.view<UISprite, ScreenRect>().each())
+    {
+        f.graphicQueue.Add<CmdDrawSprite>(GameViewType::Overlay, CmdDrawSprite{rect, uisp.color, uisp.sprite});
     }
 }
 }  // namespace OneGame::Engine::ECS

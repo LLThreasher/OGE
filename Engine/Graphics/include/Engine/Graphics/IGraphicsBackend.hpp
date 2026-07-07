@@ -615,7 +615,7 @@ class IGraphicsBackend
     virtual uint32_t CurrentFrameIndex() const = 0;
 
     virtual float SwapchainAspect() const = 0;
-    virtual UPoint2 SwapchainExtent() const = 0;
+    virtual U16Point2 SwapchainExtent() const = 0;
     virtual math::Orientation SwapchainPretransform() const = 0;
     virtual bool SwapchainRecreated() const = 0;
 

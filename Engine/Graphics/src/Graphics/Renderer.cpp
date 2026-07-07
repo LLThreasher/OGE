@@ -81,7 +81,7 @@ void Renderer::Render(AssetContext& assets, SubmissionQueue& world, float deltaT
     auto& cmd = backend.CreateCommandList(QueueType::Present);
     auto& tCmd = backend.CreateCommandList(QueueType::Transfer);
 
-    world.Add<CmdAddView>(GameViewType::Overlay, IRect{{0, 0}, assets.backend.SwapchainExtent()});
+    world.Add<CmdAddView>(GameViewType::Overlay, IRect16{{0, 0}, assets.backend.SwapchainExtent()});
 
     cmd.Begin();
     tCmd.Begin();

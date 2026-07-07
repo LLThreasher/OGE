@@ -27,7 +27,7 @@ class GameRenderer
     void Initialize(PresentationContext ctx)
     {
         auto rootView = m_world.create();
-        m_world.emplace<ScreenRect>(rootView, Point2{0, 0}, ctx.backend.SwapchainExtent());
+        m_world.emplace<ScreenRect>(rootView, I16Point2{0, 0}, ctx.backend.SwapchainExtent());
         m_world.emplace<UIRoot>(rootView);
 
         auto blkArray = Get().ctx().get<Terrain::BlockRegistry>().GetBlockTextureArray();

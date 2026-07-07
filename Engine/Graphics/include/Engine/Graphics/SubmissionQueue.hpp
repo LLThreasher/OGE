@@ -31,13 +31,28 @@ struct CmdDrawDebugText
 
 struct CmdDrawDebugRect
 {
-    IRect rect;
+    IRect16 rect;
     ColorRGBA8 color;
+};
+
+struct CmdDrawText
+{
+    I16Point2 pos;
+    ColorRGBA8 color;
+    std::string text;
+    PGlyph font;
+};
+
+struct CmdDrawSprite
+{
+    IRect16 rect;
+    ColorRGBA8 color;
+    PSprite sprite;
 };
 
 struct CmdAddView
 {
-    IRect rect;
+    IRect16 rect;
     math::mat4 view = math::lookAt(math::vec3(20, 20, 20), math::vec3(0, 0, 0), math::vec3(0, 1, 0));
     float fov = math::radians(45.0f);
     float aspect = 0.f;
@@ -108,6 +123,6 @@ class ViewSubmissionGroup
     std::array<SubmissionGroupT, ViewCount> m_groups;
 };
 
-using SingleSubmissionQueue = SubmissionGroup<CmdAddView, CmdDrawGeneralMeshOpaque, CmdDrawTerrainMeshOpaque, CmdDrawDebugText, CmdDrawDebugRect>;
+using SingleSubmissionQueue = SubmissionGroup<CmdDrawText, CmdDrawSprite, CmdAddView, CmdDrawGeneralMeshOpaque, CmdDrawTerrainMeshOpaque, CmdDrawDebugText, CmdDrawDebugRect>;
 using SubmissionQueue = ViewSubmissionGroup<SingleSubmissionQueue>;
 }  // namespace OneGame::Engine::Graphics

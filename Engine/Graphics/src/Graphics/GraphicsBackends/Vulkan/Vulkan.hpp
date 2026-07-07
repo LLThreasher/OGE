@@ -457,7 +457,7 @@ class VulkanBackend final : public IGraphicsBackend
     uint32_t CurrentFrameIndex() const override;
 
     float SwapchainAspect() const override;
-    UPoint2 SwapchainExtent() const override;
+    U16Point2 SwapchainExtent() const override;
     math::Orientation SwapchainPretransform() const override;
     bool SwapchainRecreated() const override;
 

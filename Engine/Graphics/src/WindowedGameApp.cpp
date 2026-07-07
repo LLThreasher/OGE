@@ -100,7 +100,7 @@ AppFrameAction GameGraphicApp::Update(float dt, InputSystem& input)
     {
         auto swapExtend = m_backend.SwapchainExtent();
         auto swapPretransform = m_backend.SwapchainPretransform();
-        m_dispatcher.enqueue<SurfaceRecreateEvent>({swapExtend, swapPretransform});
+        m_dispatcher.enqueue<SurfaceRecreateEvent>(SurfaceRecreateEvent{swapExtend, swapPretransform});
     }
     m_renderer.Render(pctx, m_graphicsSubmissionQueue, dt);
 

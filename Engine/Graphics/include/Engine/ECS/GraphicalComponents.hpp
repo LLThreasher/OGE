@@ -7,11 +7,24 @@
 namespace OneGame::Engine::ECS
 {
 
-using UIRect = FRect;
-using ScreenRect = IRect;
+struct UIRect : FRect
+{
+};
+
+struct ScreenRect : IRect16
+{
+};
+
 struct UISprite
 {
-    GPUTextureHandle texture;
+    Graphics::PSprite sprite;
+    ColorRGBA8 color;
+};
+
+struct UIText
+{
+    Graphics::PGlyph font;
+    std::string text;
 };
 
 struct UIDrag
@@ -53,10 +66,6 @@ struct UIZLevel
 };
 
 struct UIRaycastTarget
-{
-};
-
-struct UIFocus
 {
 };
 

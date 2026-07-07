@@ -1,12 +1,12 @@
 #pragma once
 #include <string>
 
-#include "Engine/entt.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/ObjectType.hpp"
 #include "Engine/Point2.hpp"
 #include "Engine/Point3.hpp"
 #include "Engine/Rect.hpp"
+#include "Engine/entt.hpp"
 
 namespace OneGame::Engine::Graphics
 {
@@ -51,6 +51,18 @@ struct PPerspectiveTransform
 {
     float fov;
     float aspect;
+};
+
+struct PSprite
+{
+    U16NormRect uv;
+    uint32_t texIdx;
+};
+
+struct PGlyph
+{
+    std::tuple<IRect16, U16NormRect> (*loc)(I16Point2 pos, std::string::iterator it);
+    uint32_t texIdx;
 };
 
 // always drawn on top left corner

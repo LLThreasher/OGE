@@ -1,3 +1,5 @@
+#include <bit>
+
 #include "Engine/Terrain/BlockManager.hpp"
 #include "Engine/Terrain/TerrainRenderer.hpp"
 
@@ -87,7 +89,7 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
             bits = posX & 0x1FFFE;
             while (bits)
             {
-                int bx = __builtin_ctz(bits);
+                int bx = std::countr_zero(bits);
                 bits &= bits - 1;
 
                 int x = bx - 1;
@@ -121,7 +123,7 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
             bits = negX & 0x1FFFE;
             while (bits)
             {
-                int bx = __builtin_ctz(bits);
+                int bx = std::countr_zero(bits);
                 bits &= bits - 1;
 
                 int x = bx - 1;
@@ -155,7 +157,7 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
             bits = posY & 0x1FFFE;
             while (bits)
             {
-                int bx = __builtin_ctz(bits);
+                int bx = std::countr_zero(bits);
                 bits &= bits - 1;
 
                 int x = bx - 1;
@@ -174,13 +176,13 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                     COLOR_WHITE,
                     {0xF, 0xF, 0xF, 0xF},
                     {
-                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1), 
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1),
                                  MaskHasBlock(masks, x - 1, wy + 1, wz)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1), 
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1),
                                  MaskHasBlock(masks, x + 1, wy + 1, wz)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1), 
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1),
                                  MaskHasBlock(masks, x + 1, wy + 1, wz)),
-                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1), 
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1),
                                  MaskHasBlock(masks, x - 1, wy + 1, wz)),
                     }};
                 context->quads.emplace_back(quad);
@@ -189,7 +191,7 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
             bits = negY & 0x1FFFE;
             while (bits)
             {
-                int bx = __builtin_ctz(bits);
+                int bx = std::countr_zero(bits);
                 bits &= bits - 1;
 
                 int x = bx - 1;
@@ -223,7 +225,7 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
             bits = posZ & 0x1FFFE;
             while (bits)
             {
-                int bx = __builtin_ctz(bits);
+                int bx = std::countr_zero(bits);
                 bits &= bits - 1;
 
                 int x = bx - 1;
@@ -257,7 +259,7 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
             bits = negZ & 0x1FFFE;
             while (bits)
             {
-                int bx = __builtin_ctz(bits);
+                int bx = std::countr_zero(bits);
                 bits &= bits - 1;
 
                 int x = bx - 1;

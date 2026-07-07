@@ -22,8 +22,8 @@
 
 namespace OneGame::Engine::ECS
 {
-using UIRect = FRect;
-using ScreenRect = IRect;
+struct UIRect;
+struct ScreenRect;
 }
 
 namespace OneGame::Engine::ECS

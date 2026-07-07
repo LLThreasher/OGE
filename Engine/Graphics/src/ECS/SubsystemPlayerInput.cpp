@@ -1,10 +1,10 @@
-#include "Engine/ECS/ISubsystem.hpp"
-#include "Engine/ECS/IRenderer.hpp"
 #include "Engine/ECS/GraphicalComponents.hpp"
+#include "Engine/ECS/IRenderer.hpp"
+#include "Engine/ECS/ISubsystem.hpp"
+#include "Engine/Formaters.hpp"
 #include "Engine/GraphicState.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/Math.hpp"
-#include "Engine/Formaters.hpp"
 
 namespace OneGame::Engine::ECS
 {
@@ -32,8 +32,7 @@ void SubsystemPlayerInput::onEraseInputSourceWidget(entt::registry& gameWorld, e
 
 void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& f)
 {
-    for (auto [entity, data] :
-         game.view<PlayerInputData>().each())
+    for (auto [entity, data] : game.view<PlayerInputData>().each())
     {
         // handle touch
         if (auto widgetInput = game.try_get<InputSourceWidget>(entity))
@@ -59,7 +58,7 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                     if (drag->deltaTime > 0.5f && (data.get<PlayerAction::Digging>() || drag->IsHold(game)))
                     {
                         data.set<PlayerAction::Digging>();
-                        data.actionPos= drag->dragLastPos;
+                        data.actionPos = drag->dragLastPos;
                         data.panDelta = math::vec2{0, 0};
                     }
                     else
@@ -68,7 +67,7 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                         auto pcam = game.get<ComponentPerspectiveCamera>(entity);
                         auto vfov = -pcam.fov;
                         auto hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
-                        data.panDelta = drag->dragDelta * math::vec2{hfov, vfov};   
+                        data.panDelta = drag->dragDelta * math::vec2{hfov, vfov};
                     }
                 }
                 else
@@ -109,8 +108,9 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
             auto pcam = game.get<ComponentPerspectiveCamera>(entity);
             auto vfov = -pcam.fov;
             auto hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
-            data.panDelta = UI::ScreenSpaceToRelSpace(game, math::vec2{f.input.GetMouseDX(), f.input.GetMouseDY()}) * math::vec2{hfov, vfov};
-            
+            data.panDelta = UI::ScreenSpaceToRelSpace(game, math::vec2{f.input.GetMouseDX(), f.input.GetMouseDY()}) *
+                            math::vec2{hfov, vfov};
+
             if (f.input.IsMouseDown(MouseButton::Left))
             {
                 data.set<PlayerAction::Digging>();

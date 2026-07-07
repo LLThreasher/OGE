@@ -5,6 +5,8 @@
 #include "Engine/Graphics/IPass.hpp"
 #include "Engine/ObjectType.hpp"
 #include "Engine/entt.hpp"
+#include "Engine/Math.hpp"
+#include "Engine/Point2.hpp"
 
 namespace OneGame::Engine::Graphics
 {
@@ -77,31 +79,17 @@ struct TextRect
 
 class UIPass : public BasicPass
 {
+    struct PushConstant
+    {
+        math::mat2 transform;
+        math::vec2 offset;
+    };
+    
    public:
-    struct Position
-    {
-        uint16_t x;
-        uint16_t y;
-    };
-
-    struct UV
-    {
-        uint16_t u;
-        uint16_t v;
-
-        static uint16_t Encode(float value)
-        {
-            value = std::clamp(value, 0.0f, 1.0f);
-            return static_cast<uint16_t>(std::round(value * 65535.0f));
-        }
-
-        UV(float _u, float _v) : u(Encode(_u)), v(Encode(_v)) {}
-    };
-
     struct Vertex
     {
-        Position position;
-        UV uv;
+        U16Point2 position;
+        U16Norm2 uv;
         ColorRGBA8 color;
         uint32_t textureIndex;
     };
@@ -114,11 +102,13 @@ class UIPass : public BasicPass
     std::vector<Vertex> vertices;
     std::vector<uint16_t> indices;
 
+    PushConstant pushConstant;
+    
     GPUBufferHandle vertexBuffer;
     GPUBufferHandle indexBuffer;
     GPUPipelineHandle pipelineHandle;
     GPUBindingGroupLayoutHandle bindingGroupLayout;
     GPUBindingGroupHandle bindingGroup;
-    std::vector<GPUTextureHandle> textures;
+    std::array<GPUTextureHandle, 16> textures;
 };
 }  // namespace OneGame::Engine::Graphics

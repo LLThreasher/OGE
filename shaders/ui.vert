@@ -11,15 +11,15 @@ layout(location = 2) flat out uint fragTexIndex;
 
 layout(push_constant) uniform Push
 {
-    vec2 ndcScale;   // = 2.0 / screenSize
+    mat2 transform;  // rotation * ndc scale
+    vec2 offset;     // offset
 } pc;
 
 const float INV_U8  = 1.0 / 255.0;
 
 void main()
 {
-    vec2 pos = vec2(inPosition) * pc.ndcScale - 1.0;
-    pos.y = -pos.y;
+    vec2 pos = pc.transform * inPosition.xy + pc.offset;
 
     fragUV = vec2(inUV);
 

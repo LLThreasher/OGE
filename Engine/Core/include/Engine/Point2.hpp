@@ -17,9 +17,9 @@ struct IntPair
     bool operator==(const IntPair<T>& other) const noexcept { return x == other.x && y == other.y; }
 
     template <typename U>
-    IntPair<wider_t<T, U>> operator+(const IntPair<U>& other) const noexcept { return {x + other.x, y + other.y}; }
+    IntPair<wider_t<T, U>> operator+(const IntPair<U>& other) const noexcept { return {static_cast<wider_t<T, U>>(x + other.x), static_cast<wider_t<T, U>>(y + other.y)}; }
     template <typename U>
-    IntPair<wider_t<T, U>> operator-(const IntPair<U>& other) const noexcept { return {x - other.x, y - other.y}; }
+    IntPair<wider_t<T, U>> operator-(const IntPair<U>& other) const noexcept { return {static_cast<wider_t<T, U>>(x - other.x), static_cast<wider_t<T, U>>(y - other.y)}; }
 
     const T& operator[](size_t index) const
     {
@@ -35,6 +35,11 @@ struct IntPair
         }
     }
 
+    IntPair<unsigned_t<T>> clampToZero() const
+    {
+        return {static_cast<unsigned_t<T>>(math::max(static_cast<T>(0), x)), static_cast<unsigned_t<T>>(math::max(static_cast<T>(0), y))};
+    }
+
     operator math::vec2() const {
         return {x, y};
     }
@@ -48,6 +53,26 @@ struct IntPair
 
 using Point2 = IntPair<int32_t>;
 using UPoint2 = IntPair<uint32_t>;
+
+using I16Point2 = IntPair<int16_t>;
+using U16Point2 = IntPair<uint16_t>;
+
+struct U16Norm2 : U16Point2
+{
+    static uint16_t Encode(float value)
+    {
+        value = std::clamp(value, 0.0f, 1.0f);
+        return static_cast<uint16_t>(std::round(value * 65535.0f));
+    }
+
+    U16Norm2(math::vec2 in) : U16Point2(Encode(in.x), Encode(in.y))
+    {
+    }
+
+    U16Norm2(uint16_t x, uint16_t y) : U16Point2(x, y)
+    {
+    }
+};
 }
 
 namespace std

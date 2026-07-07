@@ -13,7 +13,7 @@ namespace OneGame::Engine::ECS
 {
 
 using TerrainRaycastResult = Terrain::TerrainRaycastResult;
-using UIRect = FRect;
+struct UIRect;
 
 struct ComponentCamera
 {
@@ -69,6 +69,11 @@ struct PlayerInputData
         actionMask |= (1 << static_cast<uint32_t>(action));
     }
 
+    inline bool empty() const
+    {
+        return actionMask == 0;
+    }
+
     template<PlayerAction action>
     inline void unset()
     {
@@ -94,7 +99,7 @@ struct ComponentPhysicBody
 
 struct ComponentPlayer
 {
-    std::optional<TerrainRaycastResult> lookingAt;
+    float lastActionTime = 0.f;
 
     static entt::entity CreatePlayer(entt::registry& world)
     {

@@ -52,6 +52,12 @@ inline float dist(T a, T b)
 }
 
 template <typename T>
+inline T max(T a, T b)
+{
+    return glm::max(a, b);
+}
+
+template <typename T>
 inline float dist_sq(T a, T b)
 {
     return glm::distance2(a, b);

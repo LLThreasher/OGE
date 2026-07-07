@@ -19,21 +19,34 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
     {
         camera.ApplyDelta(input.panDelta.x, input.panDelta.y, input.moveDelta.x, input.moveDelta.y);
         // player.lookingAt = game.terrain.CastRay(camera.position, camera.forward);
-        if (input.get<PlayerAction::Digging>())
+        if (!input.empty())
         {
-            auto raycastResult = terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.actionPos));
-            if (raycastResult.has_value())
-                terrain.SetBlock(raycastResult.value().hitPos, 0);
-        }
-        if (input.get<PlayerAction::Placing>())
-        {
-            auto raycastResult = terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.actionPos));
-            if (raycastResult.has_value())
+            if (player.lastActionTime <= 0.0f)
             {
-                auto blockId = blocks.GetBlockId("stone");
-                auto blockValue = blockId;
-                terrain.SetBlock(raycastResult->hitPos + perFaceOffset[raycastResult->hitFace], blockValue);
+                auto raycastResult = terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.actionPos));
+                if (raycastResult.has_value())
+                {
+                    if (input.get<PlayerAction::Digging>())
+                    {
+                        terrain.SetBlock(raycastResult.value().hitPos, 0);
+                    }
+                    if (input.get<PlayerAction::Placing>())
+                    {
+                        auto blockId = blocks.GetBlockId("stone");
+                        auto blockValue = blockId;
+                        terrain.SetBlock(raycastResult->hitPos + perFaceOffset[raycastResult->hitFace], blockValue);
+                    }
+                    player.lastActionTime = 0.2f;
+                }
             }
+            else
+            {
+                player.lastActionTime -= fd.dt;
+            }
+        }
+        else
+        {
+            player.lastActionTime = 0.f;
         }
     }
 }

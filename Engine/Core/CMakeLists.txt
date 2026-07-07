@@ -3,23 +3,36 @@ add_library(EngineCore STATIC)
 message(STATUS "Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
 
+file(GLOB_RECURSE SOURCE_FILES 
+    CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+)
+
 target_sources(EngineCore
+PUBLIC
+    ${SOURCE_FILES}
 PRIVATE
+    src/TickScheduler.cpp
     src/JobSystem.cpp
     src/Logger.cpp
+    src/GameApp.cpp
+    src/AssetManager.cpp
+
     src/Terrain/TerrainService.cpp
     src/Terrain/BlockManager.cpp
     src/Terrain/TerrainGenerator.cpp
-    src/GameApp.cpp
-    src/AssetManager.cpp
+
     src/Input/InputSystem.cpp
+
     src/ECS/SubsystemPlayer.cpp
+    src/ECS/GameNetSerializer.cpp
+
     src/Platform/PrintStackTrace.cpp
     src/Platform/CLIRunner.cpp
-    src/TickScheduler.cpp
+
     src/Net/NetServer.cpp
     src/Net/NetClient.cpp
-    src/ECS/GameNetSerializer.cpp
  )
 
 target_include_directories(EngineCore

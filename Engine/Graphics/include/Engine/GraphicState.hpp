@@ -59,7 +59,7 @@ struct PresentationContext : AssetContext, SceneContext
 
 struct SurfaceRecreateEvent
 {
-    UPoint2 swapchainExtent;
+    U16Point2 swapchainExtent;
     math::Orientation swapchainPretransform;
 };
 } // namespace OneGame::Engine

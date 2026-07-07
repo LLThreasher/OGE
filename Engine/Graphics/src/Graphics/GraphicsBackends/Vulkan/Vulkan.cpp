@@ -119,7 +119,7 @@ float VulkanBackend::SwapchainAspect() const
     return (float)extend.x / (float)extend.y;
 }
 
-UPoint2 VulkanBackend::SwapchainExtent() const { return {m_swapchain.extent.width, m_swapchain.extent.height}; }
+U16Point2 VulkanBackend::SwapchainExtent() const { return U16Point2{static_cast<uint16_t>(m_swapchain.extent.width), static_cast<uint16_t>(m_swapchain.extent.height)}; }
 
 math::Orientation VulkanBackend::SwapchainPretransform() const { return m_swapchain.currentTransform; }
 
