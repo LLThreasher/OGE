@@ -88,10 +88,9 @@ class UIPass : public BasicPass
    public:
     struct Vertex
     {
-        U16Point2 position;
-        U16Norm2 uv;
-        ColorRGBA8 color;
-        uint32_t textureIndex;
+        U16Point2 position; // 4 byte
+        U16Norm2 uv;        // 4 byte
+        ColorRGBA8 color;   // 4 byte
     };
 
     void Enable(IGraphicsBackend& backend, InitContext& ctxt) override;
@@ -99,8 +98,12 @@ class UIPass : public BasicPass
     void Draw(DrawContext& context) override;
 
    private:
-    std::vector<Vertex> vertices;
+    GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend, GPUTextureHandle texture);
+
+    std::unordered_map<GPUTextureHandle, std::vector<Vertex>, HandleHash<GPUTextureHandle>> classedVertices;
     std::vector<uint16_t> indices;
+
+    std::unordered_map<GPUTextureHandle, GPUBindingGroupHandle, HandleHash<GPUTextureHandle>> cachedBindingGroups;
 
     PushConstant pushConstant;
     
@@ -108,7 +111,5 @@ class UIPass : public BasicPass
     GPUBufferHandle indexBuffer;
     GPUPipelineHandle pipelineHandle;
     GPUBindingGroupLayoutHandle bindingGroupLayout;
-    GPUBindingGroupHandle bindingGroup;
-    std::array<GPUTextureHandle, 16> textures;
 };
 }  // namespace OneGame::Engine::Graphics

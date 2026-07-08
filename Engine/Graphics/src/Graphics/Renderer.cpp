@@ -1,5 +1,7 @@
 #include "Engine/Graphics/Renderer.hpp"
 
+#include "Engine/AssetManager.hpp"
+#include "Engine/StreamingManager.hpp"
 #include "Engine/AssetBundle.hpp"
 #include "Engine/GameAppState.hpp"
 #include "Engine/GraphicState.hpp"
@@ -11,6 +13,15 @@
 
 namespace OneGame::Engine::Graphics
 {
+
+PSprite Renderer::AllocateSprite(AssetContext& asset, std::string_view textureId)
+{
+    auto texture = asset.assetManager.LoadTexture(textureId);
+    assert(texture);
+    auto region = spriteAllocator.Allocate(asset.backend, texture->info.width, texture->info.height);
+    asset.streamingManager.UploadTexture<UploadType::Immediate>(texture->data, TextureTarget{.texture=region.texture, .region=region.region});
+    return PSprite(region, spriteAllocator.GetWidth(), spriteAllocator.GetHeight());
+}
 
 void Renderer::Initialize(AssetContext& assets)
 {
@@ -26,7 +37,8 @@ void Renderer::Initialize(AssetContext& assets)
     // LOG_DEBUG("terrain pass created");
     terrainPass2.Enable(assets.backend, ctx);
     LOG_DEBUG("terrain pass 2 created");
-    // uiPass.Initialize(backend, appCtxt);
+    uiPass.Enable(assets.backend, ctx);
+    LOG_DEBUG("ui pass created");
 }
 
 void Renderer::Shutdown(AssetContext& assets)
@@ -36,6 +48,7 @@ void Renderer::Shutdown(AssetContext& assets)
     // terrainPass.Disable(backend);
     // testPass.Disable(backend);
     debugInfoPass.Disable(assets.backend);
+    uiPass.Disable(assets.backend);
     uniformArena.Shutdown(assets.backend);
 }
 
@@ -46,6 +59,7 @@ void Renderer::Draw(DrawContext& drawCtxt)
     //     terrainPass.Draw(drawCtxt);
     terrainPass2.Draw(drawCtxt);
     debugInfoPass.Draw(drawCtxt);
+    uiPass.Draw(drawCtxt);
 }
 
 // void Renderer::EnableTerrainPass(AssetContext& assets, const std::vector<std::string>& textureIdArray)

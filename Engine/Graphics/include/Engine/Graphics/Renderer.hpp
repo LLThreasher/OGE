@@ -10,6 +10,7 @@
 #include "UniformArena.hpp"
 #include "ChunkAllocator2.hpp"
 #include "SubmissionQueue.hpp"
+#include "SkylineAllocator.hpp"
 
 namespace OneGame::Engine
 {
@@ -36,19 +37,20 @@ class Renderer
         terrainPass2.UpdateBlockTexture(assets, id, slot);
     }
 
-    GPUChunkedAllocation AllocateTerrainMesh(uint32_t size)
+    GPUChunkedAllocation AllocateTerrainMesh(IGraphicsBackend& backend, uint32_t size)
     {
-        return chunkAllocator.Allocate(size);
+        return chunkAllocator.Allocate(backend, size);
     }
-    GPUBufferRange ResolveTerrainMesh(IGraphicsBackend& backend, GPUChunkedAllocation alloc)
+    GPUBufferRange ResolveTerrainMesh(GPUChunkedAllocation alloc)
     {
-        chunkAllocator.CreateBuffers(backend);
         return chunkAllocator.Resolve(alloc);
     }
     void FreeTerrainMesh(GPUChunkedAllocation alloc)
     {
         chunkAllocator.Free(alloc);
     }
+
+    PSprite AllocateSprite(AssetContext& asset, std::string_view textureId);
 
    private:
     void Draw(DrawContext& ctx);
@@ -58,6 +60,7 @@ class Renderer
 
     UniformArena uniformArena;
     DynamicChunkAllocator chunkAllocator;
+    DynamicSkylineAllocator spriteAllocator;
 
     UIPass uiPass;
     TestPass testPass;

@@ -75,7 +75,7 @@ void DebugInfoPass::Enable(IGraphicsBackend& backend, InitContext& ctx)
         *(iptr++) = i * 4 + 3;
         *(iptr++) = i * 4;
     }
-    ctx.assets.streamingManager.UploadBuffer<UploadType::Immediate, BufferUsage::Index>(std::as_bytes(std::span(indices, NUM_DEBUG_INDICES)), indexBuffer);
+    ctx.assets.streamingManager.Upload<UploadType::Immediate>(std::as_bytes(std::span(indices, NUM_DEBUG_INDICES)), BufferTarget{BufferUsage::Index, indexBuffer});
 }
 
 void DebugInfoPass::Disable(IGraphicsBackend& backend) {}

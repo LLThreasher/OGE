@@ -66,11 +66,20 @@ void DebugScene3::Enter(PresentationContext& context)
     world.get<ViewPanel>(vpe).activeCamera = player;
     world.patch<ViewPanel>(vpe);
 
+    UISprite invalidSprite{.sprite=Graphics::PSprite(context.LoadTexture("invalid.png"))};
     // put something in the middle of the screen
     auto cubeEntity = world.create();
     world.emplace<UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.01f, 0.01f * context.backend.SwapchainAspect()});
+    world.emplace<UISprite>(cubeEntity, invalidSprite);
     world.emplace<UIZLevel>(cubeEntity, 1);
-    world.emplace<UIRaycastTarget>(cubeEntity);
+    
+    {
+        auto e = world.create();
+        world.emplace<UIRect>(e, math::vec2{0.3f - 0.01f, 0.3f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.1f, 0.1f * context.backend.SwapchainAspect()});
+        world.emplace<UISprite>(e, invalidSprite);
+        world.emplace<UIZLevel>(e, 1);
+        // world.emplace<UIRaycastTarget>(e);
+    }
 
     // create move widget
     auto scaledX = 0.3f;

@@ -31,8 +31,6 @@ void UIPass::Enable(IGraphicsBackend& backend, InitContext& ctxt)
         desc.vertexLayout.push_back(VertexAttributeFormat::UniformUint16x2);
         // color
         desc.vertexLayout.push_back(VertexAttributeFormat::UniformUint8x4);
-        // texIndex
-        desc.vertexLayout.push_back(VertexAttributeFormat::Float32x2);
 
         PushConstantRangeDesc cDesc{};
         cDesc.offset = 0;
@@ -61,6 +59,7 @@ void UIPass::Enable(IGraphicsBackend& backend, InitContext& ctxt)
     iBuf.size = INDEX_COUNT * sizeof(uint16_t);
     indexBuffer = backend.CreateBuffer(iBuf);
 
+    indices.resize(INDEX_COUNT);
     uint16_t* iptr = indices.data();
     for (size_t i = 0; i < INDEX_COUNT / 6; i++)
     {
@@ -71,32 +70,45 @@ void UIPass::Enable(IGraphicsBackend& backend, InitContext& ctxt)
         *(iptr++) = i * 4 + 3;
         *(iptr++) = i * 4;
     }
-    ctxt.assets.streamingManager.UploadBuffer<UploadType::Immediate, BufferUsage::Index>(indices, indexBuffer);
+    ctxt.assets.streamingManager.UploadBuffer<UploadType::Immediate>(indices, {.usage=BufferUsage::Index, .buffer=indexBuffer});
+}
 
+void UIPass::Disable(IGraphicsBackend& backend)
+{
+}
+
+GPUBindingGroupHandle UIPass::GetOrCreateBindingGroup(IGraphicsBackend& backend, GPUTextureHandle texture)
+{
+    assert(texture.IsValid());
+    auto it = cachedBindingGroups.find(texture);
+    if (it != cachedBindingGroups.end())
     {
-        auto invalidBlockTextureBlob = ctxt.assets.LoadTexture("invalid.png");
+        return it->second;
+    }
+    else
+    {
         BindingGroupDesc desc{};
         desc.layout = bindingGroupLayout;
-        for (int i = 0; i < 16; ++i)
-            desc.textures.push_back(invalidBlockTextureBlob);
-        bindingGroup = backend.CreateBindingGroup(desc);
+        desc.textures.push_back(texture);
+        auto [newIt, inserted] = cachedBindingGroups.emplace(texture, backend.CreateBindingGroup(desc));
+        return newIt->second;
     }
 }
 
-void UIPass::Disable(IGraphicsBackend& backend) {}
-
 void UIPass::Draw(DrawContext& ctx)
 {
+    classedVertices.clear();
     for (auto quad : ctx.world.Get<CmdDrawSprite>())
     {
         auto tl = quad.rect.pos.clampToZero();
         auto br = tl + quad.rect.extent;
         auto uvtl = quad.sprite.uv.pos;
         auto uvbr = quad.sprite.uv.pos + quad.sprite.uv.extent;
-        vertices.push_back(Vertex{{tl.x, tl.y}, {uvtl.x, uvtl.y}, quad.color, quad.sprite.texIdx});
-        vertices.push_back(Vertex{{br.x, tl.y}, {uvbr.x, uvtl.y}, quad.color, quad.sprite.texIdx});
-        vertices.push_back(Vertex{{br.x, br.y}, {uvbr.x, uvbr.y}, quad.color, quad.sprite.texIdx});
-        vertices.push_back(Vertex{{tl.x, br.y}, {uvtl.x, uvbr.y}, quad.color, quad.sprite.texIdx});
+        auto& vertices = classedVertices[quad.sprite.texture];
+        vertices.push_back(Vertex{{tl.x, tl.y}, {uvtl.x, uvtl.y}, COLOR_WHITE});
+        vertices.push_back(Vertex{{br.x, tl.y}, {uvbr.x, uvtl.y}, COLOR_WHITE});
+        vertices.push_back(Vertex{{br.x, br.y}, {uvbr.x, uvbr.y}, COLOR_WHITE});
+        vertices.push_back(Vertex{{tl.x, br.y}, {uvtl.x, uvbr.y}, COLOR_WHITE});
     }
 
     for (auto text : ctx.world.Get<CmdDrawText>())
@@ -104,19 +116,20 @@ void UIPass::Draw(DrawContext& ctx)
         auto it = text.text.begin();
         while (it != text.text.end())
         {
-            auto [rect, uv] = text.font.loc(text.pos, it);
+            auto [rect, sprite] = text.font.loc(text.pos, it);
             auto tl = rect.pos.clampToZero();
             auto br = tl + rect.extent;
-            auto uvtl = uv.pos;
-            auto uvbr = uv.pos + uv.extent;
-            vertices.push_back(Vertex{{tl.x, tl.y}, {uvtl.x, uvtl.y}, text.color, text.font.texIdx});
-            vertices.push_back(Vertex{{br.x, tl.y}, {uvbr.x, uvtl.y}, text.color, text.font.texIdx});
-            vertices.push_back(Vertex{{br.x, br.y}, {uvbr.x, uvbr.y}, text.color, text.font.texIdx});
-            vertices.push_back(Vertex{{tl.x, br.y}, {uvtl.x, uvbr.y}, text.color, text.font.texIdx});
+            auto uvtl = sprite.uv.pos;
+            auto uvbr = sprite.uv.pos + sprite.uv.extent;
+            auto& vertices = classedVertices[sprite.texture];
+            vertices.push_back(Vertex{{tl.x, tl.y}, {uvtl.x, uvtl.y}, text.color});
+            vertices.push_back(Vertex{{br.x, tl.y}, {uvbr.x, uvtl.y}, text.color});
+            vertices.push_back(Vertex{{br.x, br.y}, {uvbr.x, uvbr.y}, text.color});
+            vertices.push_back(Vertex{{tl.x, br.y}, {uvtl.x, uvbr.y}, text.color});
         }
     }
 
-    if (vertices.empty()) return;
+    if (classedVertices.empty()) return;
     if (ctx.backend.SwapchainRecreated())
     {
         auto extent = ctx.backend.SwapchainExtent();
@@ -127,14 +140,18 @@ void UIPass::Draw(DrawContext& ctx)
     auto& tCmd = ctx.transferCmd;
     auto& cmd = ctx.drawCmd;
 
-    tCmd.UpdateBuffer(vertexBuffer, 0, vertices.size() * sizeof(Vertex), vertices.data());
-    tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
+    for (auto [tex, vertices] : classedVertices)
+    {
+        tCmd.UpdateBuffer(vertexBuffer, 0, vertices.size() * sizeof(Vertex), vertices.data());
+        tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
 
-    cmd.BindGraphicsPipeline(pipelineHandle);
-    cmd.PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
-    cmd.BindVertexBuffer(vertexBuffer);
-    cmd.BindIndexBuffer(indexBuffer, 0, IndexFormat::Uint16);
-    cmd.DrawIndexed(vertices.size() / 4 * 6, 1, 0, 0, 0);
+        cmd.BindGraphicsPipeline(pipelineHandle);
+        cmd.BindBindingGroup(GetOrCreateBindingGroup(ctx.backend, tex), 0);
+        cmd.PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
+        cmd.BindVertexBuffer(vertexBuffer);
+        cmd.BindIndexBuffer(indexBuffer, 0, IndexFormat::Uint16);
+        cmd.DrawIndexed(vertices.size() / 4 * 6, 1, 0, 0, 0);
+    }
 }
 
 }  // namespace OneGame::Engine::Graphics

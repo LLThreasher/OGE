@@ -157,8 +157,8 @@ void VulkanCommandBuffer::CopyBuffer(GPUBufferHandle srcHandle, GPUBufferHandle 
     vkCmdCopyBuffer(m_cmd, src->buffer, dst->buffer, 1, &copyRegion);
 }
 
-void VulkanCommandBuffer::CopyBufferToTexture(GPUBufferHandle srcHandle, GPUTextureHandle dstHandle,
-                                              uint32_t bufferOffset, uint32_t baseTextureLayer, uint32_t mipLevel)
+void VulkanCommandBuffer::CopyBufferToTexture(GPUBufferHandle srcHandle, GPUTextureHandle dstHandle, uint32_t width,
+                                              uint32_t height, uint32_t bufferOffset, CopyTextureTarget target)
 {
     VulkanBuffer* src = m_backend->m_buffers.Get(srcHandle);
     VulkanTexture* texture = m_backend->m_textures.Get(dstHandle);
@@ -169,12 +169,14 @@ void VulkanCommandBuffer::CopyBufferToTexture(GPUBufferHandle srcHandle, GPUText
     region.bufferImageHeight = 0;
 
     region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.mipLevel = mipLevel;
-    region.imageSubresource.baseArrayLayer = baseTextureLayer;
+    region.imageSubresource.mipLevel = target.mipLevel;
+    region.imageSubresource.baseArrayLayer = target.baseTextureLayer;
     region.imageSubresource.layerCount = 1;
 
-    region.imageExtent.width = texture->width;
-    region.imageExtent.height = texture->height;
+    region.imageOffset.x = target.offsetX;
+    region.imageOffset.y = target.offsetY;
+    region.imageExtent.width = width;
+    region.imageExtent.height = height;
     region.imageExtent.depth = 1;
 
     vkCmdCopyBufferToImage(m_cmd, src->buffer, texture->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
@@ -247,7 +249,8 @@ void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage befo
                          0, nullptr);
 }
 
-void VulkanCommandBuffer::TextureBarrier(GPUTextureHandle handle, TextureState newState, uint32_t baseLayer, uint32_t layerCount)
+void VulkanCommandBuffer::TextureBarrier(GPUTextureHandle handle, TextureState newState, uint32_t baseLayer,
+                                         uint32_t layerCount)
 {
     assert(layerCount == 1);
     VulkanTexture* texture = m_backend->m_textures.Get(handle);

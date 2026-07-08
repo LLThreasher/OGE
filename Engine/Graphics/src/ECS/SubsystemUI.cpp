@@ -255,6 +255,7 @@ void UIRenderer::Present(const GameWorldContext& game, PresentationContext& ctx,
     for (auto [entity, uisp, rect] : game.view<UISprite, ScreenRect>().each())
     {
         f.graphicQueue.Add<CmdDrawSprite>(GameViewType::Overlay, CmdDrawSprite{rect, uisp.color, uisp.sprite});
+        f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay, CmdDrawDebugRect{rect, COLOR_GREY});
     }
 }
 }  // namespace OneGame::Engine::ECS

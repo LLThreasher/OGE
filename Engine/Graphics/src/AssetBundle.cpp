@@ -42,7 +42,7 @@ GPUTextureHandle AssetContext::LoadTexture(const std::string_view& id)
     auto tex = assetManager.LoadTexture(id);
     auto& info = tex->info;
     auto res = backend.AllocateGPUTexture(info.width, info.height);
-    streamingManager.UploadTexture<UploadType::Immediate>(tex->data, res, 0);
+    streamingManager.UploadTexture<UploadType::Immediate>(tex->data, {res, {{0, 0}, {info.width, info.height}}});
     assetPool.Cache(id, res);
     return res;
 }
@@ -59,8 +59,8 @@ template <auto uploadType>
 void AssetContext::UploadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices, Mesh& m,
                            uint32_t indexCount, ResourceBundleHandle res)
 {
-    streamingManager.UploadBuffer<uploadType, BufferUsage::Vertex>(vertices, m.vertexBuffer, m.vOffset, res);
-    streamingManager.UploadBuffer<uploadType, BufferUsage::Index>(indices, m.indexBuffer, m.iOffset, res);
+    streamingManager.Upload<uploadType>(vertices, BufferTarget{.usage=BufferUsage::Vertex, .buffer=m.vertexBuffer, .offset=m.vOffset}, res);
+    streamingManager.Upload<uploadType>(indices, BufferTarget{.usage=BufferUsage::Index, .buffer=m.indexBuffer, .offset=m.iOffset}, res);
     m.indexCount = indexCount;
 }
 

@@ -13,6 +13,7 @@ struct ColorRGBA8
 };
 
 constexpr ColorRGBA8 COLOR_WHITE = {255, 255, 255, 255};
+constexpr ColorRGBA8 COLOR_GREY = {128, 128, 128, 255};
 constexpr ColorRGBA8 COLOR_RED = {255, 0, 0, 255};
 constexpr ColorRGBA8 COLOR_GREEN = {0, 255, 0, 255};
 

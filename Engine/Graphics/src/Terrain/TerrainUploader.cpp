@@ -18,8 +18,8 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, Presentati
         terrain.uploadMeshQueue.pop();
         size_t quadCount = terrain.builtChunkMeshes.Get(chunkMesh)->quads.size();
         auto chunkByteSize = quadCount * sizeof(TexturedQuad);
-        auto slot = ctx.renderer.AllocateTerrainMesh(chunkByteSize);
-        auto resolved = ctx.renderer.ResolveTerrainMesh(ctx.backend, slot);
+        auto slot = ctx.renderer.AllocateTerrainMesh(ctx.backend, chunkByteSize);
+        auto resolved = ctx.renderer.ResolveTerrainMesh(slot);
         Graphics::PTerrainMesh pterrain{slot, static_cast<uint32_t>(quadCount * 6)};
 
         ResourceBundleHandle res = ctx.streamingManager.CreateResourceBundle(
@@ -36,8 +36,8 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, Presentati
             });
 
         auto mesh = terrain.builtChunkMeshes.Get(chunkMesh);
-        ctx.streamingManager.UploadBuffer<UploadType::Async, Graphics::BufferUsage::Storage>(
-            mesh->quads, resolved.buffer, resolved.offset, res);
+        ctx.streamingManager.UploadBuffer<UploadType::Async>(
+            mesh->quads, {Graphics::BufferUsage::Storage, resolved.buffer, resolved.offset}, res);
     }
 }
 

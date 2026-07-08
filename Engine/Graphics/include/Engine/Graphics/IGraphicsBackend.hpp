@@ -9,8 +9,8 @@
 
 #include "Engine/ClassHelper.hpp"
 #include "Engine/Math.hpp"
-#include "Engine/Point2.hpp"
 #include "Engine/ObjectType.hpp"
+#include "Engine/Point2.hpp"
 
 /*
 ================================================================================
@@ -405,13 +405,13 @@ struct GraphicsPipelineDesc
     std::vector<char> vertexShader;
     std::vector<char> fragmentShader;
     std::vector<VertexAttributeFormat> vertexLayout;
-    PrimitiveTopology topology      = PrimitiveTopology::TriangleList;
-    bool depthTest                  = false;
-    bool writeDepth                 = false;
-    DepthCompareOp depthCompareOp   = DepthCompareOp::Never;
-    bool blending                   = false;
-    CullMode cullMode               = CullMode::None;
-    FrontFace frontFace             = FrontFace::CW;
+    PrimitiveTopology topology = PrimitiveTopology::TriangleList;
+    bool depthTest = false;
+    bool writeDepth = false;
+    DepthCompareOp depthCompareOp = DepthCompareOp::Never;
+    bool blending = false;
+    CullMode cullMode = CullMode::None;
+    FrontFace frontFace = FrontFace::CW;
 
     std::vector<PushConstantRangeDesc> pushConstants;
     std::vector<GPUBindingGroupLayoutHandle> bindingGroupLayouts;
@@ -511,6 +511,14 @@ struct BindingGroupDesc
     std::vector<BindingGroupBufferDesc> buffers;
 };
 
+struct CopyTextureTarget
+{
+    uint32_t offsetX = 0;
+    uint32_t offsetY = 0;
+    uint32_t baseTextureLayer = 0;
+    uint32_t mipLevel = 0;
+};
+
 class ICommandList
 {
    public:
@@ -545,7 +553,8 @@ class ICommandList
     virtual void CopyBuffer(GPUBufferHandle src, GPUBufferHandle dst, uint64_t size, uint64_t srcOffset = 0,
                             uint64_t dstOffset = 0) = 0;
 
-    virtual void CopyBufferToTexture(GPUBufferHandle src, GPUTextureHandle dst, uint32_t bufferOffset, uint32_t baseTextureLayer = 0, uint32_t mipLevel = 0) = 0;
+    virtual void CopyBufferToTexture(GPUBufferHandle src, GPUTextureHandle dst, uint32_t width, uint32_t height,
+                                     uint32_t bufferOffset = 0, CopyTextureTarget target = {}) = 0;
 
     // ----- Drawing -----
     virtual void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0,

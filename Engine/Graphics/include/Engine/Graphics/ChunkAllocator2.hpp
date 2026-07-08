@@ -23,18 +23,6 @@ constexpr uint32_t BLOCK_SIZES[] = {
 class DynamicChunkAllocator
 {
    public:
-    void CreateBuffers(IGraphicsBackend& backend)
-    {
-        for (uint32_t i = 0; i < CHUNK_SIZE_COUNT; ++i)
-        {
-            while (allocatorPerChunk[i].size() > activeMemBlocks[i].size())
-            {
-                activeMemBlocks[i].push_back(
-                    backend.AllocateGPUBuffer<BufferUsage::Storage>(BLOCK_SIZES[activeMemBlocks[i].size()]));
-            }
-        }
-    }
-
     void Clear(IGraphicsBackend& backend)
     {
         for (uint32_t i = 0; i < CHUNK_SIZE_COUNT; ++i)
@@ -48,20 +36,26 @@ class DynamicChunkAllocator
         }
     }
 
-    GPUChunkedAllocation Allocate(uint32_t size)
+    GPUChunkedAllocation Allocate(IGraphicsBackend& backend, uint32_t size)
     {
         for (uint16_t i = 0; i < CHUNK_SIZE_COUNT; ++i)
         {
             if (size < CHUNK_SIZES[i])
             {
                 if (allocatorPerChunk[i].empty())
+                {
                     allocatorPerChunk[i].emplace_back(BLOCK_SIZES[allocatorPerChunk[i].size()] / CHUNK_SIZES[i]);
+                    activeMemBlocks[i].push_back(
+                        backend.AllocateGPUBuffer<BufferUsage::Storage>(BLOCK_SIZES[activeMemBlocks[i].size()]));
+                }
 
                 int allocatedSlot = allocatorPerChunk[i].back().Allocate(1);
                 if (allocatedSlot == -1)
                 {
                     allocatorPerChunk[i].emplace_back(BLOCK_SIZES[allocatorPerChunk[i].size()] / CHUNK_SIZES[i]);
                     allocatedSlot = allocatorPerChunk[i].back().Allocate(1);
+                    activeMemBlocks[i].push_back(
+                        backend.AllocateGPUBuffer<BufferUsage::Storage>(BLOCK_SIZES[activeMemBlocks[i].size()]));
                 }
                 uint16_t blockSlot = allocatorPerChunk[i].size() - 1;
                 return {

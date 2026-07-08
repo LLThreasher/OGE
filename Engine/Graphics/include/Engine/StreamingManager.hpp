@@ -3,103 +3,118 @@
 #include <queue>
 #include <span>
 
+#include "Engine/Async.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/Graphics/RingStagingBuffer.hpp"
 #include "Engine/ResourcePool.hpp"
 #include "Engine/entt.hpp"
-#include "Engine/Async.hpp"
+#include "Engine/Graphics/GPUObjects.hpp"
 
 namespace OneGame::Engine
 {
 
 enum class UploadType : uint32_t
 {
-  Async,
-  Immediate,
+    Async,
+    Immediate,
 };
 
 enum class UploadObjectType
 {
-  Texture,
-  Buffer,
+    Texture,
+    Buffer,
 };
 
 struct ResourceBundle
 {
-  size_t itemCounter = 0;
+    size_t itemCounter = 0;
+};
+
+struct BufferTarget
+{
+    Graphics::BufferUsage usage;
+    GPUBufferHandle buffer;
+    uint32_t offset;
+    uint32_t size;
+};
+
+struct TextureTarget
+{
+    GPUTextureHandle texture;
+    URect region;
+    uint32_t baseTextureLayer = 0;
+    uint32_t mipLevel = 0;
 };
 
 class StreamingManager
 {
-  using RingStagingBuffer = Graphics::RingStagingBuffer;
-  using BufferUsage = Graphics::BufferUsage;
+    using RingStagingBuffer = Graphics::RingStagingBuffer;
+    using BufferUsage = Graphics::BufferUsage;
 
-  struct StagingBuffer
-  {
-    StagingAllocation alloc;
-  };
-
-  struct BufferUploadDesc
-  {
-    UploadObjectType type;
-    BufferUsage bufferUsage;
-    size_t effectiveBufferSize;
-    union
+    struct StagingBuffer
     {
-      GPUTextureHandle gpuTexture;
-      GPUBufferHandle gpuBuffer;
+        StagingAllocation alloc;
     };
-    size_t gpuBufferOffset;
-    StagingBuffer staging;
-    ResourceBundleHandle bundle = {};
-  };
 
- public:
-  // 4 MB per frame budget by default
-  StreamingManager(size_t uploadByteBudget = 4 * 1024 * 1024) : m_uploadByteBudget(uploadByteBudget) {}
-  RingStagingBuffer& GetStagingBuffer();
-  void Initialize(Graphics::IGraphicsBackend&);
-  void Shutdown(Graphics::IGraphicsBackend&);
+    struct BufferUploadDesc
+    {
+        UploadObjectType type;
+        union
+        {
+            TextureTarget gpuTexture;
+            BufferTarget gpuBuffer;
+        };
+        StagingBuffer staging;
+        ResourceBundleHandle bundle = {};
+    };
 
-  ResourceBundleHandle CreateResourceBundle(std::function<void()> callback);
+   public:
+    // 4 MB per frame budget by default
+    StreamingManager(size_t uploadByteBudget = 4 * 1024 * 1024) : m_uploadByteBudget(uploadByteBudget) {}
+    RingStagingBuffer& GetStagingBuffer();
+    void Initialize(Graphics::IGraphicsBackend&);
+    void Shutdown(Graphics::IGraphicsBackend&);
 
-  template <UploadType uploadType, BufferUsage usage, typename THandle>
-  size_t UploadBuffer(const std::span<const std::byte> data, const THandle handle, const size_t gpuOffset = 0,
-                      ResourceBundleHandle resBundle = {});
+    ResourceBundleHandle CreateResourceBundle(std::function<void()> callback);
 
-  template <UploadType uploadType, BufferUsage usage, typename TData>
-  size_t UploadBuffer(const std::vector<TData>& data, const GPUBufferHandle handle, const size_t gpuOffset = 0,
-                      ResourceBundleHandle resBundle = {})
-  {
-      return UploadBuffer<uploadType, usage>(std::as_bytes(std::span(data)), handle, gpuOffset, resBundle);
-  }
+    template <UploadType uploadType, typename TTarget>
+    size_t Upload(const std::span<const std::byte> data, const TTarget target,
+                        ResourceBundleHandle resBundle = {});
 
-  template <UploadType uploadType>
-  size_t UploadTexture(const std::vector<char>& data, const GPUTextureHandle handle, const size_t layer = 0,
-                       ResourceBundleHandle resBundle = {})
-  {
-    return UploadBuffer<uploadType, BufferUsage::None>(std::as_bytes(std::span(data)), handle, layer, resBundle);
-  }
+    template <UploadType uploadType, typename TData>
+    size_t UploadBuffer(const std::vector<TData>& data, const BufferTarget target,
+                        ResourceBundleHandle resBundle = {})
+    {
+        return Upload<uploadType>(std::as_bytes(std::span(data)), target, resBundle);
+    }
 
-  void RunUploadStep(Graphics::IGraphicsBackend&, Graphics::ICommandList&);
+    template <UploadType uploadType>
+    size_t UploadTexture(const std::vector<char>& data, const TextureTarget target,
+                         ResourceBundleHandle resBundle = {})
+    {
+        return Upload<uploadType>(std::as_bytes(std::span(data)), target, resBundle);
+    }
 
- private:
-  template <UploadType uploadType = UploadType::Immediate>
-  void ScheduleBufferUpload(const BufferUploadDesc& desc);
-  template <UploadType uploadType = UploadType::Immediate>
-  bool AllocateStagingBuffer(const std::span<const std::byte> data, StagingBuffer&);
+    void RunUploadStep(Graphics::IGraphicsBackend&, Graphics::ICommandList&);
 
-  void UploadBuffer(uint32_t fidx, BufferUploadDesc& desc, Graphics::ICommandList& transferCmd);
-  void UploadTexture(uint32_t fidx, BufferUploadDesc& desc, Graphics::ICommandList& transferCmd);
+   private:
+    template <UploadType uploadType = UploadType::Immediate>
+    void ScheduleBufferUpload(const BufferUploadDesc& desc);
+    template <UploadType uploadType = UploadType::Immediate>
+    bool AllocateStagingBuffer(const std::span<const std::byte> data, StagingBuffer&);
 
-  RingStagingBuffer m_ringStagingBuffer;
-  size_t m_uploadByteBudget;
-  std::queue<std::tuple<BufferUploadDesc, std::vector<std::byte>>> m_buffersQueuedInCPU;
-  std::queue<BufferUploadDesc> m_buffersToUpload;
-  std::queue<BufferUploadDesc> m_buffersToUploadImmediate;
-  ResourcePool<StreamingObjects::ResourceBundle, ResourceBundle> m_resourceBundles;
-  std::unordered_map<ResourceBundleHandle, std::function<void()>, HandleHash<ResourceBundleHandle>> m_resourceBundleCallbacks;
-  std::array<std::queue<std::tuple<ResourceBundleHandle, StagingAllocation>>, MAX_FRAMES_IN_FLIGHT>
-      m_stagingAllocationToFree;
+    void UploadBuffer(uint32_t fidx, BufferUploadDesc& desc, Graphics::ICommandList& transferCmd);
+    void UploadTexture(uint32_t fidx, BufferUploadDesc& desc, Graphics::ICommandList& transferCmd);
+
+    RingStagingBuffer m_ringStagingBuffer;
+    size_t m_uploadByteBudget;
+    std::queue<std::tuple<BufferUploadDesc, std::vector<std::byte>>> m_buffersQueuedInCPU;
+    std::queue<BufferUploadDesc> m_buffersToUpload;
+    std::queue<BufferUploadDesc> m_buffersToUploadImmediate;
+    ResourcePool<StreamingObjects::ResourceBundle, ResourceBundle> m_resourceBundles;
+    std::unordered_map<ResourceBundleHandle, std::function<void()>, HandleHash<ResourceBundleHandle>>
+        m_resourceBundleCallbacks;
+    std::array<std::queue<std::tuple<ResourceBundleHandle, StagingAllocation>>, MAX_FRAMES_IN_FLIGHT>
+        m_stagingAllocationToFree;
 };
 }  // namespace OneGame::Engine

@@ -465,14 +465,14 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
 
             if (allAndMask == 0x1FFFE)
             {
-                LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full soild", data->Coords.x,
-                          data->Coords.y, data->Coords.z);
+                // LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full soild", data->Coords.x,
+                //           data->Coords.y, data->Coords.z);
                 continue;
             }
             else if (allOrMask == 0x0)
             {
-                LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full air", data->Coords.x, data->Coords.y,
-                          data->Coords.z);
+                // LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full air", data->Coords.x, data->Coords.y,
+                //           data->Coords.z);
                 continue;
             }
 

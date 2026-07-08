@@ -70,7 +70,7 @@ void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint3
     VkImageViewCreateInfo ivci{};
     ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     ivci.image = result.image;
-    ivci.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    ivci.viewType = layers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
     ivci.format = vkFormat;
     ivci.subresourceRange.aspectMask = aspectMask;
     ivci.subresourceRange.baseMipLevel = 0;

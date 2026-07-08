@@ -29,7 +29,7 @@ void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt)
     auto invalidBlockTextureBlob = ctxt.assets.assetManager.LoadTexture("invalid.png");
     for (int i = 0; i < 256; ++i)
     {
-        ctxt.assets.streamingManager.UploadTexture<UploadType::Immediate>(invalidBlockTextureBlob->data, blockTexture, i);
+        ctxt.assets.streamingManager.UploadTexture<UploadType::Immediate>(invalidBlockTextureBlob->data, TextureTarget{.texture=blockTexture, .region={0, 0, BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE}, .baseTextureLayer=0});
     }
     
     // auto tex = ctxt.assets.assetManager.LoadTexture("invalid.png");
@@ -54,7 +54,7 @@ void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt)
 
 void TerrainPass2::UpdateBlockTexture(AssetContext& assets, const std::string& id, uint32_t slot)
 {
-    assets.streamingManager.UploadTexture<UploadType::Immediate>(assets.assetManager.LoadTexture(id)->data, blockTexture, slot);
+    assets.streamingManager.UploadTexture<UploadType::Immediate>(assets.assetManager.LoadTexture(id)->data, TextureTarget{blockTexture, {0, 0, BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE}, slot});
 }
 
 GPUBindingGroupHandle TerrainPass2::GetOrCreateBindingGroup(IGraphicsBackend& backend, UniformArena& arena, GPUBufferHandle storageBuffer, uint32_t chunkSize)

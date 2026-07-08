@@ -2,7 +2,7 @@
 
 #include <cassert>
 #include <cinttypes>
-#include <unordered_map>
+#include <algorithm>
 
 #include "Engine/Math.hpp"
 #include "Engine/TypeTraits.hpp"
@@ -47,6 +47,11 @@ struct IntPair
     operator IntPair<int32_t>() const {
         return {static_cast<int32_t>(x), static_cast<int32_t>(y)};
     }
+    
+    template<typename U>
+    explicit operator IntPair<U>() const {
+        return {static_cast<U>(x), static_cast<U>(y)};
+    }
 
     static IntPair<T> FromVec2(const math::vec2& v) { return {static_cast<T>(v.x), static_cast<T>(v.y)}; }
 };
@@ -57,7 +62,7 @@ using UPoint2 = IntPair<uint32_t>;
 using I16Point2 = IntPair<int16_t>;
 using U16Point2 = IntPair<uint16_t>;
 
-struct U16Norm2 : U16Point2
+struct U16Norm
 {
     static uint16_t Encode(float value)
     {
@@ -65,13 +70,30 @@ struct U16Norm2 : U16Point2
         return static_cast<uint16_t>(std::round(value * 65535.0f));
     }
 
-    U16Norm2(math::vec2 in) : U16Point2(Encode(in.x), Encode(in.y))
+    uint16_t val;
+    U16Norm() : val(0) {}
+    U16Norm(float value) : val(Encode(value)) {}
+    U16Norm operator+(const U16Norm& other) const {return val + other.val;}
+};
+
+struct U16Norm2
+{
+    U16Norm x;
+    U16Norm y;
+
+    U16Norm2() : x(0), y(0)
     {
     }
 
-    U16Norm2(uint16_t x, uint16_t y) : U16Point2(x, y)
+    U16Norm2(math::vec2 in) : x(U16Norm::Encode(in.x)), y(U16Norm::Encode(in.y))
     {
     }
+
+    U16Norm2(U16Norm x, U16Norm y) : x(x), y(y)
+    {
+    }
+
+    U16Norm2 operator+(const U16Norm2& other) const {return {x + other.x, y + other.y};}
 };
 }
 

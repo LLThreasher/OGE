@@ -33,26 +33,30 @@ void StreamingManager::ScheduleBufferUpload(const BufferUploadDesc& desc)
         m_buffersToUpload.push(desc);
 }
 
-template <UploadType uploadType, BufferUsage usage, typename THandle>
-size_t StreamingManager::UploadBuffer(const std::span<const std::byte> data, const THandle handle,
-                                      const size_t gpuOffset, ResourceBundleHandle resBundle)
+template <UploadType uploadType, typename TTarget>
+size_t StreamingManager::Upload(const std::span<const std::byte> data, const TTarget target,
+                                      ResourceBundleHandle resBundle)
 {
     size_t dataSizeInBytes = data.size();
     BufferUploadDesc desc{};
     desc.bundle = resBundle;
-    desc.effectiveBufferSize = dataSizeInBytes;
-    if constexpr (std::is_same_v<THandle, GPUBufferHandle>)
+    if constexpr (std::is_same_v<TTarget, BufferTarget>)
     {
-        desc.gpuBuffer = handle;
+        assert(target.buffer.IsValid());
+        desc.gpuBuffer = target;
+        desc.gpuBuffer.size = dataSizeInBytes;
         desc.type = UploadObjectType::Buffer;
+    }
+    else if constexpr (std::is_same_v<TTarget, TextureTarget>)
+    {
+        assert(target.texture.IsValid());
+        desc.gpuTexture = target;
+        desc.type = UploadObjectType::Texture;
     }
     else
     {
-        desc.gpuTexture = handle;
-        desc.type = UploadObjectType::Texture;
+        static_assert(false);
     }
-    desc.gpuBufferOffset = gpuOffset;
-    desc.bufferUsage = usage;
 
     if (!AllocateStagingBuffer<uploadType>(data, desc.staging))
     {
@@ -61,11 +65,6 @@ size_t StreamingManager::UploadBuffer(const std::span<const std::byte> data, con
     }
     else
     {
-        if (!m_buffersQueuedInCPU.empty())
-        {
-            auto& [_desc, _] = m_buffersQueuedInCPU.back();
-            assert(_desc.gpuBuffer.IsValid());
-        }
         if constexpr (uploadType == UploadType::Immediate)
         {
             m_buffersToUploadImmediate.push(desc);
@@ -115,17 +114,22 @@ bool StreamingManager::AllocateStagingBuffer(const std::span<const std::byte> da
 
 void StreamingManager::UploadBuffer(uint32_t fidx, BufferUploadDesc& desc, ICommandList& transferCmd)
 {
-    transferCmd.CopyBuffer(m_ringStagingBuffer.GetBuffer(), desc.gpuBuffer, desc.effectiveBufferSize,
-                           desc.staging.alloc.offset, desc.gpuBufferOffset);
-    transferCmd.BufferBarrier(desc.gpuBuffer, desc.bufferUsage | BufferUsage::TransferDst, desc.bufferUsage);
+    auto target = desc.gpuBuffer;
+    transferCmd.CopyBuffer(m_ringStagingBuffer.GetBuffer(), target.buffer, target.size, desc.staging.alloc.offset,
+                           target.offset);
+    transferCmd.BufferBarrier(target.buffer, target.usage | BufferUsage::TransferDst, target.usage);
     m_stagingAllocationToFree[fidx].emplace(desc.bundle, desc.staging.alloc);
 }
 
 void StreamingManager::UploadTexture(uint32_t fidx, BufferUploadDesc& desc, ICommandList& transferCmd)
 {
-    transferCmd.TextureBarrier(desc.gpuTexture, Graphics::TextureState::TransferDst, desc.gpuBufferOffset);
-    transferCmd.CopyBufferToTexture(m_ringStagingBuffer.GetBuffer(), desc.gpuTexture, desc.staging.alloc.offset, desc.gpuBufferOffset);
-    transferCmd.TextureBarrier(desc.gpuTexture, Graphics::TextureState::ShaderRead, desc.gpuBufferOffset);
+    auto target = desc.gpuTexture;
+    transferCmd.TextureBarrier(target.texture, Graphics::TextureState::TransferDst, target.baseTextureLayer);
+    transferCmd.CopyBufferToTexture(
+        m_ringStagingBuffer.GetBuffer(), target.texture, target.region.extent.x, target.region.extent.y,
+        desc.staging.alloc.offset,
+        {target.region.pos.x, target.region.pos.y, target.baseTextureLayer, target.mipLevel});
+    transferCmd.TextureBarrier(target.texture, Graphics::TextureState::ShaderRead, target.baseTextureLayer);
     m_stagingAllocationToFree[fidx].emplace(desc.bundle, desc.staging.alloc);
 }
 
@@ -148,8 +152,7 @@ void StreamingManager::RunUploadStep(Graphics::IGraphicsBackend& backend, Graphi
             if (eData->itemCounter == 0)
             {
                 auto it = m_resourceBundleCallbacks.find(event);
-                if (it != m_resourceBundleCallbacks.end())
-                    it->second();
+                if (it != m_resourceBundleCallbacks.end()) it->second();
                 m_resourceBundles.Destroy(event);
             }
             // LOG_DEBUG("progress {}", eData->m_itemCounter);
@@ -160,7 +163,7 @@ void StreamingManager::RunUploadStep(Graphics::IGraphicsBackend& backend, Graphi
     {
         auto& [item, buffer] = m_buffersQueuedInCPU.front();
         if (!m_ringStagingBuffer.TryAllocate(buffer.size(), item.staging.alloc)) break;
-        assert(item.gpuBuffer.IsValid());
+        // assert(item.gpuBuffer.IsValid());
         memcpy(item.staging.alloc.cpuPtr, buffer.data(), buffer.size());
         m_buffersQueuedInCPU.pop();
         m_buffersToUpload.push(item);
@@ -196,29 +199,17 @@ template bool StreamingManager::AllocateStagingBuffer<UploadType::Async>(const s
 template void StreamingManager::ScheduleBufferUpload<UploadType::Immediate>(const BufferUploadDesc& desc);
 template void StreamingManager::ScheduleBufferUpload<UploadType::Async>(const BufferUploadDesc& desc);
 
-template size_t StreamingManager::UploadBuffer<UploadType::Immediate, BufferUsage::Vertex>(
-    const std::span<const std::byte> data, const GPUBufferHandle handle, const size_t gpuOffset = 0,
-    ResourceBundleHandle resBundle = {});
-template size_t StreamingManager::UploadBuffer<UploadType::Async, BufferUsage::Vertex>(
-    const std::span<const std::byte> data, const GPUBufferHandle handle, const size_t gpuOffset = 0,
-    ResourceBundleHandle resBundle = {});
-template size_t StreamingManager::UploadBuffer<UploadType::Immediate, BufferUsage::Index>(
-    const std::span<const std::byte> data, const GPUBufferHandle handle, const size_t gpuOffset = 0,
-    ResourceBundleHandle resBundle = {});
-template size_t StreamingManager::UploadBuffer<UploadType::Async, BufferUsage::Index>(
-    const std::span<const std::byte> data, const GPUBufferHandle handle, const size_t gpuOffset = 0,
-    ResourceBundleHandle resBundle = {});
-template size_t StreamingManager::UploadBuffer<UploadType::Immediate, BufferUsage::Storage>(
-    const std::span<const std::byte> data, const GPUBufferHandle handle, const size_t gpuOffset = 0,
-    ResourceBundleHandle resBundle = {});
-template size_t StreamingManager::UploadBuffer<UploadType::Async, BufferUsage::Storage>(
-    const std::span<const std::byte> data, const GPUBufferHandle handle, const size_t gpuOffset = 0,
-    ResourceBundleHandle resBundle = {});
+template size_t StreamingManager::Upload<UploadType::Immediate>(const std::span<const std::byte> data,
+                                                                      const BufferTarget target,
+                                                                      ResourceBundleHandle resBundle = {});
+template size_t StreamingManager::Upload<UploadType::Async>(const std::span<const std::byte> data,
+                                                                  const BufferTarget target,
+                                                                  ResourceBundleHandle resBundle = {});
 
-template size_t StreamingManager::UploadBuffer<UploadType::Immediate, BufferUsage::None>(
-    const std::span<const std::byte> data, const GPUTextureHandle handle, const size_t gpuOffset = 0,
-    ResourceBundleHandle resBundle = {});
-template size_t StreamingManager::UploadBuffer<UploadType::Async, BufferUsage::None>(
-    const std::span<const std::byte> data, const GPUTextureHandle handle, const size_t gpuOffset = 0,
-    ResourceBundleHandle resBundle = {});
+template size_t StreamingManager::Upload<UploadType::Immediate>(const std::span<const std::byte> data,
+                                                                      const TextureTarget target,
+                                                                      ResourceBundleHandle resBundle = {});
+template size_t StreamingManager::Upload<UploadType::Async>(const std::span<const std::byte> data,
+                                                                  const TextureTarget target,
+                                                                  ResourceBundleHandle resBundle = {});
 }  // namespace OneGame::Engine
