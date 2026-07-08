@@ -58,9 +58,27 @@ inline T max(T a, T b)
 }
 
 template <typename T>
+inline T abs(T a)
+{
+    return glm::abs(a);
+}
+
+template <typename T>
 inline float dist_sq(T a, T b)
 {
     return glm::distance2(a, b);
+}
+
+template <typename T>
+inline float len(T a)
+{
+    return glm::length(a);
+}
+
+template <typename T>
+inline float len_sq(T a)
+{
+    return glm::length2(a);
 }
 
 inline float clamp(float val, float low, float high) { return glm::clamp(val, low, high); }

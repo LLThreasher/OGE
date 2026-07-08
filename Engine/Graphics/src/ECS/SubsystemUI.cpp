@@ -10,10 +10,29 @@
 namespace OneGame::Engine::ECS
 {
 
+void UIDrag::UpdateDrag(math::vec2 pos, entt::entity onTopOf, float dt)
+{
+    dragDelta = pos - dragLastPos;
+    dragLastPos = pos;
+    onTopOf = onTopOf;
+    deltaTime += dt;
+    auto totalOffset = math::abs(dragLastPos - dragStartPos);
+    maxDragDelta.x = math::max(maxDragDelta.x, totalOffset.x);
+    maxDragDelta.y = math::max(maxDragDelta.y, totalOffset.y);
+}
+
 bool UIDrag::IsHold(const entt::registry& world, int pixelRadiusSqr) const
 {
-    auto diff = UI::RelSpaceToScreenSpace(world, dragStartPos - dragLastPos);
-    return diff.x * diff.x + diff.y * diff.y < pixelRadiusSqr;
+    auto diff = UI::RelSpaceToScreenSpace(world, maxDragDelta);
+    auto len = diff.x * diff.x + diff.y * diff.y;
+    LOG_INFO("is hold {},{} {}", maxDragDelta.x, maxDragDelta.y, len);
+    return len < pixelRadiusSqr;
+}
+
+bool UIDrag::IsClick(const entt::registry& world, float duration, int pixelRadiusSqr) const
+{
+    if (deltaTime > duration) return false;
+    return IsHold(world, pixelRadiusSqr);
 }
 
 }  // namespace OneGame::Engine::ECS

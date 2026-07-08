@@ -35,22 +35,11 @@ struct UIDrag
     math::vec2 dragLastPos;
     float deltaTime = 0.f;
     math::vec2 dragDelta = {};
+    math::vec2 maxDragDelta = {};
 
-    void UpdateDrag(math::vec2 pos, entt::entity onTopOf, float dt)
-    {
-        dragDelta = pos - dragLastPos;
-        dragLastPos = pos;
-        onTopOf = onTopOf;
-        deltaTime += dt;
-    }
-
+    void UpdateDrag(math::vec2 pos, entt::entity onTopOf, float dt);
     bool IsHold(const entt::registry& world, int pixelRadiusSqr = 200) const;
-
-    bool IsClick(const entt::registry& world, float duration = 0.25f, int pixelRadiusSqr = 200) const
-    {
-        if (deltaTime > duration) return false;
-        return IsHold(world, pixelRadiusSqr);
-    }
+    bool IsClick(const entt::registry& world, float duration = 0.25f, int pixelRadiusSqr = 200) const;
 };
 
 struct UIDragRelease

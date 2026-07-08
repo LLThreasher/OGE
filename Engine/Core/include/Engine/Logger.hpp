@@ -6,12 +6,12 @@
 #define LOGGER_NAME "Engine"
 #endif
 
-#define LOG_INFO(...) OneGame::Engine::Logger::GetLogger(LOGGER_NAME)->info(__VA_ARGS__)
-#define LOG_WARN(...) OneGame::Engine::Logger::GetLogger(LOGGER_NAME)->warn(__VA_ARGS__)
-#define LOG_ERROR(...) OneGame::Engine::Logger::GetLogger(LOGGER_NAME)->error(__VA_ARGS__)
+#define LOG_INFO(...) Logger::GetLogger(LOGGER_NAME)->info(__VA_ARGS__)
+#define LOG_WARN(...) Logger::GetLogger(LOGGER_NAME)->warn(__VA_ARGS__)
+#define LOG_ERROR(...) Logger::GetLogger(LOGGER_NAME)->error(__VA_ARGS__)
 
 #ifdef OGE_DEBUG
-#define LOG_DEBUG(...) OneGame::Engine::Logger::GetLogger(LOGGER_NAME)->debug(__VA_ARGS__)
+#define LOG_DEBUG(...) Logger::GetLogger(LOGGER_NAME)->debug(__VA_ARGS__)
 #else
 #define LOG_DEBUG(...)
 #endif
@@ -41,3 +41,4 @@ class Logger
     static spdlog::logger* GetLogger(const char*);
 };
 }  // namespace OneGame::Engine
+using Logger = OneGame::Engine::Logger;

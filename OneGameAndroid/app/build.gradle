@@ -4,8 +4,6 @@ plugins {
 
 // def buildWithCMake = project.hasProperty('BUILD_WITH_CMAKE');
 def buildWithCMake = true;
-def frames = project.hasProperty("MAX_FRAMES_IN_FLIGHT") ?
-             project.MAX_FRAMES_IN_FLIGHT : "1";
 
 android {
     signingConfigs {
@@ -32,7 +30,7 @@ android {
                 abiFilters 'armeabi-v7a', 'arm64-v8a'
             }
             cmake {
-                arguments "-DANDROID_PLATFORM=android-29", "-DANDROID_STL=c++_static", "-DMAX_FRAMES_IN_FLIGHT=${frames}"
+                arguments "-DANDROID_PLATFORM=android-29", "-DANDROID_STL=c++_static"
                 // abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
                 abiFilters 'armeabi-v7a', 'arm64-v8a'
             }

@@ -5,12 +5,13 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(ENABLE_ASAN "Enable AddressSanitizer")
+option(ENABLE_PERF "Enable Perf Counters")
 option(BUILD_ANDROID "Build Android APK")
 option(ENABLE_VULKAN_VALIDATION "Enable Vulkan Validation Layer")
 
 # Mark as cache variable explicitly
 set(MAX_FRAMES_IN_FLIGHT
-    3
+    1
     CACHE STRING "Frames in flight")
 
 # Find the Vulkan SDK
@@ -123,13 +124,16 @@ if (BUILD_ANDROID)
 	    set(GRADLEW_COMMAND gradlew)
     endif()
 
-    set(GRADLEW_ARGS "-PMAX_FRAMES_IN_FLIGHT=${MAX_FRAMES_IN_FLIGHT}")
+    set(GRADLEW_ARGS "-DMAX_FRAMES_IN_FLIGHT=${MAX_FRAMES_IN_FLIGHT}")
+    if (ENABLE_PERF)
+        set(GRADLEW_ARGS "${GRADLEW_ARGS};-DENABLE_PERF=${ENABLE_PERF}")
+    endif()
 
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_custom_command(
 	    PRE_BUILD
 	    OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/debug/app-debug.apk"
-	    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/${GRADLEW_COMMAND}" ARGS "assembleDebug" "--info" ${GRADLEW_ARGS}
+	    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/${GRADLEW_COMMAND}" ARGS "assembleDebug" "--rerun-tasks" "--info" "-Pandroid.cmake.arguments=${GRADLEW_ARGS}"
 	    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid"
     )
     add_custom_target(
@@ -141,7 +145,7 @@ if (BUILD_ANDROID)
     add_custom_command(
 	    PRE_BUILD
 	    OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/release/app-release.apk"
-	    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/${GRADLEW_COMMAND}" ARGS "assembleRelease" "--info" ${GRADLEW_ARGS}
+	    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/${GRADLEW_COMMAND}" ARGS "assembleRelease" "--rerun-tasks" "--info" "-Pandroid.cmake.arguments=${GRADLEW_ARGS}"
 	    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid"
     )
     add_custom_target(

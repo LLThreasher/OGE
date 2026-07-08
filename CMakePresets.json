@@ -57,14 +57,21 @@
       "displayName": "Apple Silicon Debug",
       "description": "使用 Visual Studio 开发环境定向到 Apple Silicon (64 位)。(Debug)",
       "inherits": "macos-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "ENABLE_PERF": "ON" }
     },
     {
       "name": "apple-release",
       "displayName": "Apple Silicon Release",
-      "description": "使用 Visual Studio 开发环境定向到 Apple Silicon (64 位)。(RelWithDebInfo)",
+      "description": "使用 Visual Studio 开发环境定向到 Apple Silicon (64 位)。(Release)",
       "inherits": "apple-debug",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "apple-perf",
+      "displayName": "Apple Silicon Perf",
+      "description": "使用 Visual Studio 开发环境定向到 Apple Silicon (64 位)。(RelWithDebInfo)",
+      "inherits": "apple-debug",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo", "ENABLE_PERF": "ON" }
     },
     {
       "name": "x64-debug",

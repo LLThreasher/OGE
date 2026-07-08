@@ -31,7 +31,7 @@ class RendererBase : public IRenderer<GameWorldContext>
 };
 
 DECLARE_RENDERER(DebugInfo, float currentFPS = 0.f; float currentFrameTime = 0.f; float accumTime = 0.f;
-                  uint64_t frameCount = 0; FramePerfStatus totalPerfStatus; FramePerfStatus perfStatus;);
+                  uint64_t frameCount = 0; FramePerfStatus totalPerfStatus = {}; FramePerfStatus perfStatus = {};);
 
 void AddDebugInfo(entt::registry& presentationWorld, std::string_view msg);
 
