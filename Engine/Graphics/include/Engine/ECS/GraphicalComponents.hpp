@@ -18,12 +18,11 @@ struct ScreenRect : IRect16
 struct UISprite
 {
     Graphics::PSprite sprite;
-    ColorRGBA8 color;
+    ColorRGBA8 color = COLOR_WHITE;
 };
 
 struct UIText
 {
-    Graphics::PGlyph font;
     std::string text;
 };
 

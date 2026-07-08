@@ -73,7 +73,12 @@ struct U16Norm
     uint16_t val;
     U16Norm() : val(0) {}
     U16Norm(float value) : val(Encode(value)) {}
-    U16Norm operator+(const U16Norm& other) const {return val + other.val;}
+    U16Norm operator+(const U16Norm& other) const
+    {
+        U16Norm n;
+        n.val = val + other.val;
+        return n;
+    }
 };
 
 struct U16Norm2

@@ -71,11 +71,6 @@ struct PSprite
     }
 };
 
-struct PGlyph
-{
-    std::tuple<IRect16, PSprite> (*loc)(I16Point2 pos, std::string::iterator it);
-};
-
 // always drawn on top left corner
 struct PDebugText
 {

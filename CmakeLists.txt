@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(ENABLE_ASAN "Enable AddressSanitizer")
 option(BUILD_ANDROID "Build Android APK")
+option(ENABLE_VULKAN_VALIDATION "Enable Vulkan Validation Layer")
 
 # Mark as cache variable explicitly
 set(MAX_FRAMES_IN_FLIGHT

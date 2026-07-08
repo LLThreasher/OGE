@@ -67,19 +67,21 @@ void DebugScene3::Enter(PresentationContext& context)
     world.patch<ViewPanel>(vpe);
 
     UISprite invalidSprite{.sprite=Graphics::PSprite(context.LoadTexture("invalid.png"))};
+    UISprite invalidSprite2{.sprite=Graphics::PSprite(context.LoadTexture("dirt.png"))};
+    UISprite sprite2{.sprite=context.renderer.AllocateSprite(context, "om_large_plain_idx.png")};
+    
+    {
+        auto e = world.create();
+        world.emplace<UIRect>(e, math::vec2{0.3f - 0.01f, 0.3f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.1f, 0.1f * context.backend.SwapchainAspect()});
+        world.emplace<UISprite>(e, sprite2);
+        world.emplace<UIZLevel>(e, 1);
+    }
+
     // put something in the middle of the screen
     auto cubeEntity = world.create();
     world.emplace<UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.01f, 0.01f * context.backend.SwapchainAspect()});
     world.emplace<UISprite>(cubeEntity, invalidSprite);
     world.emplace<UIZLevel>(cubeEntity, 1);
-    
-    {
-        auto e = world.create();
-        world.emplace<UIRect>(e, math::vec2{0.3f - 0.01f, 0.3f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.1f, 0.1f * context.backend.SwapchainAspect()});
-        world.emplace<UISprite>(e, invalidSprite);
-        world.emplace<UIZLevel>(e, 1);
-        // world.emplace<UIRaycastTarget>(e);
-    }
 
     // create move widget
     auto scaledX = 0.3f;

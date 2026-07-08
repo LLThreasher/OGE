@@ -35,14 +35,6 @@ struct CmdDrawDebugRect
     ColorRGBA8 color;
 };
 
-struct CmdDrawText
-{
-    I16Point2 pos;
-    ColorRGBA8 color;
-    std::string text;
-    PGlyph font;
-};
-
 struct CmdDrawSprite
 {
     IRect16 rect;
@@ -123,6 +115,6 @@ class ViewSubmissionGroup
     std::array<SubmissionGroupT, ViewCount> m_groups;
 };
 
-using SingleSubmissionQueue = SubmissionGroup<CmdDrawText, CmdDrawSprite, CmdAddView, CmdDrawGeneralMeshOpaque, CmdDrawTerrainMeshOpaque, CmdDrawDebugText, CmdDrawDebugRect>;
+using SingleSubmissionQueue = SubmissionGroup<CmdDrawSprite, CmdAddView, CmdDrawGeneralMeshOpaque, CmdDrawTerrainMeshOpaque, CmdDrawDebugText, CmdDrawDebugRect>;
 using SubmissionQueue = ViewSubmissionGroup<SingleSubmissionQueue>;
 }  // namespace OneGame::Engine::Graphics

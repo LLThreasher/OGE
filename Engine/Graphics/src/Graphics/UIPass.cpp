@@ -23,8 +23,10 @@ void UIPass::Enable(IGraphicsBackend& backend, InitContext& ctxt)
 
     {
         GraphicsPipelineDesc desc{};
-        assert(ctxt.assets.LoadBlob("ui.vert.spv", desc.vertexShader));
-        assert(ctxt.assets.LoadBlob("ui.frag.spv", desc.fragmentShader));
+        if (!ctxt.assets.LoadBlob("ui.vert.spv", desc.vertexShader))
+            throw std::runtime_error("failed to load vertex shader");
+        if (!ctxt.assets.LoadBlob("ui.frag.spv", desc.fragmentShader))
+            throw std::runtime_error("failed to load fragment shader");
         // position
         desc.vertexLayout.push_back(VertexAttributeFormat::Uint16x2);
         // uv
@@ -111,24 +113,6 @@ void UIPass::Draw(DrawContext& ctx)
         vertices.push_back(Vertex{{tl.x, br.y}, {uvtl.x, uvbr.y}, COLOR_WHITE});
     }
 
-    for (auto text : ctx.world.Get<CmdDrawText>())
-    {
-        auto it = text.text.begin();
-        while (it != text.text.end())
-        {
-            auto [rect, sprite] = text.font.loc(text.pos, it);
-            auto tl = rect.pos.clampToZero();
-            auto br = tl + rect.extent;
-            auto uvtl = sprite.uv.pos;
-            auto uvbr = sprite.uv.pos + sprite.uv.extent;
-            auto& vertices = classedVertices[sprite.texture];
-            vertices.push_back(Vertex{{tl.x, tl.y}, {uvtl.x, uvtl.y}, text.color});
-            vertices.push_back(Vertex{{br.x, tl.y}, {uvbr.x, uvtl.y}, text.color});
-            vertices.push_back(Vertex{{br.x, br.y}, {uvbr.x, uvbr.y}, text.color});
-            vertices.push_back(Vertex{{tl.x, br.y}, {uvtl.x, uvbr.y}, text.color});
-        }
-    }
-
     if (classedVertices.empty()) return;
     if (ctx.backend.SwapchainRecreated())
     {
@@ -140,17 +124,20 @@ void UIPass::Draw(DrawContext& ctx)
     auto& tCmd = ctx.transferCmd;
     auto& cmd = ctx.drawCmd;
 
+    uint32_t vBuffOffset = 0;
     for (auto [tex, vertices] : classedVertices)
     {
-        tCmd.UpdateBuffer(vertexBuffer, 0, vertices.size() * sizeof(Vertex), vertices.data());
+        tCmd.UpdateBuffer(vertexBuffer, vBuffOffset, vertices.size() * sizeof(Vertex), vertices.data());
         tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
 
         cmd.BindGraphicsPipeline(pipelineHandle);
         cmd.BindBindingGroup(GetOrCreateBindingGroup(ctx.backend, tex), 0);
         cmd.PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
-        cmd.BindVertexBuffer(vertexBuffer);
+        cmd.BindVertexBuffer(vertexBuffer, vBuffOffset);
         cmd.BindIndexBuffer(indexBuffer, 0, IndexFormat::Uint16);
         cmd.DrawIndexed(vertices.size() / 4 * 6, 1, 0, 0, 0);
+
+        vBuffOffset += vertices.size() * sizeof(Vertex);
     }
 }
 

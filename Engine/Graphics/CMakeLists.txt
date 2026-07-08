@@ -67,7 +67,7 @@ if(USE_SDL)
     )
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR ENABLE_VULKAN_VALIDATION)
     target_compile_definitions(EngineGraphics
     PRIVATE
         VULKAN_VALIDATION

@@ -80,9 +80,16 @@
     {
       "name": "x64-release",
       "displayName": "x64 Release",
-      "description": "使用 Visual Studio 开发环境定向到 Windows (64 位)。(RelWithDebInfo)",
+      "description": "使用 Visual Studio 开发环境定向到 Windows (64 位)。(Release)",
       "inherits": "x64-debug",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "x64-perf",
+      "displayName": "x64 Perf",
+      "description": "使用 Visual Studio 开发环境定向到 Windows (64 位)。(RelWithDebInfo)",
+      "inherits": "x64-debug",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo", "ENABLE_VULKAN_VALIDATION": "ON" }
     },
     {
       "name": "android-debug",

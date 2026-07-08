@@ -15,7 +15,7 @@ layout(push_constant) uniform Push
 
 void main()
 {
-    vec2 pos = pc.transform * inPosition.xy + pc.offset;
+    vec2 pos = pc.transform * vec2(inPosition) + pc.offset;
 
     fragUV = inUV;
 
