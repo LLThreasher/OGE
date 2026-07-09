@@ -51,6 +51,7 @@ PRIVATE
     src/Graphics/Renderer.cpp
     src/Graphics/TerrainPass.cpp
     src/Graphics/MeshBuilder.cpp
+    src/ECS/IFont.cpp
 )
 
 target_include_directories(EngineGraphics

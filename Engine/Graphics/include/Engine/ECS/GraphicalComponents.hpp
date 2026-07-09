@@ -24,6 +24,10 @@ struct UISprite
 struct UIText
 {
     std::string text;
+    uint32_t size;
+    ColorRGBA8 color;
+    bool enableWrap;
+    bool enableCutoff;
 };
 
 struct UIDrag
@@ -81,9 +85,22 @@ struct ViewPanel
 };
 }
 
+namespace OneGame::Engine
+{
+    struct AssetContext;
+} // namespace OneGame::Engine
+
 namespace OneGame::Engine::UI
 {
     using namespace ECS;
+    
+    class IFont
+    {
+    public:
+        virtual void CreateTextSprites(entt::registry& world, UIText text, ScreenRect rect) = 0;
+    };
+    std::unique_ptr<IFont> LoadASCIIBitmapFont(AssetContext& ctx, std::string textureId, uint32_t textWidth, uint32_t textHeight);
+
     math::vec2 ScreenSpaceToRelSpace(const ScreenRect rect, math::vec2 screenPos);
     math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, entt::entity rectEntity,
                                      math::vec2 screenPos);
