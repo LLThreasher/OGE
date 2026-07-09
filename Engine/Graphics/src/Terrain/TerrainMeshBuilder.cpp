@@ -300,7 +300,8 @@ void TerrainMeshBuilder::ExecuteBuildChunkMesh(TerrainPresentationData& terrain,
     auto _context = terrain.meshingWorkerContexts.Get(handle);
     auto context = terrain.builtChunkMeshes.Get(_context->chunkMeshHandle);
     ExecuteBuildChunkMeshJob2(_context, context, blocks);
-    terrain.uploadMeshQueue.push(std::make_tuple(_context->chunkHandle, _context->chunkMeshHandle));
+    if (!terrain.builtChunkMeshes.Get(_context->chunkMeshHandle)->quads.empty())
+        terrain.uploadMeshQueue.push(std::make_tuple(_context->chunkHandle, _context->chunkMeshHandle));
     terrain.meshingWorkerContexts.Destroy(handle);
     m_runningVertexCount -= CHUNK_VERTEX_BYTE_SIZE;
 }

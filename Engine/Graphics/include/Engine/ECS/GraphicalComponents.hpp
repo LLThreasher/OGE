@@ -1,8 +1,13 @@
 #pragma once
-#include "Engine/entt.hpp"
-#include "Engine/Rect.hpp"
-#include "Engine/Input/InputSystem.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
+#include "Engine/Input/InputSystem.hpp"
+#include "Engine/Rect.hpp"
+#include "Engine/entt.hpp"
+
+namespace OneGame::Engine::UI
+{
+class IFont;
+}
 
 namespace OneGame::Engine::ECS
 {
@@ -23,11 +28,12 @@ struct UISprite
 
 struct UIText
 {
-    std::string text;
-    uint32_t size;
-    ColorRGBA8 color;
-    bool enableWrap;
-    bool enableCutoff;
+    std::shared_ptr<UI::IFont> font;
+    std::string text = "";
+    uint32_t size = 16;
+    ColorRGBA8 color = COLOR_WHITE;
+    bool enableWrap = false;
+    bool enableCutoff = false;
 };
 
 struct UIDrag
@@ -73,6 +79,15 @@ struct SwapchainExtent : UPoint2
 {
 };
 
+struct UITerminal
+{
+    entt::entity text;
+};
+
+struct UITextInput
+{
+};
+
 struct UIParent
 {
     entt::entity parent;
@@ -83,30 +98,35 @@ struct ViewPanel
     Graphics::GameViewType activeSlot = Graphics::GameViewType::Slot0;
     entt::entity activeCamera = entt::null;
 };
-}
+}  // namespace OneGame::Engine::ECS
 
 namespace OneGame::Engine
 {
-    struct AssetContext;
-} // namespace OneGame::Engine
+struct AssetContext;
+namespace Graphics
+{
+class SubmissionQueue;
+}
+}  // namespace OneGame::Engine
 
 namespace OneGame::Engine::UI
 {
-    using namespace ECS;
-    
-    class IFont
-    {
-    public:
-        virtual void CreateTextSprites(entt::registry& world, UIText text, ScreenRect rect) = 0;
-    };
-    std::unique_ptr<IFont> LoadASCIIBitmapFont(AssetContext& ctx, std::string textureId, uint32_t textWidth, uint32_t textHeight);
+using namespace ECS;
 
-    math::vec2 ScreenSpaceToRelSpace(const ScreenRect rect, math::vec2 screenPos);
-    math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, entt::entity rectEntity,
-                                     math::vec2 screenPos);
-    math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, math::vec2 screenPos);
-    Point2 RelSpaceToScreenSpace(const entt::registry& world, math::vec2 relPos);
-    ScreenRect UIRectToScreenRect(const entt::registry& world, entt::entity rect);
-    entt::entity CreateGameView(entt::registry & game, UIRect rect);
-    entt::entity CastRayScreenSpace(const entt::registry& gameWorld, math::vec2 pos);
-}
+class IFont
+{
+   public:
+    virtual ~IFont() = default;
+    virtual void CreateTextSprites(Graphics::SubmissionQueue& squeue, UIText text, ScreenRect rect) = 0;
+};
+std::unique_ptr<IFont> LoadASCIIBitmapFont16x6(AssetContext& ctx, std::string_view textureId);
+
+math::vec2 ScreenSpaceToRelSpace(const ScreenRect rect, math::vec2 screenPos);
+math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, entt::entity rectEntity, math::vec2 screenPos);
+math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, math::vec2 screenPos);
+Point2 RelSpaceToScreenSpace(const entt::registry& world, math::vec2 relPos);
+ScreenRect UIRectToScreenRect(const entt::registry& world, entt::entity rect);
+entt::entity CreateGameView(entt::registry& game, UIRect rect);
+entt::entity CastRayScreenSpace(const entt::registry& gameWorld, math::vec2 pos);
+entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRect rect);
+}  // namespace OneGame::Engine::UI

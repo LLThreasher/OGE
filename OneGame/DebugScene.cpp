@@ -66,22 +66,29 @@ void DebugScene3::Enter(PresentationContext& context)
     world.get<ViewPanel>(vpe).activeCamera = player;
     world.patch<ViewPanel>(vpe);
 
-    UISprite invalidSprite{.sprite=Graphics::PSprite(context.LoadTexture("invalid.png"))};
-    UISprite invalidSprite2{.sprite=Graphics::PSprite(context.LoadTexture("dirt.png"))};
-    UISprite sprite2{.sprite=context.renderer.AllocateSprite(context, "om_large_plain_idx.png")};
+    UISprite crossSprite{.sprite=context.renderer.AllocateSprite(context, "cross.png")};
+    auto font = context.LoadASCIIBitmapFont16x6("om_large_plain_idx.png");
     
-    {
-        auto e = world.create();
-        world.emplace<UIRect>(e, math::vec2{0.3f - 0.01f, 0.3f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.1f, 0.1f * context.backend.SwapchainAspect()});
-        world.emplace<UISprite>(e, sprite2);
-        world.emplace<UIZLevel>(e, 1);
-    }
+    // {
+    //     auto e = world.create();
+    //     world.emplace<UIRect>(e, math::vec2{0.3f - 0.01f, 0.3f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.1f, 0.1f * context.backend.SwapchainAspect()});
+    //     world.emplace<UISprite>(e, crossSprite);
+    //     world.emplace<UIZLevel>(e, 1);
+    // }
+
+    // {
+    //     auto e = world.create();
+    //     world.emplace<UIRect>(e, math::vec2{0.3f - 0.01f, 0.7f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.1f, 0.1f * context.backend.SwapchainAspect()});
+    //     world.emplace<UISprite>(e, crossSprite);
+    //     // world.emplace<UIText>(e, UIText{.font=font, .text="Hello world\nTerminal"});
+    //     // world.emplace<UIZLevel>(e, 1);
+    // }
 
     // put something in the middle of the screen
-    auto cubeEntity = world.create();
-    world.emplace<UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.01f, 0.01f * context.backend.SwapchainAspect()});
-    world.emplace<UISprite>(cubeEntity, invalidSprite);
-    world.emplace<UIZLevel>(cubeEntity, 1);
+    // auto cubeEntity = world.create();
+    // world.emplace<UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.01f, 0.01f * context.backend.SwapchainAspect()});
+    // world.emplace<UISprite>(cubeEntity, crossSprite);
+    // world.emplace<UIZLevel>(cubeEntity, 1);
 
     // create move widget
     auto scaledX = 0.3f;
@@ -125,6 +132,18 @@ void DebugScene3::Update(PresentationContext& context, const FrameInputData& fra
         auto pe = gworld.view<ECS::PlayerInputData>().front();
         if (gworld.all_of<ECS::InputSourceKeyMouse>(pe))
             gworld.erase<ECS::InputSourceKeyMouse>(pe);
+    }
+    if (frame.input.IsKeyReleased(KeyCode::KY_T))
+    {
+        if (m_gameWorld.Get().view<ECS::UITerminal>().empty())
+        {
+            UI::CreateTerminalPanel(m_gameWorld.Get(), context, {math::vec2{0.1f, 0.1f}, math::vec2{0.8f, 0.8f}});
+        }
+        else
+        {
+            auto e = m_gameWorld.Get().view<ECS::UITerminal>().front();
+            m_gameWorld.Get().destroy(e);
+        }
     }
 }
 }  // namespace OneGame::Engine

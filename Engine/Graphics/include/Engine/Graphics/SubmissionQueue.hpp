@@ -116,5 +116,8 @@ class ViewSubmissionGroup
 };
 
 using SingleSubmissionQueue = SubmissionGroup<CmdDrawSprite, CmdAddView, CmdDrawGeneralMeshOpaque, CmdDrawTerrainMeshOpaque, CmdDrawDebugText, CmdDrawDebugRect>;
-using SubmissionQueue = ViewSubmissionGroup<SingleSubmissionQueue>;
+
+class SubmissionQueue : public ViewSubmissionGroup<SingleSubmissionQueue>
+{
+};
 }  // namespace OneGame::Engine::Graphics

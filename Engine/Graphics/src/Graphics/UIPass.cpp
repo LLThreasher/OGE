@@ -10,7 +10,7 @@
 
 namespace OneGame::Engine::Graphics
 {
-constexpr uint32_t VERT_COUNT = 512;
+constexpr uint32_t VERT_COUNT = 65536;
 constexpr uint32_t INDEX_COUNT = VERT_COUNT / 4 * 6;
 
 void UIPass::Enable(IGraphicsBackend& backend, InitContext& ctxt)
@@ -51,9 +51,9 @@ void UIPass::Enable(IGraphicsBackend& backend, InitContext& ctxt)
 
     BufferDesc vBuf{};
     vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
-    vBuf.memory = MemoryUsage::GPUOnly;
+    vBuf.memory = MemoryUsage::CPUToGPU;
     vBuf.size = VERT_COUNT * sizeof(Vertex);
-    vertexBuffer = backend.CreateBuffer(vBuf);
+    vertexBuffer = backend.CreateBuffer(vBuf, &vertexBufferCpu);
 
     BufferDesc iBuf{};
     iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
@@ -99,6 +99,13 @@ GPUBindingGroupHandle UIPass::GetOrCreateBindingGroup(IGraphicsBackend& backend,
 
 void UIPass::Draw(DrawContext& ctx)
 {
+    if (ctx.backend.SwapchainRecreated())
+    {
+        auto extent = ctx.backend.SwapchainExtent();
+        math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
+                                pushConstant.offset);
+    }
+    
     classedVertices.clear();
     for (auto quad : ctx.world.Get<CmdDrawSprite>())
     {
@@ -107,19 +114,13 @@ void UIPass::Draw(DrawContext& ctx)
         auto uvtl = quad.sprite.uv.pos;
         auto uvbr = quad.sprite.uv.pos + quad.sprite.uv.extent;
         auto& vertices = classedVertices[quad.sprite.texture];
-        vertices.push_back(Vertex{{tl.x, tl.y}, {uvtl.x, uvtl.y}, COLOR_WHITE});
-        vertices.push_back(Vertex{{br.x, tl.y}, {uvbr.x, uvtl.y}, COLOR_WHITE});
-        vertices.push_back(Vertex{{br.x, br.y}, {uvbr.x, uvbr.y}, COLOR_WHITE});
-        vertices.push_back(Vertex{{tl.x, br.y}, {uvtl.x, uvbr.y}, COLOR_WHITE});
+        vertices.push_back(Vertex{{tl.x, tl.y}, {uvtl.x, uvtl.y}, quad.color});
+        vertices.push_back(Vertex{{br.x, tl.y}, {uvbr.x, uvtl.y}, quad.color});
+        vertices.push_back(Vertex{{br.x, br.y}, {uvbr.x, uvbr.y}, quad.color});
+        vertices.push_back(Vertex{{tl.x, br.y}, {uvtl.x, uvbr.y}, quad.color});
     }
 
     if (classedVertices.empty()) return;
-    if (ctx.backend.SwapchainRecreated())
-    {
-        auto extent = ctx.backend.SwapchainExtent();
-        math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
-                                pushConstant.offset);
-    }
     
     auto& tCmd = ctx.transferCmd;
     auto& cmd = ctx.drawCmd;
@@ -127,8 +128,10 @@ void UIPass::Draw(DrawContext& ctx)
     uint32_t vBuffOffset = 0;
     for (auto [tex, vertices] : classedVertices)
     {
-        tCmd.UpdateBuffer(vertexBuffer, vBuffOffset, vertices.size() * sizeof(Vertex), vertices.data());
-        tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
+        // tCmd.UpdateBuffer(vertexBuffer, vBuffOffset, vertices.size() * sizeof(Vertex), vertices.data());
+        // tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
+
+        memcpy(reinterpret_cast<std::byte*>(vertexBufferCpu) + vBuffOffset, vertices.data(), vertices.size() * sizeof(Vertex));
 
         cmd.BindGraphicsPipeline(pipelineHandle);
         cmd.BindBindingGroup(GetOrCreateBindingGroup(ctx.backend, tex), 0);
@@ -138,7 +141,10 @@ void UIPass::Draw(DrawContext& ctx)
         cmd.DrawIndexed(vertices.size() / 4 * 6, 1, 0, 0, 0);
 
         vBuffOffset += vertices.size() * sizeof(Vertex);
+        assert(vBuffOffset < VERT_COUNT * sizeof(Vertex));
     }
+    GPUBufferRange ranges[] = {GPUBufferRange{{.offset=0, .size=vBuffOffset}, vertexBuffer}};
+    ctx.backend.FlushStagingBufferRanges(ranges);
 }
 
 }  // namespace OneGame::Engine::Graphics

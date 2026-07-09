@@ -108,6 +108,7 @@ class UIPass : public BasicPass
     PushConstant pushConstant;
     
     GPUBufferHandle vertexBuffer;
+    void* vertexBufferCpu;
     GPUBufferHandle indexBuffer;
     GPUPipelineHandle pipelineHandle;
     GPUBindingGroupLayoutHandle bindingGroupLayout;

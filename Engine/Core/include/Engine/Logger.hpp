@@ -23,11 +23,18 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 #endif
 
+#include "spdlog/sinks/ringbuffer_sink.h"
+
 namespace OneGame::Engine
 {
 class Logger
 {
    public:
+    static std::vector<std::string> GetLastMessages()
+    {
+        return ring_sink->last_formatted();
+    }
+
     template<typename Sink>
     static void InitLogger(const char* loggerName, std::shared_ptr<Sink> sink)
     {
@@ -39,6 +46,8 @@ class Logger
     }
 
     static spdlog::logger* GetLogger(const char*);
+private:
+    static std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> ring_sink;
 };
 }  // namespace OneGame::Engine
 using Logger = OneGame::Engine::Logger;

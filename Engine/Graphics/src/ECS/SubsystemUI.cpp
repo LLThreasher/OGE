@@ -1,9 +1,9 @@
-#include "Engine/ECS/ISubsystem.hpp"
 #include "Engine/ECS/GraphicalComponents.hpp"
 #include "Engine/ECS/IRenderer.hpp"
+#include "Engine/ECS/ISubsystem.hpp"
 #include "Engine/GraphicState.hpp"
-#include "Engine/Graphics/SubmissionQueue.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
+#include "Engine/Graphics/SubmissionQueue.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/Point2.hpp"
 
@@ -25,7 +25,6 @@ bool UIDrag::IsHold(const entt::registry& world, int pixelRadiusSqr) const
 {
     auto diff = UI::RelSpaceToScreenSpace(world, maxDragDelta);
     auto len = diff.x * diff.x + diff.y * diff.y;
-    LOG_INFO("is hold {},{} {}", maxDragDelta.x, maxDragDelta.y, len);
     return len < pixelRadiusSqr;
 }
 
@@ -40,6 +39,27 @@ bool UIDrag::IsClick(const entt::registry& world, float duration, int pixelRadiu
 namespace OneGame::Engine::UI
 {
 using namespace ECS;
+
+entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRect rect)
+{
+    UISprite crossSprite{.sprite=asset.LoadTexture("cross.png")};
+    auto cubeEntity = game.create();
+    game.emplace<UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * asset.backend.SwapchainAspect()}, math::vec2{0.01f, 0.01f * asset.backend.SwapchainAspect()});
+    game.emplace<UISprite>(cubeEntity, crossSprite);
+    game.emplace<UIZLevel>(cubeEntity, 1);
+    auto view = game.create();
+    auto res = game.create();
+    game.emplace<UITerminal>(res, view);
+    game.emplace<UIRect>(res, rect);
+    game.emplace<UISprite>(res, UISprite{.sprite=asset.LoadTexture("invalid.png"), .color=COLOR_BLACK});
+    game.emplace<UIZLevel>(res, 2);
+    game.emplace<UIRaycastTarget>(res);
+
+    game.emplace<UIParent>(view, res);
+    game.emplace<UIRect>(view, UIRect{math::vec2{0.f, 0.f}, math::vec2{1.f, 0.9f}});
+    game.emplace<UIText>(view, UIText{.font=asset.LoadASCIIBitmapFont16x6("om_large_plain_idx.png"), .text="Terminal"});
+    return res;
+}
 
 entt::entity CreateGameView(entt::registry& game, const UIRect rect)
 {
@@ -147,6 +167,17 @@ static void onCreateUIRect(entt::registry& gameWorld, entt::entity entity)
     }
 }
 
+static void onDestroyUIRect(entt::registry& gameWorld, entt::entity entity)
+{
+    for (auto [e, p] : gameWorld.view<UIParent>().each())
+    {
+        if (p.parent == entity)
+        {
+            gameWorld.destroy(e);
+        }
+    }
+}
+
 static void onSurfaceRecreate(entt::registry& world, SurfaceRecreateEvent& event)
 {
     world.clear<ScreenRect>();
@@ -165,6 +196,7 @@ void SubsystemUI::Initialize(GameWorldContext& game, AppContext ctx)
         entity = entt::null;
     }
     game.on_construct<UIRect>().connect<&onCreateUIRect>();
+    game.on_destroy<UIRect>().connect<&onDestroyUIRect>();
     ctx.events.sink<SurfaceRecreateEvent>().connect<&onSurfaceRecreate>(game);
 }
 
@@ -254,27 +286,40 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
             e = entt::null;
         }
     }
+    for (auto [e, term] : game.view<const UITerminal>().each())
+    {
+        auto& text = game.get<UIText>(term.text);
+        text.text = "Terminal\n";
+        for (auto line : Logger::GetLastMessages())
+        {
+            text.text += '\n' + line;
+        }
+    }
 }
 
-void UIRenderer::Initialize(GameWorldContext& game, PresentationContext& ctx)
-{
-}
+void UIRenderer::Initialize(GameWorldContext& game, PresentationContext& ctx) {}
 
 void UIRenderer::Present(const GameWorldContext& game, PresentationContext& ctx, FrameOutputData& f)
 {
     using namespace Graphics;
     for (auto [entity, rect] : game.view<UIRaycastTarget, ScreenRect>().each())
     {
-        f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay, CmdDrawDebugRect{rect,
-                                             game.all_of<UIDrag>(entity)         ? COLOR_GREEN
-                                             : game.all_of<UIRaycastHit>(entity) ? COLOR_RED
-                                                                                 : COLOR_WHITE});
+        f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay,
+                                             CmdDrawDebugRect{rect, game.all_of<UIDrag>(entity)         ? COLOR_GREEN
+                                                                    : game.all_of<UIRaycastHit>(entity) ? COLOR_RED
+                                                                                                        : COLOR_WHITE});
+    }
+
+    for (auto [entity, uitext, rect] : game.view<UIText, ScreenRect>().each())
+    {
+        uitext.font->CreateTextSprites(f.graphicQueue, uitext, rect);
+        f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay, CmdDrawDebugRect{rect, COLOR_GREY});
     }
 
     for (auto [entity, uisp, rect] : game.view<UISprite, ScreenRect>().each())
     {
         f.graphicQueue.Add<CmdDrawSprite>(GameViewType::Overlay, CmdDrawSprite{rect, uisp.color, uisp.sprite});
-        f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay, CmdDrawDebugRect{rect, COLOR_GREY});
+        // f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay, CmdDrawDebugRect{rect, COLOR_GREY});
     }
 }
 }  // namespace OneGame::Engine::ECS

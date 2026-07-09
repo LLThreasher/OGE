@@ -82,6 +82,13 @@ void DebugInfoPass::Disable(IGraphicsBackend& backend) {}
 
 void DebugInfoPass::Draw(DrawContext& ctx)
 {
+    if (ctx.backend.SwapchainRecreated())
+    {
+        auto extent = ctx.backend.SwapchainExtent();
+        math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
+                                pushConstant.offset);
+    }
+
     std::stringstream ss;
     auto texts = ctx.world.Get<CmdDrawDebugText>();
     for (auto& dbgText : texts)
@@ -120,16 +127,9 @@ void DebugInfoPass::Draw(DrawContext& ctx)
         vertices[i * 4 + 3].pos *= 3;
     }
 
-    if (ctx.backend.SwapchainRecreated())
-    {
-        auto extent = ctx.backend.SwapchainExtent();
-        math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
-                                pushConstant.offset);
-    }
-
     for (auto rect : ctx.world.Get<CmdDrawDebugRect>())
     {
-        static float m = 4.f;
+        static float m = 2.f;
         auto& r = rect.rect;
         auto& color = rect.color;
         size_t i = numQuads * 4;

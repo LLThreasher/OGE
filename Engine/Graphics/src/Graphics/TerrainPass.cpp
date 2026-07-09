@@ -27,9 +27,9 @@ void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt)
 
     blockTexture = ctxt.assets.backend.AllocateGPUTexture(BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE, 256);
     auto invalidBlockTextureBlob = ctxt.assets.assetManager.LoadTexture("invalid.png");
-    for (int i = 0; i < 256; ++i)
+    for (uint32_t i = 0; i < 256; ++i)
     {
-        ctxt.assets.streamingManager.UploadTexture<UploadType::Immediate>(invalidBlockTextureBlob->data, TextureTarget{.texture=blockTexture, .region={0, 0, BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE}, .baseTextureLayer=0});
+        ctxt.assets.streamingManager.UploadTexture<UploadType::Immediate>(invalidBlockTextureBlob->data, TextureTarget{.texture=blockTexture, .region={0, 0, BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE}, .baseTextureLayer=i});
     }
     
     // auto tex = ctxt.assets.assetManager.LoadTexture("invalid.png");

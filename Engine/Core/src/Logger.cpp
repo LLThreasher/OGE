@@ -16,6 +16,7 @@ spdlog::logger* Logger::GetLogger(const char* loggerName)
 #endif
 
     auto logger = std::make_shared<spdlog::logger>(loggerName, sink);
+    logger->sinks().push_back(ring_sink);
     logger->set_level(spdlog::level::trace);
     logger->flush_on(spdlog::level::trace);
 
@@ -23,4 +24,6 @@ spdlog::logger* Logger::GetLogger(const char* loggerName)
 
     return logger.get();
 }
+
+std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> Logger::ring_sink = std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt>(new spdlog::sinks::ringbuffer_sink_mt(128));
 }  // namespace OneGame::Engine

@@ -21,6 +21,11 @@ struct FrameOutputData : FrameData
     std::vector<SceneAction>& outSceneActions;
 };
 
+namespace UI
+{
+class IFont;
+}
+
 struct AssetContext : AssetBase
 {
     StreamingManager& streamingManager;
@@ -46,6 +51,8 @@ struct AssetContext : AssetBase
         UploadMesh<uploadType>(std::as_bytes(std::span{vertices}), std::as_bytes(std::span{indices}), m, indices.size(),
                                res);
     }
+
+    std::shared_ptr<UI::IFont> LoadASCIIBitmapFont16x6(const std::string_view& id);
 };
 
 // presentation context

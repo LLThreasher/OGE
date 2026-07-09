@@ -67,7 +67,7 @@ struct U16Norm
     static uint16_t Encode(float value)
     {
         value = std::clamp(value, 0.0f, 1.0f);
-        return static_cast<uint16_t>(std::round(value * 65535.0f));
+        return static_cast<uint16_t>(math::floor(value * 65535.0f));
     }
 
     uint16_t val;
