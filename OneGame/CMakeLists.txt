@@ -13,5 +13,4 @@ add_executable(OneGameHeadless
 
 target_link_libraries(OneGameHeadless PRIVATE OneGameLibHeadless)
 
-compile_shaders(OneGameHeadless ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets")
 copy_assets(OneGameHeadless ../assets "${CMAKE_CURRENT_BINARY_DIR}/assets")
