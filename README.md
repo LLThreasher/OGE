@@ -12,6 +12,11 @@ You build Minecraft when you want to find a reason to write C++.
 - AndroidNDK ver 28.2.13676358 (Android)
 - JDK >= 21 (Android)
 
+### Fetch Submodules
+```bash
+git submodule update --init --recursive
+```
+
 ### Build with CMake preset (Windows)
 ```bash
 cmake --preset x64-debug
