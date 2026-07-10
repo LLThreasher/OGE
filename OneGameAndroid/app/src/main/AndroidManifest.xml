@@ -79,7 +79,6 @@
          -->
 
         <activity android:name="SDLActivity"
-			android:debuggable="true"
             android:label="@string/app_name"
             android:alwaysRetainTaskState="true"
             android:launchMode="singleTop"
