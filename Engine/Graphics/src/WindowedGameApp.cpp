@@ -8,8 +8,6 @@
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
 
-#define TEST_TERRAIN_0
-
 namespace OneGame::Engine
 {
 using namespace Graphics;

@@ -14,7 +14,6 @@ PUBLIC
     ${SOURCE_FILES}
 PRIVATE
     src/ECS/SubsystemUI.cpp
-    src/ECS/SubsystemCamera.cpp
     src/ECS/SubsystemPlayerInput.cpp
     src/ECS/SubsystemDebugInfo.cpp
     src/ECS/Renderers.cpp

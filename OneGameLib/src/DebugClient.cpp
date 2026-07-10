@@ -1,4 +1,4 @@
-#include "Client.hpp"
+#include "OneGame/Client.hpp"
 #include "Engine/ECS/GameNetSerializer.hpp"
 
 namespace OneGame

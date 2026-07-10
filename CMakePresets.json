@@ -9,11 +9,13 @@
       "binaryDir": "${sourceDir}/out/build/${presetName}",
       "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
-        "BUILD_ANDROID": true,
+        "BUILD_ANDROID": "ON",
         "MAX_FRAMES_IN_FLIGHT": "2"
       },
       "environment": {
-        "JAVA_HOME": "D:/Android/openjdk/jdk-21.0.2"
+        "JAVA_HOME": "D:/Android/openjdk/jdk-21.0.2",
+        "ANDROID_HOME": "D:/Android/android-sdk",
+        "JDK_HOME": "D:/Android/openjdk"
       }
     },
     {

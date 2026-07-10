@@ -42,11 +42,6 @@ using namespace ECS;
 
 entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRect rect)
 {
-    UISprite crossSprite{.sprite=asset.LoadTexture("cross.png")};
-    auto cubeEntity = game.create();
-    game.emplace<UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * asset.backend.SwapchainAspect()}, math::vec2{0.01f, 0.01f * asset.backend.SwapchainAspect()});
-    game.emplace<UISprite>(cubeEntity, crossSprite);
-    game.emplace<UIZLevel>(cubeEntity, 1);
     auto view = game.create();
     auto res = game.create();
     game.emplace<UITerminal>(res, view);
@@ -289,7 +284,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
     for (auto [e, term] : game.view<const UITerminal>().each())
     {
         auto& text = game.get<UIText>(term.text);
-        text.text = "Terminal\n";
+        text.text = "Terminal";
         for (auto line : Logger::GetLastMessages())
         {
             text.text += '\n' + line;

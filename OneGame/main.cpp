@@ -22,4 +22,5 @@ int main(int argc, char* argv[]) {
 	// app.RegisterScene<DebugClient>();
 	// app.SwitchToScene<DebugClient>();
 	window->Run(app);
+	return 0;
 }

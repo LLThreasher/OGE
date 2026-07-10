@@ -1,8 +1,4 @@
 cmake_minimum_required(VERSION 3.28)
-project(OneGame CXX)
-
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 option(ENABLE_ASAN "Enable AddressSanitizer")
 option(ENABLE_PERF "Enable Perf Counters")
@@ -22,6 +18,14 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     find_package(Vulkan REQUIRED)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
     unset(BUILD_ANDROID)
+endif()
+
+if (BUILD_ANDROID)
+project(OneGame LANGUAGES NONE)
+else()
+project(OneGame CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
 
 function(fetch_file FILE_NAME URL)
@@ -130,37 +134,54 @@ if (BUILD_ANDROID)
     endif()
 
     if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-    add_custom_command(
-	    PRE_BUILD
-	    OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/debug/app-debug.apk"
-	    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/${GRADLEW_COMMAND}" ARGS "assembleDebug" "--rerun-tasks" "--info" "-Pandroid.cmake.arguments=${GRADLEW_ARGS}"
-	    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid"
-    )
-    add_custom_target(
-	    build_apk ALL
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/debug/app-debug.apk" "${CMAKE_BINARY_DIR}/Android-Debug.apk"
-	    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/debug/app-debug.apk"
-    )
+        set(APK_NAME "debug/app-debug.apk")
     elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-    add_custom_command(
-	    PRE_BUILD
-	    OUTPUT "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/release/app-release.apk"
-	    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/${GRADLEW_COMMAND}" ARGS "assembleRelease" "--rerun-tasks" "--info" "-Pandroid.cmake.arguments=${GRADLEW_ARGS}"
+        set(APK_NAME "release/app-release.apk")
+    endif()
+    
+    set(APK_BUILD_PATH "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build")
+    set_source_files_properties("${APK_SRC_PATH}" PROPERTIES GENERATED TRUE)
+
+    add_custom_target(
+	    run_gradle_assemble
+	    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/${GRADLEW_COMMAND}" "assemble${CMAKE_BUILD_TYPE}" "--console=plain" "--no-daemon" "--info" "-Pandroid.cmake.arguments=${GRADLEW_ARGS}"
 	    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid"
+        BYPRODUCTS "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}"
+        USES_TERMINAL
+        VERBATIM
+    )
+    add_custom_command(
+        OUTPUT FORCE_GRADLE_RUN_SYMBOLIC
+        COMMAND ${CMAKE_COMMAND} -E echo "Running Gradle..."
+    )
+    set_target_properties(run_gradle_assemble PROPERTIES 
+        OBJECT_DEPENDS FORCE_GRADLE_RUN_SYMBOLIC
     )
     add_custom_target(
 	    build_apk ALL
-        COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/release/app-release.apk" "${CMAKE_BINARY_DIR}/Android-Release.apk" 
-	    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/app/build/outputs/apk/release/app-release.apk"
+        COMMAND ${CMAKE_COMMAND} -E copy "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}" "${CMAKE_BINARY_DIR}/Android-${CMAKE_BUILD_TYPE}.apk" 
+	    DEPENDS run_gradle_assemble "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}"
     )
-    endif()
+    install(CODE "
+        message(installing \${CMAKE_BINARY_DIR}/Android-${CMAKE_BUILD_TYPE}.apk)
+        execute_process(
+            COMMAND \$ENV{ANDROID_HOME}/platform-tools/adb.exe install \${CMAKE_BINARY_DIR}/Android-${CMAKE_BUILD_TYPE}.apk
+            WORKING_DIRECTORY \${CMAKE_BINARY_DIR}
+            RESULT_VARIABLE res
+        )
+        if(NOT res EQUAL 0)
+            message(FATAL_ERROR \"Custom post-install script failed!\")
+        endif()
+    ")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
 add_subdirectory(3rdparty)
 add_subdirectory(Engine)
+add_subdirectory(OneGameLib)
 add_subdirectory(OneGameAndroid)
 else()
 add_subdirectory(3rdparty)
 add_subdirectory(Engine)
+add_subdirectory(OneGameLib)
 add_subdirectory(OneGame)
 endif()
 

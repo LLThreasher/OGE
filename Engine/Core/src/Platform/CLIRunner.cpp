@@ -8,6 +8,8 @@
 #include "Engine/TickScheduler.hpp"
 #include "Engine/Logger.hpp"
 #include "Engine/GameApp.hpp"
+
+#ifndef PLATFORM_ANDROID
 class Console
 {
 public:
@@ -129,3 +131,4 @@ std::unique_ptr<IAppRunner<GameHeadlessApp>> CreateCLIRunner()
     return std::unique_ptr<IAppRunner<GameHeadlessApp>>(new CLIRunner);
 }
 }  // namespace OneGame::Engine
+#endif

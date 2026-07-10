@@ -1,4 +1,4 @@
-#include "DebugScene.hpp"
+#include "OneGame/DebugScene.hpp"
 
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/Graphics/Renderer.hpp"
@@ -66,7 +66,6 @@ void DebugScene3::Enter(PresentationContext& context)
     world.get<ViewPanel>(vpe).activeCamera = player;
     world.patch<ViewPanel>(vpe);
 
-    UISprite crossSprite{.sprite=context.renderer.AllocateSprite(context, "cross.png")};
     auto font = context.LoadASCIIBitmapFont16x6("om_large_plain_idx.png");
     
     // {
@@ -85,10 +84,11 @@ void DebugScene3::Enter(PresentationContext& context)
     // }
 
     // put something in the middle of the screen
-    // auto cubeEntity = world.create();
-    // world.emplace<UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.01f, 0.01f * context.backend.SwapchainAspect()});
-    // world.emplace<UISprite>(cubeEntity, crossSprite);
-    // world.emplace<UIZLevel>(cubeEntity, 1);
+    UISprite crossSprite{.sprite=context.LoadTexture("cross.png")};
+    auto cubeEntity = world.create();
+    world.emplace<UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.01f, 0.01f * context.backend.SwapchainAspect()});
+    world.emplace<UISprite>(cubeEntity, crossSprite);
+    world.emplace<UIZLevel>(cubeEntity, 1);
 
     // create move widget
     auto scaledX = 0.3f;
@@ -137,7 +137,7 @@ void DebugScene3::Update(PresentationContext& context, const FrameInputData& fra
     {
         if (m_gameWorld.Get().view<ECS::UITerminal>().empty())
         {
-            UI::CreateTerminalPanel(m_gameWorld.Get(), context, {math::vec2{0.1f, 0.1f}, math::vec2{0.8f, 0.8f}});
+            UI::CreateTerminalPanel(m_gameWorld.Get(), context, {math::vec2{0.f, 0.f}, math::vec2{1.f, 1.f}});
         }
         else
         {
