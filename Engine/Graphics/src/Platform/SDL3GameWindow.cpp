@@ -167,7 +167,7 @@ void SDL3GameWindow::Run(GameGraphicApp& app)
     SDL_Event event;
 
     double elapsedS = 0.0;
-    double finalDeltaTime;
+    double finalDeltaTime = 0.0;
 
     while (!readyToClose)
     {

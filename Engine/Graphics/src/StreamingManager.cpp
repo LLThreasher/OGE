@@ -201,15 +201,15 @@ template void StreamingManager::ScheduleBufferUpload<UploadType::Async>(const Bu
 
 template size_t StreamingManager::Upload<UploadType::Immediate>(const std::span<const std::byte> data,
                                                                       const BufferTarget target,
-                                                                      ResourceBundleHandle resBundle = {});
+                                                                      ResourceBundleHandle resBundle);
 template size_t StreamingManager::Upload<UploadType::Async>(const std::span<const std::byte> data,
                                                                   const BufferTarget target,
-                                                                  ResourceBundleHandle resBundle = {});
+                                                                  ResourceBundleHandle resBundle);
 
 template size_t StreamingManager::Upload<UploadType::Immediate>(const std::span<const std::byte> data,
                                                                       const TextureTarget target,
-                                                                      ResourceBundleHandle resBundle = {});
+                                                                      ResourceBundleHandle resBundle);
 template size_t StreamingManager::Upload<UploadType::Async>(const std::span<const std::byte> data,
                                                                   const TextureTarget target,
-                                                                  ResourceBundleHandle resBundle = {});
+                                                                  ResourceBundleHandle resBundle);
 }  // namespace OneGame::Engine
