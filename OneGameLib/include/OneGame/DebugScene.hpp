@@ -81,5 +81,6 @@ public:
 private:
     ECS::GameWorld m_gameWorld;
     ECS::GameRenderer m_gameRenderer;
+    entt::entity m_terminalButton;
 };
 }  // namespace OneGame::Engine

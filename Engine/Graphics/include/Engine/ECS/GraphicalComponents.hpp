@@ -129,4 +129,6 @@ ScreenRect UIRectToScreenRect(const entt::registry& world, entt::entity rect);
 entt::entity CreateGameView(entt::registry& game, UIRect rect);
 entt::entity CastRayScreenSpace(const entt::registry& gameWorld, math::vec2 pos);
 entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRect rect);
+entt::entity CreateButton(entt::registry& game, AssetContext& asset, UIRect rect);
+bool IsButtonClicked(entt::registry& game, entt::entity button, math::vec2& clickPos);
 }  // namespace OneGame::Engine::UI

@@ -145,7 +145,7 @@ if (BUILD_ANDROID)
 
     add_custom_target(
 	    run_gradle_assemble
-	    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/${GRADLEW_COMMAND}" "assemble${CMAKE_BUILD_TYPE}" "--console=plain" "--no-daemon" "--info" "-Pandroid.cmake.arguments=${GRADLEW_ARGS}"
+	    COMMAND "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid/${GRADLEW_COMMAND}" "assemble${CMAKE_BUILD_TYPE}" "--console=plain" "--no-daemon" "--rerun-tasks" "--info" "-Pandroid.cmake.arguments=${GRADLEW_ARGS}"
 	    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/OneGameAndroid"
         BYPRODUCTS "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}"
         USES_TERMINAL

@@ -66,6 +66,8 @@ void DebugScene3::Enter(PresentationContext& context)
     world.get<ViewPanel>(vpe).activeCamera = player;
     world.patch<ViewPanel>(vpe);
 
+    m_terminalButton = UI::CreateButton(world, context, {math::vec2{0.f,0.f}, math::vec2{0.1f, 0.1f}});
+
     auto font = context.LoadASCIIBitmapFont16x6("om_large_plain_idx.png");
     
     // {
@@ -133,7 +135,8 @@ void DebugScene3::Update(PresentationContext& context, const FrameInputData& fra
         if (gworld.all_of<ECS::InputSourceKeyMouse>(pe))
             gworld.erase<ECS::InputSourceKeyMouse>(pe);
     }
-    if (frame.input.IsKeyReleased(KeyCode::KY_T))
+    math::vec2 pos;
+    if (frame.input.IsKeyReleased(KeyCode::KY_T) || UI::IsButtonClicked(m_gameWorld.Get(), m_terminalButton, pos))
     {
         if (m_gameWorld.Get().view<ECS::UITerminal>().empty())
         {

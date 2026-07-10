@@ -40,6 +40,28 @@ namespace OneGame::Engine::UI
 {
 using namespace ECS;
 
+bool IsButtonClicked(entt::registry& game, entt::entity button, math::vec2& clickPos)
+{
+    if (auto drag = game.try_get<UIDragRelease>(button))
+    {
+        if (drag->drag.IsClick(game))
+        {
+            clickPos = drag->drag.dragLastPos;
+            return true;
+        }
+    }
+    return false;
+}
+
+entt::entity CreateButton(entt::registry& game, AssetContext& asset, UIRect rect)
+{
+    auto res = game.create();
+    game.emplace<UIRect>(res, rect);
+    game.emplace<UIZLevel>(res, 3);
+    game.emplace<UIRaycastTarget>(res);
+    return res;
+}
+
 entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRect rect)
 {
     auto view = game.create();

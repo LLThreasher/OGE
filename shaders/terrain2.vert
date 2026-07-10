@@ -87,7 +87,7 @@ void main()
     uint texSlot = (v.sec >> 16u) & 255u;
     u_Layer = texSlot;
     
-    const float tileSize = 1.0 / 16.0;
+    // const float tileSize = 1.0 / 16.0;
     
     // uint tileX = texSlot & 15u;
     // uint tileY = texSlot >> 4u;
