@@ -2,8 +2,8 @@
 #include "Engine/Platform/IGameWindow.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 
-#include "DebugScene.hpp"
-#include "Client.hpp"
+#include "OneGame/DebugScene.hpp"
+#include "OneGame/Client.hpp"
 
 using namespace OneGame;
 using namespace OneGame::Engine;

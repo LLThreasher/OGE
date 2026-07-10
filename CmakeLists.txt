@@ -10,22 +10,23 @@ set(MAX_FRAMES_IN_FLIGHT
     1
     CACHE STRING "Frames in flight")
 
-# Find the Vulkan SDK
-# This sets variables like Vulkan_INCLUDE_DIRS and Vulkan_LIBRARIES
-if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    find_package(Vulkan REQUIRED)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-    find_package(Vulkan REQUIRED)
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
-    unset(BUILD_ANDROID)
-endif()
-
 if (BUILD_ANDROID)
+message(STATUS "building android")
 project(OneGame LANGUAGES NONE)
 else()
 project(OneGame CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+endif()
+
+# Find the Vulkan SDK
+# This sets variables like Vulkan_INCLUDE_DIRS and Vulkan_LIBRARIES
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
+    find_package(Vulkan REQUIRED)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")   
+    find_package(Vulkan REQUIRED)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Android")
+    unset(BUILD_ANDROID)
 endif()
 
 function(fetch_file FILE_NAME URL)

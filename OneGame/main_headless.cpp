@@ -1,6 +1,6 @@
 #include "Engine/GameApp.hpp"
-#include "Engine/Platform/IGameWindow.hpp"
-#include "Server.hpp"
+#include "Engine/Platform/IAppRunner.hpp"
+#include "OneGame/Server.hpp"
 
 using namespace OneGame;
 using namespace OneGame::Engine;

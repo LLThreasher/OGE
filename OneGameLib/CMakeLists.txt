@@ -10,12 +10,12 @@ target_include_directories(OneGameLib
 )
 
 if(NOT (CMAKE_SYSTEM_NAME STREQUAL "Android"))
-add_executable(OneGameLibHeadless
+add_library(OneGameLibHeadless STATIC
 	src/DebugServer.cpp
 	  )
 
 target_include_directories(OneGameLibHeadless
-	PRIVATE
+	PUBLIC
 		${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
