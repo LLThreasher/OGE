@@ -5,6 +5,8 @@ option(ENABLE_PERF "Enable Perf Counters")
 option(BUILD_ANDROID "Build Android APK")
 option(ENABLE_VULKAN_VALIDATION "Enable Vulkan Validation Layer")
 
+add_compile_definitions(SPDLOG_NO_EXCEPTIONS)
+
 # Mark as cache variable explicitly
 set(MAX_FRAMES_IN_FLIGHT
     1

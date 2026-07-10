@@ -46,6 +46,7 @@ PRIVATE
     src/Graphics/GraphicsBackends/Vulkan/VulkanFrameBuffer.cpp
     src/Graphics/GraphicsBackends/Vulkan/VulkanPipeline.cpp
     src/Graphics/GraphicsBackends/Vulkan/VulkanTexture.cpp
+    src/Graphics/GraphicsBackends/Vulkan/VulkanSurface.cpp
     src/Graphics/DebugPass.cpp
     src/Graphics/Renderer.cpp
     src/Graphics/TerrainPass.cpp
@@ -96,7 +97,18 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
     target_link_libraries(EngineGraphics
     PRIVATE
         SDL3::SDL3-static
-            Vulkan::Vulkan
+        Vulkan::Vulkan
+    )
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_compile_definitions(EngineGraphics
+    PRIVATE
+        VK_USE_PLATFORM_LINUX_KHR
+    )
+
+    target_link_libraries(EngineGraphics
+    PRIVATE
+        SDL3::SDL3-static
+        Vulkan::Vulkan
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_sources(EngineGraphics
@@ -111,7 +123,7 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     target_link_libraries(EngineGraphics
     PRIVATE
         SDL3::SDL3-static
-            Vulkan::Vulkan
+        Vulkan::Vulkan
     )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
     target_compile_definitions(EngineGraphics
@@ -121,8 +133,8 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
 
     target_link_libraries(EngineGraphics
     PRIVATE
-            SDL3::SDL3
-            vulkan
+        SDL3::SDL3
+        vulkan
     )
 endif()
 

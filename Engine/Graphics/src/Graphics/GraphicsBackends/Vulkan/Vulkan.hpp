@@ -22,12 +22,6 @@
         }                                                                     \
     } while (0)
 
-// Forward declarations (avoid including vulkan.h here)
-struct VkInstance_T;
-struct VkPhysicalDevice_T;
-struct VkDevice_T;
-struct VkQueue_T;
-
 struct VmaAllocator_T;
 using VmaAllocator = VmaAllocator_T*;
 
@@ -547,5 +541,7 @@ class VulkanBackend final : public IGraphicsBackend
     void CreateSwapchainRenderPass();
     void CreateSwapchainFrameBuffers();
 };
+
+VkResult CreateSurface(WindowHandle* handle, VkInstance instance, VkSurfaceKHR& surface);
 
 }  // namespace OneGame::Engine::Graphics::Vulkan

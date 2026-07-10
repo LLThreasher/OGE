@@ -1,5 +1,7 @@
 #include "Vulkan.hpp"
 
+#include <vulkan/vulkan.h>
+
 #include <algorithm>
 #include <cmath>
 #include <set>
@@ -119,7 +121,10 @@ float VulkanBackend::SwapchainAspect() const
     return (float)extend.x / (float)extend.y;
 }
 
-U16Point2 VulkanBackend::SwapchainExtent() const { return U16Point2{static_cast<uint16_t>(m_swapchain.extent.width), static_cast<uint16_t>(m_swapchain.extent.height)}; }
+U16Point2 VulkanBackend::SwapchainExtent() const
+{
+    return U16Point2{static_cast<uint16_t>(m_swapchain.extent.width), static_cast<uint16_t>(m_swapchain.extent.height)};
+}
 
 math::Orientation VulkanBackend::SwapchainPretransform() const { return m_swapchain.currentTransform; }
 
@@ -621,32 +626,7 @@ void VulkanBackend::RecreateSurface(WindowHandle* handle)
 {
     DestroySurface();
     LOG_DEBUG("recreating surface");
-    VkResult res;
-#ifdef PLATFORM_WINDOWS
-    {
-        VkWin32SurfaceCreateInfoKHR createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
-        createInfo.hwnd = static_cast<HWND>(handle->hwnd);
-        createInfo.hinstance = static_cast<HINSTANCE>(handle->hInstance);
-        res = vkCreateWin32SurfaceKHR(m_device.instance, &createInfo, nullptr, &m_device.surface);
-    }
-#elif defined(PLATFORM_ANDROID)
-    {
-        VkAndroidSurfaceCreateInfoKHR createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
-        createInfo.window = static_cast<ANativeWindow*>(handle->nativeWindow);
-        res = vkCreateAndroidSurfaceKHR(m_device.instance, &createInfo, nullptr, &m_device.surface);
-    }
-#elif defined(PLATFORM_DARWIN)
-    {
-        VkMetalSurfaceCreateInfoEXT createInfo{};
-        createInfo.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
-        createInfo.pNext = nullptr;
-        createInfo.flags = 0;
-        createInfo.pLayer = handle->metalLayer;
-        res = vkCreateMetalSurfaceEXT(m_device.instance, &createInfo, nullptr, &m_device.surface);
-    }
-#endif
+    auto res = CreateSurface(handle, m_device.instance, m_device.surface);
     if (res != VK_SUCCESS)
     {
         LOG_ERROR("error recreating surface {}", static_cast<uint32_t>(res));
@@ -993,7 +973,7 @@ BeginFrameAction VulkanBackend::BeginFrame()
 
     // Wait for previous frame to finish
     vkWaitForFences(m_device.device, 1, &frame.inFlightFence, VK_TRUE, UINT64_MAX);
-    
+
     // Acquire next swapchain image
     VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, frame.imageAvailableAndTransferComplete[0],
                                             VK_NULL_HANDLE, &m_imageIndex);

@@ -9,11 +9,12 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_mouse.h>
 
+#include "Engine/WindowedGameApp.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
-#include "Engine/WindowedGameApp.hpp"
 #include "Engine/Platform/IGameWindow.hpp"
 #include "Engine/Timer.hpp"
+#include "Engine/Graphics/WindowHandle.hpp"
 
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"

@@ -12,6 +12,8 @@
 #include "Engine/ObjectType.hpp"
 #include "Engine/Point2.hpp"
 
+#include "Engine/Graphics/WindowHandle.hpp"
+
 /*
 ================================================================================
 Minimal GPU-Driven Voxel Frame Flow (Android / Vulkan-Oriented)
@@ -199,18 +201,6 @@ This scales with chunk count and removes per-chunk CPU submission cost.
 namespace OneGame::Engine::Graphics
 {
 static constexpr size_t MaxColorAttachments = 4;
-
-struct WindowHandle
-{
-#ifdef PLATFORM_WINDOWS
-    void* hInstance;
-    void* hwnd;
-#elif defined(PLATFORM_ANDROID)
-    void* nativeWindow;
-#elif defined(PLATFORM_DARWIN)
-    const void* metalLayer;
-#endif
-};
 
 enum class FrameTimePreference
 {

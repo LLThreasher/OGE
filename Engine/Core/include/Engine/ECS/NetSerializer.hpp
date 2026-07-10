@@ -15,8 +15,7 @@ public:
     template<typename T>
     void Write(const T& value)
     {
-        if (writePos + sizeof(T) > capacity)
-            throw std::runtime_error("Buffer overflow");
+        assert(writePos + sizeof(T) <= capacity);
 
         std::memcpy(data + writePos, &value, sizeof(T));
         writePos += sizeof(T);
@@ -25,8 +24,7 @@ public:
     template<typename T>
     T Read()
     {
-        if (readPos + sizeof(T) > writePos)
-            throw std::runtime_error("Buffer overflow");
+        assert(readPos + sizeof(T) <= writePos);
 
         T value;
         std::memcpy(&value, data + readPos, sizeof(T));
