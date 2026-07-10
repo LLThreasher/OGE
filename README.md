@@ -6,7 +6,7 @@ You build Minecraft when you want to find a reason to write C++.
 ### Requirements
 - Cmake >= 3.28
 - Clang++ >= 17
-- VulkanSDK
+- VulkanSDK >= 1.1
 - MoltenVK (MacOS)
 - AndroidSDK API ver 29 (Android)
 - AndroidNDK ver 28.2.13676358 (Android)
