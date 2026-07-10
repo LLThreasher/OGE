@@ -5,8 +5,8 @@ message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
 
 file(GLOB_RECURSE SOURCE_FILES 
     CONFIGURE_DEPENDS
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
 )
 
 target_sources(EngineGraphics

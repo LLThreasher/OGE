@@ -44,6 +44,10 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 {
                     data.moveDelta = drag->dragLastPos - drag->dragStartPos;
                     data.moveDelta = -data.moveDelta;
+                    if (data.moveDelta != math::vec2{0.f, 0.f})
+                    {
+                        data.moveDelta = math::normalize(data.moveDelta) * f.dt * 5.f;
+                    }
                 }
                 else
                 {
@@ -67,7 +71,7 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                         auto pcam = game.get<ComponentPerspectiveCamera>(entity);
                         auto vfov = -pcam.fov;
                         auto hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
-                        data.panDelta = drag->dragDelta * math::vec2{hfov, vfov};
+                        data.panDelta = drag->dragDelta * math::vec2{hfov, vfov} * 2.0f;
                     }
                 }
                 else

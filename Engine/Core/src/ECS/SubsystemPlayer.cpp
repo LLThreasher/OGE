@@ -15,9 +15,12 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
 {
     auto& terrain = game.ctx().get<Terrain::TerrainView>();
     auto& blocks = game.ctx().get<Terrain::BlockRegistry>();
-    for (auto [entity, camera, pcam, input, player] : game.view<ComponentCamera, const ComponentPerspectiveCamera, const PlayerInputData, ComponentPlayer>().each())
+    for (auto [entity, camera, pcam, input, collider, player, body] : game.view<ComponentCamera, const ComponentPerspectiveCamera, const PlayerInputData, const ComponentAABBCollider, ComponentPlayer, ComponentPhysicBody>().each())
     {
-        camera.ApplyDelta(input.panDelta.x, input.panDelta.y, input.moveDelta.x, input.moveDelta.y);
+        camera.ApplyDelta(input.panDelta.x, input.panDelta.y, 0.f, 0.f);
+        camera.position = body.pos + math::vec3{(collider.aabb.min.x + collider.aabb.max.x) / 2.f, 1.75f, (collider.aabb.min.z + collider.aabb.max.z) / 2.f};
+        body.acceleration = math::normalize({camera.forward.x, 0.f, camera.forward.z}) * input.moveDelta.y + camera.right() * input.moveDelta.x;
+        body.acceleration *= 200.f;
         // player.lookingAt = game.terrain.CastRay(camera.position, camera.forward);
         if (!input.empty())
         {

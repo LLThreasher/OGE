@@ -58,6 +58,12 @@ inline T max(T a, T b)
 }
 
 template <typename T>
+inline T min(T a, T b)
+{
+    return glm::min(a, b);
+}
+
+template <typename T>
 inline T abs(T a)
 {
     return glm::abs(a);
@@ -84,6 +90,8 @@ inline float len_sq(T a)
 inline float clamp(float val, float low, float high) { return glm::clamp(val, low, high); }
 
 inline vec3 normalize(vec3 val) { return glm::normalize(val); }
+
+inline vec2 normalize(vec2 val) { return glm::normalize(val); }
 
 inline vec3 cross(vec3 a, vec3 b) { return glm::cross(a, b); }
 
@@ -131,30 +139,18 @@ inline mat4 perspective_rev_z(float fovRadians, float aspect, float nearPlane)
     Result[0][0] = (static_cast<T>(2) * nearPlane) / (right - left);
     Result[1][1] = (static_cast<T>(2) * nearPlane) / (top - bottom);
     Result[2][2] = static_cast<T>(0);
-    Result[2][3] = - static_cast<T>(1);
+    Result[2][3] = -static_cast<T>(1);
     Result[3][2] = nearPlane;
     return Result;
 }
 
-inline int ceil(float val)
-{
-    return glm::ceil(val);
-}
+inline int ceil(float val) { return glm::ceil(val); }
 
-inline int floor(float val)
-{
-    return glm::floor(val);
-}
+inline int floor(float val) { return glm::floor(val); }
 
-inline int abs(int val)
-{
-    return glm::abs(val);
-}
+inline int abs(int val) { return glm::abs(val); }
 
-inline float abs(float val)
-{
-    return glm::abs(val);
-}
+inline float abs(float val) { return glm::abs(val); }
 
 inline unsigned int align(unsigned int size, unsigned int alignment)
 {

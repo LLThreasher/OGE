@@ -8,6 +8,7 @@
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/ObjectType.hpp"
 #include "Engine/Terrain/TerrainView.hpp"
+#include "Engine/ECS/AABB.hpp"
 
 namespace OneGame::Engine::ECS
 {
@@ -95,16 +96,27 @@ struct ComponentPhysicBody
 {
     math::vec3 pos;
     math::vec3 velocity;
+    math::vec3 acceleration;
+    float mass = 1.0f;
+    float drag = 5.0f;
+    float stepAssist = 1.01f;
+    bool isGrounded = false;
+};
+
+struct ComponentAABBCollider
+{
+    AABB aabb;
 };
 
 struct ComponentPlayer
 {
     float lastActionTime = 0.f;
 
-    static entt::entity CreatePlayer(entt::registry& world)
+    static entt::entity CreatePlayer(entt::registry& world, math::vec3 pos)
     {
         auto res = world.create();
-        world.emplace<ComponentPhysicBody>(res);
+        world.emplace<ComponentPhysicBody>(res, pos);
+        world.emplace<ComponentAABBCollider>(res, ComponentAABBCollider{.aabb={math::vec3{0.f, 0.f, 0.f}, math::vec3{0.7f, 1.8f, 0.7f}}});
         world.emplace<ComponentCamera>(res);
         world.emplace<ComponentPerspectiveCamera>(res);
         world.emplace<ComponentPlayer>(res);

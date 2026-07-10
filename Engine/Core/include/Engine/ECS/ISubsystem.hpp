@@ -6,7 +6,6 @@
 #include "Engine/Math.hpp"
 #include "Engine/Point2.hpp"
 #include "Engine/Rect.hpp"
-#include "Engine/Terrain/TerrainView.hpp"
 #include "Components.hpp"
 
 #define DECLARE_SUBSYSTEM(Name, ...)                                                                       \
@@ -57,4 +56,5 @@ DECLARE_SUBSYSTEM(PlayerInput,
 DECLARE_SUBSYSTEM(UI, std::array<entt::entity, PointerIdx::COUNT> activeDrags;);
 
 DECLARE_SUBSYSTEM(Player);
+DECLARE_SUBSYSTEM(Physics);
 }  // namespace OneGame::Engine::ECS

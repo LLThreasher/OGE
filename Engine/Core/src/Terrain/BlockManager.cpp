@@ -49,4 +49,10 @@ const std::array<uint8_t, 6>& BlockRegistry::GetTextureSlot(const uint16_t block
 {
     return m_textureSlots[blockIdx];
 }
+
+const AABBList BlockRegistry::GetBlockAABBList(uint16_t blockIdx) const
+{
+    if (blockIdx == 0) return {};
+    return {AABB{{0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}}};
+}
 }  // namespace OneGame::Engine::Terrain

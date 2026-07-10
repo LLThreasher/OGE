@@ -24,6 +24,7 @@ void DebugScene3::Initialize(PresentationContext& context)
     m_gameWorld.Register<SubsystemUI>();
     m_gameWorld.Register<SubsystemPlayerInput>();
     m_gameWorld.Register<SubsystemPlayer>();
+    m_gameWorld.Register<SubsystemPhysics>();
 
     m_gameRenderer.Register<DebugInfoRenderer>();
     m_gameRenderer.Register<Terrain::TerrainRenderer>();
@@ -49,7 +50,7 @@ void DebugScene3::Enter(PresentationContext& context)
     auto vpe = UI::CreateGameView(m_gameWorld.Get(), {math::vec2{0, 0}, math::vec2{1, 1}});
 
     auto& world = m_gameWorld.Get();
-    auto player = ComponentPlayer::CreatePlayer(world);
+    auto player = ComponentPlayer::CreatePlayer(world, {20.f, 20.f, 20.f});
     {
         ComponentCamera& cam = world.get<ComponentCamera>(player);
         cam.position = {20.f, 20.f, 20.f};

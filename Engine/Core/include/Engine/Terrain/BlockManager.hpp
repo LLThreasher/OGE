@@ -5,6 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
+#include "Engine/ECS/AABB.hpp"
+
 namespace OneGame::Engine::Terrain
 {
 // support up to 4096 blocks, 256 of which are non-opaque
@@ -41,6 +43,8 @@ struct BlockConfig
     }
 };
 
+using AABBList = std::vector<AABB>;
+
 class BlockRegistry
 {
    public:
@@ -55,6 +59,7 @@ class BlockRegistry
     const std::string& GetBlockDisplayName(uint16_t blockIdx) const;
     bool IsOpaque(uint16_t blockIdx) const;
     const std::array<uint8_t, 6>& GetTextureSlot(uint16_t blockIdx) const;
+    const AABBList GetBlockAABBList(uint16_t blockIdx) const;
 
    private:
     std::unordered_map<std::string, uint32_t> m_blockTextureIds;
