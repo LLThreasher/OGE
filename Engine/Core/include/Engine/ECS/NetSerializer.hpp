@@ -1,18 +1,17 @@
 #pragma once
-#include <vector>
 #include <cstring>
 #include <stdexcept>
+#include <vector>
 
 namespace OneGame::Engine::Net
 {
 
 class Buffer
 {
-public:
-    Buffer(uint8_t* memory, size_t size)
-        : data(memory), capacity(size) {}
+   public:
+    Buffer(uint8_t* memory, size_t size) : data(memory), capacity(size) {}
 
-    template<typename T>
+    template <typename T>
     void Write(const T& value)
     {
         assert(writePos + sizeof(T) <= capacity);
@@ -21,7 +20,7 @@ public:
         writePos += sizeof(T);
     }
 
-    template<typename T>
+    template <typename T>
     T Read()
     {
         assert(readPos + sizeof(T) <= writePos);
@@ -38,7 +37,7 @@ public:
         readPos = 0;
     }
 
-private:
+   private:
     uint8_t* data;
     size_t capacity;
     size_t writePos = 0;
@@ -49,68 +48,42 @@ struct Int
 {
     int value;
 
-    void Serialize(Buffer& buffer)
-    {
-        buffer.Write<int>(value);
-    }
+    void Serialize(Buffer& buffer) { buffer.Write<int>(value); }
 
-    void Deserialize(Buffer& buffer)
-    {
-        value = buffer.Read<int>();
-    }
+    void Deserialize(Buffer& buffer) { value = buffer.Read<int>(); }
 };
 
 struct Float
 {
     float value;
 
-    void Serialize(Buffer& buffer)
-    {
-        buffer.Write<float>(value);
-    }
+    void Serialize(Buffer& buffer) { buffer.Write<float>(value); }
 
-    void Deserialize(Buffer& buffer)
-    {
-        value = buffer.Read<float>();
-    }
+    void Deserialize(Buffer& buffer) { value = buffer.Read<float>(); }
 };
 
 struct Bool
 {
     bool value;
 
-    void Serialize(Buffer& buffer)
-    {
-        buffer.Write<bool>(value);
-    }
+    void Serialize(Buffer& buffer) { buffer.Write<bool>(value); }
 
-    void Deserialize(Buffer& buffer)
-    {
-        value = buffer.Read<bool>();
-    }
+    void Deserialize(Buffer& buffer) { value = buffer.Read<bool>(); }
 };
 
-template<typename Derived>
+template <typename Derived>
 class Object
 {
-public:
+   public:
     void Serialize(Buffer& buffer)
     {
-        static_cast<Derived*>(this)->VisitFields(
-            [&](auto& field)
-            {
-                field.Serialize(buffer);
-            });
+        static_cast<Derived*>(this)->VisitFields([&](auto& field) { field.Serialize(buffer); });
     }
 
     void Deserialize(Buffer& buffer)
     {
-        static_cast<Derived*>(this)->VisitFields(
-            [&](auto& field)
-            {
-                field.Deserialize(buffer);
-            });
+        static_cast<Derived*>(this)->VisitFields([&](auto& field) { field.Deserialize(buffer); });
     }
 };
 
-}
+}  // namespace OneGame::Engine::Net

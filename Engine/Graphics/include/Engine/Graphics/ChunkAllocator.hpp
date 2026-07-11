@@ -35,10 +35,7 @@ class ChunkAllocator
         FreeOrder(index, order);
     }
 
-    uint32_t GetMaxNumChunks() const
-    {
-        return m_totalChunks;
-    }
+    uint32_t GetMaxNumChunks() const { return m_totalChunks; }
 
    private:
     static constexpr uint32_t INVALID_ORDER = 0xFFFFFFFF;

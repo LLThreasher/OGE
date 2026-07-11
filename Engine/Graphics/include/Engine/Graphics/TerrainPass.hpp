@@ -6,7 +6,7 @@
 
 namespace OneGame::Engine
 {
-    struct AssetContext;
+struct AssetContext;
 };
 namespace OneGame::Engine::Graphics
 {
@@ -69,11 +69,13 @@ class TerrainPass2 : public BasicPass
     void Draw(DrawContext& context) override;
 
    private:
-    GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend, UniformArena& arena, GPUBufferHandle storageBuffer, uint32_t chunkSize);
+    GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend, UniformArena& arena,
+                                                  GPUBufferHandle storageBuffer, uint32_t chunkSize);
 
-    std::unordered_map<GPUBindingGroupHandle, std::vector<TerrainMesh>, HandleHash<GPUBindingGroupHandle>> activeChunkSlots;
+    std::unordered_map<GPUBindingGroupHandle, std::vector<TerrainMesh>, HandleHash<GPUBindingGroupHandle>>
+        activeChunkSlots;
     std::vector<UBO> ubos;
-    
+
     std::unordered_map<GPUBufferHandle, GPUBindingGroupHandle, HandleHash<GPUBufferHandle>> cachedBindingGroups;
 
     GPUPipelineHandle pipelineHandle;

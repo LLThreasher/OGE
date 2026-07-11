@@ -1,9 +1,9 @@
 #pragma once
 
+#include "Engine/Math.hpp"
+#include "Engine/Point2.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/entt.hpp"
-#include "Engine/Point2.hpp"
-#include "Engine/Math.hpp"
 
 namespace OneGame::Engine
 {
@@ -74,10 +74,7 @@ struct FramePerfStatus
     float assetUploadTime;
     float renderSubmitTime;
 
-    float actualFrameTime() const
-    {
-        return inputProcessingTime + logicTime + assetUploadTime + renderSubmitTime;
-    }
+    float actualFrameTime() const { return inputProcessingTime + logicTime + assetUploadTime + renderSubmitTime; }
 
     FramePerfStatus operator+(const FramePerfStatus& other) const
     {

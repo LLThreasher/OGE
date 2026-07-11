@@ -6,7 +6,6 @@
 #include "Engine/Point2.hpp"
 #include "Engine/Point3.hpp"
 
-
 namespace std
 {
 template <>
@@ -66,11 +65,7 @@ struct formatter<OneGame::Engine::Point2>
     template <typename Context>
     auto format(const OneGame::Engine::Point2& p, Context& ctx) const
     {
-        return format_to(
-            ctx.out(),
-            "({}, {})",
-            p.x, p.y
-        );
+        return format_to(ctx.out(), "({}, {})", p.x, p.y);
     }
 };
 
@@ -86,11 +81,7 @@ struct formatter<OneGame::Engine::UPoint2>
     template <typename Context>
     auto format(const OneGame::Engine::UPoint2& p, Context& ctx) const
     {
-        return format_to(
-            ctx.out(),
-            "({}, {})",
-            p.x, p.y
-        );
+        return format_to(ctx.out(), "({}, {})", p.x, p.y);
     }
 };
 }  // namespace std

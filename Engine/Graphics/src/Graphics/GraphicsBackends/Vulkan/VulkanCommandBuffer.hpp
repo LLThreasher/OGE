@@ -43,10 +43,10 @@ class VulkanCommandBuffer final : public ICommandList
     void UpdateBuffer(GPUBufferHandle, uint64_t offset, uint64_t size, const void* data) override;
 
     void CopyBuffer(GPUBufferHandle src, GPUBufferHandle dst, uint64_t size, uint64_t srcOffset = 0,
-                            uint64_t dstOffset = 0) override;
+                    uint64_t dstOffset = 0) override;
 
     void CopyBufferToTexture(GPUBufferHandle src, GPUTextureHandle dst, uint32_t width, uint32_t height,
-                                     uint32_t bufferOffset, CopyTextureTarget target) override;
+                             uint32_t bufferOffset, CopyTextureTarget target) override;
 
     // ----- Drawing -----
     void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0,

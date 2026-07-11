@@ -1,9 +1,9 @@
 #include "Engine/WindowedGameApp.hpp"
 
-#include "Engine/Platform/Stopwatch.hpp"
 #include "Engine/GraphicState.hpp"
 #include "Engine/Graphics/DebugPass.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
+#include "Engine/Platform/Stopwatch.hpp"
 
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
@@ -26,9 +26,7 @@ inline PresentationContext GameGraphicApp::PresentCtx(AssetContext assets)
 
 inline AssetContext GameGraphicApp::AssetCtx() { return {m_assetManager, m_streamingManager, m_backend, m_assetPool}; }
 
-GameGraphicApp::GameGraphicApp(IGraphicsBackend& backend) : m_backend(backend)
-{
-}
+GameGraphicApp::GameGraphicApp(IGraphicsBackend& backend) : m_backend(backend) {}
 
 GameGraphicApp::~GameGraphicApp() = default;
 

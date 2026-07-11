@@ -1,17 +1,17 @@
 #pragma once
-#include "Engine/entt.hpp"
 #include "Engine/GraphicState.hpp"
+#include "Engine/entt.hpp"
 #include "GraphicalComponents.hpp"
 
-#define DECLARE_RENDERER(Name, ...)                                                                       \
-    class Name##Renderer : public RendererBase                                                           \
-    {                                                                                                      \
-       public:                                                                                             \
-        void Initialize(GameWorldContext& game, PresentationContext& ctx) override;                        \
-        void Present(const GameWorldContext& game, PresentationContext& ctx, FrameOutputData& fd) override;  \
-                                                                                                           \
-       private:                                                                                            \
-        __VA_ARGS__                                                                                        \
+#define DECLARE_RENDERER(Name, ...)                                                                         \
+    class Name##Renderer : public RendererBase                                                              \
+    {                                                                                                       \
+       public:                                                                                              \
+        void Initialize(GameWorldContext& game, PresentationContext& ctx) override;                         \
+        void Present(const GameWorldContext& game, PresentationContext& ctx, FrameOutputData& fd) override; \
+                                                                                                            \
+       private:                                                                                             \
+        __VA_ARGS__                                                                                         \
     };
 
 namespace OneGame::Engine::ECS
@@ -31,17 +31,15 @@ class RendererBase : public IRenderer<GameWorldContext>
 };
 
 DECLARE_RENDERER(DebugInfo, float currentFPS = 0.f; float currentFrameTime = 0.f; float accumTime = 0.f;
-                  uint64_t frameCount = 0; FramePerfStatus totalPerfStatus = {}; FramePerfStatus perfStatus = {};);
+                 uint64_t frameCount = 0; FramePerfStatus totalPerfStatus = {}; FramePerfStatus perfStatus = {};);
 
 void AddDebugInfo(entt::registry& presentationWorld, std::string_view msg);
 
 DECLARE_RENDERER(Camera, void onViewPanelUpdate(entt::registry& world, entt::entity entity););
 DECLARE_RENDERER(UI);
 
-DECLARE_RENDERER(PlayerInput,
-    void onCreateInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
-    void onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
-    bool isKeyMouseUsed;
-    bool previousIsKeyMouseUsed;);
+DECLARE_RENDERER(PlayerInput, void onCreateInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
+                 void onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity); bool isKeyMouseUsed;
+                 bool previousIsKeyMouseUsed;);
 
-} // namespace OneGame::Engine
+}  // namespace OneGame::Engine::ECS

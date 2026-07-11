@@ -10,7 +10,8 @@ namespace OneGame::Engine::ECS
 {
 void SubsystemPhysics::Initialize(GameWorldContext& game, AppContext ctx) {}
 
-bool CheckAABBAgainstTerrain(float stepAssist, const AABB& realAABB, const Terrain::TerrainView& terrain, const Terrain::BlockRegistry& blocks, std::vector<CollisionResult>& collisions)
+bool CheckAABBAgainstTerrain(float stepAssist, const AABB& realAABB, const Terrain::TerrainView& terrain,
+                             const Terrain::BlockRegistry& blocks, std::vector<CollisionResult>& collisions)
 {
     for (int z = math::floor(realAABB.min.z); z <= math::floor(realAABB.max.z); ++z)
     {
@@ -38,7 +39,8 @@ bool CheckAABBAgainstTerrain(float stepAssist, const AABB& realAABB, const Terra
     return true;
 }
 
-bool CheckAABBAgainstTerrainRevStep(const AABB& realAABB, const Terrain::TerrainView& terrain, const Terrain::BlockRegistry& blocks)
+bool CheckAABBAgainstTerrainRevStep(const AABB& realAABB, const Terrain::TerrainView& terrain,
+                                    const Terrain::BlockRegistry& blocks)
 {
     for (int z = math::floor(realAABB.min.z); z <= math::floor(realAABB.max.z); ++z)
     {
@@ -104,7 +106,8 @@ void SubsystemPhysics::Update(GameWorldContext& game, AppContext ctx, const Fram
         auto& body = game.get<ComponentPhysicBody>(e);
         auto& aabb = game.get<ComponentAABBCollider>(e).aabb;
         ResolveCollisionsSinglePass(res, result);
-        auto aabbAfterStep = aabb + body.pos + COLLISION_NORMALS[COLLISION_TYPE_STEP_Y] * (result.stepOffset + COLLISION_EPSILON);
+        auto aabbAfterStep =
+            aabb + body.pos + COLLISION_NORMALS[COLLISION_TYPE_STEP_Y] * (result.stepOffset + COLLISION_EPSILON);
         if ((result.mask & RCR_HIT_POS_Y) != 0) body.isGrounded = true;
         if ((result.mask & RCR_HIT_STEP_Y) != 0 && !CheckAABBAgainstTerrainRevStep(aabbAfterStep, terrain, blocks))
         {

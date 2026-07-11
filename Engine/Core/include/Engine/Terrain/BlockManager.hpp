@@ -33,8 +33,8 @@ struct BlockConfig
     std::array<std::string, 6> textureSlotPerFace;
     uint32_t blockFlags;
 
-    BlockConfig(std::string blockDisplayName = "Air", std::string textureId = "invalid.png", uint32_t blockFlags = 0) :
-        blockDisplayName(blockDisplayName), blockFlags(blockFlags)
+    BlockConfig(std::string blockDisplayName = "Air", std::string textureId = "invalid.png", uint32_t blockFlags = 0)
+        : blockDisplayName(blockDisplayName), blockFlags(blockFlags)
     {
         for (int i = 0; i < 6; ++i)
         {
@@ -50,10 +50,7 @@ class BlockRegistry
    public:
     BlockRegistry();
     void RegisterBlock(std::string blockIdName, BlockConfig config);
-    const std::vector<std::string>& GetBlockTextureArray()
-    {
-        return m_blockTextureArray;
-    }
+    const std::vector<std::string>& GetBlockTextureArray() { return m_blockTextureArray; }
     static uint16_t GetBlockId(uint32_t blockValue);
     uint16_t GetBlockId(const std::string blockIdName) const;
     const std::string& GetBlockDisplayName(uint16_t blockIdx) const;

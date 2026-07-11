@@ -3,10 +3,10 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-#include "RendererInternals.hpp"
 #include "Engine/GameAppState.hpp"
 #include "Engine/GraphicState.hpp"
 #include "Engine/StreamingManager.hpp"
+#include "RendererInternals.hpp"
 
 namespace OneGame::Engine::Graphics
 {
@@ -72,12 +72,11 @@ void UIPass::Enable(IGraphicsBackend& backend, InitContext& ctxt)
         *(iptr++) = i * 4 + 3;
         *(iptr++) = i * 4;
     }
-    ctxt.assets.streamingManager.UploadBuffer<UploadType::Immediate>(indices, {.usage=BufferUsage::Index, .buffer=indexBuffer});
+    ctxt.assets.streamingManager.UploadBuffer<UploadType::Immediate>(
+        indices, {.usage = BufferUsage::Index, .buffer = indexBuffer});
 }
 
-void UIPass::Disable(IGraphicsBackend& backend)
-{
-}
+void UIPass::Disable(IGraphicsBackend& backend) {}
 
 GPUBindingGroupHandle UIPass::GetOrCreateBindingGroup(IGraphicsBackend& backend, GPUTextureHandle texture)
 {
@@ -105,7 +104,7 @@ void UIPass::Draw(DrawContext& ctx)
         math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
                                 pushConstant.offset);
     }
-    
+
     classedVertices.clear();
     for (auto quad : ctx.world.Get<CmdDrawSprite>())
     {
@@ -121,7 +120,7 @@ void UIPass::Draw(DrawContext& ctx)
     }
 
     if (classedVertices.empty()) return;
-    
+
     auto& tCmd = ctx.transferCmd;
     auto& cmd = ctx.drawCmd;
 
@@ -131,7 +130,8 @@ void UIPass::Draw(DrawContext& ctx)
         // tCmd.UpdateBuffer(vertexBuffer, vBuffOffset, vertices.size() * sizeof(Vertex), vertices.data());
         // tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
 
-        memcpy(reinterpret_cast<std::byte*>(vertexBufferCpu) + vBuffOffset, vertices.data(), vertices.size() * sizeof(Vertex));
+        memcpy(reinterpret_cast<std::byte*>(vertexBufferCpu) + vBuffOffset, vertices.data(),
+               vertices.size() * sizeof(Vertex));
 
         cmd.BindGraphicsPipeline(pipelineHandle);
         cmd.BindBindingGroup(GetOrCreateBindingGroup(ctx.backend, tex), 0);
@@ -143,7 +143,7 @@ void UIPass::Draw(DrawContext& ctx)
         vBuffOffset += vertices.size() * sizeof(Vertex);
         assert(vBuffOffset < VERT_COUNT * sizeof(Vertex));
     }
-    GPUBufferRange ranges[] = {GPUBufferRange{{.offset=0, .size=vBuffOffset}, vertexBuffer}};
+    GPUBufferRange ranges[] = {GPUBufferRange{{.offset = 0, .size = vBuffOffset}, vertexBuffer}};
     ctx.backend.FlushStagingBufferRanges(ranges);
 }
 

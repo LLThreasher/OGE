@@ -2,21 +2,19 @@
 
 #include <vector>
 
-#include "Engine/entt.hpp"
-#include "Engine/ECS/IRenderer.hpp"
-#include "Engine/Terrain/TerrainRenderer.hpp"
-#include "Engine/Graphics/Renderer.hpp"
-#include "Engine/GraphicState.hpp"
 #include "Engine/ECS/GameWorld.hpp"
+#include "Engine/ECS/IRenderer.hpp"
+#include "Engine/GraphicState.hpp"
+#include "Engine/Graphics/Renderer.hpp"
+#include "Engine/Terrain/TerrainRenderer.hpp"
+#include "Engine/entt.hpp"
 
 namespace OneGame::Engine::ECS
 {
 class GameRenderer
 {
    public:
-    GameRenderer(GameWorld& world) : m_world(world.m_world)
-    {
-    }
+    GameRenderer(GameWorld& world) : m_world(world.m_world) {}
 
     template <typename TSubsystem>
     void Register()
@@ -36,7 +34,7 @@ class GameRenderer
         {
             ctx.renderer.UpdateBlockTexture(ctx, blkArray[i], i);
         }
-        
+
         for (auto& ptr : m_subsystems)
         {
             ptr->Initialize(m_world, ctx);

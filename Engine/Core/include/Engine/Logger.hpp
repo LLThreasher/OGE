@@ -30,12 +30,9 @@ namespace OneGame::Engine
 class Logger
 {
    public:
-    static std::vector<std::string> GetLastMessages()
-    {
-        return ring_sink->last_formatted();
-    }
+    static std::vector<std::string> GetLastMessages() { return ring_sink->last_formatted(); }
 
-    template<typename Sink>
+    template <typename Sink>
     static void InitLogger(const char* loggerName, std::shared_ptr<Sink> sink)
     {
         spdlog::drop(loggerName);
@@ -46,7 +43,8 @@ class Logger
     }
 
     static spdlog::logger* GetLogger(const char*);
-private:
+
+   private:
     static std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> ring_sink;
 };
 }  // namespace OneGame::Engine

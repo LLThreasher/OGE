@@ -1,8 +1,9 @@
+#include "Engine/Terrain/TerrainService.hpp"
+
 #include <limits>
 
-#include "Engine/Terrain/BlockManager.hpp"
-#include "Engine/Terrain/TerrainService.hpp"
 #include "Engine/GameAppState.hpp"
+#include "Engine/Terrain/BlockManager.hpp"
 
 namespace OneGame::Engine::Terrain
 {
@@ -25,13 +26,15 @@ void TerrainService::Initialize(TerrainContext& ctx, AppContext actx)
 void TerrainService::onPlayerCreated(entt::registry& world, entt::entity entity)
 {
     auto pos = world.get<ComponentCamera>(entity).position;
-    Point3 ipos = {math::floor(pos.x) / CHUNK_SIZE_X, math::floor(pos.y) / CHUNK_SIZE_Y, math::floor(pos.z) / CHUNK_SIZE_Z};
+    Point3 ipos = {math::floor(pos.x) / CHUNK_SIZE_X, math::floor(pos.y) / CHUNK_SIZE_Y,
+                   math::floor(pos.z) / CHUNK_SIZE_Z};
     m_terrainUpdateScheduler.InitialUpdate(world.ctx().get<Terrain::TerrainView>().m_terrainData, ipos);
 }
 
 void TerrainService::Update(TerrainContext& ctx, AppContext actx, const FrameInputData& fd)
 {
-    m_terrainGenerator.GenerateTerrain(ctx.ctx().get<Terrain::TerrainView>().m_terrainData, ctx.ctx().get<Terrain::BlockRegistry>());
+    m_terrainGenerator.GenerateTerrain(ctx.ctx().get<Terrain::TerrainView>().m_terrainData,
+                                       ctx.ctx().get<Terrain::BlockRegistry>());
 }
 
 uint32_t TerrainView::GetBlock(int x, int y, int z) const
@@ -65,27 +68,33 @@ void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
         m_terrainData.dirtyChunks.insert(handle);
         if ((x & 0xF) == 0)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x - 1, chunkCoord.y, chunkCoord.z}));
+            m_terrainData.dirtyChunks.insert(
+                m_terrainData.chunks.GetHandle({chunkCoord.x - 1, chunkCoord.y, chunkCoord.z}));
         }
         else if ((x & 0xF) == 15)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x + 1, chunkCoord.y, chunkCoord.z}));
+            m_terrainData.dirtyChunks.insert(
+                m_terrainData.chunks.GetHandle({chunkCoord.x + 1, chunkCoord.y, chunkCoord.z}));
         }
         if ((y & 0xF) == 0)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y - 1, chunkCoord.z}));
+            m_terrainData.dirtyChunks.insert(
+                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y - 1, chunkCoord.z}));
         }
         else if ((y & 0xF) == 15)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y + 1, chunkCoord.z}));
+            m_terrainData.dirtyChunks.insert(
+                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y + 1, chunkCoord.z}));
         }
         if ((z & 0xF) == 0)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z - 1}));
+            m_terrainData.dirtyChunks.insert(
+                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z - 1}));
         }
         else if ((z & 0xF) == 15)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z + 1}));
+            m_terrainData.dirtyChunks.insert(
+                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z + 1}));
         }
         return chunk->SetBlock(x & 0xF, y & 0xF, z & 0xF, value);
     }
@@ -163,8 +172,7 @@ std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos, math::v
             temp = side.y;
             dim = 1;
         }
-        if (side.z < temp)
-            dim = 2;
+        if (side.z < temp) dim = 2;
 
         // step first
         switch (dim)
@@ -190,16 +198,11 @@ std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos, math::v
 
         if (BlockRegistry::GetBlockId(value) != 0)
         {
-            uint8_t face =
-                (lastDim == 0) ? (step.x > 0 ? 1 : 0) :
-                (lastDim == 1) ? (step.y > 0 ? 3 : 2) :
-                                (step.z > 0 ? 5 : 4);
+            uint8_t face = (lastDim == 0)   ? (step.x > 0 ? 1 : 0)
+                           : (lastDim == 1) ? (step.y > 0 ? 3 : 2)
+                                            : (step.z > 0 ? 5 : 4);
 
-            return TerrainRaycastResult{
-                face,
-                map,
-                value
-            };
+            return TerrainRaycastResult{face, map, value};
         }
 
         dist++;
@@ -207,10 +210,7 @@ std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos, math::v
     return {};
 }
 
-
-void TerrainUpdateScheduler::InitialUpdate(
-    TerrainData& terrain,
-    Point3 chunkOrigin)
+void TerrainUpdateScheduler::InitialUpdate(TerrainData& terrain, Point3 chunkOrigin)
 {
     const int radius = m_chunkViewDistance + 1;
 
@@ -229,11 +229,7 @@ void TerrainUpdateScheduler::InitialUpdate(
         {
             for (int y = 0; y <= 4; ++y)
             {
-                Point3 coord = {
-                    chunkOrigin.x + x,
-                    y,
-                    chunkOrigin.z + z
-                };
+                Point3 coord = {chunkOrigin.x + x, y, chunkOrigin.z + z};
 
                 auto handle = terrain.chunks.AllocateChunk(coord);
                 terrain.generateTerrainQueue.push(handle);

@@ -15,9 +15,9 @@ stopwatch stopwatch::start()
 float stopwatch::restart()
 {
     auto currentTicks = SDL_GetPerformanceCounter() - startTicks;
-    startTicks = SDL_GetPerformanceCounter(); 
+    startTicks = SDL_GetPerformanceCounter();
     return (float)currentTicks / (float)SDL_GetPerformanceFrequency() * 1000.f;
 }
 
-} // namespace OneGame::Engine
+}  // namespace OneGame::Engine
 #endif

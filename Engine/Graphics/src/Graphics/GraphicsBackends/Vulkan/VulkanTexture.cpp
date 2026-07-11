@@ -30,14 +30,15 @@ GPUTextureHandle VulkanBackend::CreateTexture(const TextureDesc& desc)
     GetVkFormatAndAspect(desc.format, vkFormat, aspectMask);
 
     VulkanTexture texture;
-    CreateTextureInternal(desc.width, desc.height, desc.depth, desc.layers, desc.mipLevels, usage, vkFormat, aspectMask, texture);
+    CreateTextureInternal(desc.width, desc.height, desc.depth, desc.layers, desc.mipLevels, usage, vkFormat, aspectMask,
+                          texture);
 
     return m_textures.Create(texture);
 }
 
-void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint32_t depth, uint32_t layers, uint32_t mipLevels,
-                                          VkImageUsageFlags vkUsage, VkFormat vkFormat, VkImageAspectFlags aspectMask,
-                                          VulkanTexture& result)
+void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint32_t depth, uint32_t layers,
+                                          uint32_t mipLevels, VkImageUsageFlags vkUsage, VkFormat vkFormat,
+                                          VkImageAspectFlags aspectMask, VulkanTexture& result)
 {
     result.width = width;
     result.height = height;

@@ -4,11 +4,11 @@
 #include <span>
 
 #include "Engine/Async.hpp"
+#include "Engine/Graphics/GPUObjects.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Engine/Graphics/RingStagingBuffer.hpp"
 #include "Engine/ResourcePool.hpp"
 #include "Engine/entt.hpp"
-#include "Engine/Graphics/GPUObjects.hpp"
 
 namespace OneGame::Engine
 {
@@ -78,19 +78,16 @@ class StreamingManager
     ResourceBundleHandle CreateResourceBundle(std::function<void()> callback);
 
     template <UploadType uploadType, typename TTarget>
-    size_t Upload(const std::span<const std::byte> data, const TTarget target,
-                        ResourceBundleHandle resBundle = {});
+    size_t Upload(const std::span<const std::byte> data, const TTarget target, ResourceBundleHandle resBundle = {});
 
     template <UploadType uploadType, typename TData>
-    size_t UploadBuffer(const std::vector<TData>& data, const BufferTarget target,
-                        ResourceBundleHandle resBundle = {})
+    size_t UploadBuffer(const std::vector<TData>& data, const BufferTarget target, ResourceBundleHandle resBundle = {})
     {
         return Upload<uploadType>(std::as_bytes(std::span(data)), target, resBundle);
     }
 
     template <UploadType uploadType>
-    size_t UploadTexture(const std::vector<char>& data, const TextureTarget target,
-                         ResourceBundleHandle resBundle = {})
+    size_t UploadTexture(const std::vector<char>& data, const TextureTarget target, ResourceBundleHandle resBundle = {})
     {
         return Upload<uploadType>(std::as_bytes(std::span(data)), target, resBundle);
     }

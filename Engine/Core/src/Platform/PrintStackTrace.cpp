@@ -1,10 +1,11 @@
 #include "Engine/PrintStackTrace.hpp"
+
 #include "Engine/Logger.hpp"
 
 #ifdef PLATFORM_WINDOWS
 #pragma comment(lib, "dbghelp.lib")
-#include <windows.h>
 #include <dbghelp.h>
+#include <windows.h>
 
 void PrintStackTrace()
 {
@@ -111,13 +112,10 @@ void PrintStackTrace()
     int frame_count = backtrace(buffer, max_frames);
     char** symbols = backtrace_symbols(buffer, frame_count);
 
-    for (int i = 0; i < frame_count; ++i)
-        printf("%s\n", symbols[i]);
+    for (int i = 0; i < frame_count; ++i) printf("%s\n", symbols[i]);
 
     free(symbols);
 }
 #else
-void PrintStackTrace()
-{
-}
+void PrintStackTrace() {}
 #endif

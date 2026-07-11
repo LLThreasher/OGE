@@ -19,8 +19,7 @@ bool TickScheduler::Poll()
     // Sleep if we're running too fast
     if (elapsed.count() < m_targetFrameTime)
     {
-        auto remaining =
-            std::chrono::duration<float>(m_targetFrameTime - elapsed.count());
+        auto remaining = std::chrono::duration<float>(m_targetFrameTime - elapsed.count());
 
         std::this_thread::sleep_for(remaining);
         now = clock::now();
@@ -29,8 +28,7 @@ bool TickScheduler::Poll()
 
     m_lastTime = now;
 
-    float frameDelta =
-        std::min(elapsed.count(), m_maxFrameTime);
+    float frameDelta = std::min(elapsed.count(), m_maxFrameTime);
 
     m_accumulator += frameDelta;
 
@@ -48,15 +46,10 @@ float TickScheduler::ConsumeTick()
     return 0.0f;
 }
 
-float TickScheduler::GetAlpha() const
-{
-    return m_accumulator / m_fixedDelta;
-}
+float TickScheduler::GetAlpha() const { return m_accumulator / m_fixedDelta; }
 
 HeadlessTickScheduler::HeadlessTickScheduler(double tickRate)
-    : m_tickInterval(
-            std::chrono::duration_cast<clock::duration>(
-                std::chrono::duration<double>(1.0 / tickRate)))
+    : m_tickInterval(std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(1.0 / tickRate)))
 {
     m_nextTick = clock::now();
 }

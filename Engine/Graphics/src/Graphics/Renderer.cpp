@@ -1,10 +1,10 @@
 #include "Engine/Graphics/Renderer.hpp"
 
-#include "Engine/AssetManager.hpp"
-#include "Engine/StreamingManager.hpp"
 #include "Engine/AssetBundle.hpp"
+#include "Engine/AssetManager.hpp"
 #include "Engine/GameAppState.hpp"
 #include "Engine/GraphicState.hpp"
+#include "Engine/StreamingManager.hpp"
 #include "stb_easy_font.h"
 
 #define LOGGER_NAME "Engine"
@@ -19,7 +19,8 @@ PSprite Renderer::AllocateSprite(AssetContext& asset, std::string_view textureId
     auto texture = asset.assetManager.LoadTexture(textureId);
     assert(texture);
     auto region = spriteAllocator.Allocate(asset.backend, texture->info.width, texture->info.height);
-    asset.streamingManager.UploadTexture<UploadType::Immediate>(texture->data, TextureTarget{.texture=region.texture, .region=region.region});
+    asset.streamingManager.UploadTexture<UploadType::Immediate>(
+        texture->data, TextureTarget{.texture = region.texture, .region = region.region});
     return PSprite(region, spriteAllocator.GetWidth(), spriteAllocator.GetHeight());
 }
 
@@ -79,8 +80,10 @@ void Renderer::RenderView(AssetContext& assets, DrawContext ctxt)
     auto& views = ctxt.world.Get<CmdAddView>();
     if (views.empty()) return;
     auto cmdview = views[0];
-    math::mat4 proj = math::get_perspective_rot(ctxt.backend.SwapchainPretransform()) *
-                      (math::perspective_rev_z(cmdview.fov, cmdview.aspect == 0.f ? assets.backend.SwapchainAspect() : cmdview.aspect, 0.1f));
+    math::mat4 proj =
+        math::get_perspective_rot(ctxt.backend.SwapchainPretransform()) *
+        (math::perspective_rev_z(cmdview.fov, cmdview.aspect == 0.f ? assets.backend.SwapchainAspect() : cmdview.aspect,
+                                 0.1f));
     ctxt.pvTransform = proj * cmdview.view;
 
     auto& rect = cmdview.rect;
@@ -109,13 +112,15 @@ void Renderer::Render(AssetContext& assets, SubmissionQueue& world, float deltaT
 
     for (auto view : ALL_GAME_VIEWS)
     {
-        DrawContext drawCtxt = {backend, uniformArena, chunkAllocator, deltaTime, cmd, tCmd, world.GetSingle(view), view};
+        DrawContext drawCtxt = {backend, uniformArena, chunkAllocator,        deltaTime,
+                                cmd,     tCmd,         world.GetSingle(view), view};
         RenderView(assets, drawCtxt);
     }
 
     // draw overlay
     {
-        DrawContext drawCtxt = {backend, uniformArena, chunkAllocator, deltaTime, cmd, tCmd, world.GetSingle(GameViewType::Overlay)};
+        DrawContext drawCtxt = {
+            backend, uniformArena, chunkAllocator, deltaTime, cmd, tCmd, world.GetSingle(GameViewType::Overlay)};
         RenderView(assets, drawCtxt);
     }
 

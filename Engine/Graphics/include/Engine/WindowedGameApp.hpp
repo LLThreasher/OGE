@@ -1,11 +1,11 @@
 #pragma once
 
+#include "Engine/AssetManager.hpp"
 #include "Engine/GameAppState.hpp"
 #include "Engine/GraphicState.hpp"
-#include "Engine/StreamingManager.hpp"
-#include "Engine/AssetManager.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/IScene.hpp"
+#include "Engine/StreamingManager.hpp"
 
 namespace OneGame::Engine
 {
@@ -14,9 +14,9 @@ class ClientSceneBase;
 
 namespace Graphics
 {
-    class IGraphicsBackend;
-    class WindowHandle;
-}
+class IGraphicsBackend;
+class WindowHandle;
+}  // namespace Graphics
 
 using WindowedScene = Scene<PresentationContext, const FrameInputData, FrameOutputData>;
 using WindowedSceneRunner = SceneRunner<PresentationContext, const FrameInputData, FrameOutputData>;
@@ -52,4 +52,4 @@ class GameGraphicApp : public WindowedSceneRunner
     entt::meta_any m_sceneArgs;
     FramePerfStatus m_perfStats = {};
 };
-}
+}  // namespace OneGame::Engine

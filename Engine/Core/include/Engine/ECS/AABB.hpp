@@ -2,8 +2,8 @@
 
 #include <vector>
 
-#include "Engine/Math.hpp"
 #include "Engine/Logger.hpp"
+#include "Engine/Math.hpp"
 
 namespace OneGame::Engine
 {
@@ -12,10 +12,7 @@ struct AABB
     math::vec3 min;
     math::vec3 max;
 
-    AABB operator+(const math::vec3& other) const noexcept
-    {
-        return {min + other, max + other};
-    }
+    AABB operator+(const math::vec3& other) const noexcept { return {min + other, max + other}; }
 };
 
 constexpr uint32_t COLLISION_TYPE_POS_Y = 0;
@@ -28,14 +25,8 @@ constexpr uint32_t COLLISION_TYPE_STEP_Y = 6;
 constexpr uint32_t COLLISION_TYPE_UNSTEP_Y = 7;
 
 const math::vec3 COLLISION_NORMALS[] = {
-    math::vec3{0.f, 1.f, 0.f},
-    math::vec3{0.f, -1.f, 0.f},
-    math::vec3{1.f, 0.f, 0.f},
-    math::vec3{-1.f, 0.f, 0.f},
-    math::vec3{0.f, 0.f, 1.f},
-    math::vec3{0.f, 0.f, -1.f},
-    math::vec3{0.f, 1.f, 0.f},
-    math::vec3{0.f, -1.f, 0.f},
+    math::vec3{0.f, 1.f, 0.f}, math::vec3{0.f, -1.f, 0.f}, math::vec3{1.f, 0.f, 0.f}, math::vec3{-1.f, 0.f, 0.f},
+    math::vec3{0.f, 0.f, 1.f}, math::vec3{0.f, 0.f, -1.f}, math::vec3{0.f, 1.f, 0.f}, math::vec3{0.f, -1.f, 0.f},
 };
 
 constexpr float COLLISION_EPSILON = 0.001f;
@@ -118,7 +109,7 @@ constexpr uint32_t RCR_HIT_STEP_Y = 1 << 6;
 
 struct ResolveCollisionResult
 {
-    math::vec3 offset = {0.f,0.f,0.f};
+    math::vec3 offset = {0.f, 0.f, 0.f};
     float stepOffset = 0.f;
     uint32_t mask = 0;
 };

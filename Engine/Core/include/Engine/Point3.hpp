@@ -17,10 +17,16 @@ struct IntTriple
     bool operator==(const IntTriple<T>& other) const noexcept { return x == other.x && y == other.y && z == other.z; }
 
     template <typename U>
-    IntTriple<wider_t<T, U>> operator+(const IntTriple<U>& other) const noexcept { return {x + other.x, y + other.y, z + other.z}; }
+    IntTriple<wider_t<T, U>> operator+(const IntTriple<U>& other) const noexcept
+    {
+        return {x + other.x, y + other.y, z + other.z};
+    }
 
     template <typename U>
-    IntTriple<wider_t<T, U>> operator-(const IntTriple<U>& other) const noexcept { return {x - other.x, y - other.y, z - other.z}; }
+    IntTriple<wider_t<T, U>> operator-(const IntTriple<U>& other) const noexcept
+    {
+        return {x - other.x, y - other.y, z - other.z};
+    }
 
     const T& operator[](size_t index) const
     {
@@ -38,15 +44,17 @@ struct IntTriple
         }
     }
 
-    operator math::vec3() const {
-        return {x, y, z};
-    }
+    operator math::vec3() const { return {x, y, z}; }
 
-    operator IntTriple<int32_t>() const {
+    operator IntTriple<int32_t>() const
+    {
         return {static_cast<int32_t>(x), static_cast<int32_t>(y), static_cast<int32_t>(z)};
     }
 
-    static IntTriple<T> FromVec3(const math::vec3& v) { return {static_cast<T>(v.x), static_cast<T>(v.y), static_cast<T>(v.z)}; }
+    static IntTriple<T> FromVec3(const math::vec3& v)
+    {
+        return {static_cast<T>(v.x), static_cast<T>(v.y), static_cast<T>(v.z)};
+    }
 };
 
 using LocalPoint3 = IntTriple<int8_t>;
@@ -76,4 +84,4 @@ struct hash<OneGame::Engine::Point3>
         return seed;
     }
 };
-}
+}  // namespace std

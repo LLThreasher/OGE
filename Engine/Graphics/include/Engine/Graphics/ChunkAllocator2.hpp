@@ -59,7 +59,9 @@ class DynamicChunkAllocator
                 }
                 uint16_t blockSlot = allocatorPerChunk[i].size() - 1;
                 return {
-                    i, blockSlot, (uint32_t)allocatedSlot,
+                    i,
+                    blockSlot,
+                    (uint32_t)allocatedSlot,
                 };
             }
         }

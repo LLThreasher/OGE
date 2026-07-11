@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Engine/entt.hpp"
 #include "Engine/Logger.hpp"
+#include "Engine/entt.hpp"
 
 struct _ENetPeer;
 struct _ENetHost;
@@ -38,19 +38,14 @@ struct OnClientPacketReceived
 
 class NetClient
 {
-public:
-    ~NetClient()
-    {
-        Shutdown();
-    }
+   public:
+    ~NetClient() { Shutdown(); }
 
     bool Initialize(size_t channelCount = 2);
 
-    bool Connect(const char* ip,
-                 uint16_t port,
-                 uint32_t timeoutMs = 5000);
-    
-    ClientStatus Status() {return status;}
+    bool Connect(const char* ip, uint16_t port, uint32_t timeoutMs = 5000);
+
+    ClientStatus Status() { return status; }
 
     void Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs = 0);
 
@@ -58,25 +53,17 @@ public:
 
     void Shutdown();
 
-    void SendReliable(const void* data,
-                      size_t size,
-                      uint8_t channel = 0);
+    void SendReliable(const void* data, size_t size, uint8_t channel = 0);
 
-    void SendUnreliable(const void* data,
-                        size_t size,
-                        uint8_t channel = 1);
+    void SendUnreliable(const void* data, size_t size, uint8_t channel = 1);
 
-private:
+   private:
+    void OnPacketReceived(uint8_t* data, size_t length) { LOG_INFO("Client received {} bytes", length); }
 
-    void OnPacketReceived(uint8_t* data, size_t length)
-    {
-        LOG_INFO("Client received {} bytes", length);
-    }
-
-private:
+   private:
     float connectWaitTime;
     ClientStatus status = ClientStatus::Disconnected;
     ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
 };
-}
+}  // namespace OneGame::Engine

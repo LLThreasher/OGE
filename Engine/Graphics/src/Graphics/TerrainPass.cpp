@@ -6,11 +6,11 @@
 #include "Engine/entt.hpp"
 #include "RendererInternals.hpp"
 #define LOGGER_NAME "Engine"
-#include "Engine/Logger.hpp"
+#include "Engine/AssetManager.hpp"
 #include "Engine/GameAppState.hpp"
 #include "Engine/GraphicState.hpp"
+#include "Engine/Logger.hpp"
 #include "Engine/StreamingManager.hpp"
-#include "Engine/AssetManager.hpp"
 
 namespace OneGame::Engine::Graphics
 {
@@ -29,9 +29,12 @@ void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt)
     auto invalidBlockTextureBlob = ctxt.assets.assetManager.LoadTexture("invalid.png");
     for (uint32_t i = 0; i < 256; ++i)
     {
-        ctxt.assets.streamingManager.UploadTexture<UploadType::Immediate>(invalidBlockTextureBlob->data, TextureTarget{.texture=blockTexture, .region={0, 0, BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE}, .baseTextureLayer=i});
+        ctxt.assets.streamingManager.UploadTexture<UploadType::Immediate>(
+            invalidBlockTextureBlob->data, TextureTarget{.texture = blockTexture,
+                                                         .region = {0, 0, BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE},
+                                                         .baseTextureLayer = i});
     }
-    
+
     // auto tex = ctxt.assets.assetManager.LoadTexture("invalid.png");
     // auto& info = tex->info;
     // blockTexture = backend.AllocateGPUTexture(info.width, info.height);
@@ -54,10 +57,13 @@ void TerrainPass2::Enable(IGraphicsBackend& backend, InitContext& ctxt)
 
 void TerrainPass2::UpdateBlockTexture(AssetContext& assets, const std::string& id, uint32_t slot)
 {
-    assets.streamingManager.UploadTexture<UploadType::Immediate>(assets.assetManager.LoadTexture(id)->data, TextureTarget{blockTexture, {0, 0, BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE}, slot});
+    assets.streamingManager.UploadTexture<UploadType::Immediate>(
+        assets.assetManager.LoadTexture(id)->data,
+        TextureTarget{blockTexture, {0, 0, BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE}, slot});
 }
 
-GPUBindingGroupHandle TerrainPass2::GetOrCreateBindingGroup(IGraphicsBackend& backend, UniformArena& arena, GPUBufferHandle storageBuffer, uint32_t chunkSize)
+GPUBindingGroupHandle TerrainPass2::GetOrCreateBindingGroup(IGraphicsBackend& backend, UniformArena& arena,
+                                                            GPUBufferHandle storageBuffer, uint32_t chunkSize)
 {
     auto it = cachedBindingGroups.find(storageBuffer);
     if (it != cachedBindingGroups.end())
@@ -114,8 +120,7 @@ void TerrainPass2::Draw(DrawContext& ctxt)
         {
             auto coord = mesh.coord;
             auto model = math::translate(
-                math::mat4(1.0f),
-                math::vec3(coord.x * CHUNK_SIZE_X, coord.y * CHUNK_SIZE_Y, coord.z * CHUNK_SIZE_Z));
+                math::mat4(1.0f), math::vec3(coord.x * CHUNK_SIZE_X, coord.y * CHUNK_SIZE_Y, coord.z * CHUNK_SIZE_Z));
             UBO ubo{ctxt.pvTransform * model};
             ubos.push_back(ubo);
         }
@@ -126,8 +131,7 @@ void TerrainPass2::Draw(DrawContext& ctxt)
 
         for (uint32_t i = 0; i < ubos.size(); ++i)
         {
-            uint32_t offset[2] = {val[i].offset,
-                                static_cast<uint32_t>(uniformMemory.offset + i * sizeof(UBO))};
+            uint32_t offset[2] = {val[i].offset, static_cast<uint32_t>(uniformMemory.offset + i * sizeof(UBO))};
             ctxt.drawCmd.BindBindingGroup(bindingGroup, 0, offset);
             ctxt.drawCmd.Draw(val[i].indexCount);
         }

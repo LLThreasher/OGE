@@ -2,20 +2,20 @@
 
 #include <array>
 #include <cassert>
+#include <optional>
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
-#include <optional>
 
-#include "Engine/entt.hpp"
-#include "Engine/Terrain/BlockManager.hpp"
 #include "Engine/ClassHelper.hpp"
+#include "Engine/ECS/IRenderer.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/ObjectType.hpp"
 #include "Engine/ResourcePool.hpp"
+#include "Engine/Terrain/BlockManager.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
 #include "Engine/Terrain/TerrainView.hpp"
-#include "Engine/ECS/IRenderer.hpp"
+#include "Engine/entt.hpp"
 
 #define USE_TERRAIN_MESH_V2
 
@@ -97,7 +97,8 @@ class TerrainMeshScheduler
 {
    public:
     void QueueChunksForMeshing(const TerrainData& terrain, TerrainPresentationData& pdata, entt::dispatcher& events);
-    void SubmitVisibleChunks(const TerrainData& data, TerrainPresentationData& pdata, const TerrainContext& tctx, FrameOutputData& fd);
+    void SubmitVisibleChunks(const TerrainData& data, TerrainPresentationData& pdata, const TerrainContext& tctx,
+                             FrameOutputData& fd);
 
    private:
     std::unordered_map<entt::entity, uint32_t> playerToView;
@@ -108,7 +109,8 @@ class TerrainUploader
    public:
     void SetMaxNumChunks(uint32_t maxNumChunks);
     void UploadTerrain(TerrainPresentationData& terrain, PresentationContext& ctx);
-private:
+
+   private:
     std::queue<GPUChunkedAllocation> m_allocationsToFree;
 };
 

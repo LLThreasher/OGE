@@ -1,29 +1,29 @@
 #pragma once
 
-#include "Engine/entt.hpp"
-#include "Engine/Input/InputSystem.hpp"
+#include "Components.hpp"
 #include "Engine/GameAppState.hpp"
+#include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/Point2.hpp"
 #include "Engine/Rect.hpp"
-#include "Components.hpp"
+#include "Engine/entt.hpp"
 
-#define DECLARE_SUBSYSTEM(Name, ...)                                                                       \
-    class Subsystem##Name : public SubsystemBase                                                           \
-    {                                                                                                      \
-       public:                                                                                             \
-        void Initialize(GameWorldContext& game, AppContext ctx) override;                                  \
-        void Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd) override;            \
-                                                                                                           \
-       private:                                                                                            \
-        __VA_ARGS__                                                                                        \
+#define DECLARE_SUBSYSTEM(Name, ...)                                                            \
+    class Subsystem##Name : public SubsystemBase                                                \
+    {                                                                                           \
+       public:                                                                                  \
+        void Initialize(GameWorldContext& game, AppContext ctx) override;                       \
+        void Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd) override; \
+                                                                                                \
+       private:                                                                                 \
+        __VA_ARGS__                                                                             \
     };
 
 namespace OneGame::Engine::ECS
 {
 struct UIRect;
 struct ScreenRect;
-}
+}  // namespace OneGame::Engine::ECS
 
 namespace OneGame::Engine::ECS
 {
@@ -48,9 +48,8 @@ math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamer
 
 math::vec2 RayToPitchYaw(math::vec3 ray);
 
-DECLARE_SUBSYSTEM(PlayerInput,
-    void onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
-    void onEraseInputSourceWidget(entt::registry& gameWorld, entt::entity entity););
+DECLARE_SUBSYSTEM(PlayerInput, void onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
+                  void onEraseInputSourceWidget(entt::registry& gameWorld, entt::entity entity););
 
 // Handle drags and UI rendering
 DECLARE_SUBSYSTEM(UI, std::array<entt::entity, PointerIdx::COUNT> activeDrags;);

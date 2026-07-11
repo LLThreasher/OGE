@@ -1,10 +1,10 @@
 #pragma once
 
-#include <vector>
 #include <tuple>
+#include <vector>
 
-#include "Engine/entt.hpp"
 #include "Engine/Terrain/TerrainView.hpp"
+#include "Engine/entt.hpp"
 
 namespace OneGame::Engine
 {
@@ -29,4 +29,4 @@ struct SubmissionGroup
     void Clear() { (std::get<std::vector<TCommands>>(buckets).clear(), ...); }
 };
 
-} // namespace OneGame::Engine
+}  // namespace OneGame::Engine

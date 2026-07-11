@@ -14,8 +14,7 @@ void TerrainRenderer::Initialize(TerrainContext& ctx, PresentationContext& actx)
 {
     auto tdesc = ctx.ctx().get<TerrainDesc>();
     auto desc = ctx.ctx().find<TerrainRendererDesc>();
-    if (desc == nullptr)
-        desc = &ctx.ctx().emplace<TerrainRendererDesc>();
+    if (desc == nullptr) desc = &ctx.ctx().emplace<TerrainRendererDesc>();
     m_terrainMeshBuilder.SetVertexBudget(desc->meshingQuadBudget);
     m_terrainUploader.SetMaxNumChunks((tdesc.chunkViewDistance + 1) * (tdesc.chunkViewDistance + 1) * 6);
 }

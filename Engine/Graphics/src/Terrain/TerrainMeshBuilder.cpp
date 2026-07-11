@@ -472,7 +472,8 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
             }
             else if (allOrMask == 0x0)
             {
-                // LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full air", data->Coords.x, data->Coords.y,
+                // LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full air", data->Coords.x,
+                // data->Coords.y,
                 //           data->Coords.z);
                 continue;
             }

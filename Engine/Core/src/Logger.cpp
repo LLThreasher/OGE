@@ -25,5 +25,6 @@ spdlog::logger* Logger::GetLogger(const char* loggerName)
     return logger.get();
 }
 
-std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> Logger::ring_sink = std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt>(new spdlog::sinks::ringbuffer_sink_mt(128));
+std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> Logger::ring_sink =
+    std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt>(new spdlog::sinks::ringbuffer_sink_mt(128));
 }  // namespace OneGame::Engine

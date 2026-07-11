@@ -1,8 +1,9 @@
 #pragma once
 
+#include <queue>
 #include <unordered_map>
 #include <unordered_set>
-#include <queue>
+
 #include "Engine/Point3.hpp"
 #include "Engine/ResourcePool.hpp"
 #include "Engine/Terrain/TerrainDefs.hpp"
@@ -57,7 +58,7 @@ struct ChunkData
         assert(0 <= z && z < CHUNK_SIZE_Z);
         return data[GetBlockIndex(x, y, z)];
     }
-    
+
     void SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value) { data[GetBlockIndex(x, y, z)] = value; }
 };
 
@@ -192,19 +193,11 @@ class TerrainView
 {
     friend class TerrainService;
     friend class TerrainRenderer;
+
    public:
-    uint32_t GetBlock(Point3 pos) const
-    {
-        return GetBlock(pos.x, pos.y, pos.z);
-    }
-    bool TryGetBlock(Point3 pos, uint32_t& value) const
-    {
-        return TryGetBlock(pos.x, pos.y, pos.z, value);
-    }
-    void SetBlock(Point3 pos, uint32_t value)
-    {
-        SetBlock(pos.x, pos.y, pos.z, value);
-    }
+    uint32_t GetBlock(Point3 pos) const { return GetBlock(pos.x, pos.y, pos.z); }
+    bool TryGetBlock(Point3 pos, uint32_t& value) const { return TryGetBlock(pos.x, pos.y, pos.z, value); }
+    void SetBlock(Point3 pos, uint32_t value) { SetBlock(pos.x, pos.y, pos.z, value); }
     uint32_t GetBlock(int x, int y, int z) const;
     bool TryGetBlock(int x, int y, int z, uint32_t& value) const;
     void SetBlock(int x, int y, int z, uint32_t value);
@@ -217,8 +210,9 @@ class TerrainView
 
    protected:
     TerrainData m_terrainData;
-private:
+
+   private:
     static void HandleResolveDirtyChunk(entt::registry& world, ResolveDirtyChunkEvent e);
 };
 
-}
+}  // namespace OneGame::Engine::Terrain

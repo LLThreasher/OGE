@@ -17,4 +17,4 @@ struct WindowHandle
 #endif
 };
 
-}  // namespace OneGame::Engine
+}  // namespace OneGame::Engine::Graphics

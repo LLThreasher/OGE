@@ -1,16 +1,16 @@
 #pragma once
 #include <memory>
 #include <string>
-#include <unordered_map>
 #include <typeindex>
 #include <typeinfo>
+#include <unordered_map>
 
 #include "Engine/AssetManager.hpp"
-#include "Engine/Input/InputSystem.hpp"
+#include "Engine/GameAppState.hpp"
 #include "Engine/IScene.hpp"
+#include "Engine/Input/InputSystem.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/entt.hpp"
-#include "Engine/GameAppState.hpp"
 
 namespace OneGame::Engine
 {
@@ -20,12 +20,14 @@ using HeadlessScene = Scene<AppContext, const FrameData>;
 class GameHeadlessApp : public SceneRunner<AppContext, const FrameData>
 {
     using Parent = SceneRunner<AppContext, const FrameData>;
+
    public:
     GameHeadlessApp() : m_appContext({m_assetManager}, {m_dispatcher, m_sceneArgs}) {}
     void Initialize();
     bool Update(float dt);
     bool HandleCmd(std::string_view cmd);
     void Shutdown();
+
    protected:
     bool m_isrunning = true;
 

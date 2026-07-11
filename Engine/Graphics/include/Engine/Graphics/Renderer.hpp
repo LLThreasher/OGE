@@ -1,16 +1,16 @@
 #pragma once
 
+#include "ChunkAllocator2.hpp"
 #include "DebugPass.hpp"
 #include "Engine/ClassHelper.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/entt.hpp"
 #include "RingStagingBuffer.hpp"
+#include "SkylineAllocator.hpp"
+#include "SubmissionQueue.hpp"
 #include "TerrainPass.hpp"
 #include "UIPass.hpp"
 #include "UniformArena.hpp"
-#include "ChunkAllocator2.hpp"
-#include "SubmissionQueue.hpp"
-#include "SkylineAllocator.hpp"
 
 namespace OneGame::Engine
 {
@@ -41,14 +41,8 @@ class Renderer
     {
         return chunkAllocator.Allocate(backend, size);
     }
-    GPUBufferRange ResolveTerrainMesh(GPUChunkedAllocation alloc)
-    {
-        return chunkAllocator.Resolve(alloc);
-    }
-    void FreeTerrainMesh(GPUChunkedAllocation alloc)
-    {
-        chunkAllocator.Free(alloc);
-    }
+    GPUBufferRange ResolveTerrainMesh(GPUChunkedAllocation alloc) { return chunkAllocator.Resolve(alloc); }
+    void FreeTerrainMesh(GPUChunkedAllocation alloc) { chunkAllocator.Free(alloc); }
 
     PSprite AllocateSprite(AssetContext& asset, std::string_view textureId);
 

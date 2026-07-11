@@ -1,14 +1,14 @@
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <thread>
-#include <algorithm>
 
 #include "Engine/Logger.hpp"
 
 class TickScheduler
 {
-public:
+   public:
     explicit TickScheduler(float tickRate = 60.0f);
 
     // Blocks until at least one fixed tick is available.
@@ -20,7 +20,7 @@ public:
 
     float GetAlpha() const;
 
-private:
+   private:
     float m_fixedDelta;
     float m_targetFrameTime;
 
@@ -33,12 +33,12 @@ private:
 
 class HeadlessTickScheduler
 {
-public:
+   public:
     explicit HeadlessTickScheduler(double tickRate);
 
     double WaitForNextTick();
 
-private:
+   private:
     using clock = std::chrono::steady_clock;
 
     clock::duration m_tickInterval;

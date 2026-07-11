@@ -1,6 +1,6 @@
-#include "Engine/ECS/IRenderer.hpp"
 #include "Engine/ECS/Components.hpp"
 #include "Engine/ECS/GraphicalComponents.hpp"
+#include "Engine/ECS/IRenderer.hpp"
 #include "Engine/Graphics/SubmissionQueue.hpp"
 
 namespace OneGame::Engine::ECS
@@ -33,8 +33,7 @@ void CameraRenderer::Present(const GameWorldContext& game, PresentationContext& 
     {
         CmdAddView cmdview{};
         cmdview.rect = rect;
-        if (auto camera = game.try_get<ComponentCamera>(view.activeCamera))
-            cmdview.view = camera->view();
+        if (auto camera = game.try_get<ComponentCamera>(view.activeCamera)) cmdview.view = camera->view();
         if (auto pcamera = game.try_get<ComponentPerspectiveCamera>(view.activeCamera))
         {
             cmdview.fov = pcamera->fov;
@@ -43,4 +42,4 @@ void CameraRenderer::Present(const GameWorldContext& game, PresentationContext& 
         fd.graphicQueue.Add<CmdAddView>(view.activeSlot, cmdview);
     }
 }
-}
+}  // namespace OneGame::Engine::ECS

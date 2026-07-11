@@ -2,11 +2,10 @@
 
 #include <vulkan/vulkan.h>
 
+#include "Engine/Logger.hpp"
 #include "Vulkan.hpp"
 #include "VulkanBuffer.hpp"
 #include "VulkanTexture.hpp"
-
-#include "Engine/Logger.hpp"
 
 namespace OneGame::Engine::Graphics::Vulkan
 {

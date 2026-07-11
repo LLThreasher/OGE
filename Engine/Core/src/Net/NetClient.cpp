@@ -1,6 +1,6 @@
-#include <enet/enet.h>
-
 #include "Engine/ECS/NetClient.hpp"
+
+#include <enet/enet.h>
 
 using namespace OneGame::Engine;
 
@@ -31,7 +31,8 @@ bool NetClient::Connect(const char* ip, uint16_t port, uint32_t timeoutMs)
     enet_address_set_host(&address, ip);
     address.port = port;
 
-    LOG_INFO("connecting to host {}.{}.{}.{} ({}) at port {}", address.host & 0xFF, (address.host >> 8) & 0xFF, (address.host >> 16) & 0xFF, address.host >> 24, ip, port);
+    LOG_INFO("connecting to host {}.{}.{}.{} ({}) at port {}", address.host & 0xFF, (address.host >> 8) & 0xFF,
+             (address.host >> 16) & 0xFF, address.host >> 24, ip, port);
 
     peer = enet_host_connect(host, &address, 2, 0);
 
@@ -58,7 +59,7 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
         LOG_INFO("Connection timeout");
         status = ClientStatus::Disconnected;
     }
-    
+
     connectWaitTime -= dt * 1000.f;
 
     ENetEvent event;

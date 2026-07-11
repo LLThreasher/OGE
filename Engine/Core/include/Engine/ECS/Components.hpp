@@ -2,13 +2,13 @@
 
 #include <optional>
 
-#include "Engine/entt.hpp"
-#include "Engine/Math.hpp"
-#include "Engine/Rect.hpp"
-#include "Engine/Input/InputSystem.hpp"
-#include "Engine/ObjectType.hpp"
-#include "Engine/Terrain/TerrainView.hpp"
 #include "Engine/ECS/AABB.hpp"
+#include "Engine/Input/InputSystem.hpp"
+#include "Engine/Math.hpp"
+#include "Engine/ObjectType.hpp"
+#include "Engine/Rect.hpp"
+#include "Engine/Terrain/TerrainView.hpp"
+#include "Engine/entt.hpp"
 
 namespace OneGame::Engine::ECS
 {
@@ -24,14 +24,11 @@ struct ComponentCamera
     math::vec3 forward;
     entt::entity targetPanel;
 
-    math::vec3 up() const
-    {
-        return glm::cross(right(), forward);
-    }
+    math::vec3 up() const { return glm::cross(right(), forward); }
 
     math::vec3 right() const
     {
-        static glm::vec3 worldUp(0,1,0);
+        static glm::vec3 worldUp(0, 1, 0);
         return glm::normalize(glm::cross(forward, worldUp));
     }
 
@@ -58,24 +55,21 @@ struct PlayerInputData
     math::vec2 actionPos;
     uint8_t actionMask;
 
-    template<PlayerAction action>
+    template <PlayerAction action>
     inline bool get() const
     {
         return actionMask & (1 << static_cast<uint32_t>(action));
     }
 
-    template<PlayerAction action>
+    template <PlayerAction action>
     inline void set()
     {
         actionMask |= (1 << static_cast<uint32_t>(action));
     }
 
-    inline bool empty() const
-    {
-        return actionMask == 0;
-    }
+    inline bool empty() const { return actionMask == 0; }
 
-    template<PlayerAction action>
+    template <PlayerAction action>
     inline void unset()
     {
         actionMask &= ~(1 << static_cast<uint32_t>(action));
@@ -116,7 +110,8 @@ struct ComponentPlayer
     {
         auto res = world.create();
         world.emplace<ComponentPhysicBody>(res, pos);
-        world.emplace<ComponentAABBCollider>(res, ComponentAABBCollider{.aabb={math::vec3{0.f, 0.f, 0.f}, math::vec3{0.7f, 1.8f, 0.7f}}});
+        world.emplace<ComponentAABBCollider>(
+            res, ComponentAABBCollider{.aabb = {math::vec3{0.f, 0.f, 0.f}, math::vec3{0.7f, 1.8f, 0.7f}}});
         world.emplace<ComponentCamera>(res);
         world.emplace<ComponentPerspectiveCamera>(res);
         world.emplace<ComponentPlayer>(res);
@@ -127,8 +122,8 @@ struct ComponentPlayer
 
 namespace OneGame::Engine::UI
 {
-    math::vec2 RayToPitchYaw(math::vec3 ray);
-    math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamera, math::vec2 pos);
-    entt::entity CastRayRelSpace(const entt::registry& gameWorld, math::vec2 pos);
-}
+math::vec2 RayToPitchYaw(math::vec3 ray);
+math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamera, math::vec2 pos);
+entt::entity CastRayRelSpace(const entt::registry& gameWorld, math::vec2 pos);
+}  // namespace OneGame::Engine::UI
 }  // namespace OneGame::Engine::ECS

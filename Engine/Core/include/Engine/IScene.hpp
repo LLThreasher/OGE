@@ -1,14 +1,14 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <typeindex>
 #include <unordered_map>
-#include <memory>
 
 namespace OneGame::Engine
 {
 
-template<typename TData, typename... TFrame>
+template <typename TData, typename... TFrame>
 class Scene
 {
    public:
@@ -19,29 +19,31 @@ class Scene
     virtual void Update(TData& context, TFrame&... frame) {}
 };
 
-template<typename TData, typename... TFrame>
+template <typename TData, typename... TFrame>
 class SceneRunner
 {
     using SceneBase = Scene<TData, TFrame...>;
-public:
+
+   public:
     SceneRunner()
     {
         m_scenes.emplace(std::type_index(typeid(SceneBase)), new SceneBase());
         SwitchToScene<SceneBase>();
     }
 
-    template<typename TScene>
+    template <typename TScene>
     void RegisterScene()
     {
         m_scenes.emplace(std::type_index(typeid(TScene)), new TScene());
     }
 
-    template<typename TScene>
+    template <typename TScene>
     void SwitchToScene()
     {
         m_nextScene = m_scenes.find(std::type_index(typeid(TScene)))->second.get();
     }
-protected:
+
+   protected:
     void Initialize(TData& ctx)
     {
         for (auto& [key, val] : m_scenes)
@@ -72,7 +74,8 @@ protected:
         }
         m_currentScene->Update(ctx, inputs...);
     }
-private:
+
+   private:
     std::unordered_map<std::type_index, std::unique_ptr<SceneBase>> m_scenes;
     SceneBase* m_nextScene = nullptr;
     SceneBase* m_currentScene = nullptr;

@@ -2,10 +2,7 @@
 
 namespace OneGame::Engine::Terrain
 {
-BlockRegistry::BlockRegistry()
-{
-    RegisterBlock("air", {});
-}
+BlockRegistry::BlockRegistry() { RegisterBlock("air", {}); }
 
 void BlockRegistry::RegisterBlock(std::string blockIdName, BlockConfig config)
 {
@@ -32,16 +29,17 @@ void BlockRegistry::RegisterBlock(std::string blockIdName, BlockConfig config)
     m_nextIdx += 1;
 }
 
-uint16_t BlockRegistry::GetBlockId(const std::string blockIdName) const { return m_idNameToBlockId.find(blockIdName)->second; }
+uint16_t BlockRegistry::GetBlockId(const std::string blockIdName) const
+{
+    return m_idNameToBlockId.find(blockIdName)->second;
+}
 
 uint16_t BlockRegistry::GetBlockId(uint32_t blockValue) { return blockValue & BLOCK_ID_MASK; }
 
-const std::string& BlockRegistry::GetBlockDisplayName(uint16_t blockIdx) const
-{
-    return m_blockDisplayNames[blockIdx];
-}
+const std::string& BlockRegistry::GetBlockDisplayName(uint16_t blockIdx) const { return m_blockDisplayNames[blockIdx]; }
 
-bool BlockRegistry::IsOpaque(const uint16_t blockIdx) const {
+bool BlockRegistry::IsOpaque(const uint16_t blockIdx) const
+{
     return m_blockFlags[blockIdx] & BLOCK_FLAG_OPAQUE_TO_MESHER;
 }
 

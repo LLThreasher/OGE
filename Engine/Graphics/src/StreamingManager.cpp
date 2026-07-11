@@ -35,7 +35,7 @@ void StreamingManager::ScheduleBufferUpload(const BufferUploadDesc& desc)
 
 template <UploadType uploadType, typename TTarget>
 size_t StreamingManager::Upload(const std::span<const std::byte> data, const TTarget target,
-                                      ResourceBundleHandle resBundle)
+                                ResourceBundleHandle resBundle)
 {
     size_t dataSizeInBytes = data.size();
     BufferUploadDesc desc{};
@@ -200,16 +200,14 @@ template void StreamingManager::ScheduleBufferUpload<UploadType::Immediate>(cons
 template void StreamingManager::ScheduleBufferUpload<UploadType::Async>(const BufferUploadDesc& desc);
 
 template size_t StreamingManager::Upload<UploadType::Immediate>(const std::span<const std::byte> data,
-                                                                      const BufferTarget target,
-                                                                      ResourceBundleHandle resBundle);
+                                                                const BufferTarget target,
+                                                                ResourceBundleHandle resBundle);
 template size_t StreamingManager::Upload<UploadType::Async>(const std::span<const std::byte> data,
-                                                                  const BufferTarget target,
-                                                                  ResourceBundleHandle resBundle);
+                                                            const BufferTarget target, ResourceBundleHandle resBundle);
 
 template size_t StreamingManager::Upload<UploadType::Immediate>(const std::span<const std::byte> data,
-                                                                      const TextureTarget target,
-                                                                      ResourceBundleHandle resBundle);
+                                                                const TextureTarget target,
+                                                                ResourceBundleHandle resBundle);
 template size_t StreamingManager::Upload<UploadType::Async>(const std::span<const std::byte> data,
-                                                                  const TextureTarget target,
-                                                                  ResourceBundleHandle resBundle);
+                                                            const TextureTarget target, ResourceBundleHandle resBundle);
 }  // namespace OneGame::Engine

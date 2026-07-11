@@ -5,12 +5,12 @@
 #include "Engine/Platform/IGameWindow.hpp"
 
 #define LOGGER_NAME "Engine"
-#include "Engine/Input/InputSystem.hpp"
 #include "Engine/Graphics/IGraphicsBackend.hpp"
-#include "Engine/WindowedGameApp.hpp"
+#include "Engine/Input/InputSystem.hpp"
 #include "Engine/Input/Keyboard.hpp"
 #include "Engine/Logger.hpp"
 #include "Engine/Timer.hpp"
+#include "Engine/WindowedGameApp.hpp"
 
 namespace OneGame::Engine
 {

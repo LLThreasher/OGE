@@ -1,6 +1,6 @@
-#include "Vulkan.hpp"
-
 #include <vulkan/vulkan.h>
+
+#include "Vulkan.hpp"
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
@@ -36,4 +36,4 @@ VkResult CreateSurface(WindowHandle* handle, VkInstance instance, VkSurfaceKHR& 
 #endif
     return res;
 }
-}
+}  // namespace OneGame::Engine::Graphics::Vulkan

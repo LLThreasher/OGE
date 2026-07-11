@@ -68,13 +68,14 @@ entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRe
     auto res = game.create();
     game.emplace<UITerminal>(res, view);
     game.emplace<UIRect>(res, rect);
-    game.emplace<UISprite>(res, UISprite{.sprite=asset.LoadTexture("invalid.png"), .color=COLOR_BLACK});
+    game.emplace<UISprite>(res, UISprite{.sprite = asset.LoadTexture("invalid.png"), .color = COLOR_BLACK});
     game.emplace<UIZLevel>(res, 2);
     game.emplace<UIRaycastTarget>(res);
 
     game.emplace<UIParent>(view, res);
     game.emplace<UIRect>(view, UIRect{math::vec2{0.f, 0.f}, math::vec2{1.f, 0.9f}});
-    game.emplace<UIText>(view, UIText{.font=asset.LoadASCIIBitmapFont16x6("om_large_plain_idx.png"), .text="Terminal"});
+    game.emplace<UIText>(view,
+                         UIText{.font = asset.LoadASCIIBitmapFont16x6("om_large_plain_idx.png"), .text = "Terminal"});
     return res;
 }
 

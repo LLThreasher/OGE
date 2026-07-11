@@ -12,4 +12,4 @@ struct GPUTextureRegion
     GPUTextureHandle texture;
 };
 
-}
+}  // namespace OneGame::Engine

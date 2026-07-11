@@ -8,11 +8,10 @@
 #include <vector>
 
 #include "Engine/ClassHelper.hpp"
+#include "Engine/Graphics/WindowHandle.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/ObjectType.hpp"
 #include "Engine/Point2.hpp"
-
-#include "Engine/Graphics/WindowHandle.hpp"
 
 /*
 ================================================================================

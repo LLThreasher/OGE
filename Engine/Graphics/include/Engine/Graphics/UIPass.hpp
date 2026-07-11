@@ -3,10 +3,10 @@
 #include <string>
 
 #include "Engine/Graphics/IPass.hpp"
-#include "Engine/ObjectType.hpp"
-#include "Engine/entt.hpp"
 #include "Engine/Math.hpp"
+#include "Engine/ObjectType.hpp"
 #include "Engine/Point2.hpp"
+#include "Engine/entt.hpp"
 
 namespace OneGame::Engine::Graphics
 {
@@ -84,13 +84,13 @@ class UIPass : public BasicPass
         math::mat2 transform;
         math::vec2 offset;
     };
-    
+
    public:
     struct Vertex
     {
-        U16Point2 position; // 4 byte
-        U16Norm2 uv;        // 4 byte
-        ColorRGBA8 color;   // 4 byte
+        U16Point2 position;  // 4 byte
+        U16Norm2 uv;         // 4 byte
+        ColorRGBA8 color;    // 4 byte
     };
 
     void Enable(IGraphicsBackend& backend, InitContext& ctxt) override;
@@ -106,7 +106,7 @@ class UIPass : public BasicPass
     std::unordered_map<GPUTextureHandle, GPUBindingGroupHandle, HandleHash<GPUTextureHandle>> cachedBindingGroups;
 
     PushConstant pushConstant;
-    
+
     GPUBufferHandle vertexBuffer;
     void* vertexBufferCpu;
     GPUBufferHandle indexBuffer;

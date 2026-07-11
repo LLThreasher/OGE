@@ -69,4 +69,4 @@ struct SurfaceRecreateEvent
     U16Point2 swapchainExtent;
     math::Orientation swapchainPretransform;
 };
-} // namespace OneGame::Engine
+}  // namespace OneGame::Engine

@@ -10,14 +10,18 @@ namespace OneGame::Engine
 void GameHeadlessApp::Initialize()
 {
     Parent::Initialize(m_appContext);
-    m_cmdRunners.emplace("quit", [&](auto cmd){m_isrunning = false; return false;});
+    m_cmdRunners.emplace("quit",
+                         [&](auto cmd)
+                         {
+                             m_isrunning = false;
+                             return false;
+                         });
 }
 
 bool GameHeadlessApp::Update(float dt)
 {
     m_dispatcher.update();
-    FrameData frame
-    {
+    FrameData frame{
         dt,
     };
     Parent::Update(m_appContext, frame);
@@ -34,8 +38,5 @@ bool GameHeadlessApp::HandleCmd(std::string_view cmd)
     return true;
 }
 
-void GameHeadlessApp::Shutdown()
-{
-    Parent::Shutdown(m_appContext);
-}
+void GameHeadlessApp::Shutdown() { Parent::Shutdown(m_appContext); }
 }  // namespace OneGame::Engine

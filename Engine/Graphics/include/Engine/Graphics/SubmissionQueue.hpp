@@ -3,10 +3,10 @@
 #include <cstddef>
 #include <string>
 
+#include "Engine/ECS/SubmissionGroup.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/ObjectType.hpp"
 #include "Engine/Rect.hpp"
-#include "Engine/ECS/SubmissionGroup.hpp"
 
 namespace OneGame::Engine::Graphics
 {
@@ -110,12 +110,16 @@ class ViewSubmissionGroup
     }
 
    private:
-    static constexpr size_t BitToIndex(GameViewType viewBit) { return std::countr_zero(static_cast<uint32_t>(viewBit)); }
+    static constexpr size_t BitToIndex(GameViewType viewBit)
+    {
+        return std::countr_zero(static_cast<uint32_t>(viewBit));
+    }
 
     std::array<SubmissionGroupT, ViewCount> m_groups;
 };
 
-using SingleSubmissionQueue = SubmissionGroup<CmdDrawSprite, CmdAddView, CmdDrawGeneralMeshOpaque, CmdDrawTerrainMeshOpaque, CmdDrawDebugText, CmdDrawDebugRect>;
+using SingleSubmissionQueue = SubmissionGroup<CmdDrawSprite, CmdAddView, CmdDrawGeneralMeshOpaque,
+                                              CmdDrawTerrainMeshOpaque, CmdDrawDebugText, CmdDrawDebugRect>;
 
 class SubmissionQueue : public ViewSubmissionGroup<SingleSubmissionQueue>
 {
