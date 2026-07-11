@@ -93,8 +93,9 @@ struct ComponentPhysicBody
     math::vec3 velocity;
     math::vec3 acceleration;
     float mass = 1.0f;
-    float stepAssist = 0.501f;
-    // float stepAssist = 1.001f;
+    // float stepAssist = 0.501f;
+    float stepAssist = 1.001f;
+    uint32_t onTopOfBlkValue = 0;
     bool isGrounded = false;
 };
 

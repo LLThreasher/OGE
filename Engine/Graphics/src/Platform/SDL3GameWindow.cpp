@@ -120,7 +120,7 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
 #ifdef PLATFORM_ANDROID
     m_window = SDL_CreateWindow(name.c_str(), 0, 0, SDL_WINDOW_FULLSCREEN);
 #else
-    m_window = SDL_CreateWindow(name.c_str(), 1920, 1080, SDL_WINDOW_RESIZABLE);
+    m_window = SDL_CreateWindow(name.c_str(), width, height, SDL_WINDOW_RESIZABLE);
 #endif
 }
 

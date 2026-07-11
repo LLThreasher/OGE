@@ -33,8 +33,6 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
     //
     // --- Shader stages
     //
-    LOG_INFO("vert len {}", desc.vertexShader.size());
-    LOG_INFO("frag len {}", desc.fragmentShader.size());
     VkShaderModule vertModule = CreateShaderModule(desc.vertexShader);
     LOG_DEBUG("vk vertex shader created");
     VkShaderModule fragModule = CreateShaderModule(desc.fragmentShader);

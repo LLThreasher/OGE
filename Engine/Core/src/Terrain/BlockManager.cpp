@@ -53,4 +53,12 @@ const AABBList BlockRegistry::GetBlockAABBList(uint16_t blockIdx) const
     if (blockIdx == 0) return {};
     return {AABB{{0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}}};
 }
+
+float BlockRegistry::GetBlockDrag(uint16_t blockIdx) const
+{
+    if (blockIdx == 0)
+        return 0.001f;
+    return 5.f;
+}
+
 }  // namespace OneGame::Engine::Terrain
