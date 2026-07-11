@@ -342,13 +342,35 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
             e = entt::null;
         }
     }
+    // TODO: move this to a separate file
     for (auto [e, term] : game.view<UITerminal>().each())
     {
         auto& text = game.get<UIText>(term.text);
+        auto offset = term.offset;
         auto drag = game.try_get<UIDrag>(e);
+        if (drag)
+        {
+            auto dragY = UI::RelSpaceToScreenSpace(game, drag->dragLastPos - drag->dragStartPos).y;
+            offset -= math::floor(dragY / (float)text.size);
+            if (UI::IsDragReleasedSrc(game, e))
+            {
+                term.offset = offset;
+            }
+        }
+        
         text.text = "";
+        while (offset < 0)
+        {
+            text.text += '\n';
+            ++offset;
+        }
         for (auto line : Logger::GetLastMessages())
         {
+            if (offset > 0)
+            {
+                --offset;
+                continue;
+            }
             text.text += line;
         }
     }
@@ -370,7 +392,7 @@ void UIRenderer::Present(const GameWorldContext& game, PresentationContext& ctx,
     for (auto [entity, uitext, rect] : game.view<UIText, ScreenRect>().each())
     {
         uitext.font->CreateTextSprites(f.graphicQueue, uitext, rect);
-        f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay, CmdDrawDebugRect{rect, COLOR_GREY});
+        // f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay, CmdDrawDebugRect{rect, COLOR_GREY});
     }
 
     for (auto [entity, uisp, rect] : game.view<UISprite, ScreenRect>().each())
