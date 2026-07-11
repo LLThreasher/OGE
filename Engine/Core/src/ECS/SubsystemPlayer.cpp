@@ -1,3 +1,4 @@
+#include "Engine/AABBOps.hpp"
 #include "Engine/ECS/ISubsystem.hpp"
 #include "Engine/Formaters.hpp"
 #include "Engine/Point3.hpp"
@@ -21,7 +22,8 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
         camera.position = body.pos + math::vec3{(collider.aabb.min.x + collider.aabb.max.x) / 2.f, 1.75f,
                                                 (collider.aabb.min.z + collider.aabb.max.z) / 2.f};
         body.velocity += (math::normalize({camera.forward.x, 0.f, camera.forward.z}) * input.moveDelta.y +
-                            camera.right() * input.moveDelta.x) * 0.5f;
+                          camera.right() * input.moveDelta.x) *
+                         0.5f;
 
         // // add small amount of velocity
         // body.velocity += body.acceleration * fd.dt * 10.f;
@@ -43,7 +45,19 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
                     {
                         auto blockId = blocks.GetBlockId("stone");
                         auto blockValue = blockId;
-                        terrain.SetBlock(raycastResult->hitPos + perFaceOffset[raycastResult->hitFace], blockValue);
+                        auto placePos = raycastResult->hitPos + perFaceOffset[raycastResult->hitFace];
+                        auto blkAABBs = blocks.GetBlockAABBList(blockId);
+                        bool canPlace = true;
+                        CollisionResult res;
+                        for (auto blkAABB : blkAABBs)
+                        {
+                            if (CheckCollision(collider.aabb + body.pos, blkAABB + placePos, res))
+                            {
+                                canPlace = false;
+                                break;
+                            }
+                        }
+                        if (canPlace) terrain.SetBlock(placePos, blockValue);
                     }
                     player.lastActionTime = 0.2f;
                 }
