@@ -40,17 +40,47 @@ namespace OneGame::Engine::UI
 {
 using namespace ECS;
 
-bool IsButtonClicked(entt::registry& game, entt::entity button, math::vec2& clickPos)
+bool IsButtonClicked(const entt::registry& game, entt::entity button, math::vec2& clickPos)
 {
-    if (auto drag = game.try_get<UIDragRelease>(button))
+    if (auto drag = game.try_get<UIDrag>(button))
     {
-        if (drag->drag.IsClick(game))
+        if (!IsDragReleasedSrc(game, button)) return false;
+        if (drag->IsClick(game))
         {
-            clickPos = drag->drag.dragLastPos;
+            clickPos = drag->dragLastPos;
             return true;
         }
     }
     return false;
+}
+
+bool IsDragReleasedSrc(const entt::registry& game, entt::entity src)
+{
+    return game.all_of<ECS::UIDragReleaseFinished>(src);
+}
+
+std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragSrc(const entt::registry& game, entt::entity e)
+{
+    if (auto drag = game.try_get<UIDrag>(e))
+    {
+        if (auto dragRelFin = game.try_get<UIDragReleaseFinished>(e))
+        {
+            return {drag, dragRelFin->dragDst};
+        }
+    }
+    return {nullptr, entt::null};
+}
+
+std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragDst(const entt::registry& game, entt::entity e)
+{
+    if (auto dragRel = game.try_get<UIDragReleaseDst>(e))
+    {
+        if (IsDragReleasedSrc(game, dragRel->dragStart))
+        {
+            return {game.try_get<UIDrag>(dragRel->dragStart), dragRel->dragStart};
+        }
+    }
+    return {nullptr, entt::null};
 }
 
 entt::entity CreateButton(entt::registry& game, AssetContext& asset, UIRect rect)
@@ -73,9 +103,9 @@ entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRe
     game.emplace<UIRaycastTarget>(res);
 
     game.emplace<UIParent>(view, res);
-    game.emplace<UIRect>(view, UIRect{math::vec2{0.f, 0.f}, math::vec2{1.f, 0.9f}});
+    game.emplace<UIRect>(view, UIRect{math::vec2{0.f, 0.f}, math::vec2{1.f, 1.f}});
     game.emplace<UIText>(view,
-                         UIText{.font = asset.LoadASCIIBitmapFont16x6("om_large_plain_idx.png"), .text = "Terminal"});
+                         UIText{.font = asset.LoadASCIIBitmapFont16x6("om_tall_plain_idx.png"), .text = "Terminal"});
     return res;
 }
 
@@ -220,7 +250,12 @@ void SubsystemUI::Initialize(GameWorldContext& game, AppContext ctx)
 
 void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& f)
 {
-    game.clear<UIDragRelease>();
+    for (auto e : game.view<UIDragReleaseFinished>())
+    {
+        game.erase<UIDrag>(e);
+    }
+    game.clear<UIDragReleaseFinished>();
+    game.clear<UIDragReleaseDst>();
     game.clear<UIRaycastHit>();
 
     // handle mouse drag
@@ -250,11 +285,11 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
     {
         UIDrag& mouseDrag = game.get<UIDrag>(activeDrags[PointerIdx::MOUSE]);
         mouseDrag.UpdateDrag(UI::ScreenSpaceToRelSpace(game, mousePos), mouseEntityHit, f.dt);
+        if (game.valid(mouseEntityHit))
+            game.emplace<UIDragReleaseDst>(mouseEntityHit, activeDrags[PointerIdx::MOUSE]);
         if (f.input.IsMouseReleased(mouseDrag.dragStartButton))
         {
-            if (game.valid(mouseEntityHit))
-                game.emplace<UIDragRelease>(mouseEntityHit, mouseDrag, activeDrags[PointerIdx::MOUSE]);
-            game.erase<UIDrag>(activeDrags[PointerIdx::MOUSE]);
+            game.emplace<UIDragReleaseFinished>(activeDrags[PointerIdx::MOUSE], mouseEntityHit);
             activeDrags[PointerIdx::MOUSE] = entt::null;
         }
     }
@@ -272,7 +307,11 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
             math::vec2 pos{f.input.GetTouchX(pidx), f.input.GetTouchY(pidx)};
             entt::entity hit = UI::CastRayRelSpace(game, pos);
             game.get<UIDrag>(activeDrags[ptrIdx]).UpdateDrag(pos, hit, f.dt);
-            if (game.valid(hit)) game.get_or_emplace<UIRaycastHit>(hit);
+            if (game.valid(hit))
+            {
+                game.get_or_emplace<UIRaycastHit>(hit);
+                game.emplace<UIDragReleaseDst>(hit, activeDrags[ptrIdx]);
+            }
         }
         else if (pressedTouchMask & (1 << pidx))
         {
@@ -299,18 +338,18 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
             entt::entity& e = activeDrags[ptrIdx];
             auto resultE = UI::CastRayRelSpace(game, pos);
             auto& drag = game.get<UIDrag>(e);
-            if (game.valid(resultE)) game.emplace<UIDragRelease>(resultE, drag, e);
-            game.erase<UIDrag>(e);
+            game.emplace<UIDragReleaseFinished>(e, resultE);
             e = entt::null;
         }
     }
-    for (auto [e, term] : game.view<const UITerminal>().each())
+    for (auto [e, term] : game.view<UITerminal>().each())
     {
         auto& text = game.get<UIText>(term.text);
-        text.text = "Terminal";
+        auto drag = game.try_get<UIDrag>(e);
+        text.text = "";
         for (auto line : Logger::GetLastMessages())
         {
-            text.text += '\n' + line;
+            text.text += line;
         }
     }
 }

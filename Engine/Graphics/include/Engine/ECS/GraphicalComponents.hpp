@@ -52,10 +52,23 @@ struct UIDrag
     bool IsClick(const entt::registry& world, float duration = 0.25f, int pixelRadiusSqr = 200) const;
 };
 
-struct UIDragRelease
+struct UIDragReleaseFinished
 {
-    UIDrag drag;
+    entt::entity dragDst;
+};
+
+struct UIDragReleaseDst
+{
     entt::entity dragStart;
+
+    const UIDrag& GetDrag(const entt::registry& world) const;
+};
+
+struct UIDragReleaseInfo
+{
+    UIDrag& drag;
+    entt::entity start;
+    entt::entity end;
 };
 
 struct UIZLevel
@@ -82,6 +95,7 @@ struct SwapchainExtent : UPoint2
 struct UITerminal
 {
     entt::entity text;
+    int offset;
 };
 
 struct UITextInput
@@ -130,5 +144,8 @@ entt::entity CreateGameView(entt::registry& game, UIRect rect);
 entt::entity CastRayScreenSpace(const entt::registry& gameWorld, math::vec2 pos);
 entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRect rect);
 entt::entity CreateButton(entt::registry& game, AssetContext& asset, UIRect rect);
-bool IsButtonClicked(entt::registry& game, entt::entity button, math::vec2& clickPos);
+bool IsButtonClicked(const entt::registry& game, entt::entity button, math::vec2& clickPos);
+bool IsDragReleasedSrc(const entt::registry& game, entt::entity src);
+std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragSrc(const entt::registry& game, entt::entity e);
+std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragDst(const entt::registry& game, entt::entity e);
 }  // namespace OneGame::Engine::UI

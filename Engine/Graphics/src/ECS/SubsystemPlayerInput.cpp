@@ -80,11 +80,11 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                     data.unset<PlayerAction::Digging>();
                     data.panDelta = math::vec2{0, 0};
                 }
-                auto dragRl = game.try_get<UIDragRelease>(widgetInput->viewWidget);
-                if (dragRl != nullptr && dragRl->dragStart == widgetInput->viewWidget && dragRl->drag.IsClick(game))
+                auto [dragRel, start] = UI::TryGetReleasedDragSrc(game, widgetInput->viewWidget);
+                if (dragRel != nullptr && start == widgetInput->viewWidget && dragRel->IsClick(game))
                 {
                     data.set<PlayerAction::Placing>();
-                    data.actionPos = dragRl->drag.dragLastPos;
+                    data.actionPos = dragRel->dragLastPos;
                 }
                 else
                 {
