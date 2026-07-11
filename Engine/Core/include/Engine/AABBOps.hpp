@@ -104,6 +104,138 @@ inline void ResolveCollisionsY(const std::vector<CollisionResult>& collisions, R
     // res.offset.y = (res.mask == (RCR_HIT_STEP_Y | RCR_HIT_POS_Y) ? maxSAPosY : maxPosY) + maxNegY;
 }
 
+inline void ResolveCollisionsX(const std::vector<CollisionResult>& collisions, ResolveCollisionResult& res)
+{
+    if (collisions.empty())
+    {
+        res = {};
+        return;
+    }
+
+    // Separate tracking for positive (+) and negative (-) pushes on each axis
+    float maxPosX = 0.0f;
+    float maxNegX = 0.0f;
+    float maxSAPosY = 0.0f;
+
+    short maxPosXIdx = -1;
+    short maxNegXIdx = -1;
+    short maxSAPosYIdx = -1;
+
+    for (int i = 0; i < collisions.size(); ++i)
+    {
+        auto& col = collisions[i];
+        auto& normal = COLLISION_NORMALS[col.type];
+        float pushX = normal.x * col.penetration;
+        float pushY = normal.y * col.penetration;
+
+        // X-Axis sorting by sign
+        if (pushX > 0.0f)
+        {
+            if (maxPosX < pushX - COLLISION_EPSILON)
+            {
+                maxPosX = pushX;
+                maxPosXIdx = i;
+            }
+            res.mask |= RCR_HIT_POS_X;
+        }
+        else if (pushX < 0.0f)
+        {
+            if (maxNegX > pushX + COLLISION_EPSILON)
+            {
+                maxNegX = pushX;
+                maxNegXIdx = i;
+            }
+            res.mask |= RCR_HIT_NEG_X;
+        }
+
+        // Y-Axis sorting by sign
+        if (col.type == COLLISION_TYPE_STEP_Y)
+        {
+            if (maxSAPosY < pushY + COLLISION_EPSILON)
+            {
+                maxSAPosY = pushY + COLLISION_EPSILON * 2.5f;
+                maxSAPosYIdx = i;
+            }
+            res.mask |= RCR_HIT_STEP_Y;
+        }
+    }
+
+    // Combine opposing forces by adding them together.
+    // If stuck between two walls: (+2.0) + (-2.0) = 0.0 total movement. The player stays in the center.
+    res.offset.x = maxPosX + maxNegX;
+    res.stepOffset = maxSAPosY;
+
+    res.resolvedIndices[0] = -maxNegX > maxPosX ? maxNegXIdx : maxPosXIdx;
+    res.resolvedIndices[3] = maxSAPosYIdx;
+    // res.offset.y = (res.mask == (RCR_HIT_STEP_Y | RCR_HIT_POS_Y) ? maxSAPosY : maxPosY) + maxNegY;
+}
+
+inline void ResolveCollisionsZ(const std::vector<CollisionResult>& collisions, ResolveCollisionResult& res)
+{
+    if (collisions.empty())
+    {
+        res = {};
+        return;
+    }
+
+    // Separate tracking for positive (+) and negative (-) pushes on each axis
+    float maxPosZ = 0.0f;
+    float maxNegZ = 0.0f;
+    float maxSAPosY = 0.0f;
+
+    short maxPosZIdx = -1;
+    short maxNegZIdx = -1;
+    short maxSAPosYIdx = -1;
+
+    for (int i = 0; i < collisions.size(); ++i)
+    {
+        auto& col = collisions[i];
+        auto& normal = COLLISION_NORMALS[col.type];
+        float pushZ = normal.z * col.penetration;
+        float pushY = normal.y * col.penetration;
+
+        // Z-Axis sorting by sign
+        if (pushZ > 0.0f)
+        {
+            if (maxPosZ < pushZ - COLLISION_EPSILON)
+            {
+                maxPosZ = pushZ;
+                maxPosZIdx = i;
+            }
+            res.mask |= RCR_HIT_POS_Z;
+        }
+        else if (pushZ < 0.0f)
+        {
+            if (maxNegZ > pushZ + COLLISION_EPSILON)
+            {
+                maxNegZ = pushZ;
+                maxNegZIdx = i;
+            }
+            res.mask |= RCR_HIT_NEG_Z;
+        }
+
+        // Y-Axis sorting by sign
+        if (col.type == COLLISION_TYPE_STEP_Y)
+        {
+            if (maxSAPosY < pushY + COLLISION_EPSILON)
+            {
+                maxSAPosY = pushY + COLLISION_EPSILON * 2.5f;
+                maxSAPosYIdx = i;
+            }
+            res.mask |= RCR_HIT_STEP_Y;
+        }
+    }
+
+    // Combine opposing forces by adding them together.
+    // If stuck between two walls: (+2.0) + (-2.0) = 0.0 total movement. The player stays in the center.
+    res.offset.z = maxPosZ + maxNegZ;
+    res.stepOffset = maxSAPosY;
+
+    res.resolvedIndices[2] = -maxNegZ > maxPosZ ? maxNegZIdx : maxPosZIdx;
+    res.resolvedIndices[3] = maxSAPosYIdx;
+    // res.offset.y = (res.mask == (RCR_HIT_STEP_Y | RCR_HIT_POS_Y) ? maxSAPosY : maxPosY) + maxNegY;
+}
+
 inline void ResolveCollisionsXZ(const std::vector<CollisionResult>& collisions, ResolveCollisionResult& res)
 {
     if (collisions.empty())
@@ -217,18 +349,18 @@ inline void ResolveCollisionsSinglePass(const std::vector<CollisionResult>& coll
         // X-Axis sorting by sign
         if (pushX > 0.0f)
         {
-            if (maxPosX < pushX - COLLISION_EPSILON)
+            if (maxPosX < pushX + COLLISION_EPSILON)
             {
-                maxPosX = pushX;
+                maxPosX = pushX + COLLISION_EPSILON;
                 maxPosXIdx = i;
             }
             res.mask |= RCR_HIT_POS_X;
         }
         else if (pushX < 0.0f)
         {
-            if (maxNegX > pushX + COLLISION_EPSILON)
+            if (maxNegX > pushX - COLLISION_EPSILON)
             {
-                maxNegX = pushX;
+                maxNegX = pushX - COLLISION_EPSILON;
                 maxNegXIdx = i;
             }
             res.mask |= RCR_HIT_NEG_X;
@@ -266,18 +398,18 @@ inline void ResolveCollisionsSinglePass(const std::vector<CollisionResult>& coll
         // Z-Axis sorting by sign
         if (pushZ > 0.0f)
         {
-            if (maxPosZ < pushZ - COLLISION_EPSILON)
+            if (maxPosZ < pushZ + COLLISION_EPSILON)
             {
-                maxPosZ = pushZ;
+                maxPosZ = pushZ + COLLISION_EPSILON;
                 maxPosZIdx = i;
             }
             res.mask |= RCR_HIT_POS_Z;
         }
         else if (pushZ < 0.0f)
         {
-            if (maxNegZ > pushZ + COLLISION_EPSILON)
+            if (maxNegZ > pushZ - COLLISION_EPSILON)
             {
-                maxNegZ = pushZ;
+                maxNegZ = pushZ - COLLISION_EPSILON;
                 maxNegZIdx = i;
             }
             res.mask |= RCR_HIT_NEG_Z;
@@ -331,6 +463,38 @@ inline bool CheckCollisionY(const AABB& a, const AABB& b, CollisionResult& res)
 
     res.type = (centerA_y < centerB_y) ? COLLISION_TYPE_NEG_Y : COLLISION_TYPE_POS_Y;
 
+    return true;
+}
+
+inline bool CheckCollisionX(const AABB& a, const AABB& b, CollisionResult& res)
+{
+    if (a.max.x < b.min.x || a.min.x > b.max.x) return false;
+
+    float overlapX = std::min(a.max.x, b.max.x) - std::max(a.min.x, b.min.x);
+
+    // X-axis has the smallest overlap
+    res.penetration = overlapX + COLLISION_EPSILON;
+
+    float centerA_x = (a.min.x + a.max.x) * 0.5f;
+    float centerB_x = (b.min.x + b.max.x) * 0.5f;
+
+    res.type = (centerA_x < centerB_x) ? COLLISION_TYPE_NEG_X : COLLISION_TYPE_POS_X;
+    return true;
+}
+
+inline bool CheckCollisionZ(const AABB& a, const AABB& b, CollisionResult& res)
+{
+    if (a.max.z < b.min.z || a.min.z > b.max.z) return false;
+
+    float overlapZ = std::min(a.max.z, b.max.z) - std::max(a.min.z, b.min.z);
+
+    // Z-axis has the smallest overlap
+    res.penetration = overlapZ + COLLISION_EPSILON;
+
+    float centerA_z = (a.min.z + a.max.z) * 0.5f;
+    float centerB_z = (b.min.z + b.max.z) * 0.5f;
+
+    res.type = (centerA_z < centerB_z) ? COLLISION_TYPE_NEG_Z : COLLISION_TYPE_POS_Z;
     return true;
 }
 
