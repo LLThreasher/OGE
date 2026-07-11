@@ -25,8 +25,9 @@
 #include "Engine/Logger.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/PrintStackTrace.hpp"
-
+#ifdef PLATFORM_LINUX
 import VulkanX11Wsi;
+#endif
 
 namespace OneGame::Engine::Graphics::Vulkan
 {

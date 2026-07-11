@@ -1,7 +1,9 @@
 #include <vulkan/vulkan.h>
 
 #include "Vulkan.hpp"
+#ifdef PLATFORM_LINUX
 import VulkanX11Wsi;
+#endif
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
