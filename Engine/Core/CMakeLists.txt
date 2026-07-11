@@ -73,11 +73,6 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     PUBLIC
         PLATFORM_DARWIN
     )
-elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    target_compile_definitions(EngineCore
-    PUBLIC
-        PLATFORM_LINUX
-    )
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
     target_compile_definitions(EngineCore
     PUBLIC
