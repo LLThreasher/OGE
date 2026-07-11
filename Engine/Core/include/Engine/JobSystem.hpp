@@ -1,6 +1,11 @@
 #pragma once
 #include <atomic>
 #include <thread>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <thread>
+#include <vector>
 
 #include "Engine/Async.hpp"
 #include "Engine/ObjectType.hpp"

@@ -1,5 +1,7 @@
 #include "VulkanCommandBuffer.hpp"
 
+#include <cstring>
+
 #include "VulkanBindingGroups.hpp"
 #include "VulkanBuffer.hpp"
 #include "VulkanFrameBuffer.hpp"

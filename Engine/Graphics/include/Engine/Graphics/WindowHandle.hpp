@@ -12,6 +12,21 @@ struct WindowHandle
     void* nativeWindow;
 #elif defined(PLATFORM_DARWIN)
     const void* metalLayer;
+#elif defined(PLATFORM_LINUX)
+    bool isWayland;
+    union
+    {
+        struct
+        {
+            void* display;
+            unsigned long window;
+        } x11;
+        struct
+        {
+            void* display;
+            void* surface;
+        } wayland;
+    };
 #else
 #error
 #endif

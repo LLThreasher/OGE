@@ -1,5 +1,7 @@
 #include "Engine/StreamingManager.hpp"
 
+#include <cstring>
+
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
 

@@ -1,5 +1,7 @@
 #include "Engine/AssetManager.hpp"
 
+#include <cstring>
+
 #include "stb_image.h"
 
 namespace OneGame::Engine

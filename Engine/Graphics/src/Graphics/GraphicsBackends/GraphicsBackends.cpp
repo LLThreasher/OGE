@@ -1,4 +1,5 @@
 #include <fstream>
+#include <cstring>
 
 #include "Engine/Graphics/IGraphicsBackend.hpp"
 #include "Vulkan/Vulkan.hpp"

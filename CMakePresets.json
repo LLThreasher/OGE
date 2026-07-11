@@ -55,6 +55,39 @@
       }
     },
     {
+      "name": "linux-base",
+      "description": "面向Linux桌面环境",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++",
+        "MAX_FRAMES_IN_FLIGHT": "1",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    },
+    {
+      "name": "linux-debug",
+      "displayName": "Linux Debug",
+      "description": "使用GCC工具链定向到Linux (Debug)",
+      "inherits": "linux-base",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "ENABLE_PERF": "ON" }
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Apple Silicon Release",
+      "description": "使用GCC工具链定向到Linux (Release)",
+      "inherits": "linux-debug",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
       "name": "apple-debug",
       "displayName": "Apple Silicon Debug",
       "description": "使用 Visual Studio 开发环境定向到 Apple Silicon (64 位)。(Debug)",

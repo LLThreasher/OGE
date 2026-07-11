@@ -1,11 +1,13 @@
 #include "Vulkan.hpp"
 
 #include <vulkan/vulkan.h>
+#include <vulkan/vulkan_wayland.h>
 
 #include <algorithm>
 #include <cmath>
 #include <set>
 #include <string>
+#include <cstring>
 
 #include "VulkanBindingGroups.hpp"
 #include "VulkanBuffer.hpp"
@@ -23,6 +25,8 @@
 #include "Engine/Logger.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/PrintStackTrace.hpp"
+
+import VulkanX11Wsi;
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
@@ -435,6 +439,18 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
         VK_KHR_SURFACE_EXTENSION_NAME,
         VK_EXT_METAL_SURFACE_EXTENSION_NAME,
     };
+#elif defined(PLATFORM_LINUX)
+    std::vector<const char*> extensions = {
+        VK_KHR_SURFACE_EXTENSION_NAME,
+    };
+    if (desc.window->isWayland)
+    {
+        extensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
+    }
+    else
+    {
+        extensions.push_back(vkXlibSurfaceExtensionName);
+    }
 #else
     std::vector<const char*> extensions;
 #endif

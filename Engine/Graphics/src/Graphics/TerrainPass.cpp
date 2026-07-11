@@ -12,6 +12,8 @@
 #include "Engine/Logger.hpp"
 #include "Engine/StreamingManager.hpp"
 
+#include <cstring>
+
 namespace OneGame::Engine::Graphics
 {
 using namespace Terrain;

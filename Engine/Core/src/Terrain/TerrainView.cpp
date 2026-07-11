@@ -20,7 +20,7 @@ std::tuple<ChunkHandle, const ChunkData*> ChunkDataCollection::Get(Point3 coord)
     {
         return {it->second, Get(it->second)};
     }
-    return {{}, nullptr};
+    return {ChunkHandle{}, nullptr};
 }
 
 ChunkHandle ChunkDataCollection::GetHandle(Point3 coord)
@@ -40,7 +40,7 @@ std::tuple<ChunkHandle, ChunkData*> ChunkDataCollection::Get(Point3 coord)
     {
         return {it->second, Get(it->second)};
     }
-    return {{}, nullptr};
+    return {ChunkHandle{}, nullptr};
 }
 
 ChunkHandle ChunkDataCollection::AllocateChunk(Point3 coord)

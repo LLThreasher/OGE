@@ -83,6 +83,11 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
     PUBLIC
         PLATFORM_ANDROID
     )
+elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_compile_definitions(EngineCore
+    PUBLIC
+        PLATFORM_LINUX
+    )
 endif()
 
 

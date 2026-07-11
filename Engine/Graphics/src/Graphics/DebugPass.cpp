@@ -1,6 +1,7 @@
 #include "Engine/Graphics/DebugPass.hpp"
 
 #include <sstream>
+#include <cstring>
 
 #include "Engine/GameAppState.hpp"
 #include "Engine/GraphicState.hpp"

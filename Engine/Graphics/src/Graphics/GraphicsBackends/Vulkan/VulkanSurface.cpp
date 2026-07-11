@@ -1,6 +1,7 @@
 #include <vulkan/vulkan.h>
 
 #include "Vulkan.hpp"
+import VulkanX11Wsi;
 
 namespace OneGame::Engine::Graphics::Vulkan
 {
@@ -30,6 +31,22 @@ VkResult CreateSurface(WindowHandle* handle, VkInstance instance, VkSurfaceKHR& 
         createInfo.flags = 0;
         createInfo.pLayer = handle->metalLayer;
         res = vkCreateMetalSurfaceEXT(instance, &createInfo, nullptr, &surface);
+    }
+#elif defined(PLATFORM_LINUX)
+    {
+        if (handle->isWayland)
+        {
+            VkWaylandSurfaceCreateInfoKHR createInfo{};
+
+            createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+            createInfo.display = static_cast<struct wl_display*>(handle->wayland.display);
+            createInfo.surface = static_cast<struct wl_surface*>(handle->wayland.surface);
+            res = vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &surface);
+        }
+        else
+        {
+            res = CreateX11Surface(handle->x11.display, handle->x11.window,instance, &surface);
+        }
     }
 #else
 #error

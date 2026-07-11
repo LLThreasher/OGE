@@ -102,7 +102,14 @@ if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
 elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_compile_definitions(EngineGraphics
     PRIVATE
-        VK_USE_PLATFORM_LINUX_KHR
+        VK_USE_PLATFORM_WAYLAND_KHR
+    )
+
+    target_sources(EngineGraphics
+    PUBLIC
+      FILE_SET CXX_MODULES
+      FILES
+        src/Graphics/GraphicsBackends/Vulkan/VulkanX11Wsi.cppm
     )
 
     target_link_libraries(EngineGraphics
