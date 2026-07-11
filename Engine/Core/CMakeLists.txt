@@ -36,6 +36,7 @@ PRIVATE
     src/Net/NetServer.cpp
     src/Net/NetClient.cpp
     src/Terrain/TerrainView.cpp
+    src/ECS/SubsystemCreature.cpp
  )
 
 target_include_directories(EngineCore

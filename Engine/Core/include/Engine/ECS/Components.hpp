@@ -93,9 +93,21 @@ struct ComponentPhysicBody
     math::vec3 velocity;
     math::vec3 acceleration;
     float mass = 1.0f;
-    float drag = 5.0f;
-    float stepAssist = 1.01f;
+    float stepAssist = 0.501f;
+    // float stepAssist = 1.001f;
     bool isGrounded = false;
+};
+
+struct ComponentCreature
+{
+    math::vec2 moveOrder;
+    bool jumpOrder;
+};
+
+struct ComponentCreatureInfo
+{
+    float moveSpeed;
+    float stepAssist;
 };
 
 struct ComponentAABBCollider

@@ -29,7 +29,7 @@ bool CheckAABBAgainstTerrain(float stepAssist, const AABB& realAABB, const Terra
                     {
                         collisions.push_back(res);
                     }
-                    if (CheckStepAssistCollision(stepAssist, realAABB, blkAABB + math::vec3{x, y, z}, res))
+                    if (res.type != COLLISION_TYPE_POS_Y && CheckStepAssistCollision(stepAssist, realAABB, blkAABB + math::vec3{x, y, z}, res))
                     {
                         collisions.push_back(res);
                     }
@@ -74,15 +74,14 @@ void SubsystemPhysics::Update(GameWorldContext& game, AppContext ctx, const Fram
 
         body.velocity += body.acceleration * fd.dt;
 
-        body.velocity.x *= (1.0f / (1.0f + body.drag * fd.dt));
-        body.velocity.z *= (1.0f / (1.0f + body.drag * fd.dt));
+        body.velocity.x *= (1.0f / (1.0f + 5.f * fd.dt));
+        body.velocity.z *= (1.0f / (1.0f + 5.f * fd.dt));
 
         auto delta = body.velocity * fd.dt;
         delta.x = math::abs(delta.x) < COLLISION_EPSILON ? 0.f : delta.x;
         delta.y = math::abs(delta.y) < COLLISION_EPSILON ? 0.f : delta.y;
         delta.z = math::abs(delta.z) < COLLISION_EPSILON ? 0.f : delta.z;
         body.pos += delta;
-        body.acceleration = {0.f, 0.f, 0.f};
     }
 
     auto& terrain = game.ctx().get<Terrain::TerrainView>();
@@ -108,13 +107,17 @@ void SubsystemPhysics::Update(GameWorldContext& game, AppContext ctx, const Fram
         auto& aabb = game.get<ComponentAABBCollider>(e).aabb;
         ResolveCollisionsSinglePass(res, result);
         auto aabbAfterStep =
-            aabb + body.pos + COLLISION_NORMALS[COLLISION_TYPE_STEP_Y] * (result.stepOffset + COLLISION_EPSILON);
+            aabb + body.pos + COLLISION_NORMALS[COLLISION_TYPE_STEP_Y] * result.stepOffset;
         aabbAfterStep.min.y = math::max(aabbAfterStep.min.y, aabb.max.y + body.pos.y);
-        body.isGrounded = (result.mask & RCR_HIT_POS_Y) != 0;
-        if ((result.mask & RCR_HIT_STEP_Y) != 0 && !CheckAABBAgainstTerrainRevStep(aabbAfterStep, terrain, blocks))
+        body.isGrounded = (result.mask & RCR_HIT_POS_Y) != 0 && result.offset.y < COLLISION_EPSILON * 3.f;
+        if (body.isGrounded && (result.mask & RCR_HIT_STEP_Y) != 0 &&
+            (result.stepOffset <= 1.0f || !CheckAABBAgainstTerrainRevStep(aabbAfterStep, terrain, blocks)))
         {
             // body.pos += math::vec3{result.offset.x, result.stepOffset, result.offset.z};
-            body.pos += math::vec3{0.f, result.stepOffset, 0.f};
+            // body.pos += math::vec3{-result.offset.x, result.stepOffset, -result.offset.z};
+            // LOG_DEBUG("step up {} {} {} {} {} {}", result.stepOffset, result.mask, result.offset, body.velocity, body.acceleration, fd.dt);
+            // auto forward = math::normalize(math::vec2{body.velocity.x, body.velocity.z}) * COLLISION_EPSILON * 100.f;
+            body.pos += math::vec3{result.offset.x, result.stepOffset, result.offset.y};
             body.velocity.y = 0;
         }
         else
@@ -129,6 +132,8 @@ void SubsystemPhysics::Update(GameWorldContext& game, AppContext ctx, const Fram
             if ((result.mask & RCR_HIT_NEG_X) != 0 && body.velocity.x > 0.f) body.velocity.x = 0;
             if ((result.mask & RCR_HIT_NEG_Z) != 0 && body.velocity.z > 0.f) body.velocity.z = 0;
         }
+
+        body.acceleration = {0.f, 0.f, 0.f};
     }
 }
 }  // namespace OneGame::Engine::ECS

@@ -45,10 +45,10 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 {
                     data.moveDelta = drag->dragLastPos - drag->dragStartPos;
                     data.moveDelta = -data.moveDelta;
-                    if (data.moveDelta != math::vec2{0.f, 0.f})
-                    {
-                        data.moveDelta = math::normalize(data.moveDelta) * f.dt * 5.f;
-                    }
+                    auto widgetSize = game.get<UIRect>(widgetInput->moveWidget).extent;
+                    data.moveDelta /= widgetSize * 0.5f;
+                    if (math::len_sq(data.moveDelta) > 1.f)
+                        data.moveDelta = math::normalize(data.moveDelta);
                 }
                 else
                 {
@@ -107,8 +107,6 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
                 data.moveDelta.x = -1.0f;
             else
                 data.moveDelta.x = 0.f;
-            data.moveDelta *= f.dt;
-            data.moveDelta *= 5.f;
 
             auto pcam = game.get<ComponentPerspectiveCamera>(entity);
             auto vfov = -pcam.fov;

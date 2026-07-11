@@ -126,6 +126,7 @@ inline bool CheckStepAssistCollision(float stepAssist, const AABB& a, const AABB
 {
     if (a.max.y < b.min.y || a.min.y > b.max.y) return false;
     float overlapY = std::min(a.max.y, b.max.y) - std::max(a.min.y, b.min.y);
+    if (overlapY < COLLISION_EPSILON) return false;
     if (overlapY < stepAssist && (a.min.y + a.max.y) * 0.5f > (b.min.y + b.max.y) * 0.5f)
     {
         res.penetration = overlapY + COLLISION_EPSILON;
