@@ -37,6 +37,7 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
         // handle touch
         if (auto widgetInput = game.try_get<InputSourceWidget>(entity))
         {
+            data.unset<PlayerAction::Jump>();
             // handle move
             {
                 auto drag = game.try_get<UIDrag>(widgetInput->moveWidget);
@@ -132,6 +133,15 @@ void SubsystemPlayerInput::Update(GameWorldContext& game, AppContext ctx, const 
             else
             {
                 data.unset<PlayerAction::Placing>();
+            }
+
+            if (f.input.IsKeyDown(KeyCode::KY_SPACE))
+            {
+                data.set<PlayerAction::Jump>();
+            }
+            else
+            {
+                data.unset<PlayerAction::Jump>();
             }
         }
     }

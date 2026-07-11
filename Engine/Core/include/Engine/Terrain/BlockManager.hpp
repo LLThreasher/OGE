@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Engine/ECS/AABB.hpp"
+#include "Engine/AABB.hpp"
 
 namespace OneGame::Engine::Terrain
 {

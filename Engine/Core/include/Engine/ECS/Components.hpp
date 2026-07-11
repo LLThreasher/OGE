@@ -2,7 +2,7 @@
 
 #include <optional>
 
-#include "Engine/ECS/AABB.hpp"
+#include "Engine/AABB.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math.hpp"
 #include "Engine/ObjectType.hpp"
@@ -46,6 +46,7 @@ enum class PlayerAction : uint32_t
 {
     Digging = 0,
     Placing,
+    Jump,
 };
 
 struct PlayerInputData

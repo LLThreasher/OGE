@@ -3,9 +3,11 @@
 #include "Engine/Logger.hpp"
 
 #ifdef PLATFORM_WINDOWS
+// clang-format off
 #pragma comment(lib, "dbghelp.lib")
-#include <dbghelp.h>
 #include <windows.h>
+#include <dbghelp.h>
+// clang-format on
 
 void PrintStackTrace()
 {

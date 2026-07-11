@@ -22,10 +22,13 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
                                                 (collider.aabb.min.z + collider.aabb.max.z) / 2.f};
         body.acceleration = math::normalize({camera.forward.x, 0.f, camera.forward.z}) * input.moveDelta.y +
                             camera.right() * input.moveDelta.x;
+        // add small amount of velocity
+        body.velocity += body.acceleration;
         body.acceleration *= 200.f;
         // player.lookingAt = game.terrain.CastRay(camera.position, camera.forward);
         if (!input.empty())
         {
+            if (input.get<PlayerAction::Jump>() && body.isGrounded) body.velocity.y += 4.f;
             if (player.lastActionTime <= 0.0f)
             {
                 auto raycastResult = terrain.CastRay(camera.position, ScreenToRay(camera, pcam, input.actionPos));

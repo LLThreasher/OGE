@@ -7,6 +7,7 @@
 #include "Engine/Point3.hpp"
 #include "Engine/ResourcePool.hpp"
 #include "Engine/Terrain/TerrainDefs.hpp"
+#include "Engine/entt.hpp"
 
 namespace OneGame::Engine::Terrain
 {
@@ -50,83 +51,24 @@ struct ChunkData
 
    public:
     ChunkData(Point3 coords) { Coords = coords; }
-
-    uint32_t GetBlock(uint8_t x, uint8_t y, uint8_t z) const
-    {
-        assert(0 <= x && x < CHUNK_SIZE_X);
-        assert(0 <= y && y < CHUNK_SIZE_Y);
-        assert(0 <= z && z < CHUNK_SIZE_Z);
-        return data[GetBlockIndex(x, y, z)];
-    }
-
-    void SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value) { data[GetBlockIndex(x, y, z)] = value; }
+    uint32_t GetBlock(uint8_t x, uint8_t y, uint8_t z) const;
+    void SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value);
 };
 
 class ChunkDataCollection
 {
    public:
     const ChunkData* Get(ChunkHandle chunk) const { return chunkData.Get(chunk); }
-
-    std::tuple<ChunkHandle, const ChunkData*> Get(Point3 coord) const
-    {
-        auto it = coordToChunks.find(coord);
-        if (it != coordToChunks.end())
-        {
-            return {it->second, Get(it->second)};
-        }
-        return {{}, nullptr};
-    }
-
     ChunkData* Get(ChunkHandle chunk) { return chunkData.Get(chunk); }
 
-    ChunkHandle GetHandle(Point3 coord)
-    {
-        auto it = coordToChunks.find(coord);
-        if (it != coordToChunks.end())
-        {
-            return it->second;
-        }
-        return {};
-    }
+    std::tuple<ChunkHandle, const ChunkData*> Get(Point3 coord) const;
+    std::tuple<ChunkHandle, ChunkData*> Get(Point3 coord);
 
-    std::tuple<ChunkHandle, ChunkData*> Get(Point3 coord)
-    {
-        auto it = coordToChunks.find(coord);
-        if (it != coordToChunks.end())
-        {
-            return {it->second, Get(it->second)};
-        }
-        return {{}, nullptr};
-    }
+    ChunkHandle GetHandle(Point3 coord);
 
-    ChunkHandle AllocateChunk(Point3 coord)
-    {
-        auto it = coordToChunks.find(coord);
-        if (it != coordToChunks.end())
-        {
-            return it->second;
-        }
-        auto res = chunkData.Create(coord);
-        coordToChunks.emplace(coord, res);
-        return res;
-    }
-
-    void FreeChunk(Point3 coord)
-    {
-        auto it = coordToChunks.find(coord);
-        if (it != coordToChunks.end())
-        {
-            chunkData.Destroy(it->second);
-            coordToChunks.erase(it);
-        }
-    }
-
-    void FreeChunk(ChunkHandle handle)
-    {
-        auto data = chunkData.Get(handle);
-        coordToChunks.erase(data->Coords);
-        chunkData.Destroy(handle);
-    }
+    ChunkHandle AllocateChunk(Point3 coord);
+    void FreeChunk(Point3 coord);
+    void FreeChunk(ChunkHandle handle);
 
    private:
     ResourcePool<TerrainObject::Chunk, ChunkData> chunkData;
@@ -138,28 +80,7 @@ struct PaletteCompressedChunk
     std::vector<uint32_t> palette;
     uint8_t data[CHUNK_SIZE_TOTAL];
 
-    static PaletteCompressedChunk FromChunkData(const ChunkData& c)
-    {
-        PaletteCompressedChunk result;
-        std::unordered_map<uint32_t, uint8_t> palette_map;
-        for (size_t i = 0; i < CHUNK_SIZE_TOTAL; ++i)
-        {
-            auto it = palette_map.find(c.data[i]);
-            if (it == palette_map.end())
-            {
-                palette_map.emplace(c.data[i], result.palette.size());
-                result.data[i] = result.palette.size();
-                result.palette.push_back(c.data[i]);
-            }
-            else
-            {
-                result.data[i] = it->second;
-            }
-        }
-        assert(result.palette.size() <= 255);
-        return result;
-    }
-
+    static PaletteCompressedChunk FromChunkData(const ChunkData& c);
     uint32_t Get(int x, int y, int z) const { return palette[data[GetBlockIndex(x, y, z)]]; }
 };
 

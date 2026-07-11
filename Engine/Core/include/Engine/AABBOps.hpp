@@ -1,19 +1,9 @@
 #pragma once
 
-#include <vector>
-
-#include "Engine/Logger.hpp"
-#include "Engine/Math.hpp"
+#include "Engine/AABB.hpp"
 
 namespace OneGame::Engine
 {
-struct AABB
-{
-    math::vec3 min;
-    math::vec3 max;
-
-    AABB operator+(const math::vec3& other) const noexcept { return {min + other, max + other}; }
-};
 
 constexpr uint32_t COLLISION_TYPE_POS_Y = 0;
 constexpr uint32_t COLLISION_TYPE_NEG_Y = 1;
@@ -22,7 +12,6 @@ constexpr uint32_t COLLISION_TYPE_NEG_X = 3;
 constexpr uint32_t COLLISION_TYPE_POS_Z = 4;
 constexpr uint32_t COLLISION_TYPE_NEG_Z = 5;
 constexpr uint32_t COLLISION_TYPE_STEP_Y = 6;
-constexpr uint32_t COLLISION_TYPE_UNSTEP_Y = 7;
 
 const math::vec3 COLLISION_NORMALS[] = {
     math::vec3{0.f, 1.f, 0.f}, math::vec3{0.f, -1.f, 0.f}, math::vec3{1.f, 0.f, 0.f}, math::vec3{-1.f, 0.f, 0.f},
@@ -36,68 +25,6 @@ struct CollisionResult
     uint32_t type;
     float penetration = 0.f;
 };
-
-inline bool CheckInverseStepAssistCollision(const AABB& a, const AABB& b)
-{
-    if (a.max.y < b.min.y || a.min.y > b.max.y) return false;
-    return true;
-}
-
-inline bool CheckStepAssistCollision(float stepAssist, const AABB& a, const AABB& b, CollisionResult& res)
-{
-    if (a.max.y < b.min.y || a.min.y > b.max.y) return false;
-    float overlapY = std::min(a.max.y, b.max.y) - std::max(a.min.y, b.min.y);
-    if (overlapY < stepAssist && (a.min.y + a.max.y) * 0.5f > (b.min.y + b.max.y) * 0.5f)
-    {
-        res.penetration = overlapY + COLLISION_EPSILON;
-        res.type = COLLISION_TYPE_STEP_Y;
-    }
-    return true;
-}
-
-inline bool CheckCollision(const AABB& a, const AABB& b, CollisionResult& res)
-{
-    if (a.max.x < b.min.x || a.min.x > b.max.x) return false;
-    if (a.max.y < b.min.y || a.min.y > b.max.y) return false;
-    if (a.max.z < b.min.z || a.min.z > b.max.z) return false;
-
-    float overlapX = std::min(a.max.x, b.max.x) - std::max(a.min.x, b.min.x);
-    float overlapY = std::min(a.max.y, b.max.y) - std::max(a.min.y, b.min.y);
-    float overlapZ = std::min(a.max.z, b.max.z) - std::max(a.min.z, b.min.z);
-
-    // Find the axis of shallowest penetration
-    if (overlapY < overlapX && overlapY < overlapZ)
-    {
-        // Y-axis has the smallest overlap
-        res.penetration = overlapY + COLLISION_EPSILON;
-
-        float centerA_y = (a.min.y + a.max.y) * 0.5f;
-        float centerB_y = (b.min.y + b.max.y) * 0.5f;
-
-        res.type = (centerA_y < centerB_y) ? COLLISION_TYPE_NEG_Y : COLLISION_TYPE_POS_Y;
-    }
-    else if (overlapX < overlapZ)
-    {
-        // X-axis has the smallest overlap
-        res.penetration = overlapX + COLLISION_EPSILON;
-
-        float centerA_x = (a.min.x + a.max.x) * 0.5f;
-        float centerB_x = (b.min.x + b.max.x) * 0.5f;
-
-        res.type = (centerA_x < centerB_x) ? COLLISION_TYPE_NEG_X : COLLISION_TYPE_POS_X;
-    }
-    else
-    {
-        // Z-axis has the smallest overlap
-        res.penetration = overlapZ + COLLISION_EPSILON;
-
-        float centerA_z = (a.min.z + a.max.z) * 0.5f;
-        float centerB_z = (b.min.z + b.max.z) * 0.5f;
-
-        res.type = (centerA_z < centerB_z) ? COLLISION_TYPE_NEG_Z : COLLISION_TYPE_POS_Z;
-    }
-    return true;
-}
 
 constexpr uint32_t RCR_HIT_POS_X = 1 << 0;
 constexpr uint32_t RCR_HIT_POS_Y = 1 << 1;
@@ -188,4 +115,66 @@ inline void ResolveCollisionsSinglePass(const std::vector<CollisionResult>& coll
     res.stepOffset = maxSAPosY;
     // res.offset.y = (res.mask == (RCR_HIT_STEP_Y | RCR_HIT_POS_Y) ? maxSAPosY : maxPosY) + maxNegY;
 }
-}  // namespace OneGame::Engine
+
+inline bool CheckInverseStepAssistCollision(const AABB& a, const AABB& b)
+{
+    if (a.max.y < b.min.y || a.min.y > b.max.y) return false;
+    return true;
+}
+
+inline bool CheckStepAssistCollision(float stepAssist, const AABB& a, const AABB& b, CollisionResult& res)
+{
+    if (a.max.y < b.min.y || a.min.y > b.max.y) return false;
+    float overlapY = std::min(a.max.y, b.max.y) - std::max(a.min.y, b.min.y);
+    if (overlapY < stepAssist && (a.min.y + a.max.y) * 0.5f > (b.min.y + b.max.y) * 0.5f)
+    {
+        res.penetration = overlapY + COLLISION_EPSILON;
+        res.type = COLLISION_TYPE_STEP_Y;
+    }
+    return true;
+}
+
+inline bool CheckCollision(const AABB& a, const AABB& b, CollisionResult& res)
+{
+    if (a.max.x < b.min.x || a.min.x > b.max.x) return false;
+    if (a.max.y < b.min.y || a.min.y > b.max.y) return false;
+    if (a.max.z < b.min.z || a.min.z > b.max.z) return false;
+
+    float overlapX = std::min(a.max.x, b.max.x) - std::max(a.min.x, b.min.x);
+    float overlapY = std::min(a.max.y, b.max.y) - std::max(a.min.y, b.min.y);
+    float overlapZ = std::min(a.max.z, b.max.z) - std::max(a.min.z, b.min.z);
+
+    // Find the axis of shallowest penetration
+    if (overlapY < overlapX && overlapY < overlapZ)
+    {
+        // Y-axis has the smallest overlap
+        res.penetration = overlapY + COLLISION_EPSILON;
+
+        float centerA_y = (a.min.y + a.max.y) * 0.5f;
+        float centerB_y = (b.min.y + b.max.y) * 0.5f;
+
+        res.type = (centerA_y < centerB_y) ? COLLISION_TYPE_NEG_Y : COLLISION_TYPE_POS_Y;
+    }
+    else if (overlapX < overlapZ)
+    {
+        // X-axis has the smallest overlap
+        res.penetration = overlapX + COLLISION_EPSILON;
+
+        float centerA_x = (a.min.x + a.max.x) * 0.5f;
+        float centerB_x = (b.min.x + b.max.x) * 0.5f;
+
+        res.type = (centerA_x < centerB_x) ? COLLISION_TYPE_NEG_X : COLLISION_TYPE_POS_X;
+    }
+    else
+    {
+        // Z-axis has the smallest overlap
+        res.penetration = overlapZ + COLLISION_EPSILON;
+
+        float centerA_z = (a.min.z + a.max.z) * 0.5f;
+        float centerB_z = (b.min.z + b.max.z) * 0.5f;
+
+        res.type = (centerA_z < centerB_z) ? COLLISION_TYPE_NEG_Z : COLLISION_TYPE_POS_Z;
+    }
+    return true;
+}
+}

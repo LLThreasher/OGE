@@ -1,5 +1,6 @@
 #include <unordered_map>
 
+#include "Engine/AABBOps.hpp"
 #include "Engine/ECS/Components.hpp"
 #include "Engine/ECS/ISubsystem.hpp"
 #include "Engine/Formaters.hpp"
@@ -108,10 +109,12 @@ void SubsystemPhysics::Update(GameWorldContext& game, AppContext ctx, const Fram
         ResolveCollisionsSinglePass(res, result);
         auto aabbAfterStep =
             aabb + body.pos + COLLISION_NORMALS[COLLISION_TYPE_STEP_Y] * (result.stepOffset + COLLISION_EPSILON);
-        if ((result.mask & RCR_HIT_POS_Y) != 0) body.isGrounded = true;
+        aabbAfterStep.min.y = math::max(aabbAfterStep.min.y, aabb.max.y + body.pos.y);
+        body.isGrounded = (result.mask & RCR_HIT_POS_Y) != 0;
         if ((result.mask & RCR_HIT_STEP_Y) != 0 && !CheckAABBAgainstTerrainRevStep(aabbAfterStep, terrain, blocks))
         {
-            body.pos += math::vec3{result.offset.x, result.stepOffset, result.offset.z};
+            // body.pos += math::vec3{result.offset.x, result.stepOffset, result.offset.z};
+            body.pos += math::vec3{0.f, result.stepOffset, 0.f};
             body.velocity.y = 0;
         }
         else
