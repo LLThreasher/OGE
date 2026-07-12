@@ -73,6 +73,7 @@ struct FramePerfStatus
     float logicTime;
     float assetUploadTime;
     float renderSubmitTime;
+    float cpuUsage;
 
     float actualFrameTime() const { return inputProcessingTime + logicTime + assetUploadTime + renderSubmitTime; }
 
@@ -83,6 +84,7 @@ struct FramePerfStatus
             logicTime + other.logicTime,
             assetUploadTime + other.assetUploadTime,
             renderSubmitTime + other.renderSubmitTime,
+            cpuUsage + other.cpuUsage,
         };
     }
 
@@ -93,6 +95,7 @@ struct FramePerfStatus
             logicTime / divisor,
             assetUploadTime / divisor,
             renderSubmitTime / divisor,
+            cpuUsage / divisor,
         };
     }
 };
@@ -101,6 +104,12 @@ struct FrameData
 {
     float dt;
     FramePerfStatus perfStats;
+    uint8_t frameIdx;
+
+    bool EveryNFrame(int32_t n)
+    {
+        return (frameIdx % n) == 0;
+    }
 };
 
 // this comes every frame

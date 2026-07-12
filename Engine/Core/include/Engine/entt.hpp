@@ -2,7 +2,7 @@
 #include <iostream>
 
 #include "Engine/Logger.hpp"
-#include "Engine/PrintStackTrace.hpp"
+#include "Engine/Platform.hpp"
 
 inline void handle_entt_assert_fail(const char* condition, const char* message, const char* file, int line)
 {

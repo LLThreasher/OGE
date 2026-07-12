@@ -102,6 +102,8 @@ class TerrainMeshScheduler
 
    private:
     std::unordered_map<entt::entity, uint32_t> playerToView;
+    std::vector<ChunkHandle> toRemove;
+    std::vector<ChunkHandle> toMesh;
 };
 
 class TerrainUploader
@@ -109,9 +111,6 @@ class TerrainUploader
    public:
     void SetMaxNumChunks(uint32_t maxNumChunks);
     void UploadTerrain(TerrainPresentationData& terrain, PresentationContext& ctx);
-
-   private:
-    std::queue<GPUChunkedAllocation> m_allocationsToFree;
 };
 
 struct TerrainRendererDesc

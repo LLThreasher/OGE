@@ -66,36 +66,36 @@ void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
     if (chunk != nullptr)
     {
         m_terrainData.dirtyChunks.insert(handle);
-        if ((x & 0xF) == 0)
-        {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x - 1, chunkCoord.y, chunkCoord.z}));
-        }
-        else if ((x & 0xF) == 15)
-        {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x + 1, chunkCoord.y, chunkCoord.z}));
-        }
-        if ((y & 0xF) == 0)
-        {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y - 1, chunkCoord.z}));
-        }
-        else if ((y & 0xF) == 15)
-        {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y + 1, chunkCoord.z}));
-        }
-        if ((z & 0xF) == 0)
-        {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z - 1}));
-        }
-        else if ((z & 0xF) == 15)
-        {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z + 1}));
-        }
+        // if ((x & 0xF) == 0)
+        // {
+        //     m_terrainData.dirtyChunks.insert(
+        //         m_terrainData.chunks.GetHandle({chunkCoord.x - 1, chunkCoord.y, chunkCoord.z}));
+        // }
+        // else if ((x & 0xF) == 15)
+        // {
+        //     m_terrainData.dirtyChunks.insert(
+        //         m_terrainData.chunks.GetHandle({chunkCoord.x + 1, chunkCoord.y, chunkCoord.z}));
+        // }
+        // if ((y & 0xF) == 0)
+        // {
+        //     m_terrainData.dirtyChunks.insert(
+        //         m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y - 1, chunkCoord.z}));
+        // }
+        // else if ((y & 0xF) == 15)
+        // {
+        //     m_terrainData.dirtyChunks.insert(
+        //         m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y + 1, chunkCoord.z}));
+        // }
+        // if ((z & 0xF) == 0)
+        // {
+        //     m_terrainData.dirtyChunks.insert(
+        //         m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z - 1}));
+        // }
+        // else if ((z & 0xF) == 15)
+        // {
+        //     m_terrainData.dirtyChunks.insert(
+        //         m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z + 1}));
+        // }
         return chunk->SetBlock(x & 0xF, y & 0xF, z & 0xF, value);
     }
 }

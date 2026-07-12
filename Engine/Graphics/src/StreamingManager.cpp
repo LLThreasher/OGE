@@ -154,7 +154,11 @@ void StreamingManager::RunUploadStep(Graphics::IGraphicsBackend& backend, Graphi
             if (eData->itemCounter == 0)
             {
                 auto it = m_resourceBundleCallbacks.find(event);
-                if (it != m_resourceBundleCallbacks.end()) it->second();
+                if (it != m_resourceBundleCallbacks.end())
+                {
+                    it->second();
+                    m_resourceBundleCallbacks.erase(it);
+                }
                 m_resourceBundles.Destroy(event);
             }
             // LOG_DEBUG("progress {}", eData->m_itemCounter);

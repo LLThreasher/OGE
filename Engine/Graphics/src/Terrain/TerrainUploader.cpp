@@ -26,7 +26,6 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, Presentati
             [chunk, chunkMesh, pterrain, ctx, &terrain]()
             {
                 auto it = terrain.residentChunks.find(chunk);
-
                 if (it != terrain.residentChunks.end())
                 {
                     ctx.renderer.FreeTerrainMesh(it->second.alloc);

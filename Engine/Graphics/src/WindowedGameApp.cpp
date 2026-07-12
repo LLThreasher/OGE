@@ -56,6 +56,7 @@ void GameGraphicApp::Shutdown()
 AppFrameAction GameGraphicApp::Update(float dt, InputSystem& input)
 {
     FramePerfStatus perfStats{};
+    perfStats.cpuUsage = GetCPUUsage();
     auto watch = stopwatch::start();
     AppFrameAction appRes = AppFrameAction::None;
 
@@ -63,17 +64,20 @@ AppFrameAction GameGraphicApp::Update(float dt, InputSystem& input)
 
     PresentationContext pctx = PresentCtx();
 
-    std::vector<SceneAction> outSceneActions;
+    m_outSceneActions.clear();
+    m_frameIdx = (m_frameIdx + 1) % 240;
     FrameInputData frame{
         dt,
         m_perfStats,
+        m_frameIdx,
         input,
     };
     FrameOutputData frameOut{
         dt,
         m_perfStats,
+        m_frameIdx,
         m_graphicsSubmissionQueue,
-        outSceneActions,
+        m_outSceneActions,
     };
     m_graphicsSubmissionQueue.Clear();
 

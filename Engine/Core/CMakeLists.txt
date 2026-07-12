@@ -30,7 +30,7 @@ PRIVATE
     src/ECS/SubsystemCamera.cpp
     src/ECS/SubsystemPhysics.cpp
 
-    src/Platform/PrintStackTrace.cpp
+    src/Platform/Platform.cpp
     src/Platform/CLIRunner.cpp
 
     src/Net/NetServer.cpp

@@ -51,5 +51,8 @@ class GameGraphicApp : public WindowedSceneRunner
 
     entt::meta_any m_sceneArgs;
     FramePerfStatus m_perfStats = {};
+
+    uint8_t m_frameIdx = 0;
+    std::vector<SceneAction> m_outSceneActions;
 };
 }  // namespace OneGame::Engine

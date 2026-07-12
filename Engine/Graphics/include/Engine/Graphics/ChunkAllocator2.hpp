@@ -78,6 +78,7 @@ class DynamicChunkAllocator
 
     GPUBufferRange Resolve(GPUChunkedAllocation alloc)
     {
+        assert(alloc.chunkSizeIdx < CHUNK_SIZE_COUNT);
         return {
             alloc.slotOffset * CHUNK_SIZES[alloc.chunkSizeIdx],
             CHUNK_SIZES[alloc.chunkSizeIdx],

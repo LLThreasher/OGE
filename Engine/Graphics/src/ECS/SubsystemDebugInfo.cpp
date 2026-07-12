@@ -42,9 +42,9 @@ void DebugInfoRenderer::Present(const GameWorldContext& game, PresentationContex
     fd.graphicQueue.Add<CmdDrawDebugText>(GameViewType::Overlay, gpuInfo.name);
     fd.graphicQueue.Add<CmdDrawDebugText>(
         GameViewType::Overlay,
-        std::format("FPS {:.2f} ({:.2f} ms | {:.2f} | {:.2f} | {:.2f} | {:.2f})\nGPU Heap 0: {} MB / {} MB", currentFPS,
+        std::format("FPS {:.2f} ({:.2f} ms | {:.2f} | {:.2f} | {:.2f} | {:.2f})\nGPU Heap 0: {} MB / {} MB\nCPU: {:.2f}%\nMEM: {} MB {} KB", currentFPS,
                     perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime,
                     perfStatus.assetUploadTime, perfStatus.renderSubmitTime, memUsage.heapUsage[0] / 1024 / 1024,
-                    memUsage.heapBudget[0] / 1024 / 1024));
+                    memUsage.heapBudget[0] / 1024 / 1024, perfStatus.cpuUsage, GetRAMUsage() / 1024 / 1024, (GetRAMUsage() / 1024) % 1024));
 }
 }  // namespace OneGame::Engine::ECS

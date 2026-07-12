@@ -5,9 +5,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <set>
 #include <string>
-#include <cstring>
 
 #include "VulkanBindingGroups.hpp"
 #include "VulkanBuffer.hpp"
@@ -24,7 +24,7 @@
 #define LOGGER_NAME "Vulkan"
 #include "Engine/Logger.hpp"
 #include "Engine/Math.hpp"
-#include "Engine/PrintStackTrace.hpp"
+#include "Engine/Platform.hpp"
 #ifdef PLATFORM_LINUX
 import VulkanX11Wsi;
 #endif
@@ -348,8 +348,37 @@ static void PrintPhysicalDeviceInfo(VkPhysicalDevice physicalDevice)
     LOG_INFO("========================");
 }
 
-static std::tuple<VkPhysicalDevice, SwapchainSupport, QueueIndices> SelectPhysicalDevice(
-    VkInstance instance, VkSurfaceKHR surface, const std::vector<const char*>& requiredExtensions)
+static void PrintAllPhysicalDeviceInfo(VkInstance instance)
+{
+    uint32_t deviceCount = 0;
+    vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+    if (deviceCount == 0)
+    {
+        throw std::runtime_error("Failed to find GPUs with Vulkan support!");
+    }
+    std::vector<VkPhysicalDevice> devices(deviceCount);
+    vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+
+    for (const auto& device : devices)
+    {
+        PrintPhysicalDeviceInfo(device);
+    }
+}
+
+struct SelectedDevice
+{
+    VkPhysicalDevice physicalDevice;
+    SwapchainSupport swapchainSupport;
+    QueueIndices queueIndices;
+
+    bool IsValid() const
+    {
+        return physicalDevice != VK_NULL_HANDLE;
+    }
+};
+
+static SelectedDevice SelectPhysicalDevice(VkInstance instance, VkSurfaceKHR surface,
+                                           const std::vector<const char*>& requiredExtensions)
 {
     uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
@@ -364,11 +393,6 @@ static std::tuple<VkPhysicalDevice, SwapchainSupport, QueueIndices> SelectPhysic
     SwapchainSupport bestSwapchainSupport;
     QueueIndices bestQueueIndices;
     int bestScore = -1;
-
-    for (const auto& device : devices)
-    {
-        PrintPhysicalDeviceInfo(device);
-    }
 
     SwapchainSupport currentSwapchainSupport;
     QueueIndices currentQueueIndices;
@@ -387,8 +411,6 @@ static std::tuple<VkPhysicalDevice, SwapchainSupport, QueueIndices> SelectPhysic
             bestQueueIndices = currentQueueIndices;
         }
     }
-
-    if (bestDevice == VK_NULL_HANDLE) throw std::runtime_error("Failed to find a suitable GPU!");
 
     return {bestDevice, bestSwapchainSupport, bestQueueIndices};
 }
@@ -421,6 +443,27 @@ GPUMemoryUsage VulkanBackend::GetGPUMemoryUsage() const
     }
 
     return result;
+}
+
+bool IsInstanceExtensionSupported(const char* extensionName)
+{
+    uint32_t extensionCount = 0;
+    // Pass nullptr to get the total count of available extensions
+    if (vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr) != VK_SUCCESS)
+    {
+        return false;
+    }
+
+    std::vector<VkExtensionProperties> extensions(extensionCount);
+    if (vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data()) != VK_SUCCESS)
+    {
+        return false;
+    }
+
+    auto it = std::find_if(extensions.begin(), extensions.end(), [extensionName](const VkExtensionProperties& prop)
+                           { return std::string_view(prop.extensionName) == extensionName; });
+
+    return it != extensions.end();
 }
 
 void VulkanBackend::Initialize(const BackendDesc& desc)
@@ -493,6 +536,9 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
         createInfo.enabledLayerCount = 0;
 #endif
 
+        if (IsInstanceExtensionSupported(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME))
+            extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+
         createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
         createInfo.pApplicationInfo = &appInfo;
         createInfo.enabledExtensionCount = extensions.size();
@@ -522,10 +568,35 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
 #endif
 
     RecreateSurface(desc.window);
+    PrintAllPhysicalDeviceInfo(m_device.instance);
 
+    std::vector<const char*> deviceExtensionGroups = {
+        VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, VK_EXT_DEVICE_MEMORY_REPORT_EXTENSION_NAME,
+    };
     std::vector deviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-    auto [physicalDevice, swapchainSupport, queueIndices] =
+    auto selectedDevice =
         SelectPhysicalDevice(m_device.instance, m_device.surface, deviceExtensions);
+    if (!selectedDevice.IsValid())
+        throw std::runtime_error("cannot find suitable GPU");
+    for (auto ext : deviceExtensionGroups)
+    {
+        deviceExtensions.push_back(ext);
+        auto altSelectedDevice = SelectPhysicalDevice(m_device.instance, m_device.surface, deviceExtensions);
+        if (altSelectedDevice.IsValid())
+            selectedDevice = altSelectedDevice;
+        else
+            std::erase(deviceExtensions, ext);
+    }
+    std::string extensions_string = deviceExtensions[0];
+    for (auto it = deviceExtensions.begin() + 1; it != deviceExtensions.end(); ++it)
+    {
+        extensions_string += ", ";
+        extensions_string += *it;
+    }
+    LOG_INFO("enabled extensions: {}", extensions_string);
+    auto physicalDevice = selectedDevice.physicalDevice;
+    auto queueIndices = selectedDevice.queueIndices;
+    auto swapchainSupport = selectedDevice.swapchainSupport;
     m_device.physicalDevice = physicalDevice;
 
     {

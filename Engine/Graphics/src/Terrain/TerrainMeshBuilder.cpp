@@ -26,40 +26,6 @@ static size_t MaskIndex(size_t z, size_t y)
     return (z * 18) + y;
 }
 
-// const vec3 faceTable[24] =
-// {
-//     // left:    -x face
-//     vec3(0, 0, 0),
-//     vec3(0, 0, 1),
-//     vec3(0, 1, 1),
-//     vec3(0, 1, 0),
-//     // right:   +x face
-//     vec3(1, 0, 1),
-//     vec3(1, 0, 0),
-//     vec3(1, 1, 0),
-//     vec3(1, 1, 1),
-//     // up:      +y face
-//     vec3(0, 1, 1),
-//     vec3(1, 1, 1),
-//     vec3(1, 1, 0),
-//     vec3(0, 1, 0),
-//     // down:    -y face
-//     vec3(0, 0, 0),
-//     vec3(1, 0, 0),
-//     vec3(1, 0, 1),
-//     vec3(0, 0, 1),
-//     // front:   +z face
-//     vec3(0, 0, 1),
-//     vec3(1, 0, 1),
-//     vec3(1, 1, 1),
-//     vec3(0, 1, 1),
-//     // back:    -z face
-//     vec3(1, 0, 0),
-//     vec3(0, 0, 0),
-//     vec3(0, 1, 0),
-//     vec3(1, 1, 0),
-// };
-
 inline int32_t MaskHasBlock(const uint32_t* masks, int32_t x, int32_t y, int32_t z)
 {
     return (masks[MaskIndex(z + 1, y + 1)] & (1 << (x + 1))) != 0 ? 1 : 0;
@@ -302,6 +268,8 @@ void TerrainMeshBuilder::ExecuteBuildChunkMesh(TerrainPresentationData& terrain,
     ExecuteBuildChunkMeshJob2(_context, context, blocks);
     if (!terrain.builtChunkMeshes.Get(_context->chunkMeshHandle)->quads.empty())
         terrain.uploadMeshQueue.push(std::make_tuple(_context->chunkHandle, _context->chunkMeshHandle));
+    else
+        terrain.builtChunkMeshes.Destroy(_context->chunkMeshHandle);
     terrain.meshingWorkerContexts.Destroy(handle);
     m_runningVertexCount -= CHUNK_VERTEX_BYTE_SIZE;
 }
@@ -314,177 +282,175 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
         if (m_runningVertexCount > m_vertexBudget) break;
         auto contextHandle = pData.meshingWorkerContexts.Create();
         auto context = pData.meshingWorkerContexts.Get(contextHandle);
-        while (!pData.buildMeshQueue.empty())
+        
+        auto handle = std::move(pData.buildMeshQueue.front());
+        pData.buildMeshQueue.pop();
+        auto data = terrain.chunks.Get(handle);
+        // LOG_DEBUG("building mesh at ({}, {}, {})", data->Coords.x, data->Coords.y, data->Coords.z);
+
+        // skip chunks with missing neighbors
+        const ChunkData* neighbors[6] = {};
+        for (size_t i = 0; i < 6; ++i)
         {
-            auto handle = std::move(pData.buildMeshQueue.front());
-            pData.buildMeshQueue.pop();
-            auto data = terrain.chunks.Get(handle);
-            // LOG_DEBUG("building mesh at ({}, {}, {})", data->Coords.x, data->Coords.y, data->Coords.z);
+            if (i == FACE_DOWN && data->Coords.y == 0) continue;
+            auto pos = perFaceOffset[i] + data->Coords;
+            auto [_, chunk] = terrain.chunks.Get(pos);
+            neighbors[i] = chunk;
+        }
 
-            // skip chunks with missing neighbors
-            const ChunkData* neighbors[6] = {};
-            for (size_t i = 0; i < 6; ++i)
+        // assert(!incompleteNeighbors && "Chunk updater should prevent this");
+
+        for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
+        {
+            for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
             {
-                if (i == FACE_DOWN && data->Coords.y == 0) continue;
-                auto pos = perFaceOffset[i] + data->Coords;
-                auto [_, chunk] = terrain.chunks.Get(pos);
-                neighbors[i] = chunk;
-            }
-
-            // assert(!incompleteNeighbors && "Chunk updater should prevent this");
-
-            for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
-            {
-                for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
+                auto midx = MaskIndex(z + 1, y + 1);
+                context->opaqueMasks[midx] = 0;
+                for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
                 {
-                    auto midx = MaskIndex(z + 1, y + 1);
+                    size_t blkIdx = GetBlockIndex(x, y, z);
+                    assert(blkIdx < CHUNK_SIZE_TOTAL);
+                    uint32_t opaque = blocks.IsOpaque(blocks.GetBlockId(data->data[blkIdx]));
+                    context->opaqueMasks[midx] |= opaque << (x + 1);
+                }
+            }
+        }
+
+        // handle neighbors
+        // left & right
+        for (size_t i = 0; i < 2; ++i)
+        {
+            uint8_t extendedX = i == 0 ? 17 : 0;
+            if (!neighbors[i])
+            {
+                for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
+                {
+                    for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
+                    {
+                        context->opaqueMasks[MaskIndex(z + 1, y + 1)] |= 1 << extendedX;
+                    }
+                }
+            }
+            else
+            {
+                auto neighborData = neighbors[i]->data;
+                for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
+                {
+                    for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
+                    {
+                        uint8_t neighborX = i == 0 ? 0 : 15;
+                        auto midx = MaskIndex(z + 1, y + 1);
+                        context->opaqueMasks[midx] |=
+                            blocks.IsOpaque(blocks.GetBlockId(neighborData[GetBlockIndex(neighborX, y, z)]))
+                            << extendedX;
+                    }
+                }
+            }
+        }
+
+        // top & bottom
+        for (size_t i = 0; i < 2; ++i)
+        {
+            uint8_t extendedY = i == 0 ? 17 : 0;
+            // bottom of world
+            if (!neighbors[2 + i] || i == 1 && data->Coords.y == 0)
+            {
+                for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
+                {
+                    auto midx = MaskIndex(z + 1, extendedY);
                     context->opaqueMasks[midx] = 0;
                     for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
                     {
-                        size_t blkIdx = GetBlockIndex(x, y, z);
-                        assert(blkIdx < CHUNK_SIZE_TOTAL);
-                        uint32_t opaque = blocks.IsOpaque(blocks.GetBlockId(data->data[blkIdx]));
-                        context->opaqueMasks[midx] |= opaque << (x + 1);
+                        context->opaqueMasks[midx] |= 1 << (x + 1);
                     }
                 }
             }
-
-            // handle neighbors
-            // left & right
-            for (size_t i = 0; i < 2; ++i)
+            else
             {
-                uint8_t extendedX = i == 0 ? 17 : 0;
-                if (!neighbors[i])
+                auto neighborData = neighbors[2 + i]->data;
+                for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
                 {
-                    for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
+                    auto midx = MaskIndex(z + 1, extendedY);
+                    context->opaqueMasks[midx] = 0;
+                    for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
                     {
-                        for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
-                        {
-                            context->opaqueMasks[MaskIndex(z + 1, y + 1)] |= 1 << extendedX;
-                        }
-                    }
-                }
-                else
-                {
-                    auto neighborData = neighbors[i]->data;
-                    for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
-                    {
-                        for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
-                        {
-                            uint8_t neighborX = i == 0 ? 0 : 15;
-                            auto midx = MaskIndex(z + 1, y + 1);
-                            context->opaqueMasks[midx] |=
-                                blocks.IsOpaque(blocks.GetBlockId(neighborData[GetBlockIndex(neighborX, y, z)]))
-                                << extendedX;
-                        }
+                        uint8_t neighborY = i == 0 ? 0 : 15;
+                        context->opaqueMasks[midx] |=
+                            blocks.IsOpaque(blocks.GetBlockId(neighborData[GetBlockIndex(x, neighborY, z)]))
+                            << (x + 1);
                     }
                 }
             }
-
-            // top & bottom
-            for (size_t i = 0; i < 2; ++i)
-            {
-                uint8_t extendedY = i == 0 ? 17 : 0;
-                // bottom of world
-                if (!neighbors[2 + i] || i == 1 && data->Coords.y == 0)
-                {
-                    for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
-                    {
-                        auto midx = MaskIndex(z + 1, extendedY);
-                        context->opaqueMasks[midx] = 0;
-                        for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
-                        {
-                            context->opaqueMasks[midx] |= 1 << (x + 1);
-                        }
-                    }
-                    continue;
-                }
-                else
-                {
-                    auto neighborData = neighbors[2 + i]->data;
-                    for (size_t z = 0; z < CHUNK_SIZE_Z; ++z)
-                    {
-                        auto midx = MaskIndex(z + 1, extendedY);
-                        context->opaqueMasks[midx] = 0;
-                        for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
-                        {
-                            uint8_t neighborY = i == 0 ? 0 : 15;
-                            context->opaqueMasks[midx] |=
-                                blocks.IsOpaque(blocks.GetBlockId(neighborData[GetBlockIndex(x, neighborY, z)]))
-                                << (x + 1);
-                        }
-                    }
-                }
-            }
-
-            // front & back
-            for (size_t i = 0; i < 2; ++i)
-            {
-                uint8_t extendedZ = i == 0 ? 17 : 0;
-                if (!neighbors[4 + i])
-                {
-                    for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
-                    {
-                        auto midx = MaskIndex(extendedZ, y + 1);
-                        context->opaqueMasks[midx] = 0;
-                        for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
-                        {
-                            uint8_t neighborZ = i == 0 ? 0 : 15;
-                            context->opaqueMasks[midx] |= 1 << (x + 1);
-                        }
-                    }
-                }
-                else
-                {
-                    auto neighborData = neighbors[4 + i]->data;
-                    for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
-                    {
-                        auto midx = MaskIndex(extendedZ, y + 1);
-                        context->opaqueMasks[midx] = 0;
-                        for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
-                        {
-                            uint8_t neighborZ = i == 0 ? 0 : 15;
-                            context->opaqueMasks[midx] |= blocks.IsOpaque(neighborData[GetBlockIndex(x, y, neighborZ)])
-                                                          << (x + 1);
-                        }
-                    }
-                }
-            }
-
-            // build occupancy mask
-            uint32_t allAndMask = 0x1FFFE;
-            uint32_t allOrMask = 0;
-            for (size_t z = 0; z < CHUNK_SIZE_Z + 2; ++z)
-            {
-                for (size_t y = 0; y < CHUNK_SIZE_Y + 2; ++y)
-                {
-                    auto midx = MaskIndex(z, y);
-                    allAndMask &= context->opaqueMasks[midx];
-                    allOrMask |= context->opaqueMasks[midx];
-                }
-            }
-
-            if (allAndMask == 0x1FFFE)
-            {
-                // LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full soild", data->Coords.x,
-                //           data->Coords.y, data->Coords.z);
-                continue;
-            }
-            else if (allOrMask == 0x0)
-            {
-                // LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full air", data->Coords.x,
-                // data->Coords.y,
-                //           data->Coords.z);
-                continue;
-            }
-
-            context->compressedChunk = PaletteCompressedChunk::FromChunkData(*data);
-
-            context->chunkMeshHandle = pData.builtChunkMeshes.Create();
-            context->chunkHandle = handle;
-            ExecuteBuildChunkMesh(pData, contextHandle, blocks);
-            break;
         }
+
+        // front & back
+        for (size_t i = 0; i < 2; ++i)
+        {
+            uint8_t extendedZ = i == 0 ? 17 : 0;
+            if (!neighbors[4 + i])
+            {
+                for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
+                {
+                    auto midx = MaskIndex(extendedZ, y + 1);
+                    context->opaqueMasks[midx] = 0;
+                    for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
+                    {
+                        uint8_t neighborZ = i == 0 ? 0 : 15;
+                        context->opaqueMasks[midx] |= 1 << (x + 1);
+                    }
+                }
+            }
+            else
+            {
+                auto neighborData = neighbors[4 + i]->data;
+                for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
+                {
+                    auto midx = MaskIndex(extendedZ, y + 1);
+                    context->opaqueMasks[midx] = 0;
+                    for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
+                    {
+                        uint8_t neighborZ = i == 0 ? 0 : 15;
+                        context->opaqueMasks[midx] |= blocks.IsOpaque(neighborData[GetBlockIndex(x, y, neighborZ)])
+                                                        << (x + 1);
+                    }
+                }
+            }
+        }
+
+        // build occupancy mask
+        uint32_t allAndMask = 0x1FFFE;
+        uint32_t allOrMask = 0;
+        for (size_t z = 0; z < CHUNK_SIZE_Z + 2; ++z)
+        {
+            for (size_t y = 0; y < CHUNK_SIZE_Y + 2; ++y)
+            {
+                auto midx = MaskIndex(z, y);
+                allAndMask &= context->opaqueMasks[midx];
+                allOrMask |= context->opaqueMasks[midx];
+            }
+        }
+
+        if (allAndMask == 0x1FFFE)
+        {
+            // LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full soild", data->Coords.x,
+            //           data->Coords.y, data->Coords.z);
+            pData.meshingWorkerContexts.Destroy(contextHandle);
+            continue;
+        }
+        else if (allOrMask == 0x0)
+        {
+            // LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full air", data->Coords.x,
+            // data->Coords.y,
+            //           data->Coords.z);
+            pData.meshingWorkerContexts.Destroy(contextHandle);
+            continue;
+        }
+
+        context->compressedChunk = PaletteCompressedChunk::FromChunkData(*data);
+
+        context->chunkMeshHandle = pData.builtChunkMeshes.Create();
+        context->chunkHandle = handle;
+        ExecuteBuildChunkMesh(pData, contextHandle, blocks);
     }
 }
 }  // namespace OneGame::Engine::Terrain

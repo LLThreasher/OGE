@@ -31,8 +31,8 @@ void TerrainRenderer::Present(const TerrainContext& ctx, PresentationContext& pc
 void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain, TerrainPresentationData& pdata,
                                                  entt::dispatcher& events)
 {
-    std::vector<ChunkHandle> toRemove;
-    std::vector<ChunkHandle> toMesh;
+    toRemove.clear();
+    toMesh.clear();
     for (auto handle : terrain.dirtyChunks)
     {
         auto chunk = terrain.chunks.Get(handle);
