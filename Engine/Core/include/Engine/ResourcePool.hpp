@@ -22,7 +22,7 @@ class ResourcePool
     struct Entry
     {
         bool alive = false;
-        uint32_t generation = 1;
+        uint16_t generation = 1;
         alignas(Resource) std::byte storage[sizeof(Resource)];
 
         Resource* Get() { return std::launder(reinterpret_cast<Resource*>(storage)); }
@@ -41,7 +41,7 @@ class ResourcePool
         requires std::constructible_from<Resource, Args...>
     Handle Create(Args&&... args)
     {
-        uint32_t index;
+        uint16_t index;
 
         if (!m_freeList.empty())
         {
@@ -60,7 +60,7 @@ class ResourcePool
 
         entry.alive = true;
 
-        return Handle{index + 1, entry.generation};
+        return Handle{++index, entry.generation};
     }
 
     // ----------------------------
@@ -132,11 +132,11 @@ class ResourcePool
     Handle Poll()
     {
         assert(Size() > 0);
-        for (uint32_t i = 0; i < m_entries.size(); ++i)
+        for (uint16_t i = 0; i < m_entries.size(); ++i)
         {
             Entry& entry = m_entries[i];
 
-            if (entry.alive) return Handle{i + 1, entry.generation};
+            if (entry.alive) return Handle{++i, entry.generation};
         }
         return Handle::InvalidHandle();
     }

@@ -21,10 +21,10 @@ void DebugScene3::Initialize(PresentationContext& context)
     using namespace ECS;
     m_gameWorld.CreateTerrain();
     m_gameWorld.Register<Terrain::TerrainService>();
+    m_gameWorld.Register<SubsystemPhysics, TickType::Physics>();
     m_gameWorld.Register<SubsystemUI>();
     m_gameWorld.Register<SubsystemPlayerInput>();
     m_gameWorld.Register<SubsystemPlayer>();
-    m_gameWorld.Register<SubsystemPhysics>();
 
     m_gameRenderer.Register<DebugInfoRenderer>();
     m_gameRenderer.Register<Terrain::TerrainRenderer>();
@@ -38,7 +38,7 @@ void DebugScene3::Initialize(PresentationContext& context)
     blocks.RegisterBlock("stone", {"Stone", "green_stone.png", 1});
 
     Terrain::TerrainDesc desc{};
-    desc.chunkViewDistance = 16;
+    desc.chunkViewDistance = 1;
     m_gameWorld.Get().ctx().emplace<Terrain::TerrainDesc>(desc);
 }
 

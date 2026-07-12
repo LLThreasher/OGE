@@ -47,7 +47,6 @@ class TerrainUpdateScheduler
 struct TerrainDesc
 {
     int chunkViewDistance = 8;
-    int meshingQuadBudget = 4096 * 4;
     int terrainGenChunkBudget = 8;
 };
 

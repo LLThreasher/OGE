@@ -5,33 +5,13 @@
 #include <thread>
 
 TickScheduler::TickScheduler(float fixedDelta)
-    : m_fixedDelta(fixedDelta), m_targetFrameTime(fixedDelta), m_lastTime(std::chrono::high_resolution_clock::now())
+    : m_fixedDelta(fixedDelta), m_targetFrameTime(fixedDelta)
 {
 }
 
-bool TickScheduler::Poll()
+bool TickScheduler::Poll(float dt)
 {
-    using clock = std::chrono::high_resolution_clock;
-
-    auto now = clock::now();
-    std::chrono::duration<float> elapsed = now - m_lastTime;
-
-    // Sleep if we're running too fast
-    if (elapsed.count() < m_targetFrameTime)
-    {
-        auto remaining = std::chrono::duration<float>(m_targetFrameTime - elapsed.count());
-
-        std::this_thread::sleep_for(remaining);
-        now = clock::now();
-        elapsed = now - m_lastTime;
-    }
-
-    m_lastTime = now;
-
-    float frameDelta = std::min(elapsed.count(), m_maxFrameTime);
-
-    m_accumulator += frameDelta;
-
+    m_accumulator += dt;
     return m_accumulator >= m_fixedDelta;
 }
 
@@ -42,7 +22,6 @@ float TickScheduler::ConsumeTick()
         m_accumulator -= m_fixedDelta;
         return m_fixedDelta;
     }
-
     return 0.0f;
 }
 

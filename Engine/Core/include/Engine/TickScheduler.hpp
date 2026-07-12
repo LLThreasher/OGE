@@ -13,7 +13,7 @@ class TickScheduler
 
     // Blocks until at least one fixed tick is available.
     // Returns true if a tick is ready.
-    bool Poll();
+    bool Poll(float dt);
 
     // Call repeatedly after Poll() while this returns > 0
     float ConsumeTick();
@@ -27,8 +27,6 @@ class TickScheduler
     float m_accumulator = 0.0f;
 
     const float m_maxFrameTime = 0.25f;
-
-    std::chrono::high_resolution_clock::time_point m_lastTime;
 };
 
 class HeadlessTickScheduler

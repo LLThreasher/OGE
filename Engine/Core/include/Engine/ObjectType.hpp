@@ -49,8 +49,8 @@ enum class TempItem : uint32_t
 template <auto Tag>
 struct ResourceHandle
 {
-    uint32_t index = 0;
-    uint32_t generation = 0;
+    uint16_t index = 0;
+    uint16_t generation = 0;
 
     constexpr bool IsValid() const noexcept { return index != 0; }
 
