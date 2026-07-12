@@ -285,7 +285,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
     {
         UIDrag& mouseDrag = game.get<UIDrag>(activeDrags[PointerIdx::MOUSE]);
         mouseDrag.UpdateDrag(UI::ScreenSpaceToRelSpace(game, mousePos), mouseEntityHit, f.dt);
-        if (game.valid(mouseEntityHit))
+        if (game.valid(mouseEntityHit) && !game.all_of<UIDragReleaseDst>(mouseEntityHit))
             game.emplace<UIDragReleaseDst>(mouseEntityHit, activeDrags[PointerIdx::MOUSE]);
         if (f.input.IsMouseReleased(mouseDrag.dragStartButton))
         {
@@ -307,7 +307,7 @@ void SubsystemUI::Update(GameWorldContext& game, AppContext ctx, const FrameInpu
             math::vec2 pos{f.input.GetTouchX(pidx), f.input.GetTouchY(pidx)};
             entt::entity hit = UI::CastRayRelSpace(game, pos);
             game.get<UIDrag>(activeDrags[ptrIdx]).UpdateDrag(pos, hit, f.dt);
-            if (game.valid(hit))
+            if (game.valid(hit) && !game.all_of<UIDragReleaseDst>(hit))
             {
                 game.get_or_emplace<UIRaycastHit>(hit);
                 game.emplace<UIDragReleaseDst>(hit, activeDrags[ptrIdx]);

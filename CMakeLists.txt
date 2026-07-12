@@ -25,7 +25,7 @@ endif()
 # This sets variables like Vulkan_INCLUDE_DIRS and Vulkan_LIBRARIES
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     unset(BUILD_ANDROID)
-else()
+elseif(NOT BUILD_ANDROID)
     find_package(Vulkan REQUIRED)
 endif()
 

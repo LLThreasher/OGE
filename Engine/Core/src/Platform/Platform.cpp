@@ -32,6 +32,8 @@ void PrintStackTrace()
 #elif defined(PLATFORM_ANDROID)
 #include <dlfcn.h>
 #include <unwind.h>
+#include <unistd.h>
+#include <stdio.h>
 
 #include <iomanip>
 #include <iostream>
@@ -101,6 +103,89 @@ void PrintStackTrace()
 
     LOG_ERROR("{}", oss.str().c_str());
 }
+
+unsigned long long GetRAMUsage()
+{
+    FILE* fp = fopen("/proc/self/statm", "r");
+    if (!fp) return 0;
+
+    long pages = 0;
+    // The second token is the Resident Set Size (RSS)
+    if (fscanf(fp, "%*d %ld", &pages) != 1) {
+        fclose(fp);
+        return 0;
+    }
+    fclose(fp);
+    return pages * sysconf(_SC_PAGESIZE); // Convert pages to bytes
+}
+int get_core_count() {
+    return sysconf(_SC_NPROCESSORS_CONF);
+}
+
+double get_system_uptime() {
+    double uptime = 0.0;
+    FILE* fp = fopen("/proc/uptime", "r");
+    if (fp) {
+        if (fscanf(fp, "%lf", &uptime) != 1) {
+            uptime = 0.0;
+        }
+        fclose(fp);
+    }
+    return uptime;
+}
+
+float get_app_cpu_percentage() {
+    FILE* fp = fopen("/proc/self/stat", "r");
+    if (!fp) return 0.0f;
+
+    // FIX 1: Properly size the buffer array
+    char buffer[1024];
+    long utime = 0, stime = 0;
+    long long starttime = 0;
+
+    if (fgets(buffer, sizeof(buffer), fp) != nullptr) {
+        // Find the last closing parenthesis protecting process names with spaces
+        char* last_paren = strrchr(buffer, ')');
+        if (last_paren) {
+            // FIX 2: Correctly map fields relative to the ')' token.
+            // After ')', the fields are:
+            // 3:state, 4:ppid, 5:pgrp, 6:session, 7:tty_nr, 8:tpgid, 9:flags, 
+            // 10:minflt, 11:cminflt, 12:majflt, 13:cmajflt
+            // 14:utime, 15:stime, 16:cutime, 17:cstime, 18:priority, 19:nice, 
+            // 20:num_threads, 21:itrealvalue, 22:starttime
+            sscanf(last_paren + 2, 
+                   "%*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %ld %ld %*d %*d %*d %*d %*d %*d %lld",
+                   &utime, &stime, &starttime);
+        }
+    }
+    fclose(fp);
+
+    // If parsing completely failed, abort early
+    if (utime == 0 && stime == 0) return 0.0f;
+
+    long ticks_per_sec = sysconf(_SC_CLK_TCK);
+    double uptime = get_system_uptime();
+
+    double process_time_sec = (double)(utime + stime) / ticks_per_sec;
+    double process_lifetime_sec = uptime - ((double)starttime / ticks_per_sec);
+
+    if (process_lifetime_sec <= 0.0) return 0.0f;
+
+    // This is the lifetime usage scaled to 0-100% per core
+    float cpu_percentage = (process_time_sec / process_lifetime_sec) * 100.0f;
+    return cpu_percentage / get_core_count();
+}
+
+double GetCPUUsage()
+{
+    return get_app_cpu_percentage();
+}
+
+double GetGPUUsage()
+{
+    return -1.0;
+}
+
 #elif defined(PLATFORM_DARWIN)
 #include <execinfo.h>
 #include <stdio.h>

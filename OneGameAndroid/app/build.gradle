@@ -61,7 +61,7 @@ android {
             if (buildWithCMake) {
                 cmake {
                     path '../../CMakeLists.txt'
-                    version '4.1.2'
+                    version '3.28.0+'
                 }
             } else {
                 ndkBuild {
