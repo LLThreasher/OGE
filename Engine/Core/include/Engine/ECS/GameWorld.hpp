@@ -28,7 +28,7 @@ const std::array<TickType, 3> ALL_TICK_TYPES = {
 const std::unordered_map<TickType, float> ALL_TICK_FIX_DELTA = {
     {TickType::Frame, 1 / 60.f},
     {TickType::Physics, 1 / 60.f},
-    {TickType::Network, 1 / 60.f},
+    {TickType::Network, 1 / 20.f},
 };
 
 class GameRenderer;

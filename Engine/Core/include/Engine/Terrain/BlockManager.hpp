@@ -57,7 +57,7 @@ class BlockRegistry
     bool IsOpaque(uint16_t blockIdx) const;
     const std::array<uint8_t, 6>& GetTextureSlot(uint16_t blockIdx) const;
     const AABBList GetBlockAABBList(uint16_t blockIdx) const;
-    float GetBlockDrag(uint16_t blockIdx) const;
+    float GetBlockFriction(uint16_t blockIdx) const;
 
    private:
     std::unordered_map<std::string, uint32_t> m_blockTextureIds;

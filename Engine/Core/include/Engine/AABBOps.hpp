@@ -67,9 +67,9 @@ inline void ResolveCollisionsY(const std::vector<CollisionResult>& collisions, R
         // Y-Axis sorting by sign
         if (col.type == COLLISION_TYPE_STEP_Y)
         {
-            if (maxSAPosY < pushY + COLLISION_EPSILON)
+            if (maxSAPosY < pushY + COLLISION_EPSILON * 2.f)
             {
-                maxSAPosY = pushY + COLLISION_EPSILON;
+                maxSAPosY = pushY + COLLISION_EPSILON * 2.f;
                 maxSAPosYIdx = i;
             }
             res.mask |= RCR_HIT_STEP_Y;
@@ -131,18 +131,18 @@ inline void ResolveCollisionsX(const std::vector<CollisionResult>& collisions, R
         // X-Axis sorting by sign
         if (pushX > 0.0f)
         {
-            if (maxPosX < pushX - COLLISION_EPSILON)
+            if (maxPosX < pushX + COLLISION_EPSILON)
             {
-                maxPosX = pushX;
+                maxPosX = pushX + COLLISION_EPSILON;
                 maxPosXIdx = i;
             }
             res.mask |= RCR_HIT_POS_X;
         }
         else if (pushX < 0.0f)
         {
-            if (maxNegX > pushX + COLLISION_EPSILON)
+            if (maxNegX > pushX - COLLISION_EPSILON)
             {
-                maxNegX = pushX;
+                maxNegX = pushX - COLLISION_EPSILON;
                 maxNegXIdx = i;
             }
             res.mask |= RCR_HIT_NEG_X;
@@ -153,7 +153,7 @@ inline void ResolveCollisionsX(const std::vector<CollisionResult>& collisions, R
         {
             if (maxSAPosY < pushY + COLLISION_EPSILON)
             {
-                maxSAPosY = pushY + COLLISION_EPSILON * 2.5f;
+                maxSAPosY = pushY + COLLISION_EPSILON;
                 maxSAPosYIdx = i;
             }
             res.mask |= RCR_HIT_STEP_Y;
@@ -197,18 +197,18 @@ inline void ResolveCollisionsZ(const std::vector<CollisionResult>& collisions, R
         // Z-Axis sorting by sign
         if (pushZ > 0.0f)
         {
-            if (maxPosZ < pushZ - COLLISION_EPSILON)
+            if (maxPosZ < pushZ + COLLISION_EPSILON)
             {
-                maxPosZ = pushZ;
+                maxPosZ = pushZ + COLLISION_EPSILON;
                 maxPosZIdx = i;
             }
             res.mask |= RCR_HIT_POS_Z;
         }
         else if (pushZ < 0.0f)
         {
-            if (maxNegZ > pushZ + COLLISION_EPSILON)
+            if (maxNegZ > pushZ - COLLISION_EPSILON)
             {
-                maxNegZ = pushZ;
+                maxNegZ = pushZ - COLLISION_EPSILON;
                 maxNegZIdx = i;
             }
             res.mask |= RCR_HIT_NEG_Z;
@@ -219,7 +219,7 @@ inline void ResolveCollisionsZ(const std::vector<CollisionResult>& collisions, R
         {
             if (maxSAPosY < pushY + COLLISION_EPSILON)
             {
-                maxSAPosY = pushY + COLLISION_EPSILON * 2.5f;
+                maxSAPosY = pushY + COLLISION_EPSILON;
                 maxSAPosYIdx = i;
             }
             res.mask |= RCR_HIT_STEP_Y;

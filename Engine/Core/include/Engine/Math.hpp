@@ -87,6 +87,12 @@ inline float len_sq(T a)
     return glm::length2(a);
 }
 
+template <typename T>
+inline T lerp(T a, T b, float v)
+{
+    return (b - a) * v + a;
+}
+
 inline float clamp(float val, float low, float high) { return glm::clamp(val, low, high); }
 
 inline vec3 normalize(vec3 val) { return glm::normalize(val); }

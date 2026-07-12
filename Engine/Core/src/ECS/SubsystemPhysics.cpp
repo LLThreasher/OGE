@@ -166,12 +166,6 @@ void SubsystemPhysics::Update(GameWorldContext& game, AppContext ctx, const Fram
 
         body.velocity += body.acceleration * fd.dt;
 
-        // LOG_DEBUG("on top of {}", body.onTopOfBlkValue);
-        // auto drag = blocks.GetBlockDrag(blocks.GetBlockId(body.onTopOfBlkValue));
-        float drag = 5.0f;
-        body.velocity.x *= (1.0f / (1.0f + drag * fd.dt));
-        body.velocity.z *= (1.0f / (1.0f + drag * fd.dt));
-
         float dy = body.velocity.y * fd.dt;
         body.pos.y += math::abs(dy) < COLLISION_EPSILON ? 0.f : dy;
     }

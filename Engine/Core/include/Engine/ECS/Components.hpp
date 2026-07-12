@@ -89,25 +89,29 @@ struct InputSourceKeyMouse
 
 struct ComponentPhysicBody
 {
-    math::vec3 pos;
-    math::vec3 velocity;
-    math::vec3 acceleration;
+    math::vec3 pos = {};
+    math::vec3 velocity = {};
+    math::vec3 acceleration = {};
     float mass = 1.0f;
-    // float stepAssist = 0.501f;
-    float stepAssist = 1.001f;
+    float stepAssist = 0.01f;
     uint32_t onTopOfBlkValue = 0;
     bool isGrounded = false;
+    bool enableGravity = true;
 };
 
 struct ComponentCreature
 {
-    math::vec2 moveOrder;
-    bool jumpOrder;
+    float maxSpeed = 1.f;
+    float maxJumpHeight = 1.2f;
+
+    math::vec3 moveOrder = {};
+    bool jumpOrder = false;
 };
 
 struct ComponentCreatureInfo
 {
-    float moveSpeed;
+    float moveForce;
+    float jumpForce;
     float stepAssist;
 };
 
@@ -120,18 +124,7 @@ struct ComponentPlayer
 {
     float lastActionTime = 0.f;
 
-    static entt::entity CreatePlayer(entt::registry& world, math::vec3 pos)
-    {
-        auto res = world.create();
-        world.emplace<ComponentPhysicBody>(res, pos);
-        world.emplace<ComponentAABBCollider>(
-            res, ComponentAABBCollider{.aabb = {math::vec3{0.f, 0.f, 0.f}, math::vec3{0.7f, 1.8f, 0.7f}}});
-        world.emplace<ComponentCamera>(res);
-        world.emplace<ComponentPerspectiveCamera>(res);
-        world.emplace<ComponentPlayer>(res);
-        world.emplace<PlayerInputData>(res);
-        return res;
-    }
+    static entt::entity CreatePlayer(entt::registry& world, math::vec3 pos);
 };
 
 namespace OneGame::Engine::UI

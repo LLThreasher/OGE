@@ -24,6 +24,7 @@ void DebugScene3::Initialize(PresentationContext& context)
     m_gameWorld.Register<SubsystemPhysics, TickType::Physics>();
     m_gameWorld.Register<SubsystemUI>();
     m_gameWorld.Register<SubsystemPlayerInput>();
+    m_gameWorld.Register<SubsystemCreature>();
     m_gameWorld.Register<SubsystemPlayer>();
 
     m_gameRenderer.Register<DebugInfoRenderer>();

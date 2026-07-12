@@ -8,7 +8,7 @@
 #include "Engine/Rect.hpp"
 #include "Engine/entt.hpp"
 
-#define DECLARE_SUBSYSTEM(Name, ...)                                                            \
+#define DECL_SUBSYSTEM(Name, ...)                                                            \
     class Subsystem##Name : public SubsystemBase                                                \
     {                                                                                           \
        public:                                                                                  \
@@ -18,6 +18,9 @@
        private:                                                                                 \
         __VA_ARGS__                                                                             \
     };
+
+#define DECL_SUBSYSTEM_INIT(Name) void Subsystem##Name::Initialize(GameWorldContext& game, AppContext engine)
+#define DECL_SUBSYSTEM_UPDATE(Name) void Subsystem##Name::Update(GameWorldContext& game, AppContext engine, const FrameInputData& frame)
 
 namespace OneGame::Engine::ECS
 {
@@ -48,12 +51,13 @@ math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamer
 
 math::vec2 RayToPitchYaw(math::vec3 ray);
 
-DECLARE_SUBSYSTEM(PlayerInput, void onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
+DECL_SUBSYSTEM(PlayerInput, void onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
                   void onEraseInputSourceWidget(entt::registry& gameWorld, entt::entity entity););
 
 // Handle drags and UI rendering
-DECLARE_SUBSYSTEM(UI, std::array<entt::entity, PointerIdx::COUNT> activeDrags;);
+DECL_SUBSYSTEM(UI, std::array<entt::entity, PointerIdx::COUNT> activeDrags;);
 
-DECLARE_SUBSYSTEM(Player);
-DECLARE_SUBSYSTEM(Physics);
+DECL_SUBSYSTEM(Player);
+DECL_SUBSYSTEM(Physics);
+DECL_SUBSYSTEM(Creature);
 }  // namespace OneGame::Engine::ECS
