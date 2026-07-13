@@ -36,7 +36,7 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
              .each())
     {
         camera.ApplyDelta(input.panDelta.x, input.panDelta.y, 0.f, 0.f);
-        camera.position = body.pos + math::vec3{(collider.aabb.min.x + collider.aabb.max.x) / 2.f, 1.75f,
+        camera.position = body.pos + math::vec3{(collider.aabb.min.x + collider.aabb.max.x) / 2.f, 1.65f,
                                                 (collider.aabb.min.z + collider.aabb.max.z) / 2.f};
         auto right = camera.right();
         if (body.enableGravity)
