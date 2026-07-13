@@ -10,18 +10,17 @@ namespace OneGame::Engine::ECS
         for (auto [e, creature, body] : game.view<ComponentCreature, ComponentPhysicBody>().each())
         {
             float friction = blocks.GetBlockFriction(blocks.GetBlockId(body.onTopOfBlkValue));
-            if (math::abs(creature.moveOrder.x) > 0.01f || math::abs(creature.moveOrder.y) > 0.01f)
+
+            if (!body.enableGravity)
             {
-                body.velocity = math::lerp(body.velocity, creature.maxSpeed * creature.moveOrder, friction);
+                body.velocity.y = math::lerp(body.velocity.y, creature.maxSpeed * creature.moveOrder.y, friction);
             }
-            else
-            {
-                body.velocity = math::lerp(body.velocity, math::vec3{}, friction);
-            }
+            body.velocity.x = math::lerp(body.velocity.x, creature.maxSpeed * creature.moveOrder.x, friction);
+            body.velocity.z = math::lerp(body.velocity.z, creature.maxSpeed * creature.moveOrder.z, friction);
+            
             if (body.isGrounded && creature.jumpOrder)
             {
                 body.velocity.y += creature.initJumpSpeed;
-                LOG_DEBUG("jump {}", body.velocity.y);
             }
         }
     }

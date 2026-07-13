@@ -14,7 +14,7 @@ void SubsystemPhysics::Initialize(GameWorldContext& game, AppContext ctx) {}
 template <size_t idx>
 inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, const Terrain::TerrainView& terrain,
                                           const Terrain::BlockRegistry& blocks, CollisionResult2& collisionResult,
-                                          uint32_t& blkVal)
+                                          uint32_t& outBlkVal)
 {
     float min_z = realAABB.min.z;
     float max_z = realAABB.max.z;
@@ -80,7 +80,7 @@ inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, co
     bool hasCollision = false;
     collisionResult.effectiveOffset[idx] = offset;
     collisionResult.type = -1;
-    blkVal = 0;
+    outBlkVal = 0;
     
     assert(math::abs(collisionResult.effectiveOffset[idx]) <= math::abs(beginOffset));
     
@@ -108,7 +108,7 @@ inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, co
                     if (collisionResult.effectiveOffset[idx] != 0.f && CheckCollision<idx>(realAABB, blkAABB + math::vec3{x, y, z},
                                             collisionResult.effectiveOffset[idx], collisionResult.type))
                     {
-                        blkVal = blkVal;
+                        outBlkVal = blkVal;
                         hasCollision = true;
                     }
                     if (math::abs(collisionResult.effectiveOffset[idx]) < COLLISION_EPSILON)
@@ -229,7 +229,8 @@ void SubsystemPhysics::Update(GameWorldContext& game, AppContext ctx, const Fram
     auto& terrain = game.ctx().get<Terrain::TerrainView>();
     for (auto [e, body] : game.view<ComponentPhysicBody>().each())
     {
-        body.acceleration.y -= 9.8f;
+        if (body.enableGravity)
+            body.acceleration.y -= 9.8f;
 
         body.velocity += body.acceleration * fd.dt;
 
