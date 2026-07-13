@@ -46,6 +46,12 @@ using quat = glm::quat;
 const float pi = glm::pi<float>();
 
 template <typename T>
+inline float sqrt(T a)
+{
+    return glm::sqrt(a);
+}
+
+template <typename T>
 inline float dist(T a, T b)
 {
     return glm::distance(a, b);

@@ -102,10 +102,14 @@ struct ComponentPhysicBody
 struct ComponentCreature
 {
     float maxSpeed = 1.f;
-    float maxJumpHeight = 1.2f;
-
+    float initJumpSpeed = math::sqrt(2.f * 1.55f * 9.8f);
     math::vec3 moveOrder = {};
     bool jumpOrder = false;
+
+    void SetMaxJumpHeight(float height)
+    {
+        initJumpSpeed = math::sqrt(2.f * height * 9.8f);
+    }
 };
 
 struct ComponentCreatureInfo
@@ -125,6 +129,11 @@ struct ComponentPlayer
     float lastActionTime = 0.f;
 
     static entt::entity CreatePlayer(entt::registry& world, math::vec3 pos);
+};
+
+struct DebugText
+{
+    
 };
 
 namespace OneGame::Engine::UI

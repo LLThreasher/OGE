@@ -11,140 +11,207 @@ namespace OneGame::Engine::ECS
 {
 void SubsystemPhysics::Initialize(GameWorldContext& game, AppContext ctx) {}
 
-bool CheckAABBAgainstTerrain(float stepAssist, const AABB& realAABB, const Terrain::TerrainView& terrain,
-                             const Terrain::BlockRegistry& blocks, std::vector<CollisionResult>& collisions, std::vector<uint32_t>& blkVals)
+template <size_t idx>
+inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, const Terrain::TerrainView& terrain,
+                                          const Terrain::BlockRegistry& blocks, CollisionResult2& collisionResult,
+                                          uint32_t& blkVal)
 {
-    for (int z = math::floor(realAABB.min.z); z <= math::floor(realAABB.max.z); ++z)
+    float min_z = realAABB.min.z;
+    float max_z = realAABB.max.z;
+    float min_y = realAABB.min.y;
+    float max_y = realAABB.max.y;
+    float min_x = realAABB.min.x;
+    float max_x = realAABB.max.x;
+
+    // if (offset > 0)
+    // {
+    //     offset = math::max(offset, COLLISION_EPSILON);
+    // }
+    // else if (offset < 0)
+    // {
+    //     offset = math::min(offset, -COLLISION_EPSILON);
+    // }
+
+    auto beginOffset = offset;
+    if constexpr (idx == 0)
     {
-        for (int y = math::floor(realAABB.min.y); y <= math::floor(realAABB.max.y); ++y)
+        if (offset > 0)
         {
-            for (int x = math::floor(realAABB.min.x); x <= math::floor(realAABB.max.x); ++x)
+            min_x = max_x - 0.5f;
+            max_x += offset + 0.5f;
+        }
+        else
+        {
+            max_x = min_x + 0.5f;
+            min_x += offset - 0.5f;
+        }
+    }
+    else if constexpr (idx == 1)
+    {
+        if (offset > 0)
+        {
+            min_y = max_y - 0.5f;
+            max_y += offset + 0.5f;
+        }
+        else
+        {
+            max_y = min_y + 0.5f;
+            min_y += offset - 0.5f;
+        }
+    }
+    else if constexpr (idx == 2)
+    {
+        if (offset > 0)
+        {
+            min_z = max_z - 0.5f;
+            max_z += offset + 0.5f;
+        }
+        else
+        {
+            max_z = min_z + 0.5f;
+            min_z += offset - 0.5;
+        }
+    }
+    else
+    {
+        static_assert(false);
+    }
+
+    bool hasCollision = false;
+    collisionResult.effectiveOffset[idx] = offset;
+    collisionResult.type = -1;
+    blkVal = 0;
+    
+    assert(math::abs(collisionResult.effectiveOffset[idx]) <= math::abs(beginOffset));
+    
+    if (math::abs(collisionResult.effectiveOffset[idx]) < COLLISION_EPSILON)
+        collisionResult.effectiveOffset[idx] = 0.f;
+    for (int z = math::floor(min_z); z <= math::floor(max_z); ++z)
+    {
+        for (int y = math::floor(min_y); y <= math::floor(max_y); ++y)
+        {
+            for (int x = math::floor(min_x); x <= math::floor(max_x); ++x)
             {
                 uint32_t blkVal;
-                if (!terrain.TryGetBlock({x, y, z}, blkVal)) return false;
-                for (auto blkAABB : blocks.GetBlockAABBList(blocks.GetBlockId(blkVal)))
+                Terrain::AABBList blkAABBs;
+                if (!terrain.TryGetBlock({x, y, z}, blkVal))
                 {
-                    CollisionResult res{};
-                    if (CheckCollision(realAABB, blkAABB + math::vec3{x, y, z}, res))
+                    blkAABBs = blocks.GetDefaultBlockAABBList();
+                }
+                else
+                {
+                    blkAABBs = blocks.GetBlockAABBList(blocks.GetBlockId(blkVal));
+                }
+                for (auto blkAABB : blkAABBs)
+                {
+                    auto before = collisionResult.effectiveOffset[idx];
+                    if (collisionResult.effectiveOffset[idx] != 0.f && CheckCollision<idx>(realAABB, blkAABB + math::vec3{x, y, z},
+                                            collisionResult.effectiveOffset[idx], collisionResult.type))
                     {
-                        collisions.push_back(res);
-                        blkVals.push_back(blkVal);
+                        blkVal = blkVal;
+                        hasCollision = true;
                     }
-                    if (res.type != COLLISION_TYPE_POS_Y && CheckStepAssistCollision(stepAssist, realAABB, blkAABB + math::vec3{x, y, z}, res))
+                    if (math::abs(collisionResult.effectiveOffset[idx]) < COLLISION_EPSILON)
+                        collisionResult.effectiveOffset[idx] = 0.f;
+                    if (before < 0.f) assert(collisionResult.effectiveOffset[idx] <= 0.f);
+                    else if (before > 0.f) assert(collisionResult.effectiveOffset[idx] >= 0.f);
+                    else assert(collisionResult.effectiveOffset[idx] == 0.f);
+                    assert(math::abs(collisionResult.effectiveOffset[idx]) <= math::abs(before));
+                }
+            }
+        }
+    }
+    // collisionResult.effectiveOffset[idx] = collisionResult.effectiveOffset[idx] < COLLISION_EPSILON ? 0.f : collisionResult.effectiveOffset[idx];
+    assert(math::abs(collisionResult.effectiveOffset[idx]) <= math::abs(beginOffset));
+    return hasCollision;
+}
+
+inline bool CheckAABBAgainstTerrainStepAssist(int32_t collisionType, const AABB& realAABB, const Terrain::TerrainView& terrain,
+                                              const Terrain::BlockRegistry& blocks, float& penetration,
+                                              uint32_t& blkVal)
+{
+    float min_z = realAABB.min.z - COLLISION_EPSILON;
+    float max_z = realAABB.max.z + COLLISION_EPSILON;
+    float min_y = realAABB.min.y - COLLISION_EPSILON;
+    float max_y = realAABB.max.y + COLLISION_EPSILON;
+    float min_x = realAABB.min.x - COLLISION_EPSILON;
+    float max_x = realAABB.max.x + COLLISION_EPSILON;
+
+    if (collisionType == 0)
+    {
+        max_x += 0.5f;
+        min_x -= 0.5f;
+    }
+    else if (collisionType == 1)
+    {
+        max_x += 0.5f;
+        min_x -= 0.5f;
+    }
+    max_x += 0.5f;
+    min_x -= 0.5f;
+
+    bool hasCollision = false;
+    penetration = 0.f;
+    blkVal = 0;
+    for (int z = math::floor(min_z); z <= math::floor(max_z); ++z)
+    {
+        for (int y = math::floor(min_y); y <= math::floor(max_y); ++y)
+        {
+            for (int x = math::floor(min_x); x <= math::floor(max_x); ++x)
+            {
+                uint32_t blkVal;
+                Terrain::AABBList blkAABBs;
+                if (!terrain.TryGetBlock({x, y, z}, blkVal))
+                {
+                    blkAABBs = blocks.GetDefaultBlockAABBList();
+                }
+                else
+                {
+                    blkAABBs = blocks.GetBlockAABBList(blocks.GetBlockId(blkVal));
+                }
+                for (auto blkAABB : blkAABBs)
+                {
+                    if (CheckCollisionRejection<2>(realAABB, blkAABB + math::vec3{x, y, z}, penetration))
                     {
-                        collisions.push_back(res);
-                        blkVals.push_back(blkVal);
+                        blkVal = blkVal;
+                        hasCollision = true;
                     }
                 }
             }
         }
     }
-    return true;
+    return hasCollision;
 }
 
-bool CheckAABBAgainstTerrainY(float stepAssist, const AABB& realAABB, const Terrain::TerrainView& terrain,
-                             const Terrain::BlockRegistry& blocks, std::vector<CollisionResult>& collisions, std::vector<uint32_t>& blkVals)
+inline bool CheckAABBAgainstTerrainOverlap(const AABB& realAABB, const Terrain::TerrainView& terrain,
+                                           const Terrain::BlockRegistry& blocks)
 {
-    for (int z = math::floor(realAABB.min.z); z <= math::floor(realAABB.max.z); ++z)
+    float min_z = realAABB.min.z - COLLISION_EPSILON;
+    float max_z = realAABB.max.z + COLLISION_EPSILON;
+    float min_y = realAABB.min.y - COLLISION_EPSILON;
+    float max_y = realAABB.max.y + COLLISION_EPSILON;
+    float min_x = realAABB.min.x - COLLISION_EPSILON;
+    float max_x = realAABB.max.x + COLLISION_EPSILON;
+
+    for (int z = math::floor(min_z); z <= math::floor(max_z); ++z)
     {
-        for (int y = math::floor(realAABB.min.y); y <= math::floor(realAABB.max.y); ++y)
+        for (int y = math::floor(min_y); y <= math::floor(max_y); ++y)
         {
-            for (int x = math::floor(realAABB.min.x); x <= math::floor(realAABB.max.x); ++x)
+            for (int x = math::floor(min_x); x <= math::floor(max_x); ++x)
             {
                 uint32_t blkVal;
-                if (!terrain.TryGetBlock({x, y, z}, blkVal)) return false;
-                for (auto blkAABB : blocks.GetBlockAABBList(blocks.GetBlockId(blkVal)))
+                Terrain::AABBList blkAABBs;
+                if (!terrain.TryGetBlock({x, y, z}, blkVal))
                 {
-                    CollisionResult res{};
-                    if (CheckCollision(realAABB, blkAABB + math::vec3{x, y, z}, res))
-                    {
-                        collisions.push_back(res);
-                        blkVals.push_back(blkVal);
-                    }
+                    blkAABBs = blocks.GetDefaultBlockAABBList();
                 }
-            }
-        }
-    }
-    return true;
-}
-
-bool CheckAABBAgainstTerrainX(float stepAssist, const AABB& realAABB, const Terrain::TerrainView& terrain,
-                             const Terrain::BlockRegistry& blocks, std::vector<CollisionResult>& collisions, std::vector<uint32_t>& blkVals)
-{
-    for (int y = math::floor(realAABB.min.y); y <= math::floor(realAABB.max.y); ++y)
-    {
-        for (int z = math::floor(realAABB.min.z); z <= math::floor(realAABB.max.z); ++z)
-        {
-            for (int x = math::floor(realAABB.min.x); x <= math::floor(realAABB.max.x); ++x)
-            {
-                uint32_t blkVal;
-                if (!terrain.TryGetBlock({x, y, z}, blkVal)) return false;
-                for (auto blkAABB : blocks.GetBlockAABBList(blocks.GetBlockId(blkVal)))
+                else
                 {
-                    CollisionResult res{};
-                    if (CheckCollisionXZ(realAABB, blkAABB + math::vec3{x, y, z}, res))
-                    {
-                        collisions.push_back(res);
-                        blkVals.push_back(blkVal);
-                    }
-                    if (stepAssist > 0.f && CheckStepAssistCollision(stepAssist, realAABB, blkAABB + math::vec3{x, y, z}, res))
-                    {
-                        collisions.push_back(res);
-                        blkVals.push_back(blkVal);
-                    }
+                    blkAABBs = blocks.GetBlockAABBList(blocks.GetBlockId(blkVal));
                 }
-            }
-        }
-    }
-    return true;
-}
-
-bool CheckAABBAgainstTerrainZ(float stepAssist, const AABB& realAABB, const Terrain::TerrainView& terrain,
-                             const Terrain::BlockRegistry& blocks, std::vector<CollisionResult>& collisions, std::vector<uint32_t>& blkVals)
-{
-    for (int y = math::floor(realAABB.min.y); y <= math::floor(realAABB.max.y); ++y)
-    {
-        for (int z = math::floor(realAABB.min.z); z <= math::floor(realAABB.max.z); ++z)
-        {
-            for (int x = math::floor(realAABB.min.x); x <= math::floor(realAABB.max.x); ++x)
-            {
-                uint32_t blkVal;
-                if (!terrain.TryGetBlock({x, y, z}, blkVal)) return false;
-                for (auto blkAABB : blocks.GetBlockAABBList(blocks.GetBlockId(blkVal)))
+                for (auto blkAABB : blkAABBs)
                 {
-                    CollisionResult res{};
-                    if (CheckCollisionZ(realAABB, blkAABB + math::vec3{x, y, z}, res))
-                    {
-                        collisions.push_back(res);
-                        blkVals.push_back(blkVal);
-                    }
-                    if (CheckStepAssistCollision(stepAssist, realAABB, blkAABB + math::vec3{x, y, z}, res))
-                    {
-                        collisions.push_back(res);
-                        blkVals.push_back(blkVal);
-                    }
-                }
-            }
-        }
-    }
-    return true;
-}
-
-bool CheckAABBAgainstTerrainRevStep(const AABB& realAABB, const Terrain::TerrainView& terrain,
-                                    const Terrain::BlockRegistry& blocks)
-{
-    for (int z = math::floor(realAABB.min.z); z <= math::floor(realAABB.max.z); ++z)
-    {
-        for (int y = math::floor(realAABB.min.y); y <= math::floor(realAABB.max.y); ++y)
-        {
-            for (int x = math::floor(realAABB.min.x); x <= math::floor(realAABB.max.x); ++x)
-            {
-                uint32_t blkVal;
-                if (!terrain.TryGetBlock({x, y, z}, blkVal)) return true;
-                for (auto blkAABB : blocks.GetBlockAABBList(blocks.GetBlockId(blkVal)))
-                {
-                    CollisionResult res{};
-                    if (CheckCollision(realAABB, blkAABB + math::vec3{x, y, z}, res))
+                    if (CheckOverlap(realAABB, blkAABB + math::vec3{x, y, z}))
                     {
                         return true;
                     }
@@ -166,49 +233,40 @@ void SubsystemPhysics::Update(GameWorldContext& game, AppContext ctx, const Fram
 
         body.velocity += body.acceleration * fd.dt;
 
-        float dy = body.velocity.y * fd.dt;
-        body.pos.y += math::abs(dy) < COLLISION_EPSILON ? 0.f : dy;
+        body.acceleration = {};
     }
 
-    std::unordered_map<entt::entity, std::tuple<std::vector<CollisionResult>, std::vector<uint32_t>>> cachedCollisions;
-    
+    std::unordered_map<entt::entity, std::tuple<CollisionResult2, uint32_t>> cachedCollisions;
+
     // collision between physical body and terrain Y
     for (auto [e, collider, body] : game.view<const ComponentAABBCollider, const ComponentPhysicBody>().each())
     {
-        CollisionResult res{};
         auto& [collisions, blkVals] = cachedCollisions[e];
         auto realAABB = collider.aabb + body.pos;
-        if (!CheckAABBAgainstTerrainY(body.stepAssist, realAABB, terrain, blocks, collisions, blkVals))
-        {
-            cachedCollisions.erase(e);
-        }
+        auto yOffset = body.velocity.y * fd.dt;
+        CheckAABBAgainstTerrainSingle<1>(yOffset, realAABB, terrain, blocks, collisions, blkVals);
+        assert(math::abs(yOffset) >= math::abs(collisions.effectiveOffset.y));
     }
 
     // apply collision resolution (terrain Y)
     for (auto [e, tup] : cachedCollisions)
     {
         auto& [res, blkVals] = tup;
-        ResolveCollisionResult result{};
         auto& body = game.get<ComponentPhysicBody>(e);
-        auto& aabb = game.get<ComponentAABBCollider>(e).aabb;
-        ResolveCollisionsY(res, result);
-        body.isGrounded = (result.mask & RCR_HIT_POS_Y) != 0 && result.offset.y < COLLISION_EPSILON * 3.f;
-        
-        body.pos += result.offset;
-        if ((result.mask & RCR_HIT_POS_Y) != 0 && body.velocity.y < 0.f) body.velocity.y = 0;
-        if ((result.mask & RCR_HIT_NEG_Y) != 0 && body.velocity.y > 0.f) body.velocity.y = 0;
+        body.isGrounded = res.type == COLLISION_TYPE_POS_Y;
+        body.pos.y += res.effectiveOffset.y;
 
-        body.acceleration = {0.f, 0.f, 0.f};
-        if (body.isGrounded && result.resolvedIndices[1] != -1)
-            body.onTopOfBlkValue = blkVals[result.resolvedIndices[1]];
+        auto& collider = game.get<ComponentAABBCollider>(e);
+        auto realAABB = collider.aabb + body.pos;
+        // assert(!CheckAABBAgainstTerrainOverlap(realAABB, terrain, blocks));
+
+        if (res.type == COLLISION_TYPE_POS_Y && body.velocity.y < 0.f) body.velocity.y = 0;
+        if (res.type == COLLISION_TYPE_NEG_Y && body.velocity.y > 0.f) body.velocity.y = 0;
+
+        if (body.isGrounded)
+            body.onTopOfBlkValue = blkVals;
         else
             body.onTopOfBlkValue = 0;
-    }
-
-    for (auto [e, body] : game.view<ComponentPhysicBody>().each())
-    {
-        float dx = body.velocity.x * fd.dt;
-        body.pos.x += math::abs(dx) < COLLISION_EPSILON ? 0.f : dx;
     }
 
     cachedCollisions.clear();
@@ -216,95 +274,87 @@ void SubsystemPhysics::Update(GameWorldContext& game, AppContext ctx, const Fram
     // collision between physical body and terrain X
     for (auto [e, collider, body] : game.view<const ComponentAABBCollider, const ComponentPhysicBody>().each())
     {
-        CollisionResult res{};
         auto& [collisions, blkVals] = cachedCollisions[e];
         auto realAABB = collider.aabb + body.pos;
-        if (!CheckAABBAgainstTerrainX(body.isGrounded ? body.stepAssist : 0.f, realAABB, terrain, blocks, collisions, blkVals))
+        auto xOffset = body.velocity.x * fd.dt;
+        if (CheckAABBAgainstTerrainSingle<0>(xOffset, realAABB, terrain, blocks, collisions, blkVals))
         {
-            cachedCollisions.erase(e);
+            if (body.isGrounded && collisions.type != -1)
+            {
+                uint32_t stepBlkVal;
+                CollisionResult2 stepRes;
+                CheckAABBAgainstTerrainSingle<1>(-body.stepAssist, realAABB + math::vec3{xOffset, body.stepAssist, 0}, terrain, blocks, stepRes, stepBlkVal);
+                float stepHeight = body.stepAssist + stepRes.effectiveOffset.y;
+                if (stepHeight < body.stepAssist)
+                {
+                    if (!CheckAABBAgainstTerrainSingle<1>(stepHeight, realAABB, terrain, blocks, stepRes,
+                    stepBlkVal))
+                    {
+                        if (!CheckAABBAgainstTerrainSingle<0>(xOffset, realAABB + math::vec3{0, stepHeight, 0},
+                        terrain, blocks, stepRes, stepBlkVal))
+                        {
+                            collisions.effectiveOffset = {xOffset, stepHeight, 0};
+                            collisions.type = COLLISION_TYPE_POS_Y;
+                        }
+                    }
+                }
+            }
         }
     }
 
-    // apply collision resolution (terrain XZ)
+    // apply collision resolution (terrain X)
     for (auto [e, tup] : cachedCollisions)
     {
         auto& [res, blkVals] = tup;
-        ResolveCollisionResult result{};
         auto& body = game.get<ComponentPhysicBody>(e);
-        auto& aabb = game.get<ComponentAABBCollider>(e).aabb;
-        ResolveCollisionsX(res, result);
+        body.pos += res.effectiveOffset;
 
-        auto aabbAfterStep =
-            aabb + body.pos + COLLISION_NORMALS[COLLISION_TYPE_STEP_Y] * result.stepOffset;
-        aabbAfterStep.min.y = math::max(aabbAfterStep.min.y, aabb.max.y + body.pos.y);
-        if ((result.mask & RCR_HIT_STEP_Y) != 0 &&
-            (result.stepOffset < math::ceil(aabb.max.y) - aabb.max.y || !CheckAABBAgainstTerrainRevStep(aabbAfterStep, terrain, blocks)))
-        {
-            // body.pos += math::vec3{result.offset.x, result.stepOffset, result.offset.z};
-            // body.pos += math::vec3{-result.offset.x, result.stepOffset, -result.offset.z};
-            // LOG_INFO("step up {} {} {} {} {} {}", result.stepOffset, result.mask, result.offset, body.velocity, body.acceleration, fd.dt);
-            // auto forward = math::normalize(math::vec2{body.velocity.x, body.velocity.z}) * COLLISION_EPSILON * 100.f;
-            body.pos += math::vec3{result.offset.x, result.stepOffset, result.offset.z};
-            body.velocity.y = 0;
-            // get block the body is on top of
-        }
-        else
-        {
-            body.pos.x += result.offset.x;
-            if ((result.mask & RCR_HIT_POS_X) != 0 && body.velocity.x < 0.f) body.velocity.x = 0;
-            if ((result.mask & RCR_HIT_NEG_X) != 0 && body.velocity.x > 0.f) body.velocity.x = 0;
-        }
-    }
-
-    for (auto [e, body] : game.view<ComponentPhysicBody>().each())
-    {
-        float dz = body.velocity.z * fd.dt;
-        body.pos.z += math::abs(dz) < COLLISION_EPSILON ? 0.f : dz;
+        if (res.type == COLLISION_TYPE_POS_X && body.velocity.x < 0.f) body.velocity.x = 0;
+        if (res.type == COLLISION_TYPE_NEG_X && body.velocity.x > 0.f) body.velocity.x = 0;
     }
 
     cachedCollisions.clear();
 
-    // collision between physical body and terrain Z
+    // collision between physical body and terrain X
     for (auto [e, collider, body] : game.view<const ComponentAABBCollider, const ComponentPhysicBody>().each())
     {
-        CollisionResult res{};
         auto& [collisions, blkVals] = cachedCollisions[e];
         auto realAABB = collider.aabb + body.pos;
-        if (!CheckAABBAgainstTerrainZ(body.isGrounded ? body.stepAssist : 0.f, realAABB, terrain, blocks, collisions, blkVals))
+        auto zOffset = body.velocity.z * fd.dt;
+        if (CheckAABBAgainstTerrainSingle<2>(zOffset, realAABB, terrain, blocks, collisions, blkVals))
         {
-            cachedCollisions.erase(e);
+            if (body.isGrounded && collisions.type != -1)
+            {
+                uint32_t stepBlkVal;
+                CollisionResult2 stepRes;
+                CheckAABBAgainstTerrainSingle<1>(-body.stepAssist, realAABB + math::vec3{0, body.stepAssist, zOffset}, terrain, blocks, stepRes, stepBlkVal);
+                float stepHeight = body.stepAssist + stepRes.effectiveOffset.y;
+                if (stepHeight < body.stepAssist)
+                {
+                    if (!CheckAABBAgainstTerrainSingle<1>(stepHeight, realAABB, terrain, blocks, stepRes,
+                    stepBlkVal))
+                    {
+                        if (!CheckAABBAgainstTerrainSingle<2>(zOffset, realAABB + math::vec3{0, stepHeight, 0},
+                        terrain, blocks, stepRes, stepBlkVal))
+                        {
+                            collisions.effectiveOffset = {0, stepHeight, zOffset};
+                            collisions.type = COLLISION_TYPE_POS_Y;
+                        }
+                    }
+                }
+            }
         }
     }
 
-    // apply collision resolution (terrain Z)
+    // apply collision resolution (terrain X)
     for (auto [e, tup] : cachedCollisions)
     {
         auto& [res, blkVals] = tup;
-        ResolveCollisionResult result{};
         auto& body = game.get<ComponentPhysicBody>(e);
-        auto& aabb = game.get<ComponentAABBCollider>(e).aabb;
-        ResolveCollisionsZ(res, result);
+        body.pos += res.effectiveOffset;
 
-        auto aabbAfterStep =
-            aabb + body.pos + COLLISION_NORMALS[COLLISION_TYPE_STEP_Y] * result.stepOffset;
-        aabbAfterStep.min.y = math::max(aabbAfterStep.min.y, aabb.max.y + body.pos.y);
-        if ((result.mask & RCR_HIT_STEP_Y) != 0 &&
-            (result.stepOffset < math::ceil(aabb.max.y) - aabb.max.y || !CheckAABBAgainstTerrainRevStep(aabbAfterStep, terrain, blocks)))
-        {
-            // body.pos += math::vec3{result.offset.x, result.stepOffset, result.offset.z};
-            // body.pos += math::vec3{-result.offset.x, result.stepOffset, -result.offset.z};
-            // LOG_INFO("Z step up {} {} {} {} {} {}", result.stepOffset, math::ceil(aabb.max.y) - aabb.max.y, result.offset, body.velocity, body.acceleration, fd.dt);
-            // auto forward = math::normalize(math::vec2{body.velocity.x, body.velocity.z}) * COLLISION_EPSILON * 100.f;
-            body.pos += math::vec3{result.offset.x, result.stepOffset, result.offset.z};
-            body.velocity.y = 0;
-            // get block the body is on top of
-        }
-        else
-        {
-            body.pos += result.offset;
-            if ((result.mask & RCR_HIT_POS_Z) != 0 && body.velocity.z < 0.f) body.velocity.z = 0;
-            if ((result.mask & RCR_HIT_NEG_Z) != 0 && body.velocity.z > 0.f) body.velocity.z = 0;
-        }
+        if (res.type == COLLISION_TYPE_POS_Z && body.velocity.z < 0.f) body.velocity.z = 0;
+        if (res.type == COLLISION_TYPE_NEG_Z && body.velocity.z > 0.f) body.velocity.z = 0;
     }
 }
 }  // namespace OneGame::Engine::ECS

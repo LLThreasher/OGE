@@ -54,6 +54,11 @@ const AABBList BlockRegistry::GetBlockAABBList(uint16_t blockIdx) const
     return {AABB{{0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}}};
 }
 
+const AABBList BlockRegistry::GetDefaultBlockAABBList() const
+{
+    return {AABB{{0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}}};
+}
+
 float BlockRegistry::GetBlockFriction(uint16_t blockIdx) const
 {
     if (blockIdx == 0)

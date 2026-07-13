@@ -11,12 +11,14 @@ namespace OneGame::Engine::ECS
 entt::entity ComponentPlayer::CreatePlayer(entt::registry& world, math::vec3 pos)
 {
     auto res = world.create();
-    world.emplace<ComponentPhysicBody>(res, pos);
+    auto& b = world.emplace<ComponentPhysicBody>(res, pos);
+    b.stepAssist = 1.01f;
     world.emplace<ComponentAABBCollider>(
         res, ComponentAABBCollider{.aabb = {math::vec3{0.f, 0.f, 0.f}, math::vec3{0.7f, 1.8f, 0.7f}}});
     world.emplace<ComponentCamera>(res);
     world.emplace<ComponentPerspectiveCamera>(res);
-    world.emplace<ComponentCreature>(res, ComponentCreature{.maxSpeed = 4.f, .maxJumpHeight = 1.0f});
+    auto& c = world.emplace<ComponentCreature>(res, ComponentCreature{.maxSpeed = 4.f});
+    c.SetMaxJumpHeight(1.65f);
     world.emplace<ComponentPlayer>(res);
     world.emplace<PlayerInputData>(res);
     return res;
@@ -67,10 +69,9 @@ void SubsystemPlayer::Update(GameWorldContext& game, AppContext ctx, const Frame
                         auto placePos = raycastResult->hitPos + perFaceOffset[raycastResult->hitFace];
                         auto blkAABBs = blocks.GetBlockAABBList(blockId);
                         bool canPlace = true;
-                        CollisionResult res;
                         for (auto blkAABB : blkAABBs)
                         {
-                            if (CheckCollision(collider.aabb + body.pos, blkAABB + placePos, res))
+                            if (CheckOverlap(collider.aabb + body.pos, blkAABB + placePos))
                             {
                                 canPlace = false;
                                 break;

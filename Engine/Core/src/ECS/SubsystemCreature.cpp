@@ -20,7 +20,8 @@ namespace OneGame::Engine::ECS
             }
             if (body.isGrounded && creature.jumpOrder)
             {
-                body.velocity.y += creature.maxJumpHeight * 9.8f;
+                body.velocity.y += creature.initJumpSpeed;
+                LOG_DEBUG("jump {}", body.velocity.y);
             }
         }
     }
