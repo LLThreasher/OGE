@@ -23,15 +23,6 @@ inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, co
     float min_x = realAABB.min.x;
     float max_x = realAABB.max.x;
 
-    // if (offset > 0)
-    // {
-    //     offset = math::max(offset, COLLISION_EPSILON);
-    // }
-    // else if (offset < 0)
-    // {
-    //     offset = math::min(offset, -COLLISION_EPSILON);
-    // }
-
     auto beginOffset = offset;
     if constexpr (idx == 0)
     {
@@ -124,102 +115,6 @@ inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, co
     // collisionResult.effectiveOffset[idx] = collisionResult.effectiveOffset[idx] < COLLISION_EPSILON ? 0.f : collisionResult.effectiveOffset[idx];
     assert(math::abs(collisionResult.effectiveOffset[idx]) <= math::abs(beginOffset));
     return hasCollision;
-}
-
-inline bool CheckAABBAgainstTerrainStepAssist(int32_t collisionType, const AABB& realAABB, const Terrain::TerrainView& terrain,
-                                              const Terrain::BlockRegistry& blocks, float& penetration,
-                                              uint32_t& blkVal)
-{
-    float min_z = realAABB.min.z - COLLISION_EPSILON;
-    float max_z = realAABB.max.z + COLLISION_EPSILON;
-    float min_y = realAABB.min.y - COLLISION_EPSILON;
-    float max_y = realAABB.max.y + COLLISION_EPSILON;
-    float min_x = realAABB.min.x - COLLISION_EPSILON;
-    float max_x = realAABB.max.x + COLLISION_EPSILON;
-
-    if (collisionType == 0)
-    {
-        max_x += 0.5f;
-        min_x -= 0.5f;
-    }
-    else if (collisionType == 1)
-    {
-        max_x += 0.5f;
-        min_x -= 0.5f;
-    }
-    max_x += 0.5f;
-    min_x -= 0.5f;
-
-    bool hasCollision = false;
-    penetration = 0.f;
-    blkVal = 0;
-    for (int z = math::floor(min_z); z <= math::floor(max_z); ++z)
-    {
-        for (int y = math::floor(min_y); y <= math::floor(max_y); ++y)
-        {
-            for (int x = math::floor(min_x); x <= math::floor(max_x); ++x)
-            {
-                uint32_t blkVal;
-                Terrain::AABBList blkAABBs;
-                if (!terrain.TryGetBlock({x, y, z}, blkVal))
-                {
-                    blkAABBs = blocks.GetDefaultBlockAABBList();
-                }
-                else
-                {
-                    blkAABBs = blocks.GetBlockAABBList(blocks.GetBlockId(blkVal));
-                }
-                for (auto blkAABB : blkAABBs)
-                {
-                    if (CheckCollisionRejection<2>(realAABB, blkAABB + math::vec3{x, y, z}, penetration))
-                    {
-                        blkVal = blkVal;
-                        hasCollision = true;
-                    }
-                }
-            }
-        }
-    }
-    return hasCollision;
-}
-
-inline bool CheckAABBAgainstTerrainOverlap(const AABB& realAABB, const Terrain::TerrainView& terrain,
-                                           const Terrain::BlockRegistry& blocks)
-{
-    float min_z = realAABB.min.z - COLLISION_EPSILON;
-    float max_z = realAABB.max.z + COLLISION_EPSILON;
-    float min_y = realAABB.min.y - COLLISION_EPSILON;
-    float max_y = realAABB.max.y + COLLISION_EPSILON;
-    float min_x = realAABB.min.x - COLLISION_EPSILON;
-    float max_x = realAABB.max.x + COLLISION_EPSILON;
-
-    for (int z = math::floor(min_z); z <= math::floor(max_z); ++z)
-    {
-        for (int y = math::floor(min_y); y <= math::floor(max_y); ++y)
-        {
-            for (int x = math::floor(min_x); x <= math::floor(max_x); ++x)
-            {
-                uint32_t blkVal;
-                Terrain::AABBList blkAABBs;
-                if (!terrain.TryGetBlock({x, y, z}, blkVal))
-                {
-                    blkAABBs = blocks.GetDefaultBlockAABBList();
-                }
-                else
-                {
-                    blkAABBs = blocks.GetBlockAABBList(blocks.GetBlockId(blkVal));
-                }
-                for (auto blkAABB : blkAABBs)
-                {
-                    if (CheckOverlap(realAABB, blkAABB + math::vec3{x, y, z}))
-                    {
-                        return true;
-                    }
-                }
-            }
-        }
-    }
-    return false;
 }
 
 void SubsystemPhysics::Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd)

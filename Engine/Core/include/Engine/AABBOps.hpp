@@ -64,36 +64,6 @@ inline bool CheckCollision(const AABB& a, const AABB& b, float& offset, int32_t&
     return false;
 }
 
-template <size_t collisionType>
-inline bool CheckCollisionRejection(const AABB& a, const AABB& b, float& penetration)
-{
-    constexpr size_t dim = collisionType / 3;
-    const float a_max = a.max[dim] + COLLISION_EPSILON;
-    const float a_min = a.min[dim] - COLLISION_EPSILON;
-    const float b_max = b.max[dim] + COLLISION_EPSILON;
-    const float b_min = b.min[dim] - COLLISION_EPSILON;
-
-    if constexpr ((collisionType % 2) == 0)
-    {
-        assert(a_min > b_max);
-        if (a_min + penetration + COLLISION_EPSILON < b_max)
-        {
-            penetration = b_max - a_min;
-            return true;
-        }
-    }
-    if constexpr ((collisionType % 2) == 1)
-    {
-        if (a_max - penetration > b_min)
-        {
-            penetration = a_max - b_min;
-            return true;
-        }
-    }
-
-    return false;
-}
-
 inline bool CheckOverlap(const AABB& a, const AABB& b)
 {
     if (a.max.x < b.min.x || a.min.x > b.max.x) return false;
