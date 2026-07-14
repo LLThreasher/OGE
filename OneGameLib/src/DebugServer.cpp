@@ -7,8 +7,10 @@ void DebugServer::Initialize(AppContext& ctx)
     using namespace ECS;
     m_gameWorld.CreateServer();
     m_gameWorld.CreateTerrain();
-    m_gameWorld.Register<Terrain::TerrainService>();
-    m_gameWorld.Register<SubsystemPlayer>();
+    m_gameUpdater = GameUpdateScheduler::Builder()
+        .With<Terrain::TerrainService>()
+        .With<SubsystemPlayer>()
+        .Build(ctx);
 }
 
 void DebugServer::Enter(AppContext& ctx)

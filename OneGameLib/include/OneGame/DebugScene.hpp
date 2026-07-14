@@ -73,7 +73,6 @@ const std::vector<uint16_t> chunk_zero_indices = {
 class DebugScene3 : public Scene<PresentationContext, const FrameInputData, FrameOutputData>
 {
 public:
-    DebugScene3();
     virtual void Initialize(PresentationContext& context) override;
     virtual void Enter(PresentationContext& context) override;
     virtual void Exit(PresentationContext& context) override;

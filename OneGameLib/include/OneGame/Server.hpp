@@ -26,6 +26,7 @@ private:
     void onServerReceivePacket(OnServerReceivePacket&);
     
     ECS::GameWorld m_gameWorld;
+    ECS::GameUpdateScheduler m_gameUpdater;
     GameServer m_server;
 };
 } // namespace OneGame

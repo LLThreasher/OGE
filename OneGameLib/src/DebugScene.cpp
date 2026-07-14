@@ -18,10 +18,6 @@ namespace OneGame
 {
 using namespace ECS;
 
-DebugScene3::DebugScene3()
-{
-}
-
 void DebugScene3::Initialize(PresentationContext& context)
 {
     m_gameWorld.CreateTerrain();
