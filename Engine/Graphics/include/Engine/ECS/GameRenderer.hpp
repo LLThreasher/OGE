@@ -14,48 +14,59 @@ namespace OneGame::Engine::ECS
 class GameRenderer
 {
    public:
-    GameRenderer(GameWorld& world) : m_world(world.m_world) {}
-
-    template <typename TSubsystem>
-    void Register()
+    GameRenderer(std::vector<std::unique_ptr<RendererBase>> renderers = {}) : m_renderers(std::move(renderers))
     {
-        m_subsystems.emplace_back(new TSubsystem());
     }
 
-    void Initialize(PresentationContext ctx)
+    void Initialize(GameWorldContext& world, PresentationContext ctx)
     {
-        auto rootView = m_world.create();
-        m_world.emplace<ScreenRect>(rootView, I16Point2{0, 0}, ctx.backend.SwapchainExtent());
-        m_world.emplace<UIRoot>(rootView);
+        auto rootView = world.create();
+        world.emplace<ScreenRect>(rootView, I16Point2{0, 0}, ctx.backend.SwapchainExtent());
+        world.emplace<UIRoot>(rootView);
 
-        auto blkArray = Get().ctx().get<Terrain::BlockRegistry>().GetBlockTextureArray();
-        m_terrain.Initialize(m_world, ctx);
-        for (uint32_t i = 0; i < blkArray.size(); ++i)
+        if (auto blks = world.ctx().find<Terrain::BlockRegistry>())
         {
-            ctx.renderer.UpdateBlockTexture(ctx, blkArray[i], i);
+            auto blkArray = blks->GetBlockTextureArray();
+            for (uint32_t i = 0; i < blkArray.size(); ++i)
+            {
+                ctx.renderer.UpdateBlockTexture(ctx, blkArray[i], i);
+            }
         }
 
-        for (auto& ptr : m_subsystems)
+        for (auto& ptr : m_renderers)
         {
-            ptr->Initialize(m_world, ctx);
+            ptr->Initialize(world, ctx);
         }
     }
 
-    void Present(PresentationContext pctx, FrameOutputData& frameOut)
+    void Present(GameWorldContext& game, PresentationContext pctx, FrameOutputData& frameOut)
     {
-        GameWorldContext& game = Get();
-        m_terrain.Present(game, pctx, frameOut);
-        for (auto& ptr : m_subsystems)
+        for (auto& ptr : m_renderers)
         {
             ptr->Present(game, pctx, frameOut);
         }
     }
 
-    GameWorldContext& Get() { return m_world; }
-
    private:
-    std::vector<std::unique_ptr<RendererBase>> m_subsystems;
-    entt::registry& m_world;
-    Terrain::TerrainRenderer m_terrain;
+    std::vector<std::unique_ptr<RendererBase>> m_renderers;
+};
+
+class GameRendererBuilder
+{
+public:
+    template <typename TRenderer>
+    GameRendererBuilder&& With() &&
+    {
+        m_renderers.emplace_back(std::make_unique<TRenderer>());
+        return std::move(*this);
+    }
+
+    GameRenderer Build() &&
+    {
+        return GameRenderer(std::move(m_renderers));
+    }
+
+private:
+    std::vector<std::unique_ptr<RendererBase>> m_renderers;
 };
 }  // namespace OneGame::Engine::ECS

@@ -1,5 +1,5 @@
-#include "OneGame/Client.hpp"
 #include "Engine/ECS/GameNetSerializer.hpp"
+#include "OneGame/Client.hpp"
 
 namespace OneGame
 {
@@ -9,22 +9,27 @@ void DebugClient::Initialize(PresentationContext& ctx)
     m_gameWorld.CreateClient();
     m_gameWorld.CreateTerrain();
 
-    m_gameWorld.Register<SubsystemUI>();
-    m_gameWorld.Register<SubsystemPlayerInput>();
-    m_gameWorld.Register<SubsystemPlayer>();
+    m_gameUpdater =
+        GameUpdateScheduler::Builder().With<SubsystemUI>().With<SubsystemPlayerInput>().With<SubsystemPlayer>().Build(
+            ctx);
 
-    m_gameRenderer.Register<DebugInfoRenderer>();
-    m_gameRenderer.Register<Terrain::TerrainRenderer>();
-    m_gameRenderer.Register<UIRenderer>();
-    m_gameRenderer.Register<CameraRenderer>();
-    m_gameRenderer.Register<PlayerInputRenderer>();
+    m_gameRenderer = GameRendererBuilder()
+                         .With<DebugInfoRenderer>()
+                         .With<Terrain::TerrainRenderer>()
+                         .With<UIRenderer>()
+                         .With<CameraRenderer>()
+                         .With<PlayerInputRenderer>()
+                         .Build();
 }
 
 void DebugClient::Enter(PresentationContext& ctx)
 {
     ClientArgs _args{};
     auto args = ctx.sceneArgs.try_cast<ClientArgs>();
-    if (!args) {args = &_args;}
+    if (!args)
+    {
+        args = &_args;
+    }
     auto& client = m_gameWorld.Get().ctx().get<NetClient>();
     client.Initialize();
     client.Connect(args->ip.c_str(), args->port, args->timeout);
@@ -36,18 +41,11 @@ void DebugClient::Enter(PresentationContext& ctx)
     m_state = ClientState::WaitingConnect;
 }
 
-void DebugClient::onClientDisconnected(OnClientDisconnected&)
-{
-}
+void DebugClient::onClientDisconnected(OnClientDisconnected&) {}
 
-void DebugClient::onClientConnectionTimeout(OnClientConnectionTimeout&)
-{
-}
+void DebugClient::onClientConnectionTimeout(OnClientConnectionTimeout&) {}
 
-void DebugClient::onClientConnected(OnClientConnected&)
-{
-    m_state = ClientState::WaitingConfig;
-}
+void DebugClient::onClientConnected(OnClientConnected&) { m_state = ClientState::WaitingConfig; }
 
 void DebugClient::onPacketReceived(OnClientPacketReceived& packet)
 {
@@ -71,14 +69,14 @@ void DebugClient::Update(PresentationContext& ctx, const FrameInputData& frame, 
     if (client.Status() == ClientStatus::Disconnecting || client.Status() == ClientStatus::Connecting) return;
     if (m_state == ClientState::Available)
     {
-        m_gameWorld.Update(ctx, frame);
-        m_gameRenderer.Present(ctx, frameOut);
+        m_gameUpdater.Update(m_gameWorld.Get(), ctx, frame);
+        m_gameRenderer.Present(m_gameWorld.Get(), ctx, frameOut);
     }
     else if (m_state == ClientState::ReceivedConfig)
     {
-        m_gameWorld.Initialize(ctx);
-        m_gameRenderer.Initialize(ctx);
+        m_gameUpdater.Initialize(m_gameWorld.Get(), ctx);
+        m_gameRenderer.Initialize(m_gameWorld.Get(), ctx);
         m_state = ClientState::Available;
     }
 }
-}
+}  // namespace OneGame

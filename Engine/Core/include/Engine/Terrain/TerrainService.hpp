@@ -63,6 +63,7 @@ class TerrainGenerator
 class TerrainService : public ECS::SubsystemBase
 {
    public:
+    static constexpr std::string_view Name = "SubsystemTerrain";
     NO_COPY(TerrainService);
     ~TerrainService() = default;
 

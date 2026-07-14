@@ -9,6 +9,11 @@ namespace OneGame::Engine
 {
 class InputSystem;
 class AssetManager;
+namespace ECS
+{
+class SubsystemRegistry;
+class RendererRegistry;
+}
 
 enum class AppFrameAction : uint32_t
 {
@@ -58,6 +63,7 @@ struct SceneContext
 {
     entt::dispatcher& events;
     entt::meta_any& sceneArgs;
+    ECS::SubsystemRegistry& subsystemRegistry;
 };
 
 // Application states

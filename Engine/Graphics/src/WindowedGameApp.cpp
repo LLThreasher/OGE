@@ -16,12 +16,13 @@ constexpr uint32_t DEBUG_SCENE3 = 0;
 
 inline PresentationContext GameGraphicApp::PresentCtx()
 {
-    return {m_assetManager, m_streamingManager, m_backend, m_assetPool, m_dispatcher, m_sceneArgs, m_renderer};
+    
+    return {m_assetManager, m_streamingManager, m_backend, m_assetPool, m_dispatcher, m_sceneArgs, m_subsystemRegistry, m_renderer, m_rendererRegistry};
 }
 
 inline PresentationContext GameGraphicApp::PresentCtx(AssetContext assets)
 {
-    return {assets, m_dispatcher, m_sceneArgs, m_renderer};
+    return {assets, m_dispatcher, m_sceneArgs, m_subsystemRegistry, m_renderer, m_rendererRegistry};
 }
 
 inline AssetContext GameGraphicApp::AssetCtx() { return {m_assetManager, m_streamingManager, m_backend, m_assetPool}; }

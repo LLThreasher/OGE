@@ -163,10 +163,13 @@ Graphics::WindowHandle SDL3GameWindow::GetCurrentWindow()
 void SDL3GameWindow::Run(GameGraphicApp& app)
 {
     SDL_ShowWindow(m_window);
+#ifndef OGE_DEBUG
     try
     {
+#endif
         auto handle = GetCurrentWindow();
         app.Initialize(&handle);
+#ifndef OGE_DEBUG
     }
     catch (const std::exception& e)
     {
@@ -175,6 +178,7 @@ void SDL3GameWindow::Run(GameGraphicApp& app)
         SDL_Quit();
         return;
     }
+#endif
 
     uint64_t perfFrequency = SDL_GetPerformanceFrequency();
     bool readyToClose = false;

@@ -6,6 +6,8 @@
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/IScene.hpp"
 #include "Engine/StreamingManager.hpp"
+#include "Engine/ECS/SubsystemRegistry.hpp"
+#include "Engine/ECS/IRenderer.hpp"
 
 namespace OneGame::Engine
 {
@@ -21,7 +23,7 @@ class WindowHandle;
 using WindowedScene = Scene<PresentationContext, const FrameInputData, FrameOutputData>;
 using WindowedSceneRunner = SceneRunner<PresentationContext, const FrameInputData, FrameOutputData>;
 
-class GameGraphicApp : public WindowedSceneRunner
+class GameGraphicApp : public WindowedSceneRunner, ECS::SubsystemRegistryProvider
 {
    public:
     GameGraphicApp(Graphics::IGraphicsBackend& backend);
@@ -46,6 +48,8 @@ class GameGraphicApp : public WindowedSceneRunner
     Graphics::Renderer m_renderer;
     StreamingManager m_streamingManager;
     AssetPool m_assetPool;
+
+    ECS::RendererRegistry m_rendererRegistry;
 
     Graphics::SubmissionQueue m_graphicsSubmissionQueue;
 

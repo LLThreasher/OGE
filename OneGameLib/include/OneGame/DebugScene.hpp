@@ -73,13 +73,14 @@ const std::vector<uint16_t> chunk_zero_indices = {
 class DebugScene3 : public Scene<PresentationContext, const FrameInputData, FrameOutputData>
 {
 public:
-    DebugScene3() : m_gameRenderer(m_gameWorld) {}
+    DebugScene3();
     virtual void Initialize(PresentationContext& context) override;
     virtual void Enter(PresentationContext& context) override;
     virtual void Exit(PresentationContext& context) override;
     virtual void Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut) override;
 private:
     ECS::GameWorld m_gameWorld;
+    ECS::GameUpdateScheduler m_gameUpdater;
     ECS::GameRenderer m_gameRenderer;
     entt::entity m_terminalButton;
 };

@@ -2,6 +2,7 @@
 #include "Engine/GraphicState.hpp"
 #include "Engine/entt.hpp"
 #include "GraphicalComponents.hpp"
+#include "Engine/ECS/TypedRegistry.hpp"
 
 #define DECLARE_RENDERER(Name, ...)                                                                         \
     class Name##Renderer : public RendererBase                                                              \
@@ -41,5 +42,9 @@ DECLARE_RENDERER(UI);
 DECLARE_RENDERER(PlayerInput, void onCreateInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
                  void onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity); bool isKeyMouseUsed;
                  bool previousIsKeyMouseUsed;);
+
+class RendererRegistry : public TypedRegistry<RendererBase>
+{
+};
 
 }  // namespace OneGame::Engine::ECS

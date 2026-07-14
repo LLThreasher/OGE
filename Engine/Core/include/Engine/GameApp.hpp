@@ -11,18 +11,19 @@
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/entt.hpp"
+#include "Engine/ECS/SubsystemRegistry.hpp"
 
 namespace OneGame::Engine
 {
 
 using HeadlessScene = Scene<AppContext, const FrameData>;
 
-class GameHeadlessApp : public SceneRunner<AppContext, const FrameData>
+class GameHeadlessApp : public SceneRunner<AppContext, const FrameData>, ECS::SubsystemRegistryProvider
 {
     using Parent = SceneRunner<AppContext, const FrameData>;
 
    public:
-    GameHeadlessApp() : m_appContext({m_assetManager}, {m_dispatcher, m_sceneArgs}) {}
+    GameHeadlessApp() : m_appContext({m_assetManager}, {m_dispatcher, m_sceneArgs, m_subsystemRegistry}) {}
     void Initialize();
     bool Update(float dt);
     bool HandleCmd(std::string_view cmd);

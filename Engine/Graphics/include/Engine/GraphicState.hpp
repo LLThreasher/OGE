@@ -60,8 +60,12 @@ struct AssetContext : AssetBase
 struct PresentationContext : AssetContext, SceneContext
 {
     Graphics::Renderer& renderer;
+    ECS::RendererRegistry& rendererRegistry;
 
-    operator AppContext() const { return {assetManager, events, sceneArgs}; }
+    AppContext appCtx = {assetManager, events, sceneArgs, subsystemRegistry};
+
+    operator AppContext&() { return appCtx; }
+    operator const AppContext&() const { return appCtx; }
 };
 
 struct SurfaceRecreateEvent

@@ -8,10 +8,11 @@
 #include "Engine/Rect.hpp"
 #include "Engine/entt.hpp"
 
-#define DECL_SUBSYSTEM(Name, ...)                                                            \
-    class Subsystem##Name : public SubsystemBase                                                \
+#define DECL_SUBSYSTEM(MName, ...)                                                              \
+    class Subsystem##MName : public SubsystemBase                                               \
     {                                                                                           \
        public:                                                                                  \
+        static constexpr std::string_view Name = "Subsystem" #MName;                                 \
         void Initialize(GameWorldContext& game, AppContext ctx) override;                       \
         void Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd) override; \
                                                                                                 \
@@ -20,7 +21,8 @@
     };
 
 #define DECL_SUBSYSTEM_INIT(Name) void Subsystem##Name::Initialize(GameWorldContext& game, AppContext engine)
-#define DECL_SUBSYSTEM_UPDATE(Name) void Subsystem##Name::Update(GameWorldContext& game, AppContext engine, const FrameInputData& frame)
+#define DECL_SUBSYSTEM_UPDATE(Name) \
+    void Subsystem##Name::Update(GameWorldContext& game, AppContext engine, const FrameInputData& frame)
 
 namespace OneGame::Engine::ECS
 {
@@ -52,7 +54,7 @@ math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamer
 math::vec2 RayToPitchYaw(math::vec3 ray);
 
 DECL_SUBSYSTEM(PlayerInput, void onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
-                  void onEraseInputSourceWidget(entt::registry& gameWorld, entt::entity entity););
+               void onEraseInputSourceWidget(entt::registry& gameWorld, entt::entity entity););
 
 // Handle drags and UI rendering
 DECL_SUBSYSTEM(UI, std::array<entt::entity, PointerIdx::COUNT> activeDrags;);
@@ -60,4 +62,5 @@ DECL_SUBSYSTEM(UI, std::array<entt::entity, PointerIdx::COUNT> activeDrags;);
 DECL_SUBSYSTEM(Player);
 DECL_SUBSYSTEM(Physics);
 DECL_SUBSYSTEM(Creature);
+
 }  // namespace OneGame::Engine::ECS

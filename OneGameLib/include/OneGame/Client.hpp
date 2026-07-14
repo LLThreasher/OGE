@@ -29,7 +29,6 @@ enum class ClientState
 class DebugClient : public Scene<PresentationContext, const FrameInputData, FrameOutputData>
 {
 public:
-    DebugClient() : m_gameRenderer(m_gameWorld) {}
     virtual void Initialize(PresentationContext& context) override;
     virtual void Enter(PresentationContext& context) override;
     virtual void Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut) override;
@@ -40,6 +39,7 @@ private:
     void onPacketReceived(OnClientPacketReceived&);
     
     ECS::GameWorld m_gameWorld;
+    ECS::GameUpdateScheduler m_gameUpdater;
     ECS::GameRenderer m_gameRenderer;
     ClientState m_state = ClientState::WaitingConnect;
     GameClient m_client;

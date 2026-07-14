@@ -1,37 +1,46 @@
 #include "OneGame/DebugScene.hpp"
 
+#include "Engine/ECS/IRenderer.hpp"
+#include "Engine/ECS/ISubsystem.hpp"
 #include "Engine/Graphics/PresentationObjects.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Random.hpp"
 #include "Engine/StreamingManager.hpp"
 #include "Engine/Terrain/BlockManager.hpp"
-#include "Engine/Terrain/TerrainService.hpp"
 #include "Engine/Terrain/TerrainRenderer.hpp"
+#include "Engine/Terrain/TerrainService.hpp"
 #include "Engine/Terrain/TerrainVertexFormat.hpp"
-#include "Engine/ECS/IRenderer.hpp"
-#include "Engine/ECS/ISubsystem.hpp"
 
 #define LOGGER_NAME "Engine"
 #include "Engine/Logger.hpp"
 
 namespace OneGame
 {
+using namespace ECS;
+
+DebugScene3::DebugScene3()
+    : m_gameRenderer(GameRendererBuilder()
+                         .With<DebugInfoRenderer>()
+                         .With<Terrain::TerrainRenderer>()
+                         .With<UIRenderer>()
+                         .With<CameraRenderer>()
+                         .With<PlayerInputRenderer>()
+                         .Build())
+{
+}
+
 void DebugScene3::Initialize(PresentationContext& context)
 {
-    using namespace ECS;
     m_gameWorld.CreateTerrain();
-    m_gameWorld.Register<Terrain::TerrainService>();
-    m_gameWorld.Register<SubsystemPhysics, TickType::Physics>();
-    m_gameWorld.Register<SubsystemUI>();
-    m_gameWorld.Register<SubsystemPlayerInput>();
-    m_gameWorld.Register<SubsystemCreature>();
-    m_gameWorld.Register<SubsystemPlayer>();
-
-    m_gameRenderer.Register<DebugInfoRenderer>();
-    m_gameRenderer.Register<Terrain::TerrainRenderer>();
-    m_gameRenderer.Register<UIRenderer>();
-    m_gameRenderer.Register<CameraRenderer>();
-    m_gameRenderer.Register<PlayerInputRenderer>();
+    m_gameUpdater = GameUpdateScheduler::Builder()
+                        .With<Terrain::TerrainService>()
+                        .With<SubsystemUI>()
+                        .With<SubsystemPlayerInput>()
+                        .With<SubsystemCreature>()
+                        .With<SubsystemPlayer>()
+                        .WithTickGroup("Physics", 1 / 60.f)
+                        .With<SubsystemPhysics>("Physics")
+                        .Build(context);
 
     auto& blocks = m_gameWorld.Get().ctx().get<Terrain::BlockRegistry>();
     blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1});
@@ -46,8 +55,8 @@ void DebugScene3::Initialize(PresentationContext& context)
 void DebugScene3::Enter(PresentationContext& context)
 {
     using namespace ECS;
-    m_gameWorld.Initialize(context);
-    m_gameRenderer.Initialize(context);
+    m_gameUpdater.Initialize(m_gameWorld.Get(), context);
+    m_gameRenderer.Initialize(m_gameWorld.Get(), context);
     auto vpe = UI::CreateGameView(m_gameWorld.Get(), {math::vec2{0, 0}, math::vec2{1, 1}});
 
     auto& world = m_gameWorld.Get();
@@ -68,29 +77,30 @@ void DebugScene3::Enter(PresentationContext& context)
     world.get<ViewPanel>(vpe).activeCamera = player;
     world.patch<ViewPanel>(vpe);
 
-    m_terminalButton = UI::CreateButton(world, context, {math::vec2{0.f,0.f}, math::vec2{0.1f, 0.1f}});
+    m_terminalButton = UI::CreateButton(world, context, {math::vec2{0.f, 0.f}, math::vec2{0.1f, 0.1f}});
 
     auto font = context.LoadASCIIBitmapFont16x6("om_large_plain_idx.png");
-    
+
     // {
     //     auto e = world.create();
-    //     world.emplace<UIRect>(e, math::vec2{0.3f - 0.01f, 0.3f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.1f, 0.1f * context.backend.SwapchainAspect()});
-    //     world.emplace<UISprite>(e, crossSprite);
+    //     world.emplace<UIRect>(e, math::vec2{0.3f - 0.01f, 0.3f - 0.01f * context.backend.SwapchainAspect()},
+    //     math::vec2{0.1f, 0.1f * context.backend.SwapchainAspect()}); world.emplace<UISprite>(e, crossSprite);
     //     world.emplace<UIZLevel>(e, 1);
     // }
 
     // {
     //     auto e = world.create();
-    //     world.emplace<UIRect>(e, math::vec2{0.3f - 0.01f, 0.7f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.1f, 0.1f * context.backend.SwapchainAspect()});
-    //     world.emplace<UISprite>(e, crossSprite);
+    //     world.emplace<UIRect>(e, math::vec2{0.3f - 0.01f, 0.7f - 0.01f * context.backend.SwapchainAspect()},
+    //     math::vec2{0.1f, 0.1f * context.backend.SwapchainAspect()}); world.emplace<UISprite>(e, crossSprite);
     //     // world.emplace<UIText>(e, UIText{.font=font, .text="Hello world\nTerminal"});
     //     // world.emplace<UIZLevel>(e, 1);
     // }
 
     // put something in the middle of the screen
-    UISprite crossSprite{.sprite=context.LoadTexture("cross.png")};
+    UISprite crossSprite{.sprite = context.LoadTexture("cross.png")};
     auto cubeEntity = world.create();
-    world.emplace<UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * context.backend.SwapchainAspect()}, math::vec2{0.01f, 0.01f * context.backend.SwapchainAspect()});
+    world.emplace<UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * context.backend.SwapchainAspect()},
+                          math::vec2{0.01f, 0.01f * context.backend.SwapchainAspect()});
     world.emplace<UISprite>(cubeEntity, crossSprite);
     world.emplace<UIZLevel>(cubeEntity, 1);
 
@@ -102,26 +112,23 @@ void DebugScene3::Enter(PresentationContext& context)
     world.emplace<UIRect>(lookWidget, math::vec2{0.0f, 0.0f}, math::vec2{1.0f, 1.0f});
     world.emplace<UIZLevel>(lookWidget, 0);
     world.emplace<UIRaycastTarget>(lookWidget);
-    
+
     auto mvWidget = world.create();
-    world.emplace<UIRect>(mvWidget, math::vec2{0.0f, 1.f - scaledY},
-                          math::vec2{scaledX, scaledY});
+    world.emplace<UIRect>(mvWidget, math::vec2{0.0f, 1.f - scaledY}, math::vec2{scaledX, scaledY});
     world.emplace<UIZLevel>(mvWidget, 1);
     world.emplace<UIRaycastTarget>(mvWidget);
 
     world.emplace<InputSourceWidget>(player, mvWidget, lookWidget);
 }
 
-void DebugScene3::Exit(PresentationContext& context)
-{
-}
+void DebugScene3::Exit(PresentationContext& context) {}
 
 void DebugScene3::Update(PresentationContext& context, const FrameInputData& frame, FrameOutputData& frameOut)
 {
     auto& blocks = m_gameWorld.Get();
 
-    m_gameWorld.Update(context, frame);
-    m_gameRenderer.Present(context, frameOut);
+    m_gameUpdater.Update(m_gameWorld.Get(), context, frame);
+    m_gameRenderer.Present(m_gameWorld.Get(), context, frameOut);
 
     if (frame.input.IsKeyDown(KeyCode::KY_G))
     {
@@ -134,8 +141,7 @@ void DebugScene3::Update(PresentationContext& context, const FrameInputData& fra
     {
         auto& gworld = m_gameWorld.Get();
         auto pe = gworld.view<ECS::PlayerInputData>().front();
-        if (gworld.all_of<ECS::InputSourceKeyMouse>(pe))
-            gworld.erase<ECS::InputSourceKeyMouse>(pe);
+        if (gworld.all_of<ECS::InputSourceKeyMouse>(pe)) gworld.erase<ECS::InputSourceKeyMouse>(pe);
     }
     math::vec2 pos;
     if (frame.input.IsKeyReleased(KeyCode::KY_T) || UI::IsButtonClicked(m_gameWorld.Get(), m_terminalButton, pos))
@@ -151,4 +157,4 @@ void DebugScene3::Update(PresentationContext& context, const FrameInputData& fra
         }
     }
 }
-}  // namespace OneGame::Engine
+}  // namespace OneGame
