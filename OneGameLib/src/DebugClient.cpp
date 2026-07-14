@@ -13,13 +13,13 @@ void DebugClient::Initialize(PresentationContext& ctx)
         GameUpdateScheduler::Builder().With<SubsystemUI>().With<SubsystemPlayerInput>().With<SubsystemPlayer>().Build(
             ctx);
 
-    m_gameRenderer = GameRendererBuilder()
+    m_gameRenderer = GameRenderer::Builder()
                          .With<DebugInfoRenderer>()
                          .With<Terrain::TerrainRenderer>()
                          .With<UIRenderer>()
                          .With<CameraRenderer>()
                          .With<PlayerInputRenderer>()
-                         .Build();
+                         .Build(ctx);
 }
 
 void DebugClient::Enter(PresentationContext& ctx)

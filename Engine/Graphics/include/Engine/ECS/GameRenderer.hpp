@@ -8,12 +8,42 @@
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Terrain/TerrainRenderer.hpp"
 #include "Engine/entt.hpp"
+#include "Engine/ECS/RendererRegistry.hpp"
 
 namespace OneGame::Engine::ECS
 {
 class GameRenderer
 {
    public:
+    struct Def
+    {
+        std::vector<std::string> renderers;
+    };
+
+    static GameRenderer Build(Def def, PresentationContext& ctx)
+    {
+        return GameRenderer(std::move(DefBuilder::BuildABCVec<RendererBase>(def.renderers, ctx.rendererRegistry)));
+    }
+
+    class Builder
+    {
+    public:
+        template <typename TRenderer>
+        Builder&& With() &&
+        {
+            m_def.renderers.emplace_back(TRenderer::Name);
+            return std::move(*this);
+        }
+
+        GameRenderer Build(PresentationContext& ctx) &&
+        {
+            return GameRenderer::Build(m_def, ctx);
+        }
+
+    private:
+        Def m_def;
+    };
+
     GameRenderer(std::vector<std::unique_ptr<RendererBase>> renderers = {}) : m_renderers(std::move(renderers))
     {
     }
@@ -48,25 +78,6 @@ class GameRenderer
     }
 
    private:
-    std::vector<std::unique_ptr<RendererBase>> m_renderers;
-};
-
-class GameRendererBuilder
-{
-public:
-    template <typename TRenderer>
-    GameRendererBuilder&& With() &&
-    {
-        m_renderers.emplace_back(std::make_unique<TRenderer>());
-        return std::move(*this);
-    }
-
-    GameRenderer Build() &&
-    {
-        return GameRenderer(std::move(m_renderers));
-    }
-
-private:
     std::vector<std::unique_ptr<RendererBase>> m_renderers;
 };
 }  // namespace OneGame::Engine::ECS

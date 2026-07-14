@@ -2,12 +2,12 @@
 #include "Engine/GraphicState.hpp"
 #include "Engine/entt.hpp"
 #include "GraphicalComponents.hpp"
-#include "Engine/ECS/TypedRegistry.hpp"
 
-#define DECLARE_RENDERER(Name, ...)                                                                         \
-    class Name##Renderer : public RendererBase                                                              \
+#define DECLARE_RENDERER(MName, ...)                                                                        \
+    class MName##Renderer : public RendererBase                                                             \
     {                                                                                                       \
        public:                                                                                              \
+        static constexpr std::string_view Name = #MName "Renderer";                                         \
         void Initialize(GameWorldContext& game, PresentationContext& ctx) override;                         \
         void Present(const GameWorldContext& game, PresentationContext& ctx, FrameOutputData& fd) override; \
                                                                                                             \
@@ -42,9 +42,5 @@ DECLARE_RENDERER(UI);
 DECLARE_RENDERER(PlayerInput, void onCreateInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity);
                  void onEraseInputSourceKeyMouse(entt::registry& gameWorld, entt::entity entity); bool isKeyMouseUsed;
                  bool previousIsKeyMouseUsed;);
-
-class RendererRegistry : public TypedRegistry<RendererBase>
-{
-};
 
 }  // namespace OneGame::Engine::ECS

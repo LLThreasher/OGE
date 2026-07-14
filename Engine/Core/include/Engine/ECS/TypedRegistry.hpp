@@ -18,9 +18,12 @@ class TypedRegistry
         m_constructors.emplace(T::Name, []() { return std::make_unique<T>(); });
     }
 
-    std::unique_ptr<TBase> Get(std::string name)
+    std::unique_ptr<TBase> Get(std::string_view name)
     {
-        return m_constructors.at(name)();
+        auto it = m_constructors.find(std::string(name));
+        if (it == m_constructors.end())
+            return nullptr;
+        return it->second();
     }
 
    private:

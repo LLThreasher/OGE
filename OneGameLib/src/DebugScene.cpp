@@ -19,13 +19,6 @@ namespace OneGame
 using namespace ECS;
 
 DebugScene3::DebugScene3()
-    : m_gameRenderer(GameRendererBuilder()
-                         .With<DebugInfoRenderer>()
-                         .With<Terrain::TerrainRenderer>()
-                         .With<UIRenderer>()
-                         .With<CameraRenderer>()
-                         .With<PlayerInputRenderer>()
-                         .Build())
 {
 }
 
@@ -41,6 +34,14 @@ void DebugScene3::Initialize(PresentationContext& context)
                         .WithTickGroup("Physics", 1 / 60.f)
                         .With<SubsystemPhysics>("Physics")
                         .Build(context);
+
+    m_gameRenderer = GameRenderer::Builder()
+                         .With<DebugInfoRenderer>()
+                         .With<Terrain::TerrainRenderer>()
+                         .With<UIRenderer>()
+                         .With<CameraRenderer>()
+                         .With<PlayerInputRenderer>()
+                         .Build(context);
 
     auto& blocks = m_gameWorld.Get().ctx().get<Terrain::BlockRegistry>();
     blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1});

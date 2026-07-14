@@ -121,6 +121,7 @@ struct TerrainRendererDesc
 class TerrainRenderer : public ECS::RendererBase
 {
    public:
+    static constexpr std::string_view Name = "TerrainRenderer";
     NO_COPY(TerrainRenderer);
     ~TerrainRenderer() = default;
 
