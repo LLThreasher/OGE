@@ -11,7 +11,7 @@ class SubsystemRegistry : public TypedRegistry<SubsystemBase>
 
 class SubsystemRegistryProvider
 {
-protected:
+   protected:
     SubsystemRegistryProvider()
     {
         m_subsystemRegistry.Register<SubsystemPlayerInput>();
@@ -21,7 +21,7 @@ protected:
         m_subsystemRegistry.Register<SubsystemCreature>();
         m_subsystemRegistry.Register<Terrain::TerrainService>();
     }
-    
+
     SubsystemRegistry m_subsystemRegistry;
 };
-} // namespace OneGame::Engine::ECS
+}  // namespace OneGame::Engine::ECS

@@ -106,10 +106,7 @@ struct ComponentCreature
     math::vec3 moveOrder = {};
     bool jumpOrder = false;
 
-    void SetMaxJumpHeight(float height)
-    {
-        initJumpSpeed = math::sqrt(2.f * height * 9.8f);
-    }
+    void SetMaxJumpHeight(float height) { initJumpSpeed = math::sqrt(2.f * height * 9.8f); }
 };
 
 struct ComponentCreatureInfo

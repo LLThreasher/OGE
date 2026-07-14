@@ -4,11 +4,11 @@
 
 #include "Engine/ECS/GameWorld.hpp"
 #include "Engine/ECS/IRenderer.hpp"
+#include "Engine/ECS/RendererRegistry.hpp"
 #include "Engine/GraphicState.hpp"
 #include "Engine/Graphics/Renderer.hpp"
 #include "Engine/Terrain/TerrainRenderer.hpp"
 #include "Engine/entt.hpp"
-#include "Engine/ECS/RendererRegistry.hpp"
 
 namespace OneGame::Engine::ECS
 {
@@ -27,7 +27,7 @@ class GameRenderer
 
     class Builder
     {
-    public:
+       public:
         template <typename TRenderer>
         Builder&& With() &&
         {
@@ -35,18 +35,13 @@ class GameRenderer
             return std::move(*this);
         }
 
-        GameRenderer Build(PresentationContext& ctx) &&
-        {
-            return GameRenderer::Build(m_def, ctx);
-        }
+        GameRenderer Build(PresentationContext& ctx) && { return GameRenderer::Build(m_def, ctx); }
 
-    private:
+       private:
         Def m_def;
     };
 
-    GameRenderer(std::vector<std::unique_ptr<RendererBase>> renderers = {}) : m_renderers(std::move(renderers))
-    {
-    }
+    GameRenderer(std::vector<std::unique_ptr<RendererBase>> renderers = {}) : m_renderers(std::move(renderers)) {}
 
     void Initialize(GameWorldContext& world, PresentationContext ctx)
     {

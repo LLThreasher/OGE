@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Engine/ECS/TypedRegistry.hpp"
 #include "Engine/ECS/IRenderer.hpp"
+#include "Engine/ECS/TypedRegistry.hpp"
 #include "Engine/Terrain/TerrainRenderer.hpp"
 
 namespace OneGame::Engine::ECS
@@ -12,7 +12,7 @@ class RendererRegistry : public TypedRegistry<RendererBase>
 
 class RendererRegistryProvider
 {
-protected:
+   protected:
     RendererRegistryProvider()
     {
         m_rendererRegistry.Register<DebugInfoRenderer>();
@@ -24,4 +24,4 @@ protected:
 
     RendererRegistry m_rendererRegistry;
 };
-} // namespace OneGame::Engine::ECS
+}  // namespace OneGame::Engine::ECS

@@ -2,13 +2,13 @@
 
 #include <vector>
 
+#include "Engine/ECS/ISubsystem.hpp"
 #include "Engine/ECS/NetClient.hpp"
 #include "Engine/ECS/NetServer.hpp"
+#include "Engine/ECS/SubsystemRegistry.hpp"
 #include "Engine/Terrain/TerrainService.hpp"
 #include "Engine/TickScheduler.hpp"
 #include "Engine/entt.hpp"
-#include "ISubsystem.hpp"
-#include "Engine/ECS/SubsystemRegistry.hpp"
 
 namespace OneGame::Engine::ECS
 {
@@ -78,7 +78,7 @@ class GameUpdateScheduler
     };
     class Builder
     {
-    public:
+       public:
         Builder&& WithTickGroup(std::string_view ty, float interval, bool isFrame = false) &&
         {
             m_tickGrpLookup.emplace(ty, m_def.tickGroups.size());
@@ -93,19 +93,14 @@ class GameUpdateScheduler
             return std::move(*this);
         }
 
-        GameUpdateScheduler Build(AppContext& ctx) &&
-        {
-            return GameUpdateScheduler::Build(m_def, ctx);
-        }
-    private:
+        GameUpdateScheduler Build(AppContext& ctx) && { return GameUpdateScheduler::Build(m_def, ctx); }
+
+       private:
         std::unordered_map<std::string_view, size_t> m_tickGrpLookup = {{"Frame", 0u}};
-        Def m_def = {{TickGroup::Def{{}, true, 1/60.f}}};
+        Def m_def = {{TickGroup::Def{{}, true, 1 / 60.f}}};
     };
 
-    GameUpdateScheduler(std::vector<TickGroup> subsystems = {})
-        : m_subsystems(std::move(subsystems))
-    {
-    }
+    GameUpdateScheduler(std::vector<TickGroup> subsystems = {}) : m_subsystems(std::move(subsystems)) {}
 
     void Initialize(GameWorldContext& game, AppContext ctx)
     {

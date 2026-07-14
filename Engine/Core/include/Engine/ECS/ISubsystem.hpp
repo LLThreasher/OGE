@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Components.hpp"
+#include "Engine/ECS/Components.hpp"
 #include "Engine/GameAppState.hpp"
 #include "Engine/Input/InputSystem.hpp"
 #include "Engine/Math.hpp"
@@ -12,7 +12,7 @@
     class Subsystem##MName : public SubsystemBase                                               \
     {                                                                                           \
        public:                                                                                  \
-        static constexpr std::string_view Name = "Subsystem" #MName;                                 \
+        static constexpr std::string_view Name = "Subsystem" #MName;                            \
         void Initialize(GameWorldContext& game, AppContext ctx) override;                       \
         void Update(GameWorldContext& game, AppContext ctx, const FrameInputData& fd) override; \
                                                                                                 \
