@@ -15,6 +15,7 @@ struct GameState
 struct FGameState : GameState
 {
     float dt;
+    FGameState(float dt, GameState& state) : dt(dt), GameState(state) {}
 };
 
 class Subsystem : public Stage<GameState, FGameState>

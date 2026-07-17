@@ -16,8 +16,6 @@ struct InitDrawContext
 {
     AssetContext& assets;
     UniformArena uniformArena;
-    DynamicChunkAllocator chunkAllocator;
-    DynamicSkylineAllocator spriteAllocator;
 
     InitDrawContext(OGEContextReadOnly& ctx);
 };

@@ -18,8 +18,8 @@ DrawContext::DrawContext(InitDrawContext& ctx)
       uniformArena(ctx.uniformArena),
       transferCmd(backend.CreateCommandList(QueueType::Transfer)),
       drawCmd(backend.CreateCommandList(QueueType::Present)),
-      chunkAllocator(ctx.chunkAllocator),
-      spriteAllocator(ctx.spriteAllocator)
+      chunkAllocator(ctx.assets.chunkAllocator),
+      spriteAllocator(ctx.assets.spriteAllocator)
 {
 }
 

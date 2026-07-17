@@ -1,17 +1,16 @@
 #pragma once
 
-#include <span>
 #include <cinttypes>
+#include <span>
 
+#include "oge/graphics/objects.hpp"
 #include "oge/runtime/asset_base.hpp"
 #include "oge/runtime/objects_ext.hpp"
-#include "oge/graphics/objects.hpp"
 
 namespace oge::graphics
 {
-    class IGraphicsBackend;
-} // namespace oge::graphics
-
+class IGraphicsBackend;
+}  // namespace oge::graphics
 
 namespace oge::runtime
 {
@@ -24,16 +23,31 @@ namespace ui
 class IFont;
 };
 
+namespace renderer
+{
+namespace dca
+{
+class DynamicChunkAllocator;
+}  // namespace dca
+
+class DynamicSkylineAllocator;
+}  // namespace renderer
+
+using DynamicChunkAllocator = renderer::dca::DynamicChunkAllocator;
+using DynamicSkylineAllocator = renderer::DynamicSkylineAllocator;
+
 struct AssetContext : AssetBase
 {
     StreamingManager& streamingManager;
     graphics::IGraphicsBackend& backend;
     AssetPool& assetPool;
+    DynamicChunkAllocator& chunkAllocator;
+    DynamicSkylineAllocator& spriteAllocator;
 
     GPUTextureHandle LoadTexture(const std::string_view& id);
     GPUMesh AllocateMesh(int vCount, int iCount);
     GPUMesh LoadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices,
-                  uint32_t indexCount, ResourceBundleHandle res = {});
+                     uint32_t indexCount, ResourceBundleHandle res = {});
     template <typename TData, typename TIndex>
     GPUMesh LoadMesh(const std::vector<TData>& vertices, const std::vector<TIndex>& indices)
     {
@@ -53,4 +67,4 @@ struct AssetContext : AssetBase
     std::shared_ptr<ui::IFont> LoadASCIIBitmapFont16x6(const std::string_view& id);
 };
 
-} // namespace oge::runtime
+}  // namespace oge::runtime

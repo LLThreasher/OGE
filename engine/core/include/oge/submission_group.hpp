@@ -16,6 +16,13 @@ struct SubmissionView
     {
         return std::get<std::vector<std::decay_t<T>>&>(buckets);
     }
+
+    template <typename T, typename... Args>
+    void Add(Args&&... args)
+    {
+        auto& bucket = std::get<std::vector<T>&>(buckets);
+        bucket.emplace_back(std::forward<Args>(args)...);
+    }
 };
 
 template <typename... TCommands>

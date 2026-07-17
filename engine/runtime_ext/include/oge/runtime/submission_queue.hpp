@@ -137,6 +137,9 @@ class ViewSubmissionGroup
    public:
     static constexpr size_t ViewCount = std::bit_width(static_cast<uint32_t>(GameViewType::All));
 
+    ViewSubmissionGroup() {}
+    ViewSubmissionGroup(std::array<SubmissionGroupT, ViewCount> groups) : m_groups(std::move(groups)) {}
+
     // Single-bit access
     SubmissionGroupT& GetSingle(GameViewType viewBit) { return m_groups[BitToIndex(viewBit)]; }
 
@@ -190,10 +193,25 @@ class ViewSubmissionGroup
         for (auto& g : m_groups) g.Clear();
     }
 
+    template <typename... Args>
+    ViewSubmissionGroup<SubmissionView<Args...>> View()
+    {
+        // Passed the explicit template arguments and the required 'arr' argument
+        return ViewSubmissionGroup<SubmissionView<Args...>>(create_array_impl<Args...>(m_groups, std::make_index_sequence<ViewCount>{}));
+    }
+
    private:
     static constexpr size_t BitToIndex(GameViewType viewBit)
     {
         return std::countr_zero(static_cast<uint32_t>(viewBit));
+    }
+
+    template <typename... Args, size_t... Is>
+    static std::array<SubmissionView<Args...>, ViewCount> create_array_impl(
+        std::array<SubmissionGroupT, ViewCount>& arr, std::index_sequence<Is...>)
+    {
+        // Corrected fold expansion and added 'template' keyword
+        return {arr[Is].template View<Args...>()...};
     }
 
     std::array<SubmissionGroupT, ViewCount> m_groups;

@@ -2,6 +2,7 @@
 
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/objects.hpp"
+#include "oge/runtime/objects_ext.hpp"
 #include "oge/runtime/renderer/chunk_allocator.hpp"
 
 namespace oge::runtime::renderer

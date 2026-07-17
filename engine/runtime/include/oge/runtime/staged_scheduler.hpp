@@ -13,13 +13,12 @@ namespace oge::runtime
 template <typename TCtx, typename TFrameCtx>
 class Stage
 {
-    using Ctx = TCtx;
-    using FrameCtx = TFrameCtx;
-
    protected:
     explicit Stage(oge_id_type id) : id_(id) {}
 
    public:
+    using Ctx = TCtx;
+    using FrameCtx = TFrameCtx;
     oge_id_type id() const noexcept { return id_; }
 
     virtual void onAttach(TCtx& ctx) = 0;
@@ -75,7 +74,7 @@ class Pipeline
 };
 
 template <typename TStage, typename TFrameData = float>
-class FramePipeline : Pipeline<TStage, FramePipeline<TStage>, TFrameData>
+class FramePipeline : Pipeline<FramePipeline<TStage>, TStage, TFrameData>
 {
 public:
     template <typename Fn>
@@ -86,7 +85,7 @@ public:
 };
 
 template <typename TStage>
-class FixedStepPipeline : Pipeline<TStage, FixedStepPipeline<TStage>, float>
+class FixedStepPipeline : Pipeline<FixedStepPipeline<TStage>, TStage, float>
 {
 public:
     template <typename Fn>
