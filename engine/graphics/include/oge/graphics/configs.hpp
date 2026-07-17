@@ -195,7 +195,4 @@ struct CopyTextureTarget
     uint32_t mipLevel = 0;
 };
 
-class IGraphicsBackend;
-class ICommandList;
-
 }

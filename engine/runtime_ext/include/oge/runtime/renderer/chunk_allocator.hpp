@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace OneGame::Engine::Graphics
+namespace oge::runtime::renderer
 {
 class ChunkAllocator
 {

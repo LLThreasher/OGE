@@ -4,193 +4,104 @@
 #include <unordered_map>
 #include <vector>
 
-#include "oge/runtime/typed_registry.hpp"
 #include "oge/runtime/tick_scheduler.hpp"
+#include "oge/runtime/typed_registry.hpp"
 
 namespace oge::runtime
 {
 
-class IStage
+template <typename TCtx, typename TFrameCtx>
+class Stage
 {
-   public:
-    struct Def
-    {
-        float updateInterval;
-        std::vector<std::tuple<oge_id_type, const Def>> children;
-        std::vector<oge_id_type> processors;
-    };
-    virtual ~IStage() = default;
-    virtual void Attach(OGEContext& ctx) = 0;
-    virtual void Update(float dt) = 0;
-    virtual void Detach(OGEContext& ctx) = 0;
-};
-
-template <typename... Args>
-class IProcessor
-{
-    struct Def
-    {
-    };
-    virtual void Attach(Args&... args) = 0;
-    virtual void Update(float dt, Args&... args) = 0;
-    virtual void Detach(Args&... args) = 0;
-};
-
-template<typename Impl, typename... Args>
-concept IsStageImpl =
-requires(Impl impl, float dt, Args&... args)
-{
-    {impl.onAttach(args...)};
-    {impl.onDetach(args...)};
-    {impl.onUpdate(dt, args...)};
-};
-
-template <typename Impl, typename... Args>
-    requires IsStageImpl<Impl, Args...>
-class Stage : public IStage
-{
-   public:
-    void Attach(OGEContext& ctx) override
-    {
-        m_args = ctx.GetMultiple<Args...>();
-        std::apply([&](auto*... args) { static_cast<Impl*>(this)->onAttach(*args...); }, m_args);
-    }
-
-    void Detach(OGEContext& ctx) override
-    {
-        std::apply([&](auto*... args) { static_cast<Impl*>(this)->onDetach(*args...); }, m_args);
-    }
-
-    void Update(float dt) override
-    {
-        std::apply([&](auto*... args) { static_cast<Impl*>(this)->onApply(dt, *args...); }, m_args);
-    }
-
-   private:
-    std::tuple<Args*...> m_args;
-};
-
-template <typename Impl, typename... Args>
-class ProcessorStage : public Stage<ProcessorStage<Impl, Args...>, Args...>
-{
-   public:
-    using Processor = IProcessor<float, Args...>;
-
-    ProcessorStage(std::vector<std::unique_ptr<Processor>> processors = {}) : m_processors(std::move(processors)) {}
-
-    void onAttach(Args&... args)
-    {
-        for (auto& p : m_processors)
-        {
-            p->Attach(args...);
-        }
-    }
-
-    void onDetach(Args&... args)
-    {
-        for (auto& p : m_processors.rbegin())
-        {
-            p->Detach(args...);
-        }
-    }
+    using Ctx = TCtx;
+    using FrameCtx = TFrameCtx;
 
    protected:
-    void RunUpdate(float dt, Args&... args)
+    explicit Stage(oge_id_type id) : id_(id) {}
+
+   public:
+    oge_id_type id() const noexcept { return id_; }
+
+    virtual void onAttach(TCtx& ctx) = 0;
+    virtual void onDetach(TCtx& ctx) = 0;
+    virtual void onUpdate(TFrameCtx& ctx) = 0;
+
+   private:
+    oge_id_type id_;
+};
+
+template <typename TControl, typename TStage, typename TFrameData = float>
+class Pipeline
+{
+    using TCtx = typename TStage::Ctx;
+    using TFrameCtx = typename TStage::FrameCtx;
+
+   public:
+    Pipeline(TCtx& ctx, AnythingFactory& factory) : m_ctx(ctx), m_factory(factory) {}
+
+    void AddStage(oge_id_type id)
     {
-        for (auto& p : m_processors)
+        m_stages.push_back(m_factory.BuildABC<TStage>(id));
+        m_stages.back()->onAttach(m_ctx);
+    }
+
+    void RemoveStage(oge_id_type id)
+    {
+        auto it = std::find_if(m_stages.begin(), m_stages.end(), [id](const auto& s) { return s->id() == id; });
+        if (it != m_stages.end())
         {
-            p->Apply(dt, args...);
+            it->onDetach(m_ctx);
+            m_stages.erase(it);
         }
     }
 
+    void Update(TFrameData frame)
+    {
+        auto& impl = static_cast<TControl*>(this);
+        impl->onUpdate(frame, m_ctx,
+                       [this](TFrameCtx ctx)
+                       {
+                           for (auto& stage : m_stages)
+                           {
+                               stage->onUpdate(ctx);
+                           }
+                       });
+    }
+
    private:
-    std::vector<std::unique_ptr<Processor>> m_processors;
+    std::vector<std::unique_ptr<TStage>> m_stages;
+    AnythingFactory& m_factory;
+    TCtx& m_ctx;
 };
 
-template <typename Impl, typename... Args>
-class FrameUpdateStage : public ProcessorStage<FrameUpdateStage<Impl, Args...>, Args...>
+template <typename TStage, typename TFrameData = float>
+class FramePipeline : Pipeline<TStage, FramePipeline<TStage>, TFrameData>
 {
-   public:
-    using Processor = IProcessor<float, Args...>;
-    using Parent = ProcessorStage<Args...>;
-
-    FrameUpdateStage(std::vector<std::unique_ptr<Processor>> processors = {}) : Parent(std::move(processors)) {}
-
-    static std::unique_ptr<IStage> Build(const IStage::Def& def, AnythingFactory& fa)
+public:
+    template <typename Fn>
+    void onUpdate(TFrameData dt, typename TStage::Ctx& ctx, Fn&& update)
     {
-        return std::make_unique<Impl>(fa.BuildABCVec<Processor>(def.processors));
+        update(typename TStage::FrameCtx(dt, ctx));
     }
-
-    void onUpdate(float dt, Args&... args) { Parent::RunUpdate(dt, args...); }
 };
 
-template <typename Impl, typename... Args>
-class FixedUpdateStage : public ProcessorStage<Args...>
+template <typename TStage>
+class FixedStepPipeline : Pipeline<TStage, FixedStepPipeline<TStage>, float>
 {
-   public:
-    using Processor = IProcessor<float, Args...>;
-    using Parent = ProcessorStage<Args...>;
-
-    FixedUpdateStage(float interval = 1.f / 60.f, std::vector<std::unique_ptr<Processor>> processors = {})
-        : m_tickScheduler(interval), Parent(std::move(processors))
+public:
+    template <typename Fn>
+    void onUpdate(float dt, typename TStage::Ctx& ctx, Fn&& update)
     {
-    }
-
-    static std::unique_ptr<IStage> Build(const IStage::Def& def, AnythingFactory& fa)
-    {
-        return std::make_unique<Impl>(fa.BuildABCVec<Processor>(def.processors));
-    }
-
-    void onUpdate(float dt, Args&... args)
-    {
-        m_tickScheduler.Poll(dt);
-        while (auto fdt = m_tickScheduler.ConsumeTick())
+        if (!m_tickScheduler.Poll(dt)) return;
+        float _dt = m_tickScheduler.ConsumeTick();
+        while (_dt > 0.f)
         {
-            Parent::RunUpdate(fdt, args...);
+            update(typename TStage::FrameCtx(_dt, ctx));
+            _dt = m_tickScheduler.ConsumeTick();
         }
     }
-
-   private:
+private:
     TickScheduler m_tickScheduler;
 };
 
-class Pipeline : public IStage
-{
-   public:
-    static std::unique_ptr<IStage> Build(const IStage::Def& def, AnythingFactory& fa)
-    {
-        return std::make_unique<Pipeline>(fa.BuildABCVec<IStage>(def.children));
-    }
-
-    Pipeline(std::vector<std::unique_ptr<IStage>> stages = {}) : m_stages(std::move(stages)) {}
-
-    void Attach(OGEContext& ctx) override
-    {
-        for (auto& stage : m_stages)
-        {
-            stage->Attach(ctx);
-        }
-    }
-
-    void Update(float dt) override
-    {
-        for (auto& stage : m_stages)
-        {
-            stage->Update(dt);
-        }
-    }
-
-   private:
-    std::vector<std::unique_ptr<IStage>> m_stages;
-};
-
-class Environment
-{
-public:
-    Environment(OGEContext& ctx) : m_ctx(ctx) {}
-
-private:
-    std::unique_ptr<IStage> m_stage;
-    OGEContext& m_ctx;
-};
-}  // namespace OneGame::Engine
+}  // namespace oge::runtime

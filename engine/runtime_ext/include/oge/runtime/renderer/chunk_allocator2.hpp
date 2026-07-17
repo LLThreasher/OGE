@@ -1,12 +1,14 @@
 #pragma once
-#include "Engine/Graphics/ChunkAllocator.hpp"
-#include "Engine/Graphics/IGraphicsBackend.hpp"
-#include "Engine/ObjectType.hpp"
 
-namespace OneGame::Engine::Graphics
+#include "oge/graphics/backend.hpp"
+#include "oge/graphics/objects.hpp"
+#include "oge/runtime/renderer/chunk_allocator.hpp"
+
+namespace oge::runtime::renderer
 {
+using namespace graphics;
 
-namespace DCA
+namespace dca
 {
 constexpr uint32_t _1K = 1024;
 constexpr uint32_t _1M = 1024 * _1K;
@@ -76,7 +78,7 @@ class DynamicChunkAllocator
         allocatorPerChunk[alloc.chunkSizeIdx][alloc.blockIdx].Free(alloc.slotOffset, 1);
     }
 
-    GPUBufferRange Resolve(GPUChunkedAllocation alloc)
+    GPUBufferSpan Resolve(GPUChunkedAllocation alloc)
     {
         assert(alloc.chunkSizeIdx < CHUNK_SIZE_COUNT);
         return {
@@ -90,6 +92,6 @@ class DynamicChunkAllocator
     std::array<std::vector<GPUBufferHandle>, CHUNK_SIZE_COUNT> activeMemBlocks;
     std::array<std::vector<ChunkAllocator>, CHUNK_SIZE_COUNT> allocatorPerChunk;
 };
-}  // namespace DCA
-using DynamicChunkAllocator = DCA::DynamicChunkAllocator;
-}  // namespace OneGame::Engine::Graphics
+}  // namespace dca
+using DynamicChunkAllocator = dca::DynamicChunkAllocator;
+}  // namespace oge::runtime::renderer

@@ -2,7 +2,6 @@
 
 #include "oge/runtime/asset_manager.hpp"
 #include "oge/runtime/asset_ctx.hpp"
-#include "oge/runtime/asset_ctx_ext.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/runtime/streaming_manager.hpp"
 #include "oge/platform/io.hpp"

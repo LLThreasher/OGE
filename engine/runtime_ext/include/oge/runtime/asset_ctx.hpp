@@ -1,8 +1,9 @@
 #pragma once
 
+#include <span>
 #include <cinttypes>
 
-#include "oge/runtime/asset_ctx.hpp"
+#include "oge/runtime/asset_base.hpp"
 #include "oge/runtime/objects_ext.hpp"
 #include "oge/graphics/objects.hpp"
 

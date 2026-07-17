@@ -7,7 +7,7 @@
 
 #include "oge/runtime/entt.hpp"
 
-namespace oge
+namespace oge::runtime
 {
 using oge_id_type = entt::id_type;
 
@@ -71,6 +71,7 @@ class ABCFactory
 
 class OGEContextReadOnly
 {
+protected:
     entt::registry& m_registry;
 public:
     OGEContextReadOnly(entt::registry& registry) : m_registry(registry) {}
