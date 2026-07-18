@@ -19,9 +19,14 @@ using oge::runtime::Stage;
 struct InputContext
 {
     WindowCtx& windowCtx;
-    const RawInputStream& raw;
     PlayerInputStream& player;
     entt::registry& uiWorld;
+};
+
+struct InputFrame
+{
+    float dt;
+    const RawInputStream& raw;
 };
 
 struct FInputContext
@@ -31,7 +36,7 @@ struct FInputContext
     PlayerInputStream& player;
     entt::registry& uiWorld;
 
-    FInputContext(float dt, InputContext& ctx) : dt(dt), raw(ctx.raw), player(ctx.player), uiWorld(ctx.uiWorld) {}
+    FInputContext(InputFrame& f, InputContext& ctx) : dt(f.dt), raw(f.raw), player(ctx.player), uiWorld(ctx.uiWorld) {}
 };
 
 class InputSource : public Stage<InputContext, FInputContext>
@@ -40,9 +45,9 @@ class InputSource : public Stage<InputContext, FInputContext>
     InputSource(oge_id_type id) : Stage<InputContext, FInputContext>(id) {}
 };
 
-class InputPipeline : public FramePipeline<InputSource>
+class InputPipeline : public FramePipeline<InputSource, InputFrame>
 {
    public:
-    InputPipeline(InputContext& state, AnythingFactory& af) : FramePipeline<InputSource>(state, af) {}
+    InputPipeline(InputContext& state, AnythingFactory& af) : FramePipeline<InputSource, InputFrame>(state, af) {}
 };
 };  // namespace game::input

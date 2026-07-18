@@ -98,8 +98,4 @@ struct DestroyAfterUpdate
 {
 };
 
-namespace ui
-{
-entt::entity CastRayRelSpace(const entt::registry& gameWorld, math::vec2 pos);
-}  // namespace ui
 }  // namespace game

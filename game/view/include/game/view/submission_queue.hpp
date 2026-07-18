@@ -22,6 +22,12 @@ enum class GameViewType : uint32_t
     All = Overlay | Slot0 | Slot1 | Slot2 | Slot3,
 };
 
+struct ViewPanel
+{
+    GameViewType activeSlot = GameViewType::Slot0;
+    entt::entity activeCamera = entt::null;
+};
+
 static constexpr std::array<GameViewType, 4> ALL_GAME_VIEWS = {
     GameViewType::Slot0,
     GameViewType::Slot1,

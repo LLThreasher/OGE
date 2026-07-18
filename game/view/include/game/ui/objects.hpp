@@ -12,7 +12,6 @@ using namespace oge;
 using oge::runtime::AssetContext;
 
 entt::entity CreateGameView(entt::registry& game, UIRect rect);
-entt::entity CastRayScreenSpace(const entt::registry& gameWorld, math::vec2 pos);
 entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRect rect);
 entt::entity CreateButton(entt::registry& game, AssetContext& asset, UIRect rect);
 

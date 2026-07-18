@@ -38,14 +38,20 @@ class Scene
     view::RendererState m_renderState;
     input::InputContext m_inputState;
 
+    WindowCtx m_windowCtx;
+
    public:
-    Scene(AnythingFactory& af, WindowCtx& windowCtx, RawInputStream& is)
+    Scene(AnythingFactory& af)
         : m_gameState(m_world, m_event),
           m_renderState(m_world, m_event),
           m_subsystems(m_gameState, af),
           m_renderers(m_renderState, af),
-          m_inputState(windowCtx, is, m_playerIn, m_world),
+          m_inputState(m_windowCtx, m_playerIn, m_world),
           m_inputs(m_inputState, af)
+    {
+    }
+
+    virtual ~Scene()
     {
     }
 
@@ -53,11 +59,57 @@ class Scene
 
     void Detach() { m_ctx.reset(); }
 
-    void Update(float dt)
+    void Update(float dt, oge::input::RawInputStream& is)
     {
-        m_inputs.Update(dt);
+        m_inputs.Update({dt, is});
         m_subsystems.Update(dt);
         m_renderers.Update(view::RendererFrameData{dt, m_ctx.value().assets, m_ctx.value().s_queue});
     }
+};
+
+class SceneRunner
+{
+   public:
+    SceneRunner(OGEContext& ctx) : m_ctx(ctx), m_anyFactory(ctx)
+    {
+        m_scenes.emplace(std::type_index(typeid(Scene)), new Scene(m_anyFactory));
+        SwitchToScene<Scene>();
+    }
+
+    template <typename TScene>
+    void RegisterScene()
+    {
+        m_scenes.emplace(std::type_index(typeid(TScene)), new TScene(m_anyFactory));
+    }
+
+    template <typename TScene>
+    void SwitchToScene()
+    {
+        m_nextScene = m_scenes.find(std::type_index(typeid(TScene)))->second.get();
+    }
+
+   protected:
+    void Update(float dt, oge::input::RawInputStream& is)
+    {
+        if (m_nextScene != nullptr)
+        {
+            if (m_currentScene != nullptr)
+            {
+                m_currentScene->Detach();
+            }
+            m_nextScene->Attach(m_ctx);
+            m_currentScene = m_nextScene;
+            m_nextScene = nullptr;
+        }
+        m_currentScene->Update(dt, is);
+    }
+
+   private:
+    OGEContext& m_ctx;
+    AnythingFactory m_anyFactory;
+
+    std::unordered_map<std::type_index, std::unique_ptr<Scene>> m_scenes;
+    Scene* m_nextScene = nullptr;
+    Scene* m_currentScene = nullptr;
 };
 }  // namespace game

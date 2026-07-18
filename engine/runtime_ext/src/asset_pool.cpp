@@ -1,17 +1,28 @@
 #include "oge/runtime/asset_pool.hpp"
 
-#include "oge/runtime/asset_manager.hpp"
-#include "oge/runtime/asset_ctx.hpp"
 #include "oge/graphics/backend.hpp"
-#include "oge/runtime/streaming_manager.hpp"
 #include "oge/platform/io.hpp"
+#include "oge/runtime/asset_ctx.hpp"
+#include "oge/runtime/asset_manager.hpp"
 #include "oge/runtime/objects_ext.hpp"
+#include "oge/runtime/streaming_manager.hpp"
+#include "oge/runtime/typed_registry.hpp"
 #include "oge/runtime/ui/objects.hpp"
 
 namespace oge::runtime
 {
 using namespace graphics;
 using namespace platform;
+
+AssetContext::AssetContext(OGEContext& ctx)
+    : streamingManager(*ctx.Get<StreamingManager>()),
+      backend(*ctx.Get<std::unique_ptr<IGraphicsBackend>>()->get()),
+      assetPool(*ctx.Get<AssetPool>()),
+      chunkAllocator(*ctx.Get<DynamicChunkAllocator>()),
+      spriteAllocator(*ctx.Get<DynamicSkylineAllocator>()),
+      AssetBase(ctx)
+{
+}
 
 bool AssetPool::Load(const std::string_view& id, GPUTextureHandle& outTexture)
 {
@@ -53,8 +64,6 @@ void AssetPool::Cache(const std::string_view& id, const std::shared_ptr<ui::IFon
     m_fontPool.emplace(id, font);
 }
 
-bool AssetBase::LoadBlob(const std::string_view& id, std::vector<char>& data) { return TryLoadBlob(id, data); }
-
 std::shared_ptr<ui::IFont> AssetContext::LoadASCIIBitmapFont16x6(const std::string_view& id)
 {
     std::shared_ptr<ui::IFont> ptr;
@@ -84,7 +93,7 @@ GPUTextureHandle AssetContext::LoadTexture(const std::string_view& id)
 }
 
 GPUMesh AssetContext::LoadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices,
-                            uint32_t indexCount, ResourceBundleHandle res)
+                               uint32_t indexCount, ResourceBundleHandle res)
 {
     GPUMesh m = AllocateMesh(vertices.size(), indices.size());
     UploadMesh<UploadType::Immediate>(vertices, indices, m, indexCount, res);
@@ -116,4 +125,4 @@ template void AssetContext::UploadMesh<UploadType::Async>(const std::span<const 
 template void AssetContext::UploadMesh<UploadType::Immediate>(const std::span<const std::byte> vertices,
                                                               const std::span<const std::byte> indices, GPUMesh& m,
                                                               uint32_t indexCount, ResourceBundleHandle res);
-}  // namespace OneGame::Engine
+}  // namespace oge::runtime

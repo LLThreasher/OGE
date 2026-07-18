@@ -3,6 +3,8 @@
 #include <cstring>
 
 #include "oge/platform/io.hpp"
+#include "oge/runtime/asset_base.hpp"
+#include "oge/runtime/typed_registry.hpp"
 
 namespace oge::runtime
 {
@@ -38,4 +40,9 @@ TextureData* AssetManager::LoadTexture(const std::string_view& id)
     m_textures.emplace(id, data);
     return &m_textures[str_id];
 }
+
+AssetBase::AssetBase(OGEContext& ctx) : assetManager(*ctx.Get<AssetManager>()) {}
+
+bool AssetBase::LoadBlob(const std::string_view& id, std::vector<char>& data) { return TryLoadBlob(id, data); }
+
 }  // namespace oge::runtime

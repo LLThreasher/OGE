@@ -12,8 +12,6 @@ int main(int argc, char* argv[]) {
 	auto window = CreateSDL3Window("OneGame", 1280, 720);
 	auto app = game::Client();
 	window->Run(app);
-	// auto backend = CreateBackend(BackendType::Vulkan);
-	// auto app = GameGraphicApp(*backend);
 	// app.RegisterScene<DebugScene3>();
 	// app.SwitchToScene<DebugScene3>();
 	// app.RegisterScene<DebugClient>();

@@ -12,12 +12,6 @@ struct AssetContext;
 namespace game::view
 {
 
-struct ViewPanel
-{
-    GameViewType activeSlot = GameViewType::Slot0;
-    entt::entity activeCamera = entt::null;
-};
-
 struct RendererState
 {
     entt::registry& world;

@@ -213,7 +213,7 @@ void PrintStackTrace()
     int frame_count = backtrace(buffer, max_frames);
     char** symbols = backtrace_symbols(buffer, frame_count);
 
-    for (int i = 0; i < frame_count; ++i) LOG_INFO("%s\n", symbols[i]);
+    for (int i = 0; i < frame_count; ++i) LOG_INFO("{}\n", symbols[i]);
 
     free(symbols);
 }
