@@ -33,7 +33,6 @@ class Client : public WindowApp, public SceneRunner
     StreamingManager& m_sm;
     AssetPool& m_ap;
 
-    view::SubmissionQueue& m_sq;
     DynamicChunkAllocator& m_ca;
     DynamicSkylineAllocator& m_sa;
 };

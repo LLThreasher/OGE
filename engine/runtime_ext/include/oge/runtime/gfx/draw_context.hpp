@@ -4,11 +4,11 @@
 #include "oge/runtime/staged_scheduler.hpp"
 #include "oge/runtime/gfx/skyline_allocator.hpp"
 #include "oge/runtime/gfx/uniform_arena.hpp"
+#include "oge/runtime/asset_ctx.hpp"
 
 namespace oge::runtime
 {
 class OGEContextReadOnly;
-class AssetContext;
 namespace gfx
 {
 namespace dca
@@ -31,7 +31,7 @@ namespace gfx
 {
 struct InitDrawContext
 {
-    AssetContext& assets;
+    AssetContext assets;
     UniformArena uniformArena;
 
     InitDrawContext(OGEContextReadOnly& ctx);

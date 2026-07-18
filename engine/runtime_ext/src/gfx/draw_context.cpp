@@ -9,7 +9,7 @@ namespace oge::runtime::gfx
 {
 using namespace oge::graphics;
 
-InitDrawContext::InitDrawContext(OGEContextReadOnly& ctx) : assets(*ctx.Get<AssetContext>())
+InitDrawContext::InitDrawContext(OGEContextReadOnly& ctx) : assets(ctx)
 {
     uniformArena.Initialize(assets.backend, 1024 * 1024 * 32);
 }
@@ -23,6 +23,18 @@ DrawContext::DrawContext(float dt, InitDrawContext& ctx)
       spriteAllocator(ctx.assets.spriteAllocator),
       dt(dt)
 {
+    auto& cmd = drawCmd;
+    auto& tCmd = transferCmd;
+
+    cmd.Begin();
+    tCmd.Begin();
+
+    ClearValues values{};
+    values.colorClears[0] = {0.1f, 0.2f, 0.4f, 1.0f};
+    values.depthClear = 0.0f;
+    values.stencilClear = 0.f;
+
+    cmd.BeginRenderPass(backend.GetCurrentRenderPass(), backend.GetCurrentFrameBuffer(), values);
 }
 
 DrawContext::~DrawContext()

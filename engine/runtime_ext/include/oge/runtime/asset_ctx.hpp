@@ -33,8 +33,8 @@ class DynamicChunkAllocator;
 class DynamicSkylineAllocator;
 }  // namespace renderer
 
-using DynamicChunkAllocator = gfx::dca::DynamicChunkAllocator;
-using DynamicSkylineAllocator = gfx::DynamicSkylineAllocator;
+using gfx::dca::DynamicChunkAllocator;
+using gfx::DynamicSkylineAllocator;
 
 struct AssetContext : AssetBase
 {
@@ -44,7 +44,7 @@ struct AssetContext : AssetBase
     DynamicChunkAllocator& chunkAllocator;
     DynamicSkylineAllocator& spriteAllocator;
 
-    AssetContext(OGEContext& ctx);
+    AssetContext(OGEContextReadOnly& ctx);
 
     GPUTextureHandle LoadTexture(const std::string_view& id);
     GPUMesh AllocateMesh(int vCount, int iCount);

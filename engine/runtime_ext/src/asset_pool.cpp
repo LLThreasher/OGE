@@ -14,7 +14,7 @@ namespace oge::runtime
 using namespace graphics;
 using namespace platform;
 
-AssetContext::AssetContext(OGEContext& ctx)
+AssetContext::AssetContext(OGEContextReadOnly& ctx)
     : streamingManager(*ctx.Get<StreamingManager>()),
       backend(*ctx.Get<std::unique_ptr<IGraphicsBackend>>()->get()),
       assetPool(*ctx.Get<AssetPool>()),

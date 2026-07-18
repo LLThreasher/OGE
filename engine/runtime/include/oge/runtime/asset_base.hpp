@@ -6,13 +6,13 @@
 namespace oge::runtime
 {
 class AssetManager;
-class OGEContext;
+class OGEContextReadOnly;
 
 struct AssetBase
 {
     AssetManager& assetManager;
 
-    AssetBase(OGEContext& ctx);
+    AssetBase(OGEContextReadOnly& ctx);
     bool LoadBlob(const std::string_view& id, std::vector<char>& data);
 };
 } // namespace oge::runtime

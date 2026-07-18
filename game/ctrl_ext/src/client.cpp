@@ -13,7 +13,6 @@ Client::Client()
       m_am(*m_ctx.Emplace<AssetManager>()),
       m_sm(*m_ctx.Emplace<StreamingManager>()),
       m_ap(*m_ctx.Emplace<AssetPool>()),
-      m_sq(*m_ctx.Emplace<view::SubmissionQueue>()),
       m_ca(*m_ctx.Emplace<DynamicChunkAllocator>()),
       m_sa(*m_ctx.Emplace<DynamicSkylineAllocator>())
 {

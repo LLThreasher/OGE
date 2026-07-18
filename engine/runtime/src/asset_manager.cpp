@@ -41,7 +41,7 @@ TextureData* AssetManager::LoadTexture(const std::string_view& id)
     return &m_textures[str_id];
 }
 
-AssetBase::AssetBase(OGEContext& ctx) : assetManager(*ctx.Get<AssetManager>()) {}
+AssetBase::AssetBase(OGEContextReadOnly& ctx) : assetManager(*ctx.Get<AssetManager>()) {}
 
 bool AssetBase::LoadBlob(const std::string_view& id, std::vector<char>& data) { return TryLoadBlob(id, data); }
 

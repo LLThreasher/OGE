@@ -6,6 +6,7 @@
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
 #include "game/input/input_srouce.hpp"
+#include "game/view/gfx/view_executor.hpp"
 
 namespace game
 {
@@ -19,10 +20,19 @@ class Scene
     struct Ctx
     {
         OGEContext& ctx;
-        view::SubmissionQueue& s_queue;
         AssetContext assets;
+        view::SubmissionQueue s_queue;
+        view::ViewExecutor<view::SubmissionQueue> viewExecutor;
 
-        Ctx(OGEContext& ctx) : ctx(ctx), s_queue(*ctx.Get<view::SubmissionQueue>()), assets(ctx) {}
+        Ctx(OGEContext& ctx) : ctx(ctx), assets(ctx), viewExecutor(s_queue)
+        {
+            viewExecutor.Attach(ctx);
+        }
+        
+        ~Ctx()
+        {
+            viewExecutor.Detach();
+        }
     };
 
     std::optional<Ctx> m_ctx;
@@ -64,6 +74,7 @@ class Scene
         m_inputs.Update({dt, is});
         m_subsystems.Update(dt);
         m_renderers.Update(view::RendererFrameData{dt, m_ctx.value().assets, m_ctx.value().s_queue});
+        m_ctx.value().viewExecutor.Update(dt);
     }
 };
 
