@@ -79,4 +79,8 @@ struct CmdAddView
     float aspect = 0.f;
 };
 
+class RequiresVPTransform
+{
+};
+
 } // namespace game::view::gfx

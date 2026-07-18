@@ -1,9 +1,9 @@
 #pragma once
 
-#include "oge/runtime/gfx/commands.hpp"
 #include "game/view/gfx/commands.hpp"
-#include "oge/submission_group.hpp"
 #include "oge/point3.hpp"
+#include "oge/runtime/gfx/commands.hpp"
+#include "oge/submission_group.hpp"
 
 namespace game::view
 {
@@ -11,7 +11,6 @@ using namespace oge;
 using namespace oge::runtime;
 using namespace oge::runtime::gfx;
 using namespace ::game::view::gfx;
-
 
 enum class GameViewType : uint32_t
 {
@@ -44,6 +43,8 @@ template <typename SubmissionGroupT>
 class ViewSubmissionGroup
 {
    public:
+    template <typename... Args>
+    using TView = ViewSubmissionGroup<SubmissionView<Args...>>;
     static constexpr size_t ViewCount = std::bit_width(static_cast<uint32_t>(GameViewType::All));
 
     ViewSubmissionGroup() {}
@@ -103,10 +104,11 @@ class ViewSubmissionGroup
     }
 
     template <typename... Args>
-    ViewSubmissionGroup<SubmissionView<Args...>> View()
+    TView<Args...> View()
     {
         // Passed the explicit template arguments and the required 'arr' argument
-        return ViewSubmissionGroup<SubmissionView<Args...>>(create_array_impl<Args...>(m_groups, std::make_index_sequence<ViewCount>{}));
+        return TView<Args...>(
+            create_array_impl<Args...>(m_groups, std::make_index_sequence<ViewCount>{}));
     }
 
    private:
@@ -133,4 +135,4 @@ class SubmissionQueue : public ViewSubmissionGroup<SingleSubmissionQueue>
 {
 };
 
-} // namespace game::view::gfx
+}  // namespace game::view

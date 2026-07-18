@@ -12,7 +12,7 @@ using namespace oge;
 
 constexpr uint32_t BLOCK_TEXTURE_SIZE = 16;
 
-class TerrainPass2
+class TerrainPass2 : public RequiresVPTransform, public Pass<CmdDrawTerrainMeshOpaque>
 {
     struct TerrainMesh
     {
@@ -27,7 +27,6 @@ class TerrainPass2
     };
 
    public:
-    using View = SubmissionView<CmdDrawTerrainMeshOpaque>;
     TerrainPass2() {}
 
     void UpdateBlockTexture(AssetContext& assets, const std::string& id, uint32_t slot);

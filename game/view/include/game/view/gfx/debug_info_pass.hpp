@@ -13,7 +13,7 @@ using namespace oge::graphics;
 constexpr size_t NUM_DEBUG_VERTICES = 2048;
 constexpr size_t NUM_DEBUG_INDICES = NUM_DEBUG_VERTICES / 4 * 6;
 
-class DebugInfoPass
+class DebugInfoPass : public Pass<CmdDrawDebugText, CmdDrawDebugRect>
 {
     struct PushConstant
     {
@@ -28,7 +28,6 @@ class DebugInfoPass
     };
 
    public:
-    using View = SubmissionView<CmdDrawDebugText, CmdDrawDebugRect>;
     void onAttach(InitDrawContext& ctx);
     void onDetach(InitDrawContext& ctx);
     void onUpdate(DrawContext& ctx, View view);

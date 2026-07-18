@@ -14,13 +14,14 @@ InitDrawContext::InitDrawContext(OGEContextReadOnly& ctx) : assets(*ctx.Get<Asse
     uniformArena.Initialize(assets.backend, 1024 * 1024 * 32);
 }
 
-DrawContext::DrawContext(InitDrawContext& ctx)
+DrawContext::DrawContext(float dt, InitDrawContext& ctx)
     : backend(ctx.assets.backend),
       uniformArena(ctx.uniformArena),
       transferCmd(backend.CreateCommandList(QueueType::Transfer)),
       drawCmd(backend.CreateCommandList(QueueType::Present)),
       chunkAllocator(ctx.assets.chunkAllocator),
-      spriteAllocator(ctx.assets.spriteAllocator)
+      spriteAllocator(ctx.assets.spriteAllocator),
+      dt(dt)
 {
 }
 

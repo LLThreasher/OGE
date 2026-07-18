@@ -3,8 +3,9 @@
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
 
-namespace oge::runtime
+namespace game::sim
 {
+using namespace oge::runtime;
 
 struct GameState
 {
@@ -24,7 +25,9 @@ class Subsystem : public Stage<GameState, FGameState>
     Subsystem(oge_id_type id) : Stage<GameState, FGameState>(id) {}
 };
 
-class SubsystemPipeline : FixedStepPipeline<Subsystem>
+class SubsystemPipeline : public FixedStepPipeline<Subsystem>
 {
+public:
+    SubsystemPipeline(GameState& state, AnythingFactory& af) : FixedStepPipeline<Subsystem>(state, af) {}
 };
 }  // namespace oge::runtime

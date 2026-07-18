@@ -63,3 +63,5 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
         VK_USE_PLATFORM_ANDROID_KHR
     )
 endif()
+
+add_library(oge::graphics::vulkan ALIAS oge_graphics_vulkan)

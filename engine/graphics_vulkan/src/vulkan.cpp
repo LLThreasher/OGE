@@ -285,7 +285,7 @@ static void PrintPhysicalDeviceInfo(VkPhysicalDevice physicalDevice)
     uint32_t apiVersion = props.apiVersion;
 
     LOG_INFO("========== GPU ==========");
-    LOG_INFO("Name: {}", props.deviceName);
+    LOG_INFO("Name: {}", std::string_view(props.deviceName));
     LOG_INFO("Type: {}", DeviceTypeToString(props.deviceType));
     LOG_INFO("API Version: {}.{}.{}", VK_VERSION_MAJOR(apiVersion), VK_VERSION_MINOR(apiVersion),
              VK_VERSION_PATCH(apiVersion));

@@ -4,6 +4,7 @@
 #include <array>
 
 #include "oge/handle.hpp"
+#include "oge/flag_helper.hpp"
 
 namespace oge::graphics
 {
@@ -21,22 +22,6 @@ enum class BufferUsage : uint32_t
     TransferDst = 1 << 6,
 };
 
-inline BufferUsage operator|(BufferUsage a, BufferUsage b)
-{
-    return static_cast<BufferUsage>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
-}
-
-inline BufferUsage operator&(BufferUsage a, BufferUsage b)
-{
-    return static_cast<BufferUsage>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
-}
-
-inline BufferUsage& operator|=(BufferUsage& a, BufferUsage b)
-{
-    a = a | b;
-    return a;
-}
-
 enum class MemoryUsage
 {
     GPUOnly,
@@ -51,12 +36,6 @@ enum class ShaderStage : uint32_t
     Compute = 1 << 2,
 };
 
-template <typename T>
-inline bool HasFlag(T value, T flag)
-{
-    return (static_cast<uint32_t>(value) & static_cast<uint32_t>(flag)) != 0;
-}
-
 enum class TextureUsage : uint32_t
 {
     None = 0,
@@ -67,11 +46,6 @@ enum class TextureUsage : uint32_t
     TransferSrc = 1 << 4,
     TransferDst = 1 << 5,
 };
-
-inline TextureUsage operator|(TextureUsage a, TextureUsage b)
-{
-    return static_cast<TextureUsage>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
-}
 
 enum class TextureState
 {

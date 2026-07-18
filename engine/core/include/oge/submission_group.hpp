@@ -28,6 +28,9 @@ struct SubmissionView
 template <typename... TCommands>
 struct SubmissionGroup
 {
+    template <typename... Args>
+    using TView = SubmissionView<Args...>;
+
     std::tuple<std::vector<TCommands>...> buckets;
 
     template <typename T, typename... Args>

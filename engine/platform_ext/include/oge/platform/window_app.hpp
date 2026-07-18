@@ -4,6 +4,7 @@
 
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/platform/window_handle.hpp"
+#include "oge/flag_helper.hpp"
 
 namespace oge::platform
 {
@@ -14,16 +15,6 @@ enum class AppFrameAction : uint32_t
     WrapMouse = 1 << 1,
     UnwrapMouse = 1 << 2,
 };
-
-inline AppFrameAction operator&(AppFrameAction a, AppFrameAction b)
-{
-    return static_cast<AppFrameAction>(static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
-}
-
-inline AppFrameAction operator|(AppFrameAction a, AppFrameAction b)
-{
-    return static_cast<AppFrameAction>(static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
-}
 
 class WindowApp
 {

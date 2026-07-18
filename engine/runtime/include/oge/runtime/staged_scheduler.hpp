@@ -20,6 +20,8 @@ class Stage
     using Ctx = TCtx;
     using FrameCtx = TFrameCtx;
     oge_id_type id() const noexcept { return id_; }
+    
+    virtual ~Stage() = default;
 
     virtual void onAttach(TCtx& ctx) = 0;
     virtual void onDetach(TCtx& ctx) = 0;
@@ -56,7 +58,7 @@ class Pipeline
 
     void Update(TFrameData frame)
     {
-        auto& impl = static_cast<TControl*>(this);
+        auto impl = static_cast<TControl*>(this);
         impl->onUpdate(frame, m_ctx,
                        [this](TFrameCtx ctx)
                        {
@@ -74,9 +76,11 @@ class Pipeline
 };
 
 template <typename TStage, typename TFrameData = float>
-class FramePipeline : Pipeline<FramePipeline<TStage>, TStage, TFrameData>
+class FramePipeline : public Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>
 {
 public:
+    using TPipeline = Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>;
+    FramePipeline(TStage::Ctx& ctx, AnythingFactory& af) : TPipeline(ctx, af) {}
     template <typename Fn>
     void onUpdate(TFrameData dt, typename TStage::Ctx& ctx, Fn&& update)
     {
@@ -85,9 +89,11 @@ public:
 };
 
 template <typename TStage>
-class FixedStepPipeline : Pipeline<FixedStepPipeline<TStage>, TStage, float>
+class FixedStepPipeline : public Pipeline<FixedStepPipeline<TStage>, TStage, float>
 {
 public:
+    using TPipeline = Pipeline<FixedStepPipeline<TStage>, TStage, float>;
+    FixedStepPipeline(TStage::Ctx& ctx, AnythingFactory& af) : TPipeline(ctx, af) {}
     template <typename Fn>
     void onUpdate(float dt, typename TStage::Ctx& ctx, Fn&& update)
     {

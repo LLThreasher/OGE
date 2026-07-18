@@ -1,3 +1,5 @@
+#include "sdl3_window.hpp"
+
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
 #endif
@@ -6,24 +8,16 @@
 #include <SDL3/SDL_mouse.h>
 
 #include "oge/input/raw_input_stream.hpp"
-#include "oge/platform/window.hpp"
-#include "oge/platform/window_app.hpp"
-#include "oge/platform/window_handle.hpp"
-#include "oge/platform/sdl3/create_window.hpp"
-#include "oge/timer.hpp"
-
-#define LOGGER_NAME "Engine"
 #include "oge/log.hpp"
+#include "oge/platform/sdl3/create_window.hpp"
+#include "oge/platform/spdlogger.hpp"
+#include "oge/timer.hpp"
 
 namespace oge::platform::sdl3
 {
 using namespace input;
 
 constexpr double FPS_60_TARGET_FRAME_DURATION_S = 1.0 / 60.0;
-
-#ifdef PLATFORM_DARWIN
-const void* GetMetalLayer(SDL_Window* sdlWindow);
-#endif
 
 static KeyCode map[256] = {};
 
@@ -51,25 +45,9 @@ static MouseButton GetEngineMouseButton(uint8_t sdlButton)
     }
 }
 
-class SDL3GameWindow : public Window
-{
-   public:
-    SDL3GameWindow(std::string name, int width, int height);
-
-    void Run(WindowApp&) override;
-
-   private:
-    void PollEvents();
-    WindowHandle GetCurrentWindow();
-
-    RawInputStream m_input;
-    SDL_Window* m_window;
-    Timer m_timer;
-    bool m_shouldClose = false;
-};
-
 SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
 {
+    SetLogger(new SpdLogger());
     map[SDLK_ESCAPE] = KeyCode::KY_ESCAPE;
     map[SDLK_SPACE] = KeyCode::KY_SPACE;
     map[SDLK_0] = KeyCode::KY_0;
@@ -120,40 +98,6 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
 #else
     m_window = SDL_CreateWindow(name.c_str(), width, height, SDL_WINDOW_RESIZABLE);
 #endif
-}
-
-WindowHandle SDL3GameWindow::GetCurrentWindow()
-{
-    WindowHandle handle{};
-#ifdef PLATFORM_WINDOWS
-    SDL_PropertiesID props = SDL_GetWindowProperties(m_window);
-    handle.hInstance = GetModuleHandle(nullptr);
-    handle.hwnd = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WIN32_HWND_POINTER, NULL);
-#elif defined(PLATFORM_ANDROID)
-    SDL_PropertiesID props = SDL_GetWindowProperties(m_window);
-    handle.nativeWindow = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, NULL);
-#elif defined(PLATFORM_DARWIN)
-    handle.metalLayer = GetMetalLayer(m_window);
-#elif defined(PLATFORM_LINUX)
-    SDL_PropertiesID props = SDL_GetWindowProperties(m_window);
-    const char* driver = SDL_GetCurrentVideoDriver();
-    if (driver && SDL_strcmp(driver, "wayland") == 0)
-    {
-        handle.isWayland = true;
-        handle.wayland.display = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, nullptr);
-        handle.wayland.surface = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr);
-    }
-    else
-    {
-        handle.isWayland = false;
-        handle.x11.display = SDL_GetPointerProperty(props, SDL_PROP_WINDOW_X11_DISPLAY_POINTER, nullptr);
-        handle.x11.window =
-            static_cast<unsigned long>(SDL_GetNumberProperty(props, SDL_PROP_WINDOW_X11_WINDOW_NUMBER, 0));
-    }
-#else
-#error
-#endif
-    return handle;
 }
 
 void SDL3GameWindow::Run(WindowApp& app)
@@ -273,4 +217,4 @@ std::unique_ptr<Window> CreateSDL3Window(const std::string& title, int width, in
 {
     return std::make_unique<SDL3GameWindow>(title, width, height);
 }
-}  // namespace OneGame::Engine
+}  // namespace oge::platform::sdl3

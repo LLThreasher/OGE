@@ -89,7 +89,7 @@ public:
     }
 };
 
-class OGEContext : OGEContextReadOnly
+class OGEContext : public OGEContextReadOnly
 {
 public:
     template <typename T>
@@ -101,9 +101,10 @@ public:
 
 class AnythingFactory
 {
-    OGEContext registry;
+    OGEContext& registry;
 
    public:
+    AnythingFactory(OGEContext& ctx) : registry(ctx) {}
     template <typename T>
         requires IsABC<T>
     void RegisterABC()

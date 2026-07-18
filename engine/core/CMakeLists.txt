@@ -27,10 +27,10 @@ target_include_directories(oge_core
 )
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_definitions(oge_core
-    PUBLIC
-        OGE_DEBUG
-    )
+target_compile_definitions(oge_core
+PUBLIC
+    OGE_DEBUG
+)
 endif()
 
 target_link_libraries(oge_core PUBLIC glm::glm)

@@ -28,6 +28,8 @@ add_library(oge::platform ALIAS oge_platform)
 target_link_libraries(oge_platform
 PUBLIC
     oge::core
+    spdlog
+PRIVATE
     stb
 )
 

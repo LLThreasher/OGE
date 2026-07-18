@@ -6,11 +6,9 @@
 
 namespace oge::runtime::gfx
 {
-class UIPass
+class UIPass : Pass<CmdDrawSprite>
 {
    public:
-    using View = SubmissionView<CmdDrawSprite>;
-
     struct PushConstant
     {
         math::mat2 transform;

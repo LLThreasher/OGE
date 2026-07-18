@@ -1,3 +1,5 @@
 add_subdirectory(data)
 add_subdirectory(sim)
 add_subdirectory(view)
+add_subdirectory(ctrl)
+add_subdirectory(ctrl_ext)

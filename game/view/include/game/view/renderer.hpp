@@ -57,5 +57,7 @@ class Renderer : public Stage<RendererState, FRendererState>
 
 class RenderPipeline : public FramePipeline<Renderer, RendererFrameData>
 {
+public:
+    RenderPipeline(RendererState& state, AnythingFactory& af) : FramePipeline<Renderer, RendererFrameData>(state, af) {}
 };
 }  // namespace oge::runtime

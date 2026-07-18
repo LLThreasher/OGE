@@ -1,5 +1,3 @@
-#ifdef USE_SDL3
-
 #ifdef PLATFORM_DARWIN
 
 #include <SDL3/SDL.h>
@@ -7,10 +5,9 @@
 #import <Cocoa/Cocoa.h>
 #import <QuartzCore/CAMetalLayer.h>
 
-#define LOGGER_NAME "Engine"
-#include "Engine/Logger.hpp"
+#include "oge/log.hpp"
 
-namespace OneGame::Engine
+namespace oge::platform::sdl3
 {
 
     const void* GetMetalLayer(SDL_Window* sdlWindow) {
@@ -33,6 +30,4 @@ namespace OneGame::Engine
     }
 
 }
-#endif
-
 #endif

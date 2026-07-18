@@ -1,4 +1,4 @@
-add_library(game_view)
+add_library(game_ctrl_ext)
 
 file(GLOB_RECURSE SOURCE_FILES 
     CONFIGURE_DEPENDS
@@ -11,16 +11,16 @@ file(GLOB_RECURSE SOURCE_FILES_CPP
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 
-target_sources(game_view
+target_sources(game_ctrl_ext
 PUBLIC
     ${SOURCE_FILES}
 PRIVATE
     ${SOURCE_FILES_CPP}
  )
 
-target_link_libraries(game_view PUBLIC game_data oge::graphics oge::runtime_ext PRIVATE stb)
+target_link_libraries(game_ctrl_ext PUBLIC game_ctrl game_view oge::graphics::vulkan)
 
-target_include_directories(game_view
+target_include_directories(game_ctrl_ext
 PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )

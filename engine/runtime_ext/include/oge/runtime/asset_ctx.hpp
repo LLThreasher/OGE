@@ -44,6 +44,8 @@ struct AssetContext : AssetBase
     DynamicChunkAllocator& chunkAllocator;
     DynamicSkylineAllocator& spriteAllocator;
 
+    AssetContext(OGEContext& ctx);
+
     GPUTextureHandle LoadTexture(const std::string_view& id);
     GPUMesh AllocateMesh(int vCount, int iCount);
     GPUMesh LoadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices,

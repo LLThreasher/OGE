@@ -6,8 +6,10 @@
 
 namespace oge::platform
 {
-    class Window
-    {
-        virtual void Run(WindowApp& app);
-    };
-} // namespace oge::platform
+class Window
+{
+   public:
+    virtual ~Window() = default;
+    virtual void Run(WindowApp& app) = 0;
+};
+}  // namespace oge::platform

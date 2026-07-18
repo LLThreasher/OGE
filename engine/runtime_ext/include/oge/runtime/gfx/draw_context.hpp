@@ -39,6 +39,7 @@ struct InitDrawContext
 
 struct DrawContext
 {
+    float dt;
     IGraphicsBackend& backend;
     UniformArena& uniformArena;
     DynamicChunkAllocator& chunkAllocator;
@@ -46,7 +47,7 @@ struct DrawContext
     ICommandList& transferCmd;
     ICommandList& drawCmd;
 
-    DrawContext(InitDrawContext& ctx);
+    DrawContext(float dt, InitDrawContext& ctx);
     ~DrawContext();
 };
 }  // namespace gfx

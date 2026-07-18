@@ -18,12 +18,11 @@ namespace oge
 enum class LogLevel
 {
     Trace,
+    Debug,
     Info,
     Warn,
     Error,
-#ifdef OGE_DEBUG
-    Debug,
-#endif
+    Critical,
 };
 
 class ILogger
@@ -43,7 +42,7 @@ void Log(LogLevel lvl, std::format_string<Args...> fmt, Args&&... args)
     GetLogger()->Log(lvl, msg);
 }
 
-void Log(LogLevel lvl, std::string_view msg)
+static void Log(LogLevel lvl, std::string_view msg)
 {
     GetLogger()->Log(lvl, msg);
 }
