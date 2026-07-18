@@ -1,8 +1,8 @@
 #pragma once
 
+#include "game/view/submission_queue.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
-#include "game/view/submission_queue.hpp"
 
 namespace oge::runtime
 {
@@ -51,7 +51,15 @@ class Renderer : public Stage<RendererState, FRendererState>
 
 class RenderPipeline : public FramePipeline<Renderer, RendererFrameData>
 {
-public:
+   public:
     RenderPipeline(RendererState& state, AnythingFactory& af) : FramePipeline<Renderer, RendererFrameData>(state, af) {}
 };
-}  // namespace oge::runtime
+
+class DebugInfoRenderer : public Renderer
+{
+   public:
+    void onAttach(RendererState&) override;
+    void onDetach(RendererState&) override;
+    void onUpdate(FRendererState&) override;
+};
+}  // namespace game::view

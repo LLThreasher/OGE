@@ -94,7 +94,7 @@ struct DebugText
     std::string text;
 };
 
-struct DestroyAfterUpdate
+struct Ready
 {
 };
 

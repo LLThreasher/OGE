@@ -13,16 +13,11 @@ using oge_id_type = entt::id_type;
 
 class AnythingFactory;
 
-template<typename T>
-concept IsABC =
-requires {
-    typename T::Def;
-};
+template <typename T>
+concept IsABC = requires { typename T::Def; };
 
-template<typename T, typename ABC>
-concept BuildableToABC =
-requires(const typename ABC::Def& def, AnythingFactory& factory)
-{
+template <typename T, typename ABC>
+concept BuildableToABC = requires(const typename ABC::Def& def, AnythingFactory& factory) {
     std::derived_from<T, ABC>;
 
     // must have static Id of correct type
@@ -32,14 +27,44 @@ requires(const typename ABC::Def& def, AnythingFactory& factory)
     { T::Build(def, factory) } -> std::same_as<std::unique_ptr<ABC>>;
 };
 
-template<typename T>
-concept Buildable =
-requires(const typename T::Def& def, AnythingFactory& factory)
-{
+template <typename T, typename ABC>
+concept DefaultBuildableToABC = requires() {
+    std::derived_from<T, ABC>;
+    { T::Id } -> std::convertible_to<oge_id_type>;
+    std::is_default_constructible_v<T>;
+};
+
+template <typename T>
+concept Buildable = requires(const typename T::Def& def, AnythingFactory& factory) {
     typename T::Def;
 
     // must have static Build function
     { T::Build(def, factory) } -> std::same_as<T>;
+};
+
+template <typename T>
+class DefaultABCFactory
+{
+    using id_type = oge_id_type;
+
+   public:
+    template <typename Derived>
+        requires DefaultBuildableToABC<Derived, T>
+    void Register()
+    {
+        builders.emplace(Derived::Id, []() { return std::unique_ptr<T>(std::make_unique<Derived>()); });
+    }
+
+    std::unique_ptr<T> Build(id_type id)
+    {
+        auto it = builders.find(id);
+        if (it == builders.end()) return nullptr;
+
+        return it->second();
+    }
+
+   private:
+    std::unordered_map<id_type, std::function<std::unique_ptr<T>()>> builders;
 };
 
 template <typename T>
@@ -71,9 +96,10 @@ class ABCFactory
 
 class OGEContextReadOnly
 {
-protected:
+   protected:
     entt::registry& m_registry;
-public:
+
+   public:
     OGEContextReadOnly(entt::registry& registry) : m_registry(registry) {}
 
     template <typename T>
@@ -91,7 +117,7 @@ public:
 
 class OGEContext : public OGEContextReadOnly
 {
-public:
+   public:
     template <typename T, typename... Args>
     T* Emplace(Args... args)
     {
@@ -106,17 +132,45 @@ class AnythingFactory
    public:
     AnythingFactory(OGEContext& ctx) : registry(ctx) {}
     template <typename T>
-        requires IsABC<T>
     void RegisterABC()
     {
-        registry.Emplace<ABCFactory<T>>();
+        if constexpr (IsABC<T>)
+        {
+            registry.Emplace<ABCFactory<T>>();
+        }
+        else
+        {
+            registry.Emplace<DefaultABCFactory<T>>();
+        }
     }
 
     template <typename TBase, typename TDrived>
-        requires IsABC<TBase> && BuildableToABC<TDrived, TBase>
-    void RegisterDrived()
+        requires IsABC<TBase> && BuildableToABC<TDrived, TBase> || DefaultBuildableToABC<TDrived, TBase>
+                 void RegisterDrived()
     {
-        registry.Get<ABCFactory<TBase>>().template Register<TDrived>();
+        if constexpr (IsABC<TBase> && BuildableToABC<TDrived, TBase>)
+        {
+            registry.Get<ABCFactory<TBase>>()->template Register<TDrived>();
+        }
+        else
+        {
+            registry.Get<DefaultABCFactory<TBase>>()->template Register<TDrived>();
+        }
+    }
+
+    template <typename T>
+    std::unique_ptr<T> BuildABC(oge_id_type name)
+    {
+        if constexpr (IsABC<T>)
+        {
+            auto factory = registry.Get<ABCFactory<T>>();
+            return factory->Build(name, {}, *this);
+        }
+        else
+        {
+            auto factory = registry.Get<DefaultABCFactory<T>>();
+            return factory->Build(name);
+        }
     }
 
     template <typename T>
@@ -174,4 +228,4 @@ class AnythingFactory
         return res;
     }
 };
-}  // namespace OneGame::Engine
+}  // namespace oge::runtime

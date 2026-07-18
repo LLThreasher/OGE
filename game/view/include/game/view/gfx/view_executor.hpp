@@ -20,12 +20,12 @@ class ViewExecutor
     void Attach(OGEContextReadOnly& ctx)
     {
         m_ctx.emplace(ctx);
-        std::apply([this](const Passes&... args) { ((args.onAttach(m_ctx.value())), ...); }, m_passes);
+        std::apply([&](Passes&... args) { ((args.onAttach(m_ctx.value())), ...); }, m_passes);
     }
 
     void Detach()
     {
-        std::apply([this](const Passes&... args) { ((args.onDetach(m_ctx.value())), ...); }, m_passes);
+        std::apply([&](Passes&... args) { ((args.onDetach(m_ctx.value())), ...); }, m_passes);
         m_ctx.reset();
     }
 
@@ -59,17 +59,17 @@ class ViewExecutor
         ctx.drawCmd.SetViewRect(rect.pos.x, rect.pos.y, rect.extent.x, rect.extent.y);
 
         std::apply(
-            [&ctx, &queue](const Passes&... args)
+            [&](Passes&... args)
             {
                 ((
-                     [&ctx, &queue](auto&& value)
+                     [&](auto&& value)
                      {
                          using T = std::decay_t<decltype(value)>;
 
                          if constexpr (std::derived_from<T, RequiresVPTransform>)
-                             value.onUpdate(ctx, value.ExtractView(*queue), pvTransform);
+                             value.onUpdate(ctx, value.ExtractView(queue), pvTransform);
                          else
-                             value.onUpdate(ctx, value.ExtractView(*queue));
+                             value.onUpdate(ctx, value.ExtractView(queue));
                      }(args)),
                  ...);
             },

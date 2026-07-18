@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/frame_perf.hpp"  // debug info pass
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
 
@@ -25,9 +26,26 @@ class Subsystem : public Stage<GameState, FGameState>
     Subsystem(oge_id_type id) : Stage<GameState, FGameState>(id) {}
 };
 
-class SubsystemPipeline : public FixedStepPipeline<Subsystem>
+class SubsystemPipeline : public FixedStepPipeline<Subsystem, float>
 {
-public:
-    SubsystemPipeline(GameState& state, AnythingFactory& af) : FixedStepPipeline<Subsystem>(state, af) {}
+   public:
+    SubsystemPipeline(GameState& state, AnythingFactory& af) : FixedStepPipeline<Subsystem, float>(state, af) {}
 };
-}  // namespace oge::runtime
+
+class SubsystemDebugText : public Subsystem
+{
+    float currentFPS = 0.f;
+    float currentFrameTime = 0.f;
+    float accumTime = 0.f;
+    uint64_t frameCount = 0;
+    FramePerfStatus totalPerfStatus = {};
+    FramePerfStatus perfStatus = {};
+
+   public:
+    static constexpr oge_id_type Id = entt::hashed_string("SubsystemDebugText").value();
+    SubsystemDebugText() : Subsystem(Id) {}
+    void onAttach(GameState& ctx) override;
+    void onDetach(GameState& ctx) override;
+    void onUpdate(FGameState& ctx) override;
+};
+}  // namespace game::sim

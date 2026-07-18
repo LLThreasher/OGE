@@ -6,7 +6,7 @@
 
 namespace oge::runtime::gfx
 {
-class UIPass : Pass<CmdDrawSprite>
+class UIPass : public Pass<CmdDrawSprite>
 {
    public:
     struct PushConstant

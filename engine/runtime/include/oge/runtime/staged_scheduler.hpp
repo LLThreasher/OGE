@@ -40,9 +40,16 @@ class Pipeline
    public:
     Pipeline(TCtx& ctx, AnythingFactory& factory) : m_ctx(ctx), m_factory(factory) {}
 
+    template <typename TSys>
+    void AddStage()
+    {
+        AddStage(TSys::Id);
+    }
+
     void AddStage(oge_id_type id)
     {
         m_stages.push_back(m_factory.BuildABC<TStage>(id));
+        assert(m_stages.back());
         m_stages.back()->onAttach(m_ctx);
     }
 
@@ -88,20 +95,30 @@ public:
     }
 };
 
-template <typename TStage>
-class FixedStepPipeline : public Pipeline<FixedStepPipeline<TStage>, TStage, float>
+template <typename TStage, typename FrameData = float>
+class FixedStepPipeline : public Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>
 {
 public:
-    using TPipeline = Pipeline<FixedStepPipeline<TStage>, TStage, float>;
+    using TPipeline = Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>;
     FixedStepPipeline(TStage::Ctx& ctx, AnythingFactory& af) : TPipeline(ctx, af) {}
     template <typename Fn>
-    void onUpdate(float dt, typename TStage::Ctx& ctx, Fn&& update)
+    void onUpdate(FrameData frame, typename TStage::Ctx& ctx, Fn&& update)
     {
+        float dt;
+        if constexpr (std::is_same_v<FrameData, float>)
+            dt = frame;
+        else
+            dt = frame.dt;
+
         if (!m_tickScheduler.Poll(dt)) return;
         float _dt = m_tickScheduler.ConsumeTick();
         while (_dt > 0.f)
         {
-            update(typename TStage::FrameCtx(_dt, ctx));
+            if constexpr (std::is_same_v<FrameData, float>)
+                frame = _dt;
+            else
+                frame.dt = _dt;
+            update(typename TStage::FrameCtx(frame, ctx));
             _dt = m_tickScheduler.ConsumeTick();
         }
     }

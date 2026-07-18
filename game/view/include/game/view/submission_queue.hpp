@@ -4,6 +4,7 @@
 #include "oge/point3.hpp"
 #include "oge/runtime/gfx/commands.hpp"
 #include "oge/submission_group.hpp"
+#include "oge/runtime/entt.hpp"
 
 namespace game::view
 {

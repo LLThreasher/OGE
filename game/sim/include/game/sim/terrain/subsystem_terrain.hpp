@@ -7,12 +7,12 @@
 #include <unordered_map>
 #include <unordered_set>
 
-#include "oge/macros.hpp"
-#include "oge/runtime/entt.hpp"
+#include "game/sim/subsystem.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/terrain_view.hpp"
+#include "oge/macros.hpp"
 #include "oge/point3.hpp"
-#include "game/sim/subsystem.hpp"
+#include "oge/runtime/entt.hpp"
 
 namespace game::sim
 {
@@ -61,5 +61,6 @@ class SubsystemTerrain : Subsystem
     entt::connection m_resolveDirtyChunkConnection;
     entt::connection m_createPlayerConnection;
 };
-}  // namespace OneGame::Engine::Terrain
-}
+}  // namespace terrain
+using SubsystemTerrain = terrain::SubsystemTerrain;
+}  // namespace game::sim

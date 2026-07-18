@@ -1,44 +1,49 @@
 #pragma once
 
+#include "game/input/input_srouce.hpp"
 #include "game/sim/subsystem.hpp"
+#include "game/view/gfx/debug_info_pass.hpp"
+#include "game/view/gfx/terrain_pass.hpp"
+#include "game/view/gfx/view_executor.hpp"
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
-#include "game/input/input_srouce.hpp"
-#include "game/view/gfx/view_executor.hpp"
+#include "oge/runtime/gfx/ui_pass.hpp"
 
 namespace game
 {
-using oge::runtime::OGEContext;
-using oge::runtime::AssetContext;
-using oge::runtime::AnythingFactory;
+using game::view::gfx::DebugInfoPass;
+using game::view::gfx::TerrainPass2;
 using oge::input::RawInputStream;
+using oge::runtime::AnythingFactory;
+using oge::runtime::AssetContext;
+using oge::runtime::OGEContext;
+using oge::runtime::gfx::UIPass;
+
+struct SceneFrame
+{
+    float dt;
+    oge::input::RawInputStream& is;
+    FramePerfStatus perfStats;
+};
 
 class Scene
 {
+    using ViewExecutor = view::ViewExecutor<view::SubmissionQueue, TerrainPass2, UIPass, DebugInfoPass>;
     struct Ctx
     {
         OGEContext& ctx;
         AssetContext assets;
         view::SubmissionQueue s_queue;
-        view::ViewExecutor<view::SubmissionQueue> viewExecutor;
+        ViewExecutor viewExecutor;
 
-        Ctx(OGEContext& ctx) : ctx(ctx), assets(ctx), viewExecutor(s_queue)
-        {
-            viewExecutor.Attach(ctx);
-        }
-        
-        ~Ctx()
-        {
-            viewExecutor.Detach();
-        }
+        Ctx(OGEContext& ctx) : ctx(ctx), assets(ctx), viewExecutor(s_queue) { viewExecutor.Attach(ctx); }
+
+        ~Ctx() { viewExecutor.Detach(); }
     };
 
     std::optional<Ctx> m_ctx;
-    sim::SubsystemPipeline m_subsystems;
-    view::RenderPipeline m_renderers;
-    input::InputPipeline m_inputs;
 
     entt::registry m_world;
     entt::dispatcher m_event;
@@ -49,6 +54,11 @@ class Scene
     input::InputContext m_inputState;
 
     WindowCtx m_windowCtx;
+
+   protected:
+    sim::SubsystemPipeline m_subsystems;
+    view::RenderPipeline m_renderers;
+    input::InputPipeline m_inputs;
 
    public:
     Scene(AnythingFactory& af)
@@ -61,20 +71,19 @@ class Scene
     {
     }
 
-    virtual ~Scene()
+    virtual ~Scene() {}
+
+    virtual void Attach(OGEContext& ctx) { m_ctx.emplace(ctx); }
+
+    virtual void Detach() { m_ctx.reset(); }
+
+    virtual void Update(SceneFrame f)
     {
-    }
-
-    void Attach(OGEContext& ctx) { m_ctx.emplace(ctx); }
-
-    void Detach() { m_ctx.reset(); }
-
-    void Update(float dt, oge::input::RawInputStream& is)
-    {
-        m_inputs.Update({dt, is});
-        m_subsystems.Update(dt);
-        m_renderers.Update(view::RendererFrameData{dt, m_ctx.value().assets, m_ctx.value().s_queue});
-        m_ctx.value().viewExecutor.Update(dt);
+        m_inputs.Update({f.dt, f.is});
+        m_world.ctx().insert_or_assign(f.perfStats);
+        m_subsystems.Update(f.dt);
+        m_renderers.Update(view::RendererFrameData{f.dt, m_ctx.value().assets, m_ctx.value().s_queue});
+        m_ctx.value().viewExecutor.Update(f.dt);
     }
 };
 
@@ -88,9 +97,10 @@ class SceneRunner
     }
 
     template <typename TScene>
+        requires std::derived_from<TScene, Scene>
     void RegisterScene()
     {
-        m_scenes.emplace(std::type_index(typeid(TScene)), new TScene(m_anyFactory));
+        m_scenes.emplace(std::type_index(typeid(TScene)), std::make_unique<TScene>(m_anyFactory));
     }
 
     template <typename TScene>
@@ -100,7 +110,7 @@ class SceneRunner
     }
 
    protected:
-    void Update(float dt, oge::input::RawInputStream& is)
+    void Update(SceneFrame f)
     {
         if (m_nextScene != nullptr)
         {
@@ -112,12 +122,21 @@ class SceneRunner
             m_currentScene = m_nextScene;
             m_nextScene = nullptr;
         }
-        m_currentScene->Update(dt, is);
+        m_currentScene->Update(std::move(f));
     }
+
+    void DetachCurrentScene()
+    {
+        m_currentScene->Detach();
+        m_nextScene = m_currentScene;
+        m_currentScene = nullptr;
+    }
+
+   protected:
+    AnythingFactory m_anyFactory;
 
    private:
     OGEContext& m_ctx;
-    AnythingFactory m_anyFactory;
 
     std::unordered_map<std::type_index, std::unique_ptr<Scene>> m_scenes;
     Scene* m_nextScene = nullptr;
