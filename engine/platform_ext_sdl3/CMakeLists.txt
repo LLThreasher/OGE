@@ -18,6 +18,13 @@ PRIVATE
     ${SOURCE_FILES_CPP}
  )
 
+if(IO_USE_SDL3)
+    target_compile_definitions(oge_platform_ext_sdl3
+    PUBLIC
+        IO_USE_SDL3
+    )
+endif()
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 target_sources(oge_platform_ext_sdl3
 PRIVATE

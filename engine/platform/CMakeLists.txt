@@ -54,3 +54,10 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Linux")
         PLATFORM_LINUX
     )
 endif()
+
+if(IO_USE_NATIVE)
+    target_compile_definitions(oge_platform
+    PUBLIC
+        IO_USE_NATIVE
+    )
+endif()

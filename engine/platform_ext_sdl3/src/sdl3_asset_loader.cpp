@@ -1,16 +1,21 @@
-#ifdef PLATFORM_ANDROID
+#if defined(IO_USE_SDL3)
 #include <SDL3/SDL.h>
 
 #include "oge/platform/io.hpp"
 #include "oge/log.hpp"
 
-namespace oge
+namespace oge::platform
 {
 bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
 {
     size_t fileSize = 0;
 
+#ifdef PLATFORM_ANDROID
     void* fileBuffer = SDL_LoadFile(std::string(id).c_str(), &fileSize);
+#else
+    std::string path = std::format("{}assets/{}", SDL_GetBasePath(), id);
+    void* fileBuffer = SDL_LoadFile(path.c_str(), &fileSize);
+#endif
 
     if (fileBuffer == NULL)
     {

@@ -20,6 +20,7 @@ void TerrainPass2::onAttach(InitDrawContext& ctx)
 
     blockTexture = ctx.assets.backend.AllocateGPUTexture(BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE, 256);
     auto invalidBlockTextureBlob = ctx.assets.assetManager.LoadTexture("invalid.png");
+    assert(invalidBlockTextureBlob);
     for (uint32_t i = 0; i < 256; ++i)
     {
         ctx.assets.streamingManager.UploadTexture<UploadType::Immediate>(

@@ -1,4 +1,6 @@
-#if defined(PLATFORM_WINDOWS) || defined(PLATFORM_DARWIN) || defined(PLATFORM_LINUX)
+#include "oge/platform/io.hpp"
+
+#if defined(IO_USE_NATIVE)
 
 #include <format>
 #include <fstream>
@@ -6,14 +8,40 @@
 
 #define LOGGER_NAME "Engine"
 #include "oge/log.hpp"
-#include "oge/platform/io.hpp"
-#include "stb_image.h"
+
+#ifdef PLATFORM_DARWIN
+#include <mach-o/dyld.h>  // Required for _NSGetExecutablePath
+#include <filesystem>
+
+static std::string GetBinaryLocation()
+{
+    namespace fs = std::filesystem;
+    uint32_t size = 0;
+
+    // First call with a 0 size to find out how large the path buffer needs to be
+    _NSGetExecutablePath(nullptr, &size);
+
+    // Allocate the vector with the exact size required
+    std::vector<char> buffer(size);
+
+    // Second call fills the buffer with the actual resolved path
+    if (_NSGetExecutablePath(buffer.data(), &size) == 0)
+    {
+        fs::path binaryPath(buffer.data());
+        return binaryPath.parent_path();
+    }
+
+    return ".";
+}
+#else
+static std::string GetBinaryLocation() { return "."; }
+#endif
 
 namespace oge::platform
 {
 bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
 {
-    auto filePath = std::format("assets/{}", id);
+    auto filePath = std::format("{}/assets/{}", GetBinaryLocation(), id);
     std::ifstream file(filePath, std::ios::ate | std::ios::binary);
 
     if (!file.is_open())
@@ -33,6 +61,9 @@ bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
 }
 }  // namespace oge::platform
 #endif
+
+#include <vector>
+#include "stb_image.h"
 
 namespace oge::platform
 {
@@ -74,4 +105,4 @@ bool TryLoadPNG(std::vector<char> blob, TextureData& data)
     if (!TryLoadPNG(blob, iwidth, iheight, data.data.data())) return false;
     return true;
 }
-}
+}  // namespace oge::platform

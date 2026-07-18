@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.28)
 option(BUILD_VULKAN "Enable Vulkan")
 option(BUILD_WINDOW "Build with Window Support")
 option(BUILD_WINDOW_SDL3 "Enable SDL3 with Window Support")
+option(IO_USE_SDL3 "Use SDL3 for file IO")
+option(IO_USE_NATIVE "Use native c++ for file IO")
 
 set(MAX_FRAMES_IN_FLIGHT
     1
@@ -12,11 +14,18 @@ if(BUILD_WINDOW_SDL3)
 message(STATUS "building window (SDL3)")
 message(STATUS "MAX_FRAMES_IN_FLIGHT ${MAX_FRAMES_IN_FLIGHT}")
 set(BUILD_WINDOW ON)
+set(IO_USE_SDL3 ON)
 endif()
 
 message(STATUS "BUILD_VULKAN ${BUILD_VULKAN}")
 message(STATUS "BUILD_WINDOW ${BUILD_WINDOW}")
 message(STATUS "BUILD_WINDOW_SDL3 ${BUILD_WINDOW_SDL3}")
+message(STATUS "IO_USE_SDL3 ${IO_USE_SDL3}")
+message(STATUS "IO_USE_NATIVE ${IO_USE_NATIVE}")
+
+if((NOT IO_USE_SDL3) AND (NOT IO_USE_NATIVE))
+message( FATAL_ERROR "At least one of IO_USE_SDL3 or IO_USE_NATIVE needs to be specified." )
+endif()
 
 project(OGE CXX)
 set(CMAKE_CXX_STANDARD 20)
