@@ -36,7 +36,9 @@ struct PTerrainMesh;
 }  // namespace runtime
 }  // namespace oge
 
-namespace game::view::terrain
+namespace game::view
+{
+namespace terrain
 {
 using namespace oge;
 using namespace oge::runtime;
@@ -121,7 +123,7 @@ struct TerrainRendererDesc
 class TerrainRenderer : public Renderer
 {
    public:
-    static constexpr oge_id_type Id = entt::hashed_string("TerrainRenderer").value();
+    DECL_ID(TerrainRenderer);
     TerrainRenderer() : Renderer(Id) {}
     NO_COPY(TerrainRenderer);
     ~TerrainRenderer() = default;
@@ -136,4 +138,6 @@ class TerrainRenderer : public Renderer
     TerrainUploader m_terrainUploader;
     TerrainMeshScheduler m_terrainMeshScheduler;
 };
+}
+using TerrainRenderer = terrain::TerrainRenderer;
 }  // namespace game::view::terrain

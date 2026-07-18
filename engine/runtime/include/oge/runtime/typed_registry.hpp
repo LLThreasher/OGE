@@ -2,10 +2,16 @@
 
 #include <functional>
 #include <string>
+#include <type_traits>
 #include <typeindex>
 #include <unordered_map>
 
+#include "oge/log.hpp"
 #include "oge/runtime/entt.hpp"
+
+#define DECL_ID(Name)                           \
+    static constexpr const char* IdStr = #Name; \
+    static constexpr oge_id_type Id = entt::hashed_string(#Name).value();
 
 namespace oge::runtime
 {
@@ -148,6 +154,7 @@ class AnythingFactory
         requires IsABC<TBase> && BuildableToABC<TDrived, TBase> || DefaultBuildableToABC<TDrived, TBase>
                  void RegisterDrived()
     {
+        LOG_INFO("registering {}", TDrived::IdStr);
         if constexpr (IsABC<TBase> && BuildableToABC<TDrived, TBase>)
         {
             registry.Get<ABCFactory<TBase>>()->template Register<TDrived>();

@@ -55,9 +55,13 @@ class RenderPipeline : public FramePipeline<Renderer, RendererFrameData>
     RenderPipeline(RendererState& state, AnythingFactory& af) : FramePipeline<Renderer, RendererFrameData>(state, af) {}
 };
 
+void RegisterRenderers(AnythingFactory& af);
+
 class DebugInfoRenderer : public Renderer
 {
    public:
+    DECL_ID(DebugInfoRenderer);
+    DebugInfoRenderer() : Renderer(Id) {}
     void onAttach(RendererState&) override;
     void onDetach(RendererState&) override;
     void onUpdate(FRendererState&) override;

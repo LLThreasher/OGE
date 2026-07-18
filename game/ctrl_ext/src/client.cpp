@@ -21,9 +21,8 @@ Client::Client()
 {
     using namespace sim;
     using namespace view;
-    m_anyFactory.RegisterABC<Subsystem>();
-    m_anyFactory.RegisterDrived<Subsystem, SubsystemDebugText>();
-    m_anyFactory.RegisterABC<view::Renderer>();
+    RegisterSubsystems(m_anyFactory);
+    RegisterRenderers(m_anyFactory);
 }
 
 void Client::Initialize(WindowHandle* handle)

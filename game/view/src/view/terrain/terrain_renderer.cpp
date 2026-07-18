@@ -19,6 +19,10 @@ void TerrainRenderer::onAttach(RendererState& ctx)
     m_terrainUploader.SetMaxNumChunks((tdesc.chunkViewDistance + 1) * (tdesc.chunkViewDistance + 1) * 6);
 }
 
+void TerrainRenderer::onDetach(RendererState& ctx)
+{
+}
+
 void TerrainRenderer::onUpdate(FRendererState& ctx)
 {
     auto& terrainData = ctx.world.ctx().get<TerrainView>().m_terrainData;

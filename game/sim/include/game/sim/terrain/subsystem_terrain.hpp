@@ -41,10 +41,10 @@ class TerrainGenerator
     int terrainGenChunkBudget = 8;
 };
 
-class SubsystemTerrain : Subsystem
+class SubsystemTerrain : public Subsystem
 {
    public:
-    static constexpr oge_id_type Id = entt::hashed_string("SubsystemTerrain").value();
+    DECL_ID(SubsystemTerrain);
     SubsystemTerrain() : Subsystem(Id) {}
     NO_COPY(SubsystemTerrain);
     ~SubsystemTerrain() = default;

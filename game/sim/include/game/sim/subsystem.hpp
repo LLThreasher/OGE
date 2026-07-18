@@ -32,6 +32,8 @@ class SubsystemPipeline : public FixedStepPipeline<Subsystem, float>
     SubsystemPipeline(GameState& state, AnythingFactory& af) : FixedStepPipeline<Subsystem, float>(state, af) {}
 };
 
+void RegisterSubsystems(AnythingFactory& af);
+
 class SubsystemDebugText : public Subsystem
 {
     float currentFPS = 0.f;
@@ -42,7 +44,7 @@ class SubsystemDebugText : public Subsystem
     FramePerfStatus perfStatus = {};
 
    public:
-    static constexpr oge_id_type Id = entt::hashed_string("SubsystemDebugText").value();
+    DECL_ID(SubsystemDebugText);
     SubsystemDebugText() : Subsystem(Id) {}
     void onAttach(GameState& ctx) override;
     void onDetach(GameState& ctx) override;
