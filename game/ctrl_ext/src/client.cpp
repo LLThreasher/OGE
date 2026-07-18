@@ -78,7 +78,13 @@ void Client::Shutdown()
     m_backend->Shutdown();
 }
 
-void Client::OnWindowRecreate(WindowHandle*) {}
+void Client::OnWindowRecreate(WindowHandle* handle)
+{
+    m_backend->RecreateSurface(handle);
+}
 
-void Client::OnResize(int width, int height) {}
+void Client::OnResize(int width, int height)
+{
+    m_backend->Resize(width, height);
+}
 }  // namespace game

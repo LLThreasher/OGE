@@ -64,4 +64,11 @@ elseif (CMAKE_SYSTEM_NAME STREQUAL "Android")
     )
 endif()
 
+if(ENABLE_VULKAN_VALIDATION)
+    target_compile_definitions(oge_graphics_vulkan
+    PRIVATE
+        VULKAN_VALIDATION
+    )
+endif()
+
 add_library(oge::graphics::vulkan ALIAS oge_graphics_vulkan)

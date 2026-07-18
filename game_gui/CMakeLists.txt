@@ -16,6 +16,9 @@ set(APP_NAME PortableApp)
 add_executable(${APP_NAME} MACOSX_BUNDLE main.cpp)
 target_link_libraries(${APP_NAME} PRIVATE game_ctrl_ext oge::platform::sdl3 oge::graphics::vulkan)
 
+compile_shaders(${APP_NAME} ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets")
+copy_assets(${APP_NAME} ../assets "${CMAKE_CURRENT_BINARY_DIR}/assets")
+
 # Destination paths below are relative to ${CMAKE_INSTALL_PREFIX}
 install(TARGETS ${APP_NAME}
     BUNDLE DESTINATION . COMPONENT Runtime

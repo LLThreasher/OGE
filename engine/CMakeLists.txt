@@ -5,6 +5,7 @@ option(BUILD_WINDOW "Build with Window Support")
 option(BUILD_WINDOW_SDL3 "Enable SDL3 with Window Support")
 option(IO_USE_SDL3 "Use SDL3 for file IO")
 option(IO_USE_NATIVE "Use native c++ for file IO")
+option(ENABLE_VULKAN_VALIDATION "Enable Vulkan Validation Layer")
 
 set(MAX_FRAMES_IN_FLIGHT
     1
@@ -23,11 +24,16 @@ if((NOT IO_USE_SDL3) AND (NOT IO_USE_NATIVE))
 set(IO_USE_NATIVE ON)
 endif()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+set(ENABLE_VULKAN_VALIDATION ON)
+endif()
+
 message(STATUS "BUILD_VULKAN ${BUILD_VULKAN}")
 message(STATUS "BUILD_WINDOW ${BUILD_WINDOW}")
 message(STATUS "BUILD_WINDOW_SDL3 ${BUILD_WINDOW_SDL3}")
 message(STATUS "IO_USE_SDL3 ${IO_USE_SDL3}")
 message(STATUS "IO_USE_NATIVE ${IO_USE_NATIVE}")
+message(STATUS "ENABLE_VULKAN_VALIDATION ${ENABLE_VULKAN_VALIDATION}")
 
 project(OGE CXX)
 set(CMAKE_CXX_STANDARD 20)
