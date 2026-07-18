@@ -40,6 +40,7 @@ class ViewExecutor
         {
             DrawView(ctx, m_queue.GetSingle(GameViewType::Overlay));
         }
+        m_queue.Clear();
     }
 
    private:

@@ -4,6 +4,8 @@
 #include "oge/graphics/vulkan/create_backend.hpp"
 #include "oge/runtime/gfx/chunk_allocator2.hpp"
 #include "oge/runtime/gfx/skyline_allocator.hpp"
+#include "oge/platform/perf.hpp"
+#include "oge/stopwatch.hpp"
 
 #include "game/sim/subsystem.hpp"
 #include "game/view/renderer.hpp"
@@ -37,17 +39,33 @@ void Client::Initialize(WindowHandle* handle)
 AppFrameAction Client::Update(float dt, oge::input::RawInputStream& input)
 {
     FramePerfStatus perfStats{};
-    // perfStats.cpuUsage = GetCPUUsage();
+    perfStats.cpuUsage = GetCPUUsage();
+    auto watch = oge::Stopwatch::Start();
+    auto& backend = *m_backend;
 
     AppFrameAction appRes = AppFrameAction::None;
-    auto res = m_backend->BeginFrame();
+    auto res = backend.BeginFrame();
     if (res == BeginFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
     if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;
 
-    SceneRunner::Update({dt, input, perfStats});
+    perfStats.inputProcessingTime = watch.Restart();
 
-    auto endRes = m_backend->EndFrame();
+    auto& tcmd = backend.CreateCommandList(QueueType::Transfer);
+    tcmd.Begin();
+    m_sm.RunUploadStep(backend, tcmd);
+    tcmd.End();
+
+    perfStats.assetUploadTime = watch.Restart();
+
+    SceneRunner::Update({dt, input, m_perfStats});
+
+    perfStats.logicTime = watch.Restart();
+
+    auto endRes = backend.EndFrame();
     if (endRes == EndFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
+
+    perfStats.renderSubmitTime = watch.Restart();
+    m_perfStats = perfStats;
 
     return appRes;
 }

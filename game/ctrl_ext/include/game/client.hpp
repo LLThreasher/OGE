@@ -24,6 +24,7 @@ class Client : public WindowApp, public SceneRunner
     void OnResize(int width, int height) override;
 
    private:
+    FramePerfStatus m_perfStats;
     entt::registry m_metaWorld;
     OGEContext m_ctx;
 
