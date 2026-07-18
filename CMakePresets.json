@@ -96,7 +96,7 @@
       "displayName": "Apple Silicon Release",
       "description": "使用 Visual Studio 开发环境定向到 Apple Silicon (64 位)。(Release)",
       "inherits": "apple-debug",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "ENABLE_PERF": "OFF", "ENABLE_ASAN" : "OFF" }
     },
     {
       "name": "apple-perf",

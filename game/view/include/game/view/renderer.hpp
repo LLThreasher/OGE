@@ -65,5 +65,9 @@ class DebugInfoRenderer : public Renderer
     void onAttach(RendererState&) override;
     void onDetach(RendererState&) override;
     void onUpdate(FRendererState&) override;
+private:
+    float m_duration = 0;
+    uint32_t m_currentGPUMem = 0;
+    uint32_t m_budgetGPUMem = 0;
 };
 }  // namespace game::view
