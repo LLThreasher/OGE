@@ -37,4 +37,20 @@ enum class StreamingObjects
 
 using ResourceBundleHandle = Handle<StreamingObjects::ResourceBundle>;
 
+struct PSprite
+{
+    U16NormRect uv = {{0.f, 0.f}, {1.f, 1.f}};
+    GPUTextureHandle texture;
+
+    PSprite(GPUTextureHandle texture) : texture(texture) {}
+
+    PSprite(GPUTextureRegion region, uint32_t total_width, uint32_t total_height)
+    {
+        float fwidth = total_width;
+        float fheight = total_height;
+        uv = {{(float)region.region.pos.x / fwidth, (float)region.region.pos.y / fheight},
+              {(float)region.region.extent.x / fwidth, (float)region.region.extent.y / fheight}};
+        texture = region.texture;
+    }
+};
 }

@@ -1,13 +1,14 @@
 #pragma once
 
 #include "oge/rect.hpp"
-#include "oge/runtime/submission_queue.hpp"
 #include "oge/input/mouse.hpp"
 #include "oge/runtime/entt.hpp"
+#include "oge/runtime/gfx/commands.hpp"
+#include "oge/submission_group.hpp"
 
 namespace oge::runtime::ui
 {
-using MouseButton = input::MouseButton;
+using MouseButton = ::oge::input::MouseButton;
 
 class IFont;
 
@@ -105,26 +106,21 @@ struct UIParent
 {
     entt::entity parent;
 };
-
-struct ViewPanel
-{
-    GameViewType activeSlot = GameViewType::Slot0;
-    entt::entity activeCamera = entt::null;
-};
 }  // namespace OneGame::Engine::ECS
 
 namespace oge::runtime
 {
 struct AssetContext;
 class SubmissionQueue;
-namespace ui
+}
+namespace oge::runtime::ui
 {
 
 class IFont
 {
    public:
     virtual ~IFont() = default;
-    virtual void CreateTextSprites(SubmissionQueue& squeue, UIText text, ScreenRect rect) = 0;
+    virtual void CreateTextSprites(SubmissionView<gfx::CmdDrawSprite>& squeue, UIText text, ScreenRect rect) = 0;
 };
 std::unique_ptr<IFont> LoadASCIIBitmapFont16x6(AssetContext& ctx, std::string_view textureId);
 
@@ -142,5 +138,4 @@ bool IsDragReleasedSrc(const entt::registry& game, entt::entity src);
 std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragSrc(const entt::registry& game, entt::entity e);
 std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragDst(const entt::registry& game, entt::entity e);
 
-} // namespace ui
 }  // namespace OneGame::Engine

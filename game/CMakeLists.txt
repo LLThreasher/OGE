@@ -1,2 +1,3 @@
-# add_subdirectory(world)
-# add_subdirectory(render)
+add_subdirectory(data)
+add_subdirectory(sim)
+add_subdirectory(view)

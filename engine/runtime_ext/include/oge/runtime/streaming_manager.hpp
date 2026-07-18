@@ -1,7 +1,7 @@
 #pragma once
 
 #include <queue>
-#include <vector>
+#include <span>
 
 #include "oge/graphics/objects.hpp"
 #include "oge/pool.hpp"

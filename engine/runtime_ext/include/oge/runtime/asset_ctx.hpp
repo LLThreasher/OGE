@@ -23,7 +23,7 @@ namespace ui
 class IFont;
 };
 
-namespace renderer
+namespace gfx
 {
 namespace dca
 {
@@ -33,8 +33,8 @@ class DynamicChunkAllocator;
 class DynamicSkylineAllocator;
 }  // namespace renderer
 
-using DynamicChunkAllocator = renderer::dca::DynamicChunkAllocator;
-using DynamicSkylineAllocator = renderer::DynamicSkylineAllocator;
+using DynamicChunkAllocator = gfx::dca::DynamicChunkAllocator;
+using DynamicSkylineAllocator = gfx::DynamicSkylineAllocator;
 
 struct AssetContext : AssetBase
 {

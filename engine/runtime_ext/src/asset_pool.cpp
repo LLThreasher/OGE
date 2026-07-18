@@ -5,8 +5,8 @@
 #include "oge/graphics/backend.hpp"
 #include "oge/runtime/streaming_manager.hpp"
 #include "oge/platform/io.hpp"
-#include "oge/runtime/ui/objects.hpp"
 #include "oge/runtime/objects_ext.hpp"
+#include "oge/runtime/ui/objects.hpp"
 
 namespace oge::runtime
 {
