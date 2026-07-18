@@ -1,5 +1,6 @@
 add_library(OneGameLib STATIC
 	src/DebugClient.cpp
+	src/DebugScene0.cpp
 	src/DebugScene.cpp
 	  )
 

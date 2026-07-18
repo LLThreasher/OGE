@@ -28,11 +28,13 @@ class GameRenderer
         m_world.emplace<ScreenRect>(rootView, I16Point2{0, 0}, ctx.backend.SwapchainExtent());
         m_world.emplace<UIRoot>(rootView);
 
-        auto blkArray = Get().ctx().get<Terrain::BlockRegistry>().GetBlockTextureArray();
-        m_terrain.Initialize(m_world, ctx);
-        for (uint32_t i = 0; i < blkArray.size(); ++i)
+        if (auto blks = Get().ctx().find<Terrain::BlockRegistry>())
         {
-            ctx.renderer.UpdateBlockTexture(ctx, blkArray[i], i);
+            auto blkArray = blks->GetBlockTextureArray();
+            for (uint32_t i = 0; i < blkArray.size(); ++i)
+            {
+                ctx.renderer.UpdateBlockTexture(ctx, blkArray[i], i);
+            }
         }
 
         for (auto& ptr : m_subsystems)
@@ -44,7 +46,6 @@ class GameRenderer
     void Present(PresentationContext pctx, FrameOutputData& frameOut)
     {
         GameWorldContext& game = Get();
-        m_terrain.Present(game, pctx, frameOut);
         for (auto& ptr : m_subsystems)
         {
             ptr->Present(game, pctx, frameOut);
@@ -56,6 +57,5 @@ class GameRenderer
    private:
     std::vector<std::unique_ptr<RendererBase>> m_subsystems;
     entt::registry& m_world;
-    Terrain::TerrainRenderer m_terrain;
 };
 }  // namespace OneGame::Engine::ECS

@@ -17,8 +17,10 @@ int main(int argc, char* argv[]) {
 	auto window = CreateGameWindow("OneGame", 1280, 720);
 	auto backend = CreateBackend(BackendType::Vulkan);
 	auto app = GameGraphicApp(*backend);
-	app.RegisterScene<DebugScene3>();
-	app.SwitchToScene<DebugScene3>();
+	app.RegisterScene<DebugScene>();
+	app.SwitchToScene<DebugScene>();
+	// app.RegisterScene<DebugScene3>();
+	// app.SwitchToScene<DebugScene3>();
 	// app.RegisterScene<DebugClient>();
 	// app.SwitchToScene<DebugClient>();
 	window->Run(app);
