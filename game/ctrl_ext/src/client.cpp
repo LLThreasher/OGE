@@ -72,6 +72,8 @@ AppFrameAction Client::Update(float dt, oge::input::RawInputStream& input)
 
 void Client::Shutdown()
 {
+    m_backend->WaitDeviceIdle();
+
     SceneRunner::DetachCurrentScene();
 
     m_sm.Shutdown(*m_backend);

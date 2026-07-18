@@ -16,8 +16,8 @@ set(APP_NAME PortableApp)
 add_executable(${APP_NAME} MACOSX_BUNDLE main.cpp)
 target_link_libraries(${APP_NAME} PRIVATE game_ctrl_ext oge::platform::sdl3 oge::graphics::vulkan)
 
-compile_shaders(${APP_NAME} ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets")
-copy_assets(${APP_NAME} ../assets "${CMAKE_CURRENT_BINARY_DIR}/assets")
+compile_shaders(${APP_NAME} ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets2")
+copy_assets(${APP_NAME} ../assets "${CMAKE_CURRENT_BINARY_DIR}/assets2")
 
 # Destination paths below are relative to ${CMAKE_INSTALL_PREFIX}
 install(TARGETS ${APP_NAME}
@@ -27,7 +27,7 @@ install(TARGETS ${APP_NAME}
 
 add_custom_command(TARGET ${APP_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_CURRENT_BINARY_DIR}/assets
+    ${CMAKE_CURRENT_BINARY_DIR}/assets2
     $<TARGET_BUNDLE_CONTENT_DIR:${APP_NAME}>/Resources/assets
 )
 
