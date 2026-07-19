@@ -104,13 +104,13 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
 void SDL3GameWindow::Run(WindowApp& app)
 {
     SDL_ShowWindow(m_window);
-#ifndef OGE_DEBUG
+#if !defined(OGE_DEBUG) || defined(PLATFORM_ANDROID)
     try
     {
 #endif
         auto handle = GetCurrentWindow();
         app.Initialize(&handle);
-#ifndef OGE_DEBUG
+#if !defined(OGE_DEBUG) || defined(PLATFORM_ANDROID)
     }
     catch (const std::exception& e)
     {

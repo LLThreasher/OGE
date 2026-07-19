@@ -64,57 +64,68 @@ Index:
     file(WRITE "${CMAKE_SOURCE_DIR}/.clangd" "${CLANGD_FILE_CONTENT}")
 endif()
 else()
-    set(ANDROID_DIR "${CMAKE_CURRENT_SOURCE_DIR}/game_android")
-    if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
-	    set(GRADLEW_COMMAND gradlew.bat)
-    else()
-	    set(GRADLEW_COMMAND gradlew)
-    endif()
 
-    set(GRADLEW_ARGS "-DMAX_FRAMES_IN_FLIGHT=${MAX_FRAMES_IN_FLIGHT};-DBUILD_WINDOW_SDL3=ON;-DBUILD_VULKAN=ON")
-    if (ENABLE_PERF)
-        set(GRADLEW_ARGS "${GRADLEW_ARGS};-DENABLE_PERF=${ENABLE_PERF}")
-    endif()
+include(FetchContent)
 
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
-        set(APK_NAME "debug/app-debug.apk")
-    elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
-        set(APK_NAME "release/app-release.apk")
-    endif()
-    
-    set(APK_BUILD_PATH "${ANDROID_DIR}/app/build")
-    set_source_files_properties("${APK_SRC_PATH}" PROPERTIES GENERATED TRUE)
+set(ANDROID_DIR "${CMAKE_CURRENT_SOURCE_DIR}/game_android")
+FetchContent_Declare(
+    vulkan_validation
+    URL "https://github.com/KhronosGroup/Vulkan-ValidationLayers/releases/download/vulkan-sdk-1.4.350.1/android-binaries-1.4.350.1.tar.gz"
+)
+FetchContent_MakeAvailable(vulkan_validation)
+file(COPY "${vulkan_validation_SOURCE_DIR}/" DESTINATION "${ANDROID_DIR}/app/libs/debug")
 
-    add_custom_target(
-	    run_gradle_assemble
-	    COMMAND "${ANDROID_DIR}/${GRADLEW_COMMAND}" "assemble${CMAKE_BUILD_TYPE}" "--console=plain" "--no-daemon" "--rerun-tasks" "--info" "-PCMAKE_ARGS=${GRADLEW_ARGS}"
-	    WORKING_DIRECTORY "${ANDROID_DIR}"
-        BYPRODUCTS "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}"
-        USES_TERMINAL
-        VERBATIM
+if(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(GRADLEW_COMMAND gradlew.bat)
+else()
+    set(GRADLEW_COMMAND gradlew)
+endif()
+
+set(GRADLEW_ARGS "-DMAX_FRAMES_IN_FLIGHT=${MAX_FRAMES_IN_FLIGHT};-DBUILD_WINDOW_SDL3=ON;-DBUILD_VULKAN=ON")
+if (ENABLE_PERF)
+    set(GRADLEW_ARGS "${GRADLEW_ARGS};-DENABLE_PERF=${ENABLE_PERF}")
+endif()
+
+if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(APK_NAME "debug/app-debug.apk")
+elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(APK_NAME "release/app-release.apk")
+endif()
+
+set(APK_BUILD_PATH "${ANDROID_DIR}/app/build")
+set_source_files_properties("${APK_SRC_PATH}" PROPERTIES GENERATED TRUE)
+
+add_custom_target(
+    run_gradle_assemble
+    COMMAND "${ANDROID_DIR}/${GRADLEW_COMMAND}" "assemble${CMAKE_BUILD_TYPE}" "--console=plain" "--no-daemon" "--rerun-tasks" "--info" "-PCMAKE_ARGS=${GRADLEW_ARGS}"
+    WORKING_DIRECTORY "${ANDROID_DIR}"
+    BYPRODUCTS "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}"
+    USES_TERMINAL
+    VERBATIM
+)
+add_custom_command(
+    OUTPUT FORCE_GRADLE_RUN_SYMBOLIC
+    COMMAND ${CMAKE_COMMAND} -E echo "Running Gradle..."
+)
+set_target_properties(run_gradle_assemble PROPERTIES 
+    OBJECT_DEPENDS FORCE_GRADLE_RUN_SYMBOLIC
+)
+add_custom_target(
+    build_apk ALL
+    COMMAND ${CMAKE_COMMAND} -E copy "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}" "${CMAKE_BINARY_DIR}/Android-${CMAKE_BUILD_TYPE}.apk" 
+    DEPENDS run_gradle_assemble "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}"
+)
+install(CODE "
+    message(installing \${CMAKE_BINARY_DIR}/Android-${CMAKE_BUILD_TYPE}.apk)
+    execute_process(
+        COMMAND \$ENV{ANDROID_HOME}/platform-tools/adb.exe install \${CMAKE_BINARY_DIR}/Android-${CMAKE_BUILD_TYPE}.apk
+        WORKING_DIRECTORY \${CMAKE_BINARY_DIR}
+        RESULT_VARIABLE res
     )
-    add_custom_command(
-        OUTPUT FORCE_GRADLE_RUN_SYMBOLIC
-        COMMAND ${CMAKE_COMMAND} -E echo "Running Gradle..."
-    )
-    set_target_properties(run_gradle_assemble PROPERTIES 
-        OBJECT_DEPENDS FORCE_GRADLE_RUN_SYMBOLIC
-    )
-    add_custom_target(
-	    build_apk ALL
-        COMMAND ${CMAKE_COMMAND} -E copy "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}" "${CMAKE_BINARY_DIR}/Android-${CMAKE_BUILD_TYPE}.apk" 
-	    DEPENDS run_gradle_assemble "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}"
-    )
-    install(CODE "
-        message(installing \${CMAKE_BINARY_DIR}/Android-${CMAKE_BUILD_TYPE}.apk)
-        execute_process(
-            COMMAND \$ENV{ANDROID_HOME}/platform-tools/adb.exe install \${CMAKE_BINARY_DIR}/Android-${CMAKE_BUILD_TYPE}.apk
-            WORKING_DIRECTORY \${CMAKE_BINARY_DIR}
-            RESULT_VARIABLE res
-        )
-        if(NOT res EQUAL 0)
-            message(FATAL_ERROR \"Custom post-install script failed!\")
-        endif()
-    ")
+    if(NOT res EQUAL 0)
+        message(FATAL_ERROR \"Custom post-install script failed!\")
+    endif()
+")
+
 endif()
 

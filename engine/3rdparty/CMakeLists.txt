@@ -39,7 +39,8 @@ FetchContent_Declare(
 FetchContent_Declare(
     SDL
     GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-    GIT_TAG        release-3.4.12
+    # GIT_TAG        release-3.4.12
+    GIT_TAG        9c30a7cc82274ffff188fc8f61de2ba28c3681da
 )
 
 FetchContent_Declare(
@@ -66,18 +67,21 @@ if(BUILD_WINDOW_SDL3)
 set(SDL_SHARED ON CACHE BOOL "Build SDL shared library" FORCE)
 set(SDL_STATIC ON CACHE BOOL "Build SDL static library" FORCE)
 
-set(SDL_AUDIO OFF CACHE BOOL "Disable SDL_AUDIO support" FORCE)
-set(SDL_VULKAN OFF CACHE BOOL "Disable Vulkan support in SDL" FORCE)
-set(SDL_OPENGL OFF CACHE BOOL "Disable OpenGL support in SDL" FORCE)
-set(SDL_OPENGLES OFF CACHE BOOL "Disable OpenGL ES support in SDL" FORCE)
-set(SDL_DIRECTX OFF CACHE BOOL "Disable DIRECTX support in SDL" FORCE)
-set(SDL_GPU OFF CACHE BOOL "Disable SDL_GPU support" FORCE)
-set(SDL_POWER OFF CACHE BOOL "Disable SDL_POWER support" FORCE)
-set(SDL_RENDER OFF CACHE BOOL "Disable SDL_RENDER support" FORCE)
-set(SDL_CAMERA OFF CACHE BOOL "Disable SDL_CAMERA support" FORCE)
-set(SDL_TEST OFF CACHE BOOL "Disable SDL_TEST support" FORCE)
-set(SDL_TESTS OFF CACHE BOOL "Disable SDL_TESTS support" FORCE)
-set(SDL_VIRTUAL_JOYSTICK OFF CACHE BOOL "Disable SDL_VIRTUAL_JOYSTICK support" FORCE)
+# set(SDL_RENDER OFF CACHE BOOL "Disable SDL_RENDER support" FORCE)
+# set(SDL_GPU OFF CACHE BOOL "Disable SDL_GPU support" FORCE)
+# set(SDL_TEST OFF CACHE BOOL "Disable SDL_TEST support" FORCE)
+# set(SDL_TESTS OFF CACHE BOOL "Disable SDL_TESTS support" FORCE)
+
+# if(NOT CMAKE_SYSTEM_NAME STREQUAL "Android")
+# set(SDL_AUDIO OFF CACHE BOOL "Disable SDL_AUDIO support" FORCE)
+# set(SDL_VULKAN OFF CACHE BOOL "Disable Vulkan support in SDL" FORCE)
+# set(SDL_OPENGL OFF CACHE BOOL "Disable OpenGL support in SDL" FORCE)
+# set(SDL_OPENGLES OFF CACHE BOOL "Disable OpenGL ES support in SDL" FORCE)
+# set(SDL_DIRECTX OFF CACHE BOOL "Disable DIRECTX support in SDL" FORCE)
+# set(SDL_POWER OFF CACHE BOOL "Disable SDL_POWER support" FORCE)
+# set(SDL_CAMERA OFF CACHE BOOL "Disable SDL_CAMERA support" FORCE)
+# set(SDL_VIRTUAL_JOYSTICK OFF CACHE BOOL "Disable SDL_VIRTUAL_JOYSTICK support" FORCE)
+# endif()
 
 FetchContent_MakeAvailable(SDL)
 endif()
