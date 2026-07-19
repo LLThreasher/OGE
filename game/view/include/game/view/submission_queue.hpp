@@ -8,7 +8,6 @@
 
 namespace game::view
 {
-using namespace oge;
 using namespace oge::runtime;
 using namespace oge::runtime::gfx;
 using namespace ::game::view::gfx;
@@ -51,7 +50,7 @@ class ViewSubmissionGroup
 {
    public:
     template <typename... Args>
-    using TView = ViewSubmissionGroup<SubmissionView<Args...>>;
+    using TView = ViewSubmissionGroup<oge::SubmissionView<Args...>>;
     static constexpr size_t ViewCount = std::bit_width(static_cast<uint32_t>(GameViewType::All));
 
     ViewSubmissionGroup() {}
@@ -125,7 +124,7 @@ class ViewSubmissionGroup
     }
 
     template <typename... Args, size_t... Is>
-    static std::array<SubmissionView<Args...>, ViewCount> create_array_impl(
+    static std::array<oge::SubmissionView<Args...>, ViewCount> create_array_impl(
         std::array<SubmissionGroupT, ViewCount>& arr, std::index_sequence<Is...>)
     {
         // Corrected fold expansion and added 'template' keyword
@@ -135,7 +134,7 @@ class ViewSubmissionGroup
     std::array<SubmissionGroupT, ViewCount> m_groups;
 };
 
-using SingleSubmissionQueue = SubmissionGroup<CmdDrawSprite, CmdAddView, CmdDrawGeneralMeshOpaque,
+using SingleSubmissionQueue = oge::SubmissionGroup<CmdDrawSprite, CmdAddView, CmdDrawGeneralMeshOpaque,
                                               CmdDrawTerrainMeshOpaque, CmdDrawDebugText, CmdDrawDebugRect>;
 
 class SubmissionQueue : public ViewSubmissionGroup<SingleSubmissionQueue>

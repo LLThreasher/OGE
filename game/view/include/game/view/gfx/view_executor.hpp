@@ -43,6 +43,12 @@ class ViewExecutor
         m_queue.Clear();
     }
 
+    template <typename Pass>
+    Pass GetPass()
+    {
+        return std::get<Pass>(m_passes);
+    }
+
    private:
     template <typename TView>
     void DrawView(DrawContext& ctx, TView queue)

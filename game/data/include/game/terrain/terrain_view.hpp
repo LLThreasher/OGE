@@ -9,6 +9,11 @@
 #include "oge/pool.hpp"
 #include "oge/runtime/entt.hpp"
 
+namespace game::math
+{
+    using namespace oge::math;
+}
+
 namespace game
 {
 namespace sim::terrain
@@ -21,9 +26,18 @@ namespace view::terrain
 class TerrainRenderer;
 }  // namespace view
 
+namespace game::math
+{
+    using namespace oge::math;
+}
+
 namespace terrain
 {
-using namespace oge;
+using oge::Handle;
+using oge::HandleHash;
+using oge::Point3;
+using oge::Pool;
+using oge::LocalPoint3;
 
 struct TerrainDesc
 {
@@ -129,8 +143,8 @@ struct TerrainRaycastResult
 
 class TerrainView
 {
-    friend class game::sim::terrain::SubsystemTerrain;
-    friend class game::view::terrain::TerrainRenderer;
+    friend class ::game::sim::terrain::SubsystemTerrain;
+    friend class ::game::view::terrain::TerrainRenderer;
 
    public:
     uint32_t GetBlock(Point3 pos) const { return GetBlock(pos.x, pos.y, pos.z); }

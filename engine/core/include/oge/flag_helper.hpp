@@ -2,7 +2,7 @@
 
 #include <type_traits>
 
-namespace oge
+namespace oge::flag_helper
 {
 template <typename T>
     requires std::is_enum_v<T>

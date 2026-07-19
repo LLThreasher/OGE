@@ -1,4 +1,6 @@
 #include "game/sim/terrain/subsystem_terrain.hpp"
+#include "oge/log.hpp"
+#include "oge/fmt.hpp"
 
 namespace game::sim::terrain
 {
@@ -15,6 +17,7 @@ void TerrainGenerator::GenerateTerrain(TerrainData& terrain, BlockRegistry& bloc
         uint32_t woodIdx = blocks.GetBlockId("wood");
         uint32_t stoneIdx = blocks.GetBlockId("stone");
         auto chunk = terrain.chunks.Get(handle);
+        LOG_DEBUG("generationg chunk at {}", chunk->Coords);
         auto chunkYBase = chunk->Coords.y << CHUNK_SHIFT_Y;
 
         if (chunk->Coords.x == 0 && chunk->Coords.z == 0)

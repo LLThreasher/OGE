@@ -1,5 +1,4 @@
 #pragma once
-#include <iostream>
 
 #include "oge/log.hpp"
 #include "oge/platform/stacktrace.hpp"

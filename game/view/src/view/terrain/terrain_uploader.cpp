@@ -7,7 +7,7 @@
 
 namespace game::view::terrain
 {
-using namespace graphics;
+using namespace oge::graphics;
 
 void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, AssetContext& ctx)
 {

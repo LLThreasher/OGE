@@ -1,10 +1,16 @@
 #pragma once
 #include "oge/platform/window_app.hpp"
 
+namespace game::math
+{
+    using namespace oge::math;
+}
+
 namespace game
 {
-using namespace oge;
+using namespace oge::flag_helper;
 using oge::platform::AppFrameAction;
+
 class WindowCtx
 {
     AppFrameAction frameAction;

@@ -16,6 +16,7 @@
 namespace oge::platform::sdl3
 {
 using namespace input;
+using namespace oge::flag_helper;
 
 constexpr double FPS_60_TARGET_FRAME_DURATION_S = 1.0 / 60.0;
 
@@ -161,14 +162,14 @@ void SDL3GameWindow::Run(WindowApp& app)
                     m_input.SetKey(GetEngineKey(event.key.key), false);
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_DOWN:
-                    m_input.SetMouseButton(GetEngineMouseButton(event.button.button), true);
+                    m_input.SetMouseButton(event.button.which, GetEngineMouseButton(event.button.button), true);
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_UP:
-                    m_input.SetMouseButton(GetEngineMouseButton(event.button.button), false);
+                    m_input.SetMouseButton(event.button.which, GetEngineMouseButton(event.button.button), false);
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
-                    m_input.SetMouseDelta(event.motion.xrel, event.motion.yrel);
-                    m_input.SetMousePosition(event.motion.x, event.motion.y);
+                    m_input.SetMouseDelta(event.motion.which, event.motion.xrel, event.motion.yrel);
+                    m_input.SetMousePosition(event.motion.which, event.motion.x, event.motion.y);
                     break;
                 case SDL_EVENT_FINGER_DOWN:
                     m_input.SetTouchDown(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);

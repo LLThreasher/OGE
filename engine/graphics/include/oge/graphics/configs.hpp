@@ -8,6 +8,7 @@
 
 namespace oge::graphics
 {
+using namespace oge::flag_helper;
 static constexpr size_t MaxColorAttachments = 4;
 
 enum class BufferUsage : uint32_t

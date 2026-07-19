@@ -8,6 +8,7 @@
 
 namespace oge::runtime::ui
 {
+using namespace oge::colors;
 using MouseButton = ::oge::input::MouseButton;
 
 class IFont;

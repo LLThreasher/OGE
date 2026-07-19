@@ -2,19 +2,22 @@
 
 #include <limits>
 
-#include "game/terrain/block_registry.hpp"
 #include "game/components.hpp"
+#include "game/terrain/block_registry.hpp"
 #include "game/terrain/terrain_view.hpp"
 
 namespace game::sim::terrain
 {
 void SubsystemTerrain::onAttach(GameState& ctx)
 {
+    if (!ctx.world.ctx().contains<TerrainDesc>()) ctx.world.ctx().emplace<TerrainDesc>();
     auto desc = ctx.world.ctx().get<TerrainDesc>();
     m_terrainGenerator.SetTerrainGenChunkBudget(desc.terrainGenChunkBudget);
     m_terrainUpdateScheduler.SetChunkViewDistance(desc.chunkViewDistance);
-    m_resolveDirtyChunkConnection = ctx.events.sink<ResolveDirtyChunkEvent>().connect<&TerrainView::HandleResolveDirtyChunk>(ctx.world);
-    m_createPlayerConnection = ctx.world.on_construct<ComponentPlayer>().connect<&SubsystemTerrain::onPlayerCreated>(this);
+    m_resolveDirtyChunkConnection =
+        ctx.events.sink<ResolveDirtyChunkEvent>().connect<&TerrainView::HandleResolveDirtyChunk>(ctx.world);
+    m_createPlayerConnection =
+        ctx.world.on_construct<ComponentPlayer>().connect<&SubsystemTerrain::onPlayerCreated>(this);
 }
 
 void SubsystemTerrain::onDetach(GameState& ctx)
@@ -76,4 +79,4 @@ void TerrainUpdateScheduler::InitialUpdate(TerrainData& terrain, Point3 chunkOri
     }
 }
 
-}  // namespace OneGame::Engine::Terrain
+}  // namespace game::sim::terrain

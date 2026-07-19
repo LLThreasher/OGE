@@ -1,6 +1,10 @@
 #pragma once
 
-#include "game/input/input_srouce.hpp"
+#include <memory>
+
+#include "entt/signal/fwd.hpp"
+#include "game/app_context.hpp"
+#include "game/input/input_source.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/view/gfx/debug_info_pass.hpp"
 #include "game/view/gfx/terrain_pass.hpp"
@@ -10,6 +14,7 @@
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
 #include "oge/runtime/gfx/ui_pass.hpp"
+#include "oge/runtime/typed_registry.hpp"
 
 namespace game
 {
@@ -44,9 +49,6 @@ class Scene
     };
 
     std::optional<Ctx> m_ctx;
-
-    entt::registry m_world;
-    entt::dispatcher m_event;
     input::PlayerInputStream m_playerIn;
 
     sim::GameState m_gameState;
@@ -56,18 +58,24 @@ class Scene
     WindowCtx m_windowCtx;
 
    protected:
+    entt::registry m_world;
     sim::SubsystemPipeline m_subsystems;
     view::RenderPipeline m_renderers;
     input::InputPipeline m_inputs;
 
+    ViewExecutor GetPasses()
+    {
+        return m_ctx.value().viewExecutor;
+    }
+
    public:
-    Scene(AnythingFactory& af)
-        : m_gameState(m_world, m_event),
-          m_renderState(m_world, m_event),
-          m_subsystems(m_gameState, af),
-          m_renderers(m_renderState, af),
-          m_inputState(m_windowCtx, m_playerIn, m_world),
-          m_inputs(m_inputState, af)
+    Scene(AppContext ctx)
+        : m_gameState(m_world, ctx.events),
+          m_renderState(m_world, ctx.events),
+          m_subsystems(m_gameState, ctx.any_factory),
+          m_renderers(m_renderState, ctx.any_factory),
+          m_inputState(m_windowCtx, m_world),
+          m_inputs(m_inputState, ctx.any_factory)
     {
     }
 
@@ -83,16 +91,20 @@ class Scene
         m_world.ctx().insert_or_assign(f.perfStats);
         m_subsystems.Update(f.dt);
         m_renderers.Update(view::RendererFrameData{f.dt, m_ctx.value().assets, m_ctx.value().s_queue});
-        m_ctx.value().viewExecutor.Update(f.dt);
     }
+
+    void Render(float dt) { m_ctx.value().viewExecutor.Update(dt); }
 };
 
 class SceneRunner
 {
    public:
-    SceneRunner(OGEContext& ctx) : m_ctx(ctx), m_anyFactory(ctx)
+    SceneRunner(OGEContext& ctx)
+        : m_ctx(ctx),
+        m_anyFactory(ctx),
+        m_appCtx(m_anyFactory, m_events)
     {
-        m_scenes.emplace(std::type_index(typeid(Scene)), new Scene(m_anyFactory));
+        RegisterScene<Scene>();
         SwitchToScene<Scene>();
     }
 
@@ -100,7 +112,7 @@ class SceneRunner
         requires std::derived_from<TScene, Scene>
     void RegisterScene()
     {
-        m_scenes.emplace(std::type_index(typeid(TScene)), std::make_unique<TScene>(m_anyFactory));
+        m_scenes.emplace(std::type_index(typeid(TScene)), std::make_unique<TScene>(m_appCtx));
     }
 
     template <typename TScene>
@@ -110,7 +122,7 @@ class SceneRunner
     }
 
    protected:
-    void Update(SceneFrame f)
+    void UpdateScene(SceneFrame f)
     {
         if (m_nextScene != nullptr)
         {
@@ -125,7 +137,9 @@ class SceneRunner
         m_currentScene->Update(std::move(f));
     }
 
-    void DetachCurrentScene()
+    void RenderScene(float dt) { m_currentScene->Render(dt); }
+
+    void DetachScene()
     {
         m_currentScene->Detach();
         m_nextScene = m_currentScene;
@@ -134,9 +148,11 @@ class SceneRunner
 
    protected:
     AnythingFactory m_anyFactory;
+    entt::dispatcher m_events;
 
    private:
     OGEContext& m_ctx;
+    AppContext m_appCtx;
 
     std::unordered_map<std::type_index, std::unique_ptr<Scene>> m_scenes;
     Scene* m_nextScene = nullptr;

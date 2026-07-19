@@ -39,7 +39,7 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
         accumTime = 0;
         frameCount = 0;
     }
-    auto s = std::format("FPS {:.2f} ({:.2f} ms | {:.2f} | {:.2f} | {:.2f} | {:.2f})\nCPU: {:.2f}%\nMEM: {} MB {} KB",
+    auto s = std::format("FPS {:.2f} ({:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f})\nCPU: {:.2f}%\nMEM: {} MB {} KB",
                          currentFPS, perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime,
                          perfStatus.assetUploadTime, perfStatus.renderSubmitTime, perfStatus.cpuUsage,
                          GetRAMUsage() / 1024 / 1024, (GetRAMUsage() / 1024) % 1024);

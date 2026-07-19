@@ -20,7 +20,8 @@ namespace game::sim
 namespace terrain
 {
 using namespace oge::runtime;
-using namespace game::terrain;
+using namespace ::game::terrain;
+
 class TerrainUpdateScheduler
 {
    public:

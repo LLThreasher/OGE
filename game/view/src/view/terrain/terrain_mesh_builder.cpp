@@ -15,7 +15,7 @@ constexpr std::array<uint16_t, 16> fullMask = {
     0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
 };
 
-using namespace graphics;
+using namespace oge::graphics;
 
 static size_t MaskIndex(size_t z, size_t y)
 {
@@ -280,18 +280,18 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
         if (m_runningVertexCount > m_vertexBudget) break;
         auto contextHandle = pData.meshingWorkerContexts.Create();
         auto context = pData.meshingWorkerContexts.Get(contextHandle);
-        
+
         auto handle = std::move(pData.buildMeshQueue.front());
         pData.buildMeshQueue.pop();
         auto data = terrain.chunks.Get(handle);
-        // LOG_DEBUG("building mesh at ({}, {}, {})", data->Coords.x, data->Coords.y, data->Coords.z);
+        LOG_DEBUG("building mesh at ({}, {}, {})", data->Coords.x, data->Coords.y, data->Coords.z);
 
         // skip chunks with missing neighbors
         const ChunkData* neighbors[6] = {};
         for (size_t i = 0; i < 6; ++i)
         {
             if (i == FACE_DOWN && data->Coords.y == 0) continue;
-            auto pos = perFaceOffset[i] + data->Coords;
+            auto pos = oge::perFaceOffset[i] + data->Coords;
             auto [_, chunk] = terrain.chunks.Get(pos);
             neighbors[i] = chunk;
         }
@@ -374,8 +374,7 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
                     {
                         uint8_t neighborY = i == 0 ? 0 : 15;
                         context->opaqueMasks[midx] |=
-                            blocks.IsOpaque(blocks.GetBlockId(neighborData[GetBlockIndex(x, neighborY, z)]))
-                            << (x + 1);
+                            blocks.IsOpaque(blocks.GetBlockId(neighborData[GetBlockIndex(x, neighborY, z)])) << (x + 1);
                     }
                 }
             }
@@ -409,7 +408,7 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
                     {
                         uint8_t neighborZ = i == 0 ? 0 : 15;
                         context->opaqueMasks[midx] |= blocks.IsOpaque(neighborData[GetBlockIndex(x, y, neighborZ)])
-                                                        << (x + 1);
+                                                      << (x + 1);
                     }
                 }
             }
@@ -451,4 +450,4 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
         ExecuteBuildChunkMesh(pData, contextHandle, blocks);
     }
 }
-}  // namespace OneGame::Engine::Terrain
+}  // namespace game::view::terrain

@@ -142,3 +142,5 @@ assets_cache/
 shader_cache/
 
 AGI_trace/
+
+.clangd

@@ -7,7 +7,6 @@
 
 namespace game::view::gfx
 {
-using namespace oge;
 using namespace oge::graphics;
 
 constexpr size_t NUM_DEBUG_VERTICES = 2048;

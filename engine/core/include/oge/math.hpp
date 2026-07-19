@@ -216,6 +216,8 @@ inline mat4 get_perspective_rot(Orientation ori)
     return mat4(1.f);
 }
 
+inline float cos(float val) { return glm::cos(val); }
+inline float sin(float val) { return glm::sin(val); }
 inline float atan(float val) { return glm::atan(val); }
 inline float tan(float val) { return glm::tan(val); }
 }  // namespace OneGame::Engine::math

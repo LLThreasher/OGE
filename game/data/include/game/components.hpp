@@ -1,17 +1,17 @@
 #pragma once
 
-#include <optional>
-
 #include "oge/aabb.hpp"
 #include "oge/math.hpp"
-#include "oge/rect.hpp"
 #include "oge/runtime/entt.hpp"
 
-#include "game/terrain/terrain_view.hpp"
+namespace game::math
+{
+    using namespace oge::math;
+}
 
 namespace game
 {
-using namespace oge;
+using oge::AABB;
 struct ComponentCamera
 {
     float yaw;
@@ -37,6 +37,8 @@ struct ComponentPerspectiveCamera
     float fov = math::radians(45.0f);
     float aspect = 1.f;
 };
+
+math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamera, math::vec2 pos);
 
 struct InputSourceWidget
 {

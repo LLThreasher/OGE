@@ -47,4 +47,22 @@ struct GPUBufferSpan : BufferSpan
 {
     GPUBufferHandle buffer;
 };
+
+namespace gpu_objects
+{
+    using oge::GPUTextureRegion;
+    using oge::BufferSpan;
+    using oge::GPUBufferSpan;
+
+    using oge::HandleHash;
+    using oge::GPUBufferHandle;
+    using oge::GPUTextureHandle;
+    using oge::GPUPipelineHandle;
+    using oge::GPUBindingGroupHandle;
+    using oge::GPUBindingGroupLayoutHandle;
+    using oge::GPUFenceHandle;
+    using oge::GPURenderPassHandle;
+    using oge::GPUFrameBufferHandle;
+    using oge::GPUQueryPoolHandle;
+}
 }  // namespace oge::graphics

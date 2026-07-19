@@ -5,11 +5,19 @@
 #include "oge/point3.hpp"
 #include "oge/runtime/gfx/commands.hpp"
 
+namespace game::math
+{
+    using namespace oge::math;
+}
+
 namespace game::view::gfx
 {
+using oge::runtime::GPUChunkedAllocation;
+using oge::Point3;
 
-using namespace oge;
-using namespace oge::runtime;
+using namespace oge::rects;
+using namespace oge::colors;
+using namespace oge::gpu_objects;
 
 struct PDebugRect : IRect
 {

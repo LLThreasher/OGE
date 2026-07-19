@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+
 #include <cinttypes>
 
 #include "oge/log.hpp"
@@ -15,9 +16,11 @@ class DiscreteEventStream
    public:
     using Cursor = EventStreamCursor;
 
-    bool PollOne(Cursor& cursor, T& output) const
+    bool PollOne(Cursor& cursor, T& output) const { return PollOne(cursor, output, m_currentHead); }
+
+    bool PollOne(Cursor& cursor, T& output, const Cursor& frontier) const
     {
-        if (cursor == m_currentHead) return false;
+        if (cursor >= frontier) return false;
         if (cursor - m_currentHead > bufferSize)
             LOG_WARN("stale cursor detected at {}, current head {}", cursor, m_currentHead);
         output = m_ringBuffer[(cursor++) % bufferSize];
@@ -26,27 +29,39 @@ class DiscreteEventStream
 
     T Head() const { return m_ringBuffer[m_currentHead % bufferSize]; }
 
+    T Get(const Cursor& cursor) const { return m_ringBuffer[cursor % bufferSize]; }
+
     void AdvanceCursor(Cursor& cursor) const { cursor = m_currentHead; }
 
     void Push(T delta) { m_ringBuffer[(m_currentHead++) % bufferSize] = delta; }
 
    protected:
-    T m_ringBuffer[bufferSize];
+    T m_ringBuffer[bufferSize] = {};
     Cursor m_currentHead;
 };
 
+template <typename T>
+concept IsAccumulativeEvent = requires(T a, T b) {
+    std::is_default_constructible_v<T>;
+    { a - b };
+};
+
 template <typename T, size_t bufferSize = 256>
-    requires std::is_default_constructible_v<T> && requires(T a, T b) { a - b; }
+    requires IsAccumulativeEvent<T>
 class AccumulativeEventStream : public DiscreteEventStream<T, bufferSize>
 {
    public:
     using Cursor = EventStreamCursor;
-    T PollDelta(Cursor& cursor) const
+    T PollDelta(Cursor& cursor) const { return PollDelta(cursor, this->m_currentHead); }
+
+    T PollDelta(Cursor& cursor, const Cursor& frontier) const
     {
-        if (cursor == this->m_currentHead) return {};
+        if (cursor >= frontier) return {};
         if (this->m_currentHead - cursor > bufferSize)
             LOG_WARN("stale cursor detected at {}, current head {}", cursor, this->m_currentHead);
-        return this->m_ringBuffer[this->m_currentHead] - this->m_ringBuffer[cursor % bufferSize];
+        auto res = this->m_ringBuffer[frontier % bufferSize] - this->m_ringBuffer[cursor % bufferSize];
+        cursor = frontier;
+        return res;
     }
 };
 
@@ -64,16 +79,18 @@ struct CompositeEvent
 };
 
 template <typename T, typename TDelta, size_t channelSize = 16, size_t bufferSize = 256>
-    requires std::is_default_constructible_v<T> && std::derived_from<T, CompositeEvent> && requires(T a, TDelta b) { {T::Update(a, b)} -> std::same_as<T>; }
+    requires std::is_default_constructible_v<T> && std::derived_from<T, CompositeEvent> && requires(T a, TDelta b) {
+        { T::Update(a, b) } -> std::same_as<T>;
+    }
 class CompositeEventStream
 {
-public:
+   public:
     using Cursor = std::array<EventStreamCursor, channelSize>;
 
     bool PollOne(size_t channel, Cursor& cursor, T& event)
     {
-        auto stream = m_channels[channel];
-        auto ccursor = cursor[channel];
+        auto& stream = m_channels[channel];
+        auto& ccursor = cursor[channel];
         if (!stream.PollOne(ccursor, event)) return false;
         assert(event.status == EventStatus::Start);
         while (stream.PollOne(ccursor, event))
@@ -98,7 +115,7 @@ public:
 
     void PushStart(size_t channel, T data)
     {
-        auto c = m_channels[channel];
+        auto& c = m_channels[channel];
         assert(data.status == EventStatus::Start);
         assert(c.Head().status == EventStatus::End);
         data.channel = channel;
@@ -107,15 +124,16 @@ public:
 
     void PushDelta(size_t channel, TDelta delta, EventStatus status)
     {
-        auto c = m_channels[channel];
+        auto& c = m_channels[channel];
         assert(c.Head().status != EventStatus::Start);
         auto event = T::Update(c.Head(), delta);
         event.status = status;
         event.channel = channel;
         c.Push(event);
     }
-private:
+
+   private:
     std::array<DiscreteEventStream<T, bufferSize>, channelSize> m_channels;
 };
 
-}  // namespace OneGame::Engine
+}  // namespace oge

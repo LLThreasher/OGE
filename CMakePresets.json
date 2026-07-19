@@ -25,7 +25,8 @@
         "CMAKE_CXX_COMPILER": "clang++",
         "MAX_FRAMES_IN_FLIGHT": "1",
         "BUILD_VULKAN": "ON",
-        "BUILD_WINDOW_SDL3": "ON"
+        "BUILD_WINDOW_SDL3": "ON",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       },
       "condition": {
         "type": "equals",
@@ -43,7 +44,8 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang-cl.exe",
         "CMAKE_CXX_COMPILER": "clang-cl.exe",
-        "MAX_FRAMES_IN_FLIGHT": "2"
+        "MAX_FRAMES_IN_FLIGHT": "2",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       },
       "condition": {
         "type": "equals",

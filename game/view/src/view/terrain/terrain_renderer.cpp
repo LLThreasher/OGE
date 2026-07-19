@@ -12,11 +12,12 @@ namespace game::view::terrain
 
 void TerrainRenderer::onAttach(RendererState& ctx)
 {
-    auto tdesc = ctx.world.ctx().get<TerrainDesc>();
+    auto tdesc = ctx.world.ctx().find<TerrainDesc>();
+    if (tdesc == nullptr) tdesc = &ctx.world.ctx().emplace<TerrainDesc>();
     auto desc = ctx.world.ctx().find<TerrainRendererDesc>();
     if (desc == nullptr) desc = &ctx.world.ctx().emplace<TerrainRendererDesc>();
     m_terrainMeshBuilder.SetVertexBudget(desc->meshingQuadBudget);
-    m_terrainUploader.SetMaxNumChunks((tdesc.chunkViewDistance + 1) * (tdesc.chunkViewDistance + 1) * 6);
+    m_terrainUploader.SetMaxNumChunks((tdesc->chunkViewDistance + 1) * (tdesc->chunkViewDistance + 1) * 6);
 }
 
 void TerrainRenderer::onDetach(RendererState& ctx)
@@ -50,7 +51,7 @@ void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain, Ter
         for (int i = 0; i < 6; ++i)
         {
             if (i == FACE_DOWN && chunk->Coords.y == 0) continue;
-            auto neighborCoord = perFaceOffset[i] + chunk->Coords;
+            auto neighborCoord = oge::perFaceOffset[i] + chunk->Coords;
             auto [handle, chunk] = terrain.chunks.Get(neighborCoord);
             if (!chunk || chunk->state != ChunkState::Persistent)
             {
@@ -171,7 +172,7 @@ static bool IsVisibleToPlayer(Point3 chunkCoord, const Frustum& frustum)
 void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data, TerrainPresentationData& pdata,
                                                const entt::registry& tctx, ViewSubmissionGroup<View> fd)
 {
-    using namespace graphics;
+    using namespace oge::graphics;
     using namespace ui;
 
     playerToView.clear();

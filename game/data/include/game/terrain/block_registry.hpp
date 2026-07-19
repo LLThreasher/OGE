@@ -9,7 +9,7 @@
 
 namespace game::terrain
 {
-using namespace oge;
+using oge::AABB;
 // support up to 4096 blocks, 256 of which are non-opaque
 constexpr uint32_t OPAQUE_BLOCK_START = 256;
 constexpr uint32_t BLOCK_ID_MASK = (uint32_t)(((uint64_t)1 << 12) - 1);

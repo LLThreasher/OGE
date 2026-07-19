@@ -87,3 +87,25 @@ endfunction()
 add_subdirectory(engine)
 add_subdirectory(game)
 add_subdirectory(game_gui)
+
+# export compile commands
+if(CMAKE_EXPORT_COMPILE_COMMANDS)
+    # Compute relative build directory
+    file(RELATIVE_PATH CLANGD_BUILD_DIR
+        "${CMAKE_SOURCE_DIR}"
+        "${CMAKE_BINARY_DIR}"
+    )
+
+    set(CLANGD_FILE_CONTENT
+"CompileFlags:
+  CompilationDatabase: ${CLANGD_BUILD_DIR}
+
+Diagnostics:
+  UnusedIncludes: Strict
+
+Index:
+  Background: Build
+")
+
+    file(WRITE "${CMAKE_SOURCE_DIR}/.clangd" "${CLANGD_FILE_CONTENT}")
+endif()

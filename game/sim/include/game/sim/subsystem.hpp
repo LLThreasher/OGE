@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/frame_perf.hpp"  // debug info pass
+#include "game/input/player_input_stream.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
 
@@ -46,6 +47,17 @@ class SubsystemDebugText : public Subsystem
    public:
     DECL_ID(SubsystemDebugText);
     SubsystemDebugText() : Subsystem(Id) {}
+    void onAttach(GameState& ctx) override;
+    void onDetach(GameState& ctx) override;
+    void onUpdate(FGameState& ctx) override;
+};
+
+class SubsystemPlayer : public Subsystem
+{
+    input::PlayerInputStream::Cursor pIdx;
+   public:
+    DECL_ID(SubsystemPlayer);
+    SubsystemPlayer() : Subsystem(Id) {}
     void onAttach(GameState& ctx) override;
     void onDetach(GameState& ctx) override;
     void onUpdate(FGameState& ctx) override;

@@ -40,7 +40,6 @@ namespace game::view
 {
 namespace terrain
 {
-using namespace oge;
 using namespace oge::runtime;
 using namespace ::game::terrain;
 
@@ -95,7 +94,7 @@ class TerrainMeshBuilder
 
 class TerrainMeshScheduler
 {
-    using View = SubmissionView<gfx::CmdDrawTerrainMeshOpaque>;
+    using View = oge::SubmissionView<gfx::CmdDrawTerrainMeshOpaque>;
 
    public:
     void QueueChunksForMeshing(const TerrainData& terrain, TerrainPresentationData& pdata, entt::dispatcher& events);

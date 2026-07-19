@@ -4,10 +4,14 @@
 #include "oge/runtime/ui/objects.hpp"
 #include "oge/math.hpp"
 
+namespace game::math
+{
+    using namespace oge::math;
+}
+
 namespace game::ui
 {
 using namespace oge::runtime::ui;
-using namespace oge;
 
 using oge::runtime::AssetContext;
 
@@ -50,6 +54,7 @@ struct UIDragReleaseInfo
     entt::entity end;
 };
 
+bool IsButtonClicked(const entt::registry& game, entt::entity button);
 bool IsButtonClicked(const entt::registry& game, entt::entity button, math::vec2& clickPos);
 bool IsDragReleasedSrc(const entt::registry& game, entt::entity src);
 std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragSrc(const entt::registry& game, entt::entity e);

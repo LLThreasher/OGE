@@ -8,8 +8,6 @@
 namespace game::view::gfx
 {
 
-using namespace oge;
-
 constexpr uint32_t BLOCK_TEXTURE_SIZE = 16;
 
 class TerrainPass2 : public RequiresVPTransform, public Pass<CmdDrawTerrainMeshOpaque>

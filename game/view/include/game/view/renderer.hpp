@@ -2,6 +2,7 @@
 
 #include "game/view/submission_queue.hpp"
 #include "oge/runtime/entt.hpp"
+#include "oge/runtime/gfx/uniform_arena.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
 
 namespace oge::runtime
@@ -69,5 +70,26 @@ private:
     float m_duration = 0;
     uint32_t m_currentGPUMem = 0;
     uint32_t m_budgetGPUMem = 0;
+};
+
+class CameraRenderer : public Renderer
+{
+    void onViewPanelUpdate(entt::registry& world, entt::entity entity);
+   public:
+    DECL_ID(CameraRenderer);
+    CameraRenderer() : Renderer(Id) {}
+    void onAttach(RendererState&) override;
+    void onDetach(RendererState&) override;
+    void onUpdate(FRendererState&) override;
+};
+
+class UIRenderer : public Renderer
+{
+   public:
+    DECL_ID(UIRenderer);
+    UIRenderer() : Renderer(Id) {}
+    void onAttach(RendererState&) override;
+    void onDetach(RendererState&) override;
+    void onUpdate(FRendererState&) override;
 };
 }  // namespace game::view
