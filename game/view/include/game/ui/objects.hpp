@@ -19,6 +19,10 @@ entt::entity CreateGameView(entt::registry& game, UIRect rect);
 entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRect rect);
 entt::entity CreateButton(entt::registry& game, AssetContext& asset, UIRect rect);
 
+struct UICursor
+{
+};
+
 struct UIDrag
 {
     int inputIndex = -1;

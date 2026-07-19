@@ -155,8 +155,9 @@ class AnythingFactory
                  void RegisterDrived()
     {
         LOG_INFO("[AF] registering {}", TDrived::IdStr);
-        if constexpr (IsABC<TBase> && BuildableToABC<TDrived, TBase>)
+        if constexpr (IsABC<TBase>)
         {
+            static_assert(BuildableToABC<TDrived, TBase>);
             registry.Get<ABCFactory<TBase>>()->template Register<TDrived>();
         }
         else

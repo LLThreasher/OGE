@@ -27,6 +27,9 @@ class SDL3GameWindow : public Window
     SDL_Window* m_window;
     Timer m_timer;
     bool m_shouldClose = false;
+
+    float window_width;
+    float window_height;
 };
 
 }  // namespace oge::platform::sdl3

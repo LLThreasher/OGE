@@ -1,3 +1,4 @@
+#include "SDL3/SDL_events.h"
 #include "sdl3_window.hpp"
 
 #ifdef PLATFORM_WINDOWS
@@ -99,6 +100,8 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
 #else
     m_window = SDL_CreateWindow(name.c_str(), width, height, SDL_WINDOW_RESIZABLE);
 #endif
+    window_width = width;
+    window_height = height;
 }
 
 void SDL3GameWindow::Run(WindowApp& app)
@@ -133,11 +136,25 @@ void SDL3GameWindow::Run(WindowApp& app)
     {
         uint64_t frameStartTicks = SDL_GetPerformanceCounter();
 
+        float x, y;
         m_input.NewFrame();
         while (SDL_PollEvent(&event))
         {
             switch (event.type)
             {
+                case SDL_EVENT_MOUSE_ADDED:
+                    m_input.AddMouse(event.mdevice.which);
+                    SDL_GetMouseState(&x, &y);
+                    m_input.SetMousePosition(event.mdevice.which, x, y);
+                    break;
+                case SDL_EVENT_WINDOW_MOUSE_ENTER:
+                    float x, y;
+                    SDL_GetMouseState(&x, &y);
+                    m_input.SetMousePosition(event.mdevice.which, x, y);
+                    break;
+                case SDL_EVENT_MOUSE_REMOVED:
+                    m_input.DelMouse(event.mdevice.which);
+                    break;
                 case SDL_EVENT_QUIT:
                     readyToClose = true;
                     break;
@@ -169,7 +186,6 @@ void SDL3GameWindow::Run(WindowApp& app)
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
                     m_input.SetMouseDelta(event.motion.which, event.motion.xrel, event.motion.yrel);
-                    m_input.SetMousePosition(event.motion.which, event.motion.x, event.motion.y);
                     break;
                 case SDL_EVENT_FINGER_DOWN:
                     m_input.SetTouchDown(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);

@@ -44,9 +44,9 @@ void UIPass::onAttach(InitDrawContext& ctx)
 
     {
         GraphicsPipelineDesc desc{};
-        if (!ctx.assets.LoadBlob("ui.vert.spv", desc.vertexShader))
+        if (!ctx.assets.LoadBlob("ui.vert.opt.spv", desc.vertexShader))
             throw std::runtime_error("failed to load vertex shader");
-        if (!ctx.assets.LoadBlob("ui.frag.spv", desc.fragmentShader))
+        if (!ctx.assets.LoadBlob("ui.frag.opt.spv", desc.fragmentShader))
             throw std::runtime_error("failed to load fragment shader");
         // position
         desc.vertexLayout.push_back(VertexAttributeFormat::Uint16x2);

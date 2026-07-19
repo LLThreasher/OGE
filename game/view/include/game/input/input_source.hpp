@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/components.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/input/window_ctx.hpp"
 #include "oge/input/raw_input_stream.hpp"
@@ -43,6 +44,7 @@ class InputSource : public Stage<InputContext, FInputContext>
     struct Def
     {
         PlayerInputStream* target;
+        const ComponentPerspectiveCamera* pcam;
         union
         {
             struct
@@ -50,11 +52,16 @@ class InputSource : public Stage<InputContext, FInputContext>
                 entt::entity viewWidget;
                 entt::entity moveWidget;
             } widgetInput;
-            size_t mouseIuput;
+            struct {
+                size_t mouseIdx;
+            } mouseIuput;
         };
     };
+
     InputSource(oge_id_type id) : Stage<InputContext, FInputContext>(id) {}
 };
+
+void RegisterInputSources(AnythingFactory& af);
 
 class UIDragInput : public InputSource
 {
@@ -62,8 +69,13 @@ class UIDragInput : public InputSource
     RawInputStream::Cursor raw_idx;
    public:
     DECL_ID(UIDragInput);
-    UIDragInput(const Def& def) : InputSource(Id)
+    UIDragInput() : InputSource(Id)
     {
+    }
+
+    static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
+    {
+        return std::make_unique<UIDragInput>();
     }
 
     void onAttach(InputContext& ctx);
@@ -76,7 +88,10 @@ class WidgetInput : public InputSource
     PlayerInputStream& out;
     entt::entity viewWidget;
     entt::entity moveWidget;
+    float vfov;
+    float hfov;
     RawInputStream::Cursor raw_idx;
+    bool isDigging = false;
 
    public:
     DECL_ID(WidgetInput);
@@ -84,9 +99,12 @@ class WidgetInput : public InputSource
     {
         viewWidget = def.widgetInput.viewWidget;
         moveWidget = def.widgetInput.moveWidget;
+        auto& pcam = *def.pcam;
+        vfov = -pcam.fov;
+        hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
     }
 
-    std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
+    static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
     {
         return std::make_unique<WidgetInput>(def);
     }
@@ -100,16 +118,21 @@ class KeyMouseInput : public InputSource
 {
     PlayerInputStream& out;
     size_t mouseIdx;
+    float vfov;
+    float hfov;
     RawInputStream::Cursor raw_idx;
 
    public:
     DECL_ID(KeyMouseInput);
     KeyMouseInput(const Def& def) : InputSource(Id), out(*def.target)
     {
-        mouseIdx = def.mouseIuput;
+        mouseIdx = def.mouseIuput.mouseIdx;
+        auto& pcam = *def.pcam;
+        vfov = -pcam.fov;
+        hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
     }
 
-    std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
+    static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
     {
         return std::make_unique<KeyMouseInput>(def);
     }

@@ -21,13 +21,13 @@ class DiscreteEventStream
     bool PollOne(Cursor& cursor, T& output, const Cursor& frontier) const
     {
         if (cursor >= frontier) return false;
-        if (cursor - m_currentHead > bufferSize)
+        if (m_currentHead - cursor > bufferSize)
             LOG_WARN("stale cursor detected at {}, current head {}", cursor, m_currentHead);
         output = m_ringBuffer[(cursor++) % bufferSize];
         return true;
     }
 
-    T Head() const { return m_ringBuffer[m_currentHead % bufferSize]; }
+    T Head() const { return m_ringBuffer[(m_currentHead - 1) % bufferSize]; }
 
     T Get(const Cursor& cursor) const { return m_ringBuffer[cursor % bufferSize]; }
 

@@ -1,4 +1,5 @@
 #include "game/app_context.hpp"
+#include "game/input/input_source.hpp"
 #include "game/scene.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
@@ -17,6 +18,7 @@ class DebugScene3 : public Scene
    public:
     DebugScene3(AppContext ctx) : Scene(std::move(ctx))
     {
+        m_inputs.AddStage<input::UIDragInput>();
         m_subsystems.AddStage<sim::SubsystemDebugText>();
         m_subsystems.AddStage<sim::SubsystemTerrain>();
         m_renderers.AddStage<view::TerrainRenderer>();

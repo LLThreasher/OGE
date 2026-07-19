@@ -284,7 +284,7 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
         auto handle = std::move(pData.buildMeshQueue.front());
         pData.buildMeshQueue.pop();
         auto data = terrain.chunks.Get(handle);
-        LOG_DEBUG("building mesh at ({}, {}, {})", data->Coords.x, data->Coords.y, data->Coords.z);
+        // LOG_DEBUG("building mesh at ({}, {}, {})", data->Coords.x, data->Coords.y, data->Coords.z);
 
         // skip chunks with missing neighbors
         const ChunkData* neighbors[6] = {};

@@ -50,6 +50,10 @@ struct InputEvent
 using EventInputStream = DiscreteEventStream<InputEvent>;
 using PointerInputStream = AccumulativeEventStream<math::vec2>;
 
+class KeySet : public AnyBitSet256<KeyCode>
+{
+};
+
 class RawInputStream
 {
    public:
@@ -69,6 +73,7 @@ class RawInputStream
     math::vec2 PollPtrLatest(size_t ptrIdx, Cursor& cursor) const;
     math::vec2 PollPtrDelta(size_t ptrIdx, Cursor& cursor) const;
     const BitSet32& ActivePtrs() const { return frameFrontier.activePtrs; }
+    const KeySet& ActiveKeys() const { return frameFrontier.activeKeys; }
     static bool IsMouse(size_t ptrIdx) { return ptrIdx < MaxMousePtrCount; }
 
     void NewFrame();
@@ -90,8 +95,9 @@ class RawInputStream
     EventInputStream events;
     std::array<int, MaxMousePtrCount> mouseIds{};
     std::array<PointerInputStream, PtrInputCount> pointers;
-    struct { Cursor cursor; BitSet32 activePtrs; } frameFrontier;
+    struct { Cursor cursor; BitSet32 activePtrs; KeySet activeKeys; } frameFrontier;
     BitSet32 activePtrs;
+    KeySet activeKeys;
 };
 
 enum class UIEventType : uint8_t

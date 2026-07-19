@@ -1,6 +1,10 @@
 #include "game/input/input_source.hpp"
 #include "game/ui/objects.hpp"
 #include "oge/input/raw_input_stream.hpp"
+#include "oge/log.hpp"
+#include "oge/point2.hpp"
+#include "oge/runtime/ui/objects.hpp"
+#include "oge/fmt.hpp"
 
 namespace game::ui
 {
@@ -48,10 +52,7 @@ bool IsButtonClicked(const entt::registry& game, entt::entity button, math::vec2
     return false;
 }
 
-bool IsDragReleasedSrc(const entt::registry& game, entt::entity src)
-{
-    return game.all_of<UIDragReleaseFinished>(src);
-}
+bool IsDragReleasedSrc(const entt::registry& game, entt::entity src) { return game.all_of<UIDragReleaseFinished>(src); }
 
 std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragSrc(const entt::registry& game, entt::entity e)
 {
@@ -90,9 +91,7 @@ void UIDragInput::onAttach(InputContext& ctx)
     }
 }
 
-void UIDragInput::onDetach(InputContext& ctx)
-{
-}
+void UIDragInput::onDetach(InputContext& ctx) {}
 
 void UIDragInput::onUpdate(FInputContext& ctx)
 {
@@ -100,6 +99,10 @@ void UIDragInput::onUpdate(FInputContext& ctx)
     for (auto e : game.view<UIDragReleaseFinished>())
     {
         game.erase<UIDrag>(e);
+    }
+    for (auto e : game.view<UICursor>())
+    {
+        game.destroy(e);
     }
     game.clear<UIDragReleaseFinished>();
     game.clear<UIDragReleaseDst>();
@@ -194,8 +197,21 @@ void UIDragInput::onUpdate(FInputContext& ctx)
 
     for (size_t ptrIdx : raw.ActivePtrs())
     {
+// #ifdef OGE_DEBUG
+        if (raw.IsMouse(ptrIdx))
+        {
+            ptrPos = raw.PollPtrLatest(ptrIdx, raw_idx);
+            // auto e = game.create();
+            // game.emplace<ScreenRect>(e, oge::I16Point2::FromVec2(ptrPos - 5.f), oge::U16Point2{10, 10});
+            // game.emplace<UIZLevel>(e, 0);
+            // game.emplace<UIRaycastTarget>(e);
+            // game.emplace<UICursor>(e);
+            hit = ui::CastRayScreenSpace(game, ptrPos);
+            if (game.valid(hit)) game.emplace<UIRaycastHit>(hit);
+        }
+// #endif
         if (!game.valid(activeDrags[ptrIdx])) continue;
-        ptrPos = raw.PollPtrLatest(event.pointerIdx, raw_idx);
+        ptrPos = raw.PollPtrLatest(ptrIdx, raw_idx);
         if (raw.IsMouse(ptrIdx))
         {
             hit = ui::CastRayScreenSpace(game, ptrPos);

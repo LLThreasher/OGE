@@ -11,6 +11,7 @@
 #include "oge/runtime/typed_registry.hpp"
 #include "oge/stopwatch.hpp"
 #include "oge/fmt.hpp"
+#include "game/input/input_source.hpp"
 
 #include "game/sim/subsystem.hpp"
 #include "game/view/renderer.hpp"
@@ -29,6 +30,8 @@ Client::Client()
 {
     using namespace sim;
     using namespace view;
+    using namespace input;
+    RegisterInputSources(m_anyFactory);
     RegisterSubsystems(m_anyFactory);
     RegisterRenderers(m_anyFactory);
 }
