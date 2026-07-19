@@ -1,6 +1,11 @@
 #include <spdlog/sinks/ringbuffer_sink.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
+
+#if defined(PLATFORM_ANDROID)
+#include <spdlog/sinks/android_sink.h>
+#else
+#include <spdlog/sinks/stdout_color_sinks.h>
+#endif
 
 #include <memory>
 

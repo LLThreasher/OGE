@@ -4,6 +4,7 @@ plugins {
 
 // def buildWithCMake = project.hasProperty('BUILD_WITH_CMAKE');
 def buildWithCMake = true;
+def extraArgs = project.findProperty("CMAKE_ARGS")?.split(";") ?: [];
 
 android {
     signingConfigs {
@@ -30,7 +31,10 @@ android {
                 abiFilters 'armeabi-v7a', 'arm64-v8a'
             }
             cmake {
+                arguments "-DCMAKE_VERBOSE_MAKEFILE=ON"
+                arguments "-DCMAKE_RULE_MESSAGES=OFF"
                 arguments "-DANDROID_PLATFORM=android-29", "-DANDROID_STL=c++_static"
+                arguments.addAll(extraArgs)
                 // abiFilters 'armeabi-v7a', 'arm64-v8a', 'x86', 'x86_64'
                 abiFilters 'armeabi-v7a', 'arm64-v8a'
             }
@@ -60,7 +64,7 @@ android {
         externalNativeBuild {
             if (buildWithCMake) {
                 cmake {
-                    path 'CMakeLists.txt'
+                    path 'jni/CMakeLists.txt'
                     version '3.28.0+'
                 }
             } else {

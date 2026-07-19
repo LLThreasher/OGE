@@ -1,28 +1,29 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
-#include "Engine/Platform/IGameWindow.hpp"
-#include "Engine/WindowedGameApp.hpp"
 
-#include "OneGame/DebugScene.hpp"
-#include "OneGame/Client.hpp"
+#include "oge/platform/window.hpp"
+#include "oge/platform/window_app.hpp"
+#include "oge/platform/sdl3/create_window.hpp"
+#include "game/client.hpp"
+#include "game/debug_scene.hpp"
 
-using namespace OneGame;
-using namespace OneGame::Engine;
-using namespace OneGame::Engine::Graphics;
+using namespace oge::platform::sdl3;
 
 extern "C" {
-	int main(int argc, char* argv[]) {
-		(void)argc;
-		(void)argv;
+int main(int argc, char* argv[]) {
+	(void)argc;
+	(void)argv;
 
-		SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
-
-		auto window = CreateGameWindow("OneGame", 0, 0);
-        auto backend = CreateBackend(BackendType::Vulkan);
-        auto app = GameGraphicApp(*backend);
-		app.RegisterScene<DebugScene3>();
-		app.SwitchToScene<DebugScene3>();
-		window->Run(app);
-		return 0;
-	}
+	auto window = CreateSDL3Window("OneGame", 1280, 720);
+	auto app = game::Client();
+	app.RegisterScene<game::DebugScene3>();
+	app.SwitchToScene<game::DebugScene3>();
+	window->Run(app);
+	// app.RegisterScene<DebugScene3>();
+	// app.SwitchToScene<DebugScene3>();
+	// app.RegisterScene<DebugClient>();
+	// app.SwitchToScene<DebugClient>();
+	// window->Run(app);
+	return 0;
+}
 }

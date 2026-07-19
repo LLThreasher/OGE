@@ -98,18 +98,27 @@ struct U16Norm2
 
     U16Norm2 operator+(const U16Norm2& other) const { return {x + other.x, y + other.y}; }
 };
-}  // namespace OneGame::Engine
+}  // namespace oge
+
+static inline uint32_t __mix32(uint32_t x) noexcept
+{
+    x ^= x >> 16;
+    x *= 0x7feb352dU;
+    x ^= x >> 15;
+    x *= 0x846ca68bU;
+    x ^= x >> 16;
+    return x;
+}
 
 namespace std
 {
-template <>
-struct hash<oge::Point2>
+template <typename T>
+struct hash<oge::IntPair<T>>
 {
-    size_t operator()(const oge::Point2& p) const noexcept { return static_cast<size_t>(p.x) << 32 | p.y; }
-};
-template <>
-struct hash<oge::UPoint2>
-{
-    size_t operator()(const oge::UPoint2& p) const noexcept { return static_cast<size_t>(p.x) << 32 | p.y; }
+    size_t operator()(const oge::IntPair<T>& p) const noexcept
+    {
+        uint32_t h = static_cast<uint32_t>(p.x) * 0x8da6b343U ^ static_cast<uint32_t>(p.y) * 0xd8163841U;
+        return __mix32(h);
+    }
 };
 }  // namespace std

@@ -1,20 +1,20 @@
-add_executable(game_gui)
+add_executable(game_desktop)
 
-target_sources(game_gui
+target_sources(game_desktop
 PRIVATE
     main.cpp
  )
 
-target_link_libraries(game_gui PRIVATE game_ctrl_ext oge::platform::sdl3 oge::graphics::vulkan)
+target_link_libraries(game_desktop PRIVATE game::gui oge::platform::sdl3 oge::graphics::vulkan)
 
-compile_shaders(game_gui ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets")
-copy_assets(game_gui ../assets "${CMAKE_CURRENT_BINARY_DIR}/assets")
+compile_shaders(game_desktop ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets")
+copy_assets(game_desktop ../assets "${CMAKE_CURRENT_BINARY_DIR}/assets")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 set(APP_NAME PortableApp)
 
 add_executable(${APP_NAME} MACOSX_BUNDLE main.cpp)
-target_link_libraries(${APP_NAME} PRIVATE game_ctrl_ext oge::platform::sdl3 oge::graphics::vulkan)
+target_link_libraries(${APP_NAME} PRIVATE game::gui oge::platform::sdl3 oge::graphics::vulkan)
 
 compile_shaders(${APP_NAME} ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets2")
 copy_assets(${APP_NAME} ../assets "${CMAKE_CURRENT_BINARY_DIR}/assets2")

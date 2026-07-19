@@ -13,7 +13,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 #add_subdirectory(SDL_mixer)
 #add_subdirectory(SDL_ttf)
 
+include(cmake/utils.cmake)
+
 # Your game and its CMakeLists.txt are in a subfolder named "src"
 add_subdirectory(engine)
+add_subdirectory(game)
 add_subdirectory(src)
 

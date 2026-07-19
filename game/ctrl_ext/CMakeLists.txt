@@ -24,3 +24,5 @@ target_include_directories(game_ctrl_ext
 PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
+add_library(game::gui ALIAS game_ctrl_ext)
