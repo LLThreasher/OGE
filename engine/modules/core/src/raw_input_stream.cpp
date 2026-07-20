@@ -1,5 +1,6 @@
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/log.hpp"
+#include "oge/math.hpp"
 
 namespace oge::input
 {
@@ -34,7 +35,9 @@ void RawInputStream::NewFrame()
     events.AdvanceCursor(frameFrontier.cursor.eventCursor);
     for (size_t i = 0; i < PtrInputCount; ++i)
     {
+        pointers[i].Push(pointerPos[i]);
         pointers[i].AdvanceCursor(frameFrontier.cursor.ptrCursors[i]);
+        pointerPos[i] = {};
     }
 }
 
@@ -56,15 +59,15 @@ void RawInputStream::SetMouseButton(int id, MouseButton button, bool down)
 
 void RawInputStream::SetMouseDelta(int id, float dx, float dy)
 {
-    auto& ptr = pointers[FindMouse(id)];
-    ptr.Push(ptr.Head() + math::vec2{dx, dy});
+    auto& ptr = pointerPos[FindMouse(id)];
+    ptr += math::vec2{dx, dy};
 }
 
 void RawInputStream::SetMousePosition(int id, float x, float y)
 {
     auto idx = FindMouse(id);
-    auto& ptr = pointers[idx];
-    ptr.Push(math::vec2{x, y});
+    auto& ptr = pointerPos[idx];
+    ptr = math::vec2{x, y};
 }
 
 void RawInputStream::AddMouse(int id)
@@ -127,21 +130,14 @@ void RawInputStream::SetTouchDown(uint64_t id, float x, float y)
     auto ptr_idx = MaxMousePtrCount + resultId;
     activePtrs.add(ptr_idx);
 
-    // InputEvent res{InputEventType::PointerDown};
-    // res.pointerIdx = MaxMousePtrCount + resultId;
-    // activePtrs.add(res.pointerIdx);
-    // LOG_INFO("add touch {} at slot {} {}", id, res.pointerIdx, FindTouch(id));
-    // assert(FindTouch(id) == res.pointerIdx);
-    // events.Push(res);
-
     InputEvent res{InputEventType::PointerDown};
     res.pointerIdx = ptr_idx;
     events.Push(res);
 
-    pointers[res.pointerIdx].Push({x, y});
+    pointerPos[res.pointerIdx] = math::vec2{x, y};
 }
 
-void RawInputStream::SetTouchUpdate(uint64_t id, float x, float y) { pointers[FindTouch(id)].Push({x, y}); }
+void RawInputStream::SetTouchUpdate(uint64_t id, float x, float y) { pointerPos[FindTouch(id)] = math::vec2{x, y}; }
 
 void RawInputStream::SetTouchUp(uint64_t id, float x, float y)
 {
@@ -151,7 +147,7 @@ void RawInputStream::SetTouchUp(uint64_t id, float x, float y)
     res.pointerIdx = tId;
     LOG_INFO("del touch {} at slot {}", id, res.pointerIdx);
     events.Push(res);
-    pointers[res.pointerIdx].Push({x, y});
+    pointerPos[res.pointerIdx] = math::vec2{x, y};
     activePtrs.remove(res.pointerIdx);
 }
 

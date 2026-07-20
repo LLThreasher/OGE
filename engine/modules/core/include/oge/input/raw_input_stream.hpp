@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include "oge/event_stream.hpp"
 #include "oge/input/keyboard.hpp"
 #include "oge/input/mouse.hpp"
@@ -103,6 +104,7 @@ class RawInputStream
     std::array<int, MaxMousePtrCount> mouseIds{};
     std::array<uint64_t, MaxTouchPtrCount> touchIds{};
     std::array<PointerInputStream, PtrInputCount> pointers;
+    std::array<math::vec2, PtrInputCount> pointerPos;
     struct { Cursor cursor; BitSet32 activePtrs; KeySet activeKeys; } frameFrontier;
     BitSet32 activePtrs;
     KeySet activeKeys;

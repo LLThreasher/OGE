@@ -39,12 +39,16 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
         accumTime = 0;
         frameCount = 0;
     }
-    auto s = std::format("FPS {:.2f} ({:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f})\nCPU: {:.2f}%\nMEM: {} MB {} KB",
-                         currentFPS, perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime,
-                         perfStatus.assetUploadTime, perfStatus.renderSubmitTime, perfStatus.cpuUsage,
-                         GetRAMUsage() / 1024 / 1024, (GetRAMUsage() / 1024) % 1024);
+    static std::string buffer;
+    buffer.clear();
+    std::format_to(std::back_inserter(buffer),
+                   "FPS {:.2f} ({:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f})\nCPU: {:.2f}%\nMEM: {} MB {} KB",
+                   currentFPS, perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime,
+                   perfStatus.assetUploadTime, perfStatus.renderSubmitTime, perfStatus.cpuUsage,
+                   GetRAMUsage() / 1024 / 1024, (GetRAMUsage() / 1024) % 1024);
+
     auto entity = ctx.world.create();
-    ctx.world.emplace<DebugText>(entity, s);
+    ctx.world.emplace<DebugText>(entity, buffer);
     ctx.world.emplace<Ready>(entity);
 }
 }  // namespace game::sim
