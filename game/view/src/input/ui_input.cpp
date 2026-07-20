@@ -158,14 +158,16 @@ void UIDragInput::onUpdate(FInputContext& ctx)
                 break;
             case InputEventType::PointerDown:
                 ptrIdx = event.pointerIdx;
+                // LOG_DEBUG("handle {}", ptrIdx);
                 if (!game.valid(activeDrags[ptrIdx]))
                 {
                     ptrPos = raw.PollPtrLatest(event.pointerIdx, raw_idx);
                     hit = ui::CastRayRelSpace(game, ptrPos);
+                    // LOG_DEBUG("active {} {} {}", ptrIdx, ptrPos, game.valid(hit));
 
                     if (game.valid(hit) && !game.all_of<UIDrag>(hit))
                     {
-                        LOG_DEBUG("Touch {} drag start at {}", ptrIdx, ptrPos);
+                        // LOG_DEBUG("Touch {} drag start at {}", ptrIdx, ptrPos);
                         auto& drag = game.emplace<UIDrag>(hit);
                         drag.inputIndex = ptrIdx;
                         drag.dragStartPos = ptrPos;
@@ -215,12 +217,12 @@ void UIDragInput::onUpdate(FInputContext& ctx)
         {
             hit = ui::CastRayScreenSpace(game, ptrPos);
             ptrPos = ui::ScreenSpaceToRelSpace(game, ptrPos);
-            LOG_DEBUG("Mouse at {}", ptrPos);
+            // LOG_DEBUG("Mouse at {}", ptrPos);
         }
         else
         {
             hit = ui::CastRayRelSpace(game, ptrPos);
-            LOG_DEBUG("Touch at {}", ptrPos);
+            // LOG_DEBUG("Touch at {}", ptrPos);
         }
 
         // LOG_DEBUG("Touch {} drag at ({}, {})", pidx, f.input.GetTouchX(pidx), f.input.GetTouchY(pidx));

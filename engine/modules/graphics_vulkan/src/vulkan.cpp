@@ -4,6 +4,7 @@
 #include <vulkan/vulkan_wayland.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -18,6 +19,7 @@
 #include "command_buffer.hpp"
 #include "fence.hpp"
 #include "frame_buffer.hpp"
+#include "oge/graphics/backend.hpp"
 #include "oge/graphics/configs.hpp"
 #include "pipeline.hpp"
 #include "texture.hpp"
@@ -659,20 +661,25 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
         vkCreateDevice(physicalDevice, &createInfo, nullptr, &m_device.device);
         // vkGetDeviceQueue(m_device.device, queueIndices.graphics.value(), 0, &m_device.m_graphicsQueue);
         // vkGetDeviceQueue(m_device.device, queueIndices.compute.value(), 0, &m_device.m_computeQueue);
-        vkGetDeviceQueue(m_device.device, queueIndices.present.value(), queueIndices.presentIdx, &m_device.m_presentQueue);
+        vkGetDeviceQueue(m_device.device, queueIndices.present.value(), queueIndices.presentIdx,
+                         &m_device.m_presentQueue);
 #ifndef FORCE_SINGLE_QUEUE
         if (queueIndices.present.value() == queueIndices.transfer.value())
         {
             if (queueIndices.transferIdx != queueIndices.presentIdx)
-                vkGetDeviceQueue(m_device.device, queueIndices.transfer.value(), queueIndices.transferIdx, &m_device.m_transferQueue);
+                vkGetDeviceQueue(m_device.device, queueIndices.transfer.value(), queueIndices.transferIdx,
+                                 &m_device.m_transferQueue);
         }
         else
         {
-            vkGetDeviceQueue(m_device.device, queueIndices.transfer.value(), queueIndices.transferIdx, &m_device.m_transferQueue);
+            vkGetDeviceQueue(m_device.device, queueIndices.transfer.value(), queueIndices.transferIdx,
+                             &m_device.m_transferQueue);
         }
 #endif
-        LOG_INFO("present queue family: {}, handle: {}", queueIndices.present.value(), static_cast<void*>(m_device.m_presentQueue));
-        LOG_INFO("transfer queue family: {}, handle: {}", queueIndices.transfer.value(), static_cast<void*>(m_device.m_transferQueue));
+        LOG_INFO("present queue family: {}, handle: {}", queueIndices.present.value(),
+                 static_cast<void*>(m_device.m_presentQueue));
+        LOG_INFO("transfer queue family: {}, handle: {}", queueIndices.transfer.value(),
+                 static_cast<void*>(m_device.m_transferQueue));
 
         VmaAllocatorCreateInfo allocatorInfo{};
         allocatorInfo.physicalDevice = physicalDevice;
@@ -1154,7 +1161,7 @@ EndFrameAction VulkanBackend::EndFrame()
 
             auto queueIdx = static_cast<uint32_t>(QueueType::Transfer);
             auto& transferCmdBuffers = frame.vkCmdBuffers[queueIdx];
-            auto& frame = m_frames[m_frameIndex];
+            if (frame.cmdUsedCount[queueIdx] > 0) frame.cmdBuffers[queueIdx][0].InternalEnd();
             submitInfo.waitSemaphoreCount = 0;
             submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
             submitInfo.pWaitDstStageMask = VK_NULL_HANDLE;
@@ -1172,7 +1179,7 @@ EndFrameAction VulkanBackend::EndFrame()
 
             auto queueIdx = static_cast<uint32_t>(QueueType::Present);
             auto& presentCmdBuffers = frame.vkCmdBuffers[queueIdx];
-            auto& frame = m_frames[m_frameIndex];
+            if (frame.cmdUsedCount[queueIdx] > 0) frame.cmdBuffers[queueIdx][0].InternalEnd();
             static VkPipelineStageFlags waitStage[2] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                                                         VK_PIPELINE_STAGE_TRANSFER_BIT};
             submitInfo.waitSemaphoreCount = 2;
@@ -1190,9 +1197,13 @@ EndFrameAction VulkanBackend::EndFrame()
     {
         {
             auto queueIdx = static_cast<uint32_t>(QueueType::Present);
+            if (frame.cmdUsedCount[queueIdx] > 0) frame.cmdBuffers[queueIdx][0].InternalEnd();
             auto& presentCmdBuffers = frame.vkCmdBuffers[queueIdx];
-            std::vector<VkCommandBuffer> cmds(frame.vkCmdBuffers[static_cast<uint32_t>(QueueType::Transfer)]);
-            for (auto c : presentCmdBuffers) cmds.push_back(c);
+            auto& transferCmdBuffers = frame.vkCmdBuffers[static_cast<uint32_t>(QueueType::Transfer)];
+            std::array<VkCommandBuffer, MAX_CMD_BUFFER_PER_QUEUE * 2> cmds;
+            size_t cmdIdx = 0;
+            for (auto c : transferCmdBuffers) cmds[cmdIdx++] = c;
+            for (auto c : presentCmdBuffers) cmds[cmdIdx++] = c;
 
             VkSubmitInfo submitInfo{};
             submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -1203,7 +1214,7 @@ EndFrameAction VulkanBackend::EndFrame()
             submitInfo.pWaitDstStageMask = waitStage;
             submitInfo.signalSemaphoreCount = 1;
             submitInfo.pSignalSemaphores = &m_imagesFinishRender[m_imageIndex];
-            submitInfo.commandBufferCount = cmds.size();
+            submitInfo.commandBufferCount = cmdIdx;
             submitInfo.pCommandBuffers = cmds.data();
 
             vkQueueSubmit(m_device.m_presentQueue, 1, &submitInfo, frame.inFlightFence);
@@ -1337,19 +1348,29 @@ ICommandList& VulkanBackend::CreateCommandList(QueueType queueType)
     FrameData& frame = m_frames[m_frameIndex];
 
     uint32_t queueIndex = static_cast<uint32_t>(queueType);
+    if (m_device.m_transferQueue == VK_NULL_HANDLE) queueType = QueueType::Present;
     VulkanCommandBuffer* cmd;
 
     if (frame.cmdUsedCount[queueIndex] < frame.cmdBuffers[queueIndex].size())
     {
         cmd = &frame.cmdBuffers[queueIndex][frame.cmdUsedCount[queueIndex]];
         cmd->Clear();
+
+        if (frame.cmdUsedCount[queueIndex] == 0) frame.cmdBuffers[queueIndex][0].InternalBegin();
+
+        frame.cmdUsedCount[queueIndex]++;
+    }
+    else if (frame.cmdBuffers[queueIndex].size() >= MAX_CMD_BUFFER_PER_QUEUE)
+    {
+        cmd = &frame.cmdBuffers[queueIndex][0];
     }
     else
     {
         if (queueType == QueueType::Present)
             LOG_DEBUG("allocate cmd list present");
         else if (queueType == QueueType::Transfer)
-            LOG_DEBUG("allocate cmd list transfer");
+            LOG_DEBUG("allocate cmd list transfer {}", static_cast<void*>(m_device.m_transferQueue));
+
         // allocate new one
         VkCommandBufferAllocateInfo alloc{};
         alloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1360,10 +1381,13 @@ ICommandList& VulkanBackend::CreateCommandList(QueueType queueType)
         VkCommandBuffer vkCmd;
         vkAllocateCommandBuffers(m_device.device, &alloc, &vkCmd);
         frame.vkCmdBuffers[queueIndex].emplace_back(vkCmd);
-        cmd = &frame.cmdBuffers[queueIndex].emplace_back(queueType, m_device.device, vkCmd, this);
-    }
+        cmd = &frame.cmdBuffers[queueIndex].emplace_back(queueType, m_device.device, vkCmd, this,
+                                                         frame.cmdUsedCount[queueIndex] != 0);
 
-    frame.cmdUsedCount[queueIndex]++;
+        if (frame.cmdUsedCount[queueIndex] == 0) frame.cmdBuffers[queueIndex][0].InternalBegin();
+
+        frame.cmdUsedCount[queueIndex]++;
+    }
 
     return *reinterpret_cast<ICommandList*>(cmd);
 }

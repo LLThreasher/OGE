@@ -18,6 +18,11 @@ namespace oge::graphics::vulkan
 {
 void VulkanCommandBuffer::Begin()
 {
+    if (m_useEnd) InternalBegin();
+}
+
+void VulkanCommandBuffer::InternalBegin()
+{
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -44,8 +49,10 @@ void VulkanCommandBuffer::SetViewRect(int32_t x, int32_t y, uint32_t extentX, ui
     vkCmdSetScissor(m_cmd, 0, 1, &scissor);
 }
 
-void VulkanCommandBuffer::End() { vkEndCommandBuffer(m_cmd); }
-#undef max
+void VulkanCommandBuffer::InternalEnd() { vkEndCommandBuffer(m_cmd); }
+
+void VulkanCommandBuffer::End() { if (m_useEnd) InternalEnd(); }
+
 void VulkanCommandBuffer::BeginRenderPass(const GPURenderPassHandle renderPass, const GPUFrameBufferHandle frameBuffer,
                                           const ClearValues& clearValues)
 {

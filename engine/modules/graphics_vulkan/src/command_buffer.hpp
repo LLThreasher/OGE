@@ -13,14 +13,16 @@ class VulkanBackend;
 class VulkanCommandBuffer final : public ICommandList
 {
    public:
-    explicit VulkanCommandBuffer(QueueType queueType, VkDevice device, VkCommandBuffer cmd, VulkanBackend* backend)
-        : m_queueType(queueType), m_device(device), m_cmd(cmd), m_backend(backend)
+    explicit VulkanCommandBuffer(QueueType queueType, VkDevice device, VkCommandBuffer cmd, VulkanBackend* backend, bool useEnd = true)
+        : m_queueType(queueType), m_device(device), m_cmd(cmd), m_backend(backend), m_useEnd(useEnd)
     {
     }
     virtual ~VulkanCommandBuffer() = default;
 
     void Begin() override;
     void End() override;
+    void InternalBegin();
+    void InternalEnd();
 
     void SetViewRect(int32_t x, int32_t y, uint32_t extentX, uint32_t extentY) override;
 
@@ -93,6 +95,8 @@ class VulkanCommandBuffer final : public ICommandList
     // Cached state
     VkPipelineLayout m_currentPipelineLayout = VK_NULL_HANDLE;
     VkPipelineBindPoint m_currentBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+
+    bool m_useEnd = false;
 };
 
 }  // namespace OneGame::Engine::Graphics::Vulkan

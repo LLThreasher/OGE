@@ -38,8 +38,15 @@ endif()
 target_compile_definitions(oge_graphics
     INTERFACE
     MAX_FRAMES_IN_FLIGHT=${MAX_FRAMES_IN_FLIGHT}
+    MAX_CMD_BUFFER_PER_QUEUE=${MAX_CMD_BUFFER_PER_QUEUE}
+)
+
+if(FORCE_SINGLE_QUEUE)
+target_compile_definitions(oge_graphics
+    INTERFACE
     FORCE_SINGLE_QUEUE=${FORCE_SINGLE_QUEUE}
 )
+endif()
 
 target_link_libraries(oge_graphics
 INTERFACE

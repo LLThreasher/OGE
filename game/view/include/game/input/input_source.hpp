@@ -66,7 +66,7 @@ void RegisterInputSources(AnythingFactory& af);
 class UIDragInput : public InputSource
 {
     std::array<entt::entity, RawInputStream::PtrInputCount> activeDrags;
-    RawInputStream::Cursor raw_idx;
+    RawInputStream::Cursor raw_idx = {};
    public:
     DECL_ID(UIDragInput);
     UIDragInput() : InputSource(Id)
@@ -90,7 +90,7 @@ class WidgetInput : public InputSource
     entt::entity moveWidget;
     float vfov;
     float hfov;
-    RawInputStream::Cursor raw_idx;
+    RawInputStream::Cursor raw_idx = {};
     bool isDigging = false;
 
    public:
@@ -120,7 +120,7 @@ class KeyMouseInput : public InputSource
     size_t mouseIdx;
     float vfov;
     float hfov;
-    RawInputStream::Cursor raw_idx;
+    RawInputStream::Cursor raw_idx = {};
 
    public:
     DECL_ID(KeyMouseInput);

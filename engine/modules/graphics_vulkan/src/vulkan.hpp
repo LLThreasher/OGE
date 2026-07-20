@@ -33,8 +33,6 @@ struct FrameData
     std::array<uint32_t, 4> cmdUsedCount = {};
     std::array<std::vector<VulkanCommandBuffer>, 4> cmdBuffers = {};
     std::array<std::vector<VkCommandBuffer>, 4> vkCmdBuffers = {};
-    std::vector<ICommandList> absCmdBuffers = {};
-    uint32_t usedAbsCmdBuffers = 0;
 
     VkSemaphore imageAvailableAndTransferComplete[2] = {};
     VkSemaphore renderFinished = VK_NULL_HANDLE;

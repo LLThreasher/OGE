@@ -103,23 +103,55 @@ uint32_t RawInputStream::FindMouse(int id)
     return 0;
 }
 
-void RawInputStream::SetTouchDown(int id, float x, float y)
+uint32_t RawInputStream::FindTouch(uint64_t id)
 {
-    InputEvent res{InputEventType::PointerDown};
-    res.pointerIdx = MousePtrInputIndices.size() + id;
-    events.Push(res);
-    pointers[id].Push({x, y});
-    activePtrs.add(res.pointerIdx);
+    for (uint32_t i = 0; i < TouchPtrInputIndices.size(); ++i)
+    {
+        if (activePtrs.contains(MaxMousePtrCount + i) && touchIds[i] == id) return i + MaxMousePtrCount;
+    }
+    return 0xff;
 }
 
-void RawInputStream::SetTouchUpdate(int id, float x, float y) { pointers[id].Push({x, y}); }
-
-void RawInputStream::SetTouchUp(int id, float x, float y)
+void RawInputStream::SetTouchDown(uint64_t id, float x, float y)
 {
-    InputEvent res{InputEventType::PointerUp};
-    res.pointerIdx = MousePtrInputIndices.size() + id;
+    uint8_t resultId = 0;
+    for (uint8_t i = 0; i < TouchPtrInputIndices.size(); ++i)
+    {
+        if (!activePtrs.contains(MaxMousePtrCount + i))
+        {
+            resultId = i;
+            touchIds[i] = id;
+            break;
+        }
+    }
+    auto ptr_idx = MaxMousePtrCount + resultId;
+    activePtrs.add(ptr_idx);
+
+    // InputEvent res{InputEventType::PointerDown};
+    // res.pointerIdx = MaxMousePtrCount + resultId;
+    // activePtrs.add(res.pointerIdx);
+    // LOG_INFO("add touch {} at slot {} {}", id, res.pointerIdx, FindTouch(id));
+    // assert(FindTouch(id) == res.pointerIdx);
+    // events.Push(res);
+
+    InputEvent res{InputEventType::PointerDown};
+    res.pointerIdx = ptr_idx;
     events.Push(res);
-    pointers[id].Push({x, y});
+
+    pointers[res.pointerIdx].Push({x, y});
+}
+
+void RawInputStream::SetTouchUpdate(uint64_t id, float x, float y) { pointers[FindTouch(id)].Push({x, y}); }
+
+void RawInputStream::SetTouchUp(uint64_t id, float x, float y)
+{
+    uint8_t tId = FindTouch(id);
+
+    InputEvent res{InputEventType::PointerUp};
+    res.pointerIdx = tId;
+    LOG_INFO("del touch {} at slot {}", id, res.pointerIdx);
+    events.Push(res);
+    pointers[res.pointerIdx].Push({x, y});
     activePtrs.remove(res.pointerIdx);
 }
 

@@ -7,6 +7,7 @@
 #include "oge/log.hpp"
 #include "oge/math.hpp"
 #include "oge/bitset.hpp"
+#include "oge/macros.hpp"
 
 namespace oge::input
 {
@@ -20,12 +21,14 @@ enum class InputEventType : uint8_t
     PointerUp,
     AddMouse,
     RemoveMouse,
+    Invalid,
 };
 
 struct PackedMouseInfo
 {
     uint8_t val;
 
+    PackedMouseInfo() : val(0) {}
     PackedMouseInfo(size_t id, MouseButton button)
         : val((static_cast<uint8_t>(id & 0x7) << 4) | (static_cast<uint8_t>(button) & 0x7))
     {
@@ -38,7 +41,7 @@ struct PackedMouseInfo
 
 struct InputEvent
 {
-    InputEventType type;
+    InputEventType type = InputEventType::Invalid;
     union
     {
         KeyCode key;
@@ -58,15 +61,18 @@ class RawInputStream
 {
    public:
     static constexpr size_t MaxMousePtrCount = 4;
+    static constexpr size_t MaxTouchPtrCount = 10;
     static constexpr std::array<size_t, MaxMousePtrCount> MousePtrInputIndices = {0, 1, 2, 3};
-    static constexpr std::array<size_t, 10> TouchPtrInputIndices = {4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+    static constexpr std::array<size_t, MaxTouchPtrCount> TouchPtrInputIndices = {4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
     static constexpr size_t PtrInputCount = MousePtrInputIndices.size() + TouchPtrInputIndices.size();
     struct Cursor
     {
-        EventInputStream::Cursor eventCursor;
-        std::array<PointerInputStream::Cursor, PtrInputCount> ptrCursors;
+        EventInputStream::Cursor eventCursor = {};
+        std::array<PointerInputStream::Cursor, PtrInputCount> ptrCursors = {};
     };
 
+    RawInputStream() {}
+    NO_COPY(RawInputStream)
     void AdvanceCursor(Cursor& cursor) const;
     bool PollEvent(Cursor& cursor, InputEvent& eventOut) const;
     bool PollPtr(size_t ptrIdx, Cursor& cursor, math::vec2& posOut) const;
@@ -85,15 +91,17 @@ class RawInputStream
     void AddMouse(int id);
     void DelMouse(int id);
 
-    void SetTouchDown(int id, float x, float y);
-    void SetTouchUpdate(int id, float x, float y);
-    void SetTouchUp(int id, float x, float y);
+    void SetTouchDown(uint64_t id, float x, float y);
+    void SetTouchUpdate(uint64_t id, float x, float y);
+    void SetTouchUp(uint64_t id, float x, float y);
 
    private:
     uint32_t FindMouse(int id);
+    uint32_t FindTouch(uint64_t id);
 
     EventInputStream events;
     std::array<int, MaxMousePtrCount> mouseIds{};
+    std::array<uint64_t, MaxTouchPtrCount> touchIds{};
     std::array<PointerInputStream, PtrInputCount> pointers;
     struct { Cursor cursor; BitSet32 activePtrs; KeySet activeKeys; } frameFrontier;
     BitSet32 activePtrs;

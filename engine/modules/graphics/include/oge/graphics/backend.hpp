@@ -15,7 +15,11 @@
 
 
 #ifndef MAX_FRAMES_IN_FLIGHT
-#define MAX_FRAMES_IN_FLIGHT 3
+#define MAX_FRAMES_IN_FLIGHT 1
+#endif
+
+#ifndef MAX_CMD_BUFFER_PER_QUEUE
+#define MAX_CMD_BUFFER_PER_QUEUE 1
 #endif
 
 namespace oge::platform
