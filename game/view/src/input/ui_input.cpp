@@ -196,7 +196,7 @@ void UIDragInput::onUpdate(FInputContext& ctx)
         }
     }
 
-    for (size_t ptrIdx : raw.ActivePtrs())
+    for (size_t ptrIdx : raw.DirtyPtrs())
     {
 // #ifdef OGE_DEBUG
         if (raw.IsMouse(ptrIdx))

@@ -18,13 +18,13 @@ class DebugScene3 : public Scene
    public:
     DebugScene3(AppContext ctx) : Scene(std::move(ctx))
     {
-        // m_inputs.AddStage<input::UIDragInput>();
+        m_inputs.AddStage<input::UIDragInput>();
         m_subsystems.AddStage<sim::SubsystemDebugText>();
-        // m_subsystems.AddStage<sim::SubsystemTerrain>();
-        // m_renderers.AddStage<view::TerrainRenderer>();
+        m_subsystems.AddStage<sim::SubsystemTerrain>();
+        m_renderers.AddStage<view::TerrainRenderer>();
         m_renderers.AddStage<view::DebugInfoRenderer>();
-        // m_renderers.AddStage<view::UIRenderer>();
-        // m_renderers.AddStage<view::CameraRenderer>();
+        m_renderers.AddStage<view::UIRenderer>();
+        m_renderers.AddStage<view::CameraRenderer>();
 
         auto& blocks = m_world.ctx().emplace<terrain::BlockRegistry>();
         blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1});

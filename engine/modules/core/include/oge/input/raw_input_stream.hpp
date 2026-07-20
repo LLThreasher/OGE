@@ -1,14 +1,15 @@
 #pragma once
 
 #include <array>
+
+#include "oge/bitset.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/input/keyboard.hpp"
 #include "oge/input/mouse.hpp"
 #include "oge/input/touch.hpp"
 #include "oge/log.hpp"
-#include "oge/math.hpp"
-#include "oge/bitset.hpp"
 #include "oge/macros.hpp"
+#include "oge/math.hpp"
 
 namespace oge::input
 {
@@ -80,6 +81,7 @@ class RawInputStream
     math::vec2 PollPtrLatest(size_t ptrIdx, Cursor& cursor) const;
     math::vec2 PollPtrDelta(size_t ptrIdx, Cursor& cursor) const;
     const BitSet32& ActivePtrs() const { return frameFrontier.activePtrs; }
+    const BitSet32& DirtyPtrs() const { return frameFrontier.dirtyPtrs; }
     const KeySet& ActiveKeys() const { return frameFrontier.activeKeys; }
     static bool IsMouse(size_t ptrIdx) { return ptrIdx < MaxMousePtrCount; }
 
@@ -97,16 +99,23 @@ class RawInputStream
     void SetTouchUp(uint64_t id, float x, float y);
 
    private:
-    uint32_t FindMouse(int id);
-    uint32_t FindTouch(uint64_t id);
+    uint32_t FindMouse(int id) const;
+    uint32_t FindTouch(uint64_t id) const;
 
     EventInputStream events;
     std::array<int, MaxMousePtrCount> mouseIds{};
     std::array<uint64_t, MaxTouchPtrCount> touchIds{};
     std::array<PointerInputStream, PtrInputCount> pointers;
     std::array<math::vec2, PtrInputCount> pointerPos;
-    struct { Cursor cursor; BitSet32 activePtrs; KeySet activeKeys; } frameFrontier;
+    struct
+    {
+        Cursor cursor;
+        BitSet32 activePtrs;
+        BitSet32 dirtyPtrs;
+        KeySet activeKeys;
+    } frameFrontier;
     BitSet32 activePtrs;
+    BitSet32 dirtyPtrs;
     KeySet activeKeys;
 };
 
