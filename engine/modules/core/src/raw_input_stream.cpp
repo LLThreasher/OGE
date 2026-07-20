@@ -157,7 +157,7 @@ void RawInputStream::SetTouchUp(uint64_t id, float x, float y)
 
     InputEvent res{InputEventType::PointerUp};
     res.pointerIdx = tId;
-    LOG_INFO("del touch {} at slot {}", id, res.pointerIdx);
+    LOG_DEBUG("del touch {} at slot {}", id, res.pointerIdx);
     events.Push(res);
     pointerPos[res.pointerIdx] = math::vec2{x, y};
     dirtyPtrs.add(res.pointerIdx);
