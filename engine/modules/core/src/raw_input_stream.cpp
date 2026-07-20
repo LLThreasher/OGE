@@ -109,6 +109,7 @@ void RawInputStream::SetTouchDown(int id, float x, float y)
     res.pointerIdx = MousePtrInputIndices.size() + id;
     events.Push(res);
     pointers[id].Push({x, y});
+    activePtrs.add(res.pointerIdx);
 }
 
 void RawInputStream::SetTouchUpdate(int id, float x, float y) { pointers[id].Push({x, y}); }
@@ -119,6 +120,7 @@ void RawInputStream::SetTouchUp(int id, float x, float y)
     res.pointerIdx = MousePtrInputIndices.size() + id;
     events.Push(res);
     pointers[id].Push({x, y});
+    activePtrs.remove(res.pointerIdx);
 }
 
 }  // namespace oge::input

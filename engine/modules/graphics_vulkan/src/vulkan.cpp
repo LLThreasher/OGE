@@ -627,7 +627,7 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
     m_device.physicalDevice = physicalDevice;
 
     {
-        float queuePriority = 1.0f;
+        std::vector<float> queuePriority{1.0f, 1.0f, 1.0f, 1.0f};
 
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
         for (auto [queueFamily, cnt] : queueIndices.uniqueQueueFamilies)
@@ -636,7 +636,7 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
             queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             queueCreateInfo.queueFamilyIndex = queueFamily;
             queueCreateInfo.queueCount = cnt;
-            queueCreateInfo.pQueuePriorities = &queuePriority;
+            queueCreateInfo.pQueuePriorities = queuePriority.data();
             queueCreateInfos.push_back(queueCreateInfo);
         }
 
@@ -660,6 +660,7 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
         // vkGetDeviceQueue(m_device.device, queueIndices.graphics.value(), 0, &m_device.m_graphicsQueue);
         // vkGetDeviceQueue(m_device.device, queueIndices.compute.value(), 0, &m_device.m_computeQueue);
         vkGetDeviceQueue(m_device.device, queueIndices.present.value(), queueIndices.presentIdx, &m_device.m_presentQueue);
+#ifndef FORCE_SINGLE_QUEUE
         if (queueIndices.present.value() == queueIndices.transfer.value())
         {
             if (queueIndices.transferIdx != queueIndices.presentIdx)
@@ -669,6 +670,7 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
         {
             vkGetDeviceQueue(m_device.device, queueIndices.transfer.value(), queueIndices.transferIdx, &m_device.m_transferQueue);
         }
+#endif
         LOG_INFO("present queue family: {}, handle: {}", queueIndices.present.value(), static_cast<void*>(m_device.m_presentQueue));
         LOG_INFO("transfer queue family: {}, handle: {}", queueIndices.transfer.value(), static_cast<void*>(m_device.m_transferQueue));
 

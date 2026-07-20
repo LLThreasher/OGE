@@ -72,7 +72,7 @@ void DebugInfoPass::onAttach(InitDrawContext& ctx)
     for (uint32_t i = 0; i < backend.FramesInFlight(); ++i)
     {
         ctx.assets.streamingManager.Upload<UploadType::Immediate>(std::as_bytes(std::span(indices, NUM_DEBUG_INDICES)),
-                                                                BufferTarget{BufferUsage::Index, indexBuffer, i * NUM_DEBUG_INDICES * uint32_t(sizeof(uint16_t)), NUM_DEBUG_INDICES * uint32_t(sizeof(uint16_t))});
+                                                                BufferTarget{BufferUsage::Index, indexBuffer, i * NUM_DEBUG_INDICES * uint32_t(sizeof(uint16_t))});
     }
 }
 

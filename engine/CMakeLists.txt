@@ -6,6 +6,7 @@ option(BUILD_WINDOW_SDL3 "Enable SDL3 with Window Support")
 option(IO_USE_SDL3 "Use SDL3 for file IO")
 option(IO_USE_NATIVE "Use native c++ for file IO")
 option(ENABLE_VULKAN_VALIDATION "Enable Vulkan Validation Layer")
+option(FORCE_SINGLE_QUEUE "Force to use a single submission queue")
 
 set(MAX_FRAMES_IN_FLIGHT
     1

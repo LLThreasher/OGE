@@ -35,7 +35,7 @@ struct SceneFrame
 
 class Scene
 {
-    using ViewExecutor = view::ViewExecutor<view::SubmissionQueue, TerrainPass2, UIPass, DebugInfoPass>;
+    using ViewExecutor = view::ViewExecutor<view::SubmissionQueue, TerrainPass2, DebugInfoPass>;
     struct Ctx
     {
         OGEContext& ctx;

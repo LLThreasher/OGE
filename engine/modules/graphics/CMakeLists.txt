@@ -36,7 +36,9 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 endif()
 
 target_compile_definitions(oge_graphics
-    INTERFACE MAX_FRAMES_IN_FLIGHT=${MAX_FRAMES_IN_FLIGHT}
+    INTERFACE
+    MAX_FRAMES_IN_FLIGHT=${MAX_FRAMES_IN_FLIGHT}
+    FORCE_SINGLE_QUEUE=${FORCE_SINGLE_QUEUE}
 )
 
 target_link_libraries(oge_graphics
