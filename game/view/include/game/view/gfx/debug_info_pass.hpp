@@ -1,9 +1,11 @@
 #pragma once
 
+#include "oge/graphics/configs.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
 #include "oge/color.hpp"
 #include "oge/log.hpp"
 #include "game/view/submission_queue.hpp"
+#include "oge/runtime/gfx/uniform_arena.hpp"
 
 namespace game::view::gfx
 {
@@ -32,15 +34,14 @@ class DebugInfoPass : public Pass<CmdDrawDebugText, CmdDrawDebugRect>
     void onUpdate(DrawContext& ctx, View view);
 
    private:
-    Vertex vertices[NUM_DEBUG_VERTICES];
-    uint16_t indices[NUM_DEBUG_INDICES];
     size_t numQuads;
     PushConstant pushConstant;
 
     GPUPipelineHandle pipeline;
     GPUBindingGroupLayoutHandle bindingGroupLayout;
-    GPUBufferHandle vertexBuffer;
-    GPUBufferHandle indexBuffer;
     GPUBindingGroupHandle bindingGroup;
+    
+    FrameArena vertexArena = {BufferUsage::Vertex};
+    FrameArena indexArena = {BufferUsage::Index};
 };
 }  // namespace game::view::gfx

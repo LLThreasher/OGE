@@ -11,9 +11,6 @@ class ICommandList
    public:
     virtual ~ICommandList() = default;
 
-    virtual void Begin() = 0;
-    virtual void End() = 0;
-
     virtual void SetViewRect(int32_t x, int32_t y, uint32_t extentX, uint32_t extentY) = 0;
 
     // ----- Render pass -----

@@ -124,7 +124,6 @@ void UIPass::onUpdate(DrawContext& ctx, View view)
 
     if (classedVertices.empty()) return;
 
-    auto& tCmd = ctx.transferCmd;
     auto& cmd = ctx.drawCmd;
 
     uint32_t vBuffOffset = 0;

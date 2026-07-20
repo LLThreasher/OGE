@@ -1,6 +1,7 @@
 #include "oge/runtime/gfx/uniform_arena.hpp"
 
 #include "oge/graphics/backend.hpp"
+#include "oge/graphics/configs.hpp"
 #include "oge/log.hpp"
 #include "oge/math.hpp"
 
@@ -8,36 +9,40 @@ namespace oge::runtime::gfx
 {
 using namespace graphics;
 
-void UniformArena::Initialize(IGraphicsBackend& backend, uint32_t capacity)
+FrameArena::FrameArena(BufferUsage usage) : m_usage(usage)
+{
+}
+
+void FrameArena::Initialize(IGraphicsBackend& backend, uint32_t capacity)
 {
     // capacity = backend.MaxUniformBufferSize() > capacity ? capacity : backend.MaxUniformBufferSize();
     m_capacityPerFrame = capacity;
     m_framesInFlight = backend.FramesInFlight();
-    m_alignment = backend.UniformBufferAlignment();
+    m_alignment = m_usage == BufferUsage::Uniform ? backend.UniformBufferAlignment() : 4;
     m_alignedCapacityPerFrame = math::align(m_capacityPerFrame, m_alignment);
 
     BufferDesc desc{};
     desc.memory = MemoryUsage::CPUToGPU;
-    desc.usage = BufferUsage::Storage | BufferUsage::TransferDst;
+    desc.usage = m_usage | BufferUsage::TransferDst;
     desc.size = m_capacityPerFrame * backend.FramesInFlight();
     m_gpuBuffer = backend.CreateBuffer(desc, &m_cpuBuffer);
 }
 
-void UniformArena::Shutdown(IGraphicsBackend& backend)
+void FrameArena::Shutdown(IGraphicsBackend& backend)
 {
     backend.DestroyBuffer(m_gpuBuffer);
     m_cpuBuffer = nullptr;
 }
 
-GPUBufferHandle UniformArena::GetBuffer() { return m_gpuBuffer; }
+GPUBufferHandle FrameArena::GetBuffer() { return m_gpuBuffer; }
 
-void UniformArena::AdvanceFrame()
+void FrameArena::AdvanceFrame()
 {
     m_frameIdx = (m_frameIdx + 1) % m_framesInFlight;
     m_head = m_frameIdx * m_alignedCapacityPerFrame;
 }
 
-StagingAllocation UniformArena::Allocate(uint32_t size)
+StagingAllocation FrameArena::Allocate(uint32_t size)
 {
     uint32_t alignedSize = math::align(size, m_alignment);
 
@@ -56,7 +61,7 @@ StagingAllocation UniformArena::Allocate(uint32_t size)
     return result;
 }
 
-void UniformArena::Flush(IGraphicsBackend& backend)
+void FrameArena::Flush(IGraphicsBackend& backend)
 {
     GPUBufferSpan range;
     range.buffer = m_gpuBuffer;

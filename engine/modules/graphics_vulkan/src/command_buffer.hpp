@@ -19,8 +19,6 @@ class VulkanCommandBuffer final : public ICommandList
     }
     virtual ~VulkanCommandBuffer() = default;
 
-    void Begin() override;
-    void End() override;
     void InternalBegin();
     void InternalEnd();
 

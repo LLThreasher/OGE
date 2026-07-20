@@ -17,14 +17,12 @@ InitDrawContext::InitDrawContext(OGEContextReadOnly& ctx) : assets(ctx)
 DrawContext::DrawContext(float dt, InitDrawContext& ctx)
     : backend(ctx.assets.backend),
       uniformArena(ctx.uniformArena),
-      transferCmd(backend.CreateCommandList(QueueType::Present)),
       drawCmd(backend.CreateCommandList(QueueType::Present)),
       chunkAllocator(ctx.assets.chunkAllocator),
       spriteAllocator(ctx.assets.spriteAllocator),
       dt(dt)
 {
     auto& cmd = drawCmd;
-    auto& tCmd = transferCmd;
 
     ClearValues values{};
     values.colorClears[0] = {0.1f, 0.2f, 0.4f, 1.0f};
@@ -37,7 +35,6 @@ DrawContext::DrawContext(float dt, InitDrawContext& ctx)
 DrawContext::~DrawContext()
 {
     auto& cmd = drawCmd;
-    auto& tCmd = transferCmd;
 
     cmd.EndRenderPass();
 

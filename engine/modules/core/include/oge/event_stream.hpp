@@ -37,7 +37,7 @@ class DiscreteEventStream
 
    protected:
     T m_ringBuffer[bufferSize] = {};
-    Cursor m_currentHead;
+    Cursor m_currentHead = 1;
 };
 
 template <typename T>
@@ -59,7 +59,7 @@ class AccumulativeEventStream : public DiscreteEventStream<T, bufferSize>
         if (cursor >= frontier) return {};
         if (this->m_currentHead - cursor > bufferSize)
             LOG_WARN("stale cursor detected at {}, current head {}", cursor, this->m_currentHead);
-        auto res = this->m_ringBuffer[frontier % bufferSize] - this->m_ringBuffer[cursor % bufferSize];
+        auto res = this->m_ringBuffer[(frontier - 1) % bufferSize] - this->m_ringBuffer[cursor % bufferSize];
         cursor = frontier;
         return res;
     }

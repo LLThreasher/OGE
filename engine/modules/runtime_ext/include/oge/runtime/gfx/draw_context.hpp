@@ -33,22 +33,22 @@ namespace gfx
 struct InitDrawContext
 {
     AssetContext assets;
-    UniformArena uniformArena;
+    FrameArena uniformArena;
 
-    InitDrawContext(OGEContextReadOnly& ctx);
+    explicit InitDrawContext(OGEContextReadOnly& ctx);
+    NO_COPY(InitDrawContext);
 };
 
 struct DrawContext
 {
     float dt;
     IGraphicsBackend& backend;
-    UniformArena& uniformArena;
+    FrameArena& uniformArena;
     DynamicChunkAllocator& chunkAllocator;
     DynamicSkylineAllocator& spriteAllocator;
-    ICommandList& transferCmd;
     ICommandList& drawCmd;
 
-    DrawContext(float dt, InitDrawContext& ctx);
+    explicit DrawContext(float dt, InitDrawContext& ctx);
     ~DrawContext();
     NO_COPY(DrawContext);
 };

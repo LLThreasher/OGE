@@ -111,13 +111,13 @@ class OGEContextReadOnly
     template <typename T>
     T* Get()
     {
-        return &m_registry.ctx().get<T>();
+        return m_registry.ctx().find<T>();
     }
 
     template <typename... Args>
     std::tuple<Args*...> GetMultiple()
     {
-        return {(&m_registry.ctx().get<Args>())...};
+        return {(m_registry.ctx().find<Args>())...};
     }
 };
 
@@ -169,16 +169,9 @@ class AnythingFactory
     template <typename T>
     std::unique_ptr<T> BuildABC(oge_id_type name)
     {
-        if constexpr (IsABC<T>)
-        {
-            auto factory = registry.Get<ABCFactory<T>>();
-            return factory->Build(name, {}, *this);
-        }
-        else
-        {
-            auto factory = registry.Get<DefaultABCFactory<T>>();
-            return factory->Build(name);
-        }
+        auto factory = registry.Get<DefaultABCFactory<T>>();
+        assert(factory);
+        return factory->Build(name);
     }
 
     template <typename T>
@@ -186,6 +179,7 @@ class AnythingFactory
     std::unique_ptr<T> BuildABC(oge_id_type name, const T::Def& def)
     {
         auto factory = registry.Get<ABCFactory<T>>();
+        assert(factory);
         return factory->Build(name, def, *this);
     }
 

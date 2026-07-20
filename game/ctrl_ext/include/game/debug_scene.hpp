@@ -1,14 +1,15 @@
 #include "game/app_context.hpp"
+#include "game/components.hpp"
 #include "game/input/input_source.hpp"
+#include "game/input/player_input_stream.hpp"
 #include "game/scene.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
+#include "game/ui/objects.hpp"
 #include "game/view/gfx/terrain_pass.hpp"
 #include "game/view/renderer.hpp"
-#include "game/view/terrain/terrain_renderer.hpp"
-#include "game/ui/objects.hpp"
-#include "game/components.hpp"
 #include "game/view/submission_queue.hpp"
+#include "game/view/terrain/terrain_renderer.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 
 namespace game
@@ -18,9 +19,10 @@ class DebugScene3 : public Scene
    public:
     DebugScene3(AppContext ctx) : Scene(std::move(ctx))
     {
-        m_inputs.AddStage<input::UIDragInput>();
+        m_inputs.AddStage<input::UIDragInput>(input::InputSource::Def{});
         m_subsystems.AddStage<sim::SubsystemDebugText>();
         m_subsystems.AddStage<sim::SubsystemTerrain>();
+        m_subsystems.AddStage<sim::SubsystemPlayer>();
         m_renderers.AddStage<view::TerrainRenderer>();
         m_renderers.AddStage<view::DebugInfoRenderer>();
         m_renderers.AddStage<view::UIRenderer>();
@@ -87,8 +89,9 @@ class DebugScene3 : public Scene
         // put something in the middle of the screen
         ui::UISprite crossSprite{.sprite = assets.LoadTexture("cross.png")};
         auto cubeEntity = m_world.create();
-        m_world.emplace<ui::UIRect>(cubeEntity, math::vec2{0.5f - 0.01f, 0.5f - 0.01f * assets.backend.SwapchainAspect()},
-                              math::vec2{0.01f, 0.01f * assets.backend.SwapchainAspect()});
+        m_world.emplace<ui::UIRect>(cubeEntity,
+                                    math::vec2{0.5f - 0.01f, 0.5f - 0.01f * assets.backend.SwapchainAspect()},
+                                    math::vec2{0.01f, 0.01f * assets.backend.SwapchainAspect()});
         m_world.emplace<ui::UISprite>(cubeEntity, crossSprite);
         m_world.emplace<ui::UIZLevel>(cubeEntity, 1);
 
@@ -107,6 +110,10 @@ class DebugScene3 : public Scene
         m_world.emplace<ui::UIRaycastTarget>(mvWidget);
 
         m_world.emplace<InputSourceWidget>(player, mvWidget, lookWidget);
+
+        m_inputs.AddStage<input::WidgetInput>(
+            input::InputSource::Def{.target=m_world.try_get<input::PlayerInputStream>(player),
+                                    .pcam=m_world.try_get<const ComponentPerspectiveCamera>(player), .widgetInput={lookWidget, mvWidget}});
     }
 };
 }  // namespace game

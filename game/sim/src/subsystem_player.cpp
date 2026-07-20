@@ -3,8 +3,10 @@
 #include "game/sim/subsystem.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/terrain_view.hpp"
-#include "game/components.hpp"
 #include "oge/aabb_ops.hpp"
+#include "oge/fmt.hpp"
+#include "oge/log.hpp"
+#include "oge/math.hpp"
 
 namespace game
 {
@@ -26,11 +28,11 @@ entt::entity ComponentPlayer::CreatePlayer(entt::registry& world, math::vec3 pos
 
 namespace sim
 {
+using ::game::input::PlayerAction;
+using ::game::input::PlayerInputEvent;
+using ::game::input::PlayerInputStream;
 using ::game::terrain::BlockRegistry;
 using ::game::terrain::TerrainView;
-using ::game::input::PlayerInputStream;
-using ::game::input::PlayerInputEvent;
-using ::game::input::PlayerAction;
 
 void SubsystemPlayer::onAttach(GameState& ctx) {}
 
@@ -42,8 +44,8 @@ void SubsystemPlayer::onUpdate(FGameState& ctx)
     auto& blocks = ctx.world.ctx().get<BlockRegistry>();
     for (auto [entity, camera, pcam, input, collider, player, body, creature] :
          ctx.world
-             .view<ComponentCamera, const ComponentPerspectiveCamera, const PlayerInputStream,
-                   const ComponentAABBCollider, ComponentPlayer, ComponentPhysicBody, ComponentCreature>()
+             .view<ComponentCamera, const ComponentPerspectiveCamera, PlayerInputStream, const ComponentAABBCollider,
+                   ComponentPlayer, ComponentPhysicBody, ComponentCreature>()
              .each())
     {
         PlayerInputEvent event;
@@ -51,7 +53,7 @@ void SubsystemPlayer::onUpdate(FGameState& ctx)
         while (input.PollAction(pIdx, event))
         {
             creature.jumpOrder = creature.jumpOrder || body.isGrounded && event.get<PlayerAction::Jump>();
-            if (event.get<PlayerAction::Digging, PlayerAction::Placing>())
+            if (event.actionMask != 0)
             {
                 auto raycastResult = terrain.CastRay(camera.position, ScreenToRay(camera, pcam, event.actionPos));
                 if (raycastResult.has_value())
@@ -82,22 +84,29 @@ void SubsystemPlayer::onUpdate(FGameState& ctx)
             }
         }
 
-        auto panDelta = input.PollPanDelta(pIdx);
-        auto moveDelta = input.PollMoveDelta(pIdx);
-        
-        camera.ApplyDelta(panDelta.x, panDelta.y, 0.f, 0.f);
+        math::vec2 panDelta;
+        if (input.PollPanDelta(panDelta))
+        {
+            camera.ApplyDelta(panDelta.x, panDelta.y);
+        }
+
+        math::vec2 moveDelta;
+        if (input.PollMoveDelta(moveDelta))
+        {
+            auto right = camera.right();
+            if (body.enableGravity)
+            {
+                creature.moveOrder = math::normalize({camera.forward.x, 0, camera.forward.z}) * moveDelta.y +
+                                     math::vec3{right.x, 0, right.z} * moveDelta.x;
+            }
+            else
+            {
+                creature.moveOrder = camera.forward * moveDelta.y + right * moveDelta.x;
+            }
+        }
+
         camera.position = body.pos + math::vec3{(collider.aabb.min.x + collider.aabb.max.x) / 2.f, 1.65f,
                                                 (collider.aabb.min.z + collider.aabb.max.z) / 2.f};
-        auto right = camera.right();
-        if (body.enableGravity)
-        {
-            creature.moveOrder = math::normalize({camera.forward.x, 0, camera.forward.z}) * moveDelta.y +
-                                 math::vec3{right.x, 0, right.z} * moveDelta.x;
-        }
-        else
-        {
-            creature.moveOrder = camera.forward * moveDelta.y + right * moveDelta.x;
-        }
     }
 }
 }  // namespace sim

@@ -56,7 +56,7 @@ void TerrainPass2::UpdateBlockTexture(AssetContext& assets, const std::string& i
         TextureTarget{blockTexture, {0, 0, BLOCK_TEXTURE_SIZE, BLOCK_TEXTURE_SIZE}, slot});
 }
 
-GPUBindingGroupHandle TerrainPass2::GetOrCreateBindingGroup(IGraphicsBackend& backend, UniformArena& arena,
+GPUBindingGroupHandle TerrainPass2::GetOrCreateBindingGroup(IGraphicsBackend& backend, FrameArena& arena,
                                                             GPUBufferHandle storageBuffer, uint32_t chunkSize)
 {
     auto it = cachedBindingGroups.find(storageBuffer);

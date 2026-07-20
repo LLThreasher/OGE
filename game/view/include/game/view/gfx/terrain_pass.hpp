@@ -33,7 +33,7 @@ class TerrainPass2 : public RequiresVPTransform, public Pass<CmdDrawTerrainMeshO
     void onUpdate(DrawContext& ctx, View view, const math::mat4& pvTransform);
 
    private:
-    GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend, UniformArena& arena,
+    GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend, FrameArena& arena,
                                                   GPUBufferHandle storageBuffer, uint32_t chunkSize);
 
     std::unordered_map<GPUBindingGroupHandle, std::vector<TerrainMesh>, HandleHash<GPUBindingGroupHandle>>

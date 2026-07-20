@@ -746,6 +746,7 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
         m_frames[i] = {};
     }
     LOG_INFO("chosen frames in flight: {}", m_frames.size());
+    LOG_INFO("max cmd buffer cnt per queue: {}", MAX_CMD_BUFFER_PER_QUEUE);
 
     for (auto& frame : m_frames)
     {

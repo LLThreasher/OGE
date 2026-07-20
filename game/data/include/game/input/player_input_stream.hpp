@@ -33,7 +33,7 @@ struct PlayerInputEvent
 
     PlayerInputEvent() {}
     PlayerInputEvent(math::vec2 pos) : actionPos(pos), actionMask(0) {}
-    PlayerInputEvent(math::vec2 pos, PlayerAction a) : actionPos(pos), actionMask(static_cast<uint8_t>(a)) {}
+    PlayerInputEvent(math::vec2 pos, PlayerAction a) : actionPos(pos), actionMask(1 << static_cast<uint32_t>(a)) {}
 
     template <PlayerAction... actions>
     inline bool get() const
@@ -58,22 +58,19 @@ struct PlayerInputEvent
 
 class PlayerInputStream
 {
-    DiscreteEventStream<PlayerInputEvent> actions;
-    AccumulativeEventStream<math::vec2> move;
-    AccumulativeEventStream<math::vec2> pan;
+    DiscreteEventStream<PlayerInputEvent, 16> actions;
+    math::vec2 move = {};
+    math::vec2 pan = {};
+    bool moveDirty = false;
+    bool panDirty = false;
 
    public:
     struct Cursor
     {
         DiscreteEventStream<PlayerInputEvent>::Cursor actionCursor;
-        AccumulativeEventStream<math::vec2>::Cursor moveCursor;
-        AccumulativeEventStream<math::vec2>::Cursor panCursor;
     };
 
-    int LatestAction() const
-    {
-        return actions.Head().actionMask;
-    }
+    int LatestAction() const { return actions.Head().actionMask; }
 
     bool HasAction(Cursor& cursor) const
     {
@@ -87,15 +84,43 @@ class PlayerInputStream
         return actions.PollOne(cursor.actionCursor, event);
     }
 
-    math::vec2 PollMoveDelta(Cursor& cursor) const { return move.PollDelta(cursor.moveCursor); }
+    bool PollMoveDelta(math::vec2& out)
+    {
+        if (moveDirty)
+        {
+            out = move;
+            move = {};
+            moveDirty = false;
+            return true;
+        }
+        return false;
+    }
 
-    math::vec2 PollPanDelta(Cursor& cursor) const { return pan.PollDelta(cursor.panCursor); }
+    bool PollPanDelta(math::vec2& out)
+    {
+        if (panDirty)
+        {
+            out = pan;
+            pan = {};
+            panDirty = false;
+            return true;
+        }
+        return false;
+    }
 
     void InsertAction(PlayerInputEvent event) { actions.Push(event); }
 
-    void InsertMoveDelta(math::vec2 delta) { move.Push(delta); }
+    void InsertMoveDelta(math::vec2 delta)
+    {
+        move += delta;
+        moveDirty = true;
+    }
 
-    void InsertPanDelta(math::vec2 delta) { pan.Push(delta); }
+    void InsertPanDelta(math::vec2 delta)
+    {
+        pan += delta;
+        panDirty = true;
+    }
 };
 
 }  // namespace game::input

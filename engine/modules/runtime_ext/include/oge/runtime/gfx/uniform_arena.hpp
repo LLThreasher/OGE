@@ -1,16 +1,21 @@
 #pragma once
 
+#include <cstdint>
+#include "oge/graphics/configs.hpp"
 #include "oge/graphics/forward.hpp"
 #include "oge/graphics/objects.hpp"
 #include "oge/runtime/objects_ext.hpp"
 
 namespace oge::runtime::gfx
 {
-using IGraphicsBackend = graphics::IGraphicsBackend;
-class UniformArena
+using graphics::IGraphicsBackend;
+using graphics::BufferUsage;
+
+class FrameArena
 {
    public:
-    ~UniformArena() = default;
+    FrameArena(BufferUsage usage = BufferUsage::Storage);
+    ~FrameArena() = default;
 
     void Initialize(IGraphicsBackend& backend, uint32_t capacityPerFrame);
     void Shutdown(IGraphicsBackend& backend);
@@ -22,6 +27,8 @@ class UniformArena
     void Flush(IGraphicsBackend& backend);
 
    private:
+    BufferUsage m_usage;
+
     uint32_t m_capacityPerFrame;
     uint32_t m_alignedCapacityPerFrame;
 

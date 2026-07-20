@@ -63,7 +63,7 @@ class Scene
     view::RenderPipeline m_renderers;
     input::InputPipeline m_inputs;
 
-    ViewExecutor GetPasses()
+    ViewExecutor& GetPasses()
     {
         return m_ctx.value().viewExecutor;
     }

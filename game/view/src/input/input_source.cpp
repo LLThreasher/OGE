@@ -1,4 +1,5 @@
 #include "game/input/input_source.hpp"
+
 #include <cstdint>
 
 #include "game/input/player_input_stream.hpp"
@@ -6,7 +7,9 @@
 #include "oge/input/keyboard.hpp"
 #include "oge/input/mouse.hpp"
 #include "oge/input/raw_input_stream.hpp"
+#include "oge/log.hpp"
 #include "oge/math.hpp"
+#include "oge/fmt.hpp"
 
 namespace game::input
 {
@@ -84,15 +87,18 @@ void WidgetInput::onUpdate(FInputContext& ctx)
         auto drag = game.try_get<UIDrag>(viewWidget);
         if (!isDigging)
         {
-            if (drag != nullptr && drag->deltaTime > 0.5f && drag->IsHold(game))
+            if (drag != nullptr)
             {
-                isDigging = true;
-                pEvent.set<PlayerAction::Digging>();
-                pEvent.actionPos = drag->dragLastPos;
-            }
-            else
-            {
-                out.InsertPanDelta(math::vec2{drag->dragDelta * math::vec2{hfov, vfov}} * 2.f);
+                if (drag->deltaTime > 0.5f && drag->IsHold(game))
+                {
+                    isDigging = true;
+                    pEvent.set<PlayerAction::Digging>();
+                    pEvent.actionPos = drag->dragLastPos;
+                }
+                else
+                {
+                    out.InsertPanDelta(math::vec2{drag->dragDelta * math::vec2{hfov, vfov}} * 2.f);
+                }
             }
         }
         else
@@ -114,6 +120,7 @@ void WidgetInput::onUpdate(FInputContext& ctx)
                 out.InsertAction({dragRel->dragLastPos, PlayerAction::Placing});
             }
         }
+        out.InsertAction(pEvent);
     }
 }
 

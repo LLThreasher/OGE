@@ -29,7 +29,7 @@ struct ComponentCamera
     }
 
     math::mat4 view() const;
-    void ApplyDelta(float dsx, float dsy, float dwx, float dwz);
+    void ApplyDelta(float dsx, float dsy);
 };
 
 struct ComponentPerspectiveCamera

@@ -196,20 +196,20 @@ void UIDragInput::onUpdate(FInputContext& ctx)
         }
     }
 
-    for (size_t ptrIdx : raw.DirtyPtrs())
+    for (size_t ptrIdx : raw.ActivePtrs())
     {
 // #ifdef OGE_DEBUG
-        if (raw.IsMouse(ptrIdx))
-        {
-            ptrPos = raw.PollPtrLatest(ptrIdx, raw_idx);
-            // auto e = game.create();
-            // game.emplace<ScreenRect>(e, oge::I16Point2::FromVec2(ptrPos - 5.f), oge::U16Point2{10, 10});
-            // game.emplace<UIZLevel>(e, 0);
-            // game.emplace<UIRaycastTarget>(e);
-            // game.emplace<UICursor>(e);
-            hit = ui::CastRayScreenSpace(game, ptrPos);
-            if (game.valid(hit)) game.emplace<UIRaycastHit>(hit);
-        }
+        // if (raw.IsMouse(ptrIdx))
+        // {
+        //     ptrPos = raw.PollPtrLatest(ptrIdx, raw_idx);
+        //     // auto e = game.create();
+        //     // game.emplace<ScreenRect>(e, oge::I16Point2::FromVec2(ptrPos - 5.f), oge::U16Point2{10, 10});
+        //     // game.emplace<UIZLevel>(e, 0);
+        //     // game.emplace<UIRaycastTarget>(e);
+        //     // game.emplace<UICursor>(e);
+        //     hit = ui::CastRayScreenSpace(game, ptrPos);
+        //     if (game.valid(hit)) game.emplace<UIRaycastHit>(hit);
+        // }
 // #endif
         if (!game.valid(activeDrags[ptrIdx])) continue;
         ptrPos = raw.PollPtrLatest(ptrIdx, raw_idx);

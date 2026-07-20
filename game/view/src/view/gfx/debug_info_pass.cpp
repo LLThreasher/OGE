@@ -5,7 +5,9 @@
 #include <sstream>
 
 #include "internals.hpp"
+#include "oge/log.hpp"
 #include "stb_easy_font.h"
+#include "oge/fmt.hpp"
 
 namespace game::view::gfx
 {
@@ -45,35 +47,28 @@ void DebugInfoPass::onAttach(InitDrawContext& ctx)
         LOG_DEBUG("debug pipeline created");
     }
 
-    BufferDesc vBuf{};
-    vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
-    vBuf.memory = MemoryUsage::GPUOnly;
-    vBuf.size = NUM_DEBUG_VERTICES * sizeof(Vertex) * backend.FramesInFlight();
-    vertexBuffer = backend.CreateBuffer(vBuf);
+    vertexArena.Initialize(backend, NUM_DEBUG_VERTICES * sizeof(Vertex));
     LOG_DEBUG("debug vbuff created");
 
-    BufferDesc iBuf{};
-    iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
-    iBuf.memory = MemoryUsage::GPUOnly;
-    iBuf.size = NUM_DEBUG_INDICES * sizeof(uint16_t) * backend.FramesInFlight();
-    indexBuffer = backend.CreateBuffer(iBuf);
+    indexArena.Initialize(backend, NUM_DEBUG_INDICES * sizeof(uint16_t));
     LOG_DEBUG("debug ibuff created");
 
-    uint16_t* iptr = indices;
-    for (size_t i = 0; i < NUM_DEBUG_INDICES / 6; ++i)
+    for (size_t j = 0; j < backend.FramesInFlight(); ++j)
     {
-        *(iptr++) = i * 4;
-        *(iptr++) = i * 4 + 1;
-        *(iptr++) = i * 4 + 2;
-        *(iptr++) = i * 4 + 2;
-        *(iptr++) = i * 4 + 3;
-        *(iptr++) = i * 4;
+        auto iAlloc = indexArena.Allocate(NUM_DEBUG_INDICES * sizeof(uint16_t));
+        uint16_t* iptr = (uint16_t*)iAlloc.cpuPtr;
+        for (size_t i = 0; i < NUM_DEBUG_INDICES / 6; ++i)
+        {
+            *(iptr++) = i * 4;
+            *(iptr++) = i * 4 + 1;
+            *(iptr++) = i * 4 + 2;
+            *(iptr++) = i * 4 + 2;
+            *(iptr++) = i * 4 + 3;
+            *(iptr++) = i * 4;
+        }
+        indexArena.AdvanceFrame();
     }
-    for (uint32_t i = 0; i < backend.FramesInFlight(); ++i)
-    {
-        ctx.assets.streamingManager.Upload<UploadType::Immediate>(std::as_bytes(std::span(indices, NUM_DEBUG_INDICES)),
-                                                                BufferTarget{BufferUsage::Index, indexBuffer, i * NUM_DEBUG_INDICES * uint32_t(sizeof(uint16_t))});
-    }
+    indexArena.Flush(backend);
 }
 
 void DebugInfoPass::onDetach(InitDrawContext& ctx) {}
@@ -85,6 +80,7 @@ void DebugInfoPass::onUpdate(DrawContext& ctx, View view)
         auto extent = ctx.backend.SwapchainExtent();
         math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
                                 pushConstant.offset);
+        LOG_INFO("debug pass swapchain recreate {}", extent);
     }
 
     std::stringstream ss;
@@ -95,6 +91,13 @@ void DebugInfoPass::onUpdate(DrawContext& ctx, View view)
     }
     std::string s = ss.str();
     const char* cs = s.c_str();
+    auto iAlloc = indexArena.Allocate(NUM_DEBUG_INDICES * sizeof(uint16_t));
+    auto vAlloc = vertexArena.Allocate(NUM_DEBUG_VERTICES * sizeof(Vertex));
+
+    vertexArena.AdvanceFrame();
+    indexArena.AdvanceFrame();
+
+    auto vertices = (Vertex*)vAlloc.cpuPtr;
     // draw background
     if (s.size() > 0)
     {
@@ -156,17 +159,13 @@ void DebugInfoPass::onUpdate(DrawContext& ctx, View view)
     }
     if (numQuads == 0) return;
 
-    auto& tCmd = ctx.transferCmd;
-    auto& cmd = ctx.drawCmd;
-    tCmd.UpdateBuffer(vertexBuffer, NUM_DEBUG_VERTICES * sizeof(Vertex) * ctx.backend.CurrentFrameIndex(), numQuads * 4 * sizeof(Vertex), vertices);
-    // tCmd.UpdateBuffer(indexBuffer, 0, numQuads * 6 * sizeof(uint16_t), indices);
-    tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex, NUM_DEBUG_VERTICES * sizeof(Vertex) * ctx.backend.CurrentFrameIndex(), numQuads * 4 * sizeof(Vertex));
-    // tCmd.BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
+    vertexArena.Flush(ctx.backend);
 
+    auto& cmd = ctx.drawCmd;
     cmd.BindGraphicsPipeline(pipeline);
     cmd.PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
-    cmd.BindVertexBuffer(vertexBuffer, NUM_DEBUG_VERTICES * sizeof(Vertex) * ctx.backend.CurrentFrameIndex());
-    cmd.BindIndexBuffer(indexBuffer, NUM_DEBUG_INDICES * sizeof(uint16_t) * ctx.backend.CurrentFrameIndex(), IndexFormat::Uint16);
+    cmd.BindVertexBuffer(vertexArena.GetBuffer(), vAlloc.offset);
+    cmd.BindIndexBuffer(indexArena.GetBuffer(), iAlloc.offset, IndexFormat::Uint16);
     cmd.DrawIndexed(numQuads * 6, 1, 0, 0, 0);
 }
 }  // namespace oge::runtime::renderer

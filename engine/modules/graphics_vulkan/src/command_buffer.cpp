@@ -17,11 +17,6 @@
 
 namespace oge::graphics::vulkan
 {
-void VulkanCommandBuffer::Begin()
-{
-    // if (m_useEnd) InternalBegin();
-    assert(false);
-}
 
 void VulkanCommandBuffer::InternalBegin()
 {
@@ -56,12 +51,6 @@ void VulkanCommandBuffer::InternalEnd()
 {
     vkEndCommandBuffer(m_cmd);
     // LOG_DEBUG("end mcd {}", (void*)m_cmd);
-}
-
-void VulkanCommandBuffer::End()
-{
-    // if (m_useEnd) InternalEnd();
-    assert(false);
 }
 
 void VulkanCommandBuffer::BeginRenderPass(const GPURenderPassHandle renderPass, const GPUFrameBufferHandle frameBuffer,

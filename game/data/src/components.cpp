@@ -21,7 +21,7 @@ math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamer
     return rayDir;
 }
 
-void ComponentCamera::ApplyDelta(float dsx, float dsy, float dwx, float dwz)
+void ComponentCamera::ApplyDelta(float dsx, float dsy)
 {
     yaw += dsx;
     pitch += dsy;
@@ -31,8 +31,6 @@ void ComponentCamera::ApplyDelta(float dsx, float dsy, float dwx, float dwz)
     forward.y = math::sin(pitch);
     forward.z = math::cos(pitch) * math::cos(yaw);
     forward = math::normalize(forward);
-
-    position += dwx * right() + dwz * forward;
 }
 
 math::mat4 ComponentCamera::view() const { return math::lookAt(position, position + forward, glm::vec3(0, 1, 0)); }
