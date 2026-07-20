@@ -2,6 +2,8 @@ add_library(oge_graphics_vulkan STATIC)
 
 message(STATUS "Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
+message(STATUS "Vulkan include dirs: ${Vulkan_INCLUDE_DIRS}")
+message(STATUS "Vulkan libraries: ${Vulkan_LIBRARIES}")
 
 file(GLOB_RECURSE SOURCE_FILES 
     CONFIGURE_DEPENDS

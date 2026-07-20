@@ -1,4 +1,6 @@
 #include "SDL3/SDL_events.h"
+#include "SDL3/SDL_timer.h"
+#include "oge/platform/window_app.hpp"
 #include "sdl3_window.hpp"
 
 #ifdef PLATFORM_WINDOWS
@@ -91,6 +93,7 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
 
     LOG_INFO("SDL3 GameWindow Created");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
+    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
     // 1. Initialize SDL
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
@@ -142,18 +145,18 @@ void SDL3GameWindow::Run(WindowApp& app)
         {
             switch (event.type)
             {
-                case SDL_EVENT_MOUSE_ADDED:
-                    m_input.AddMouse(event.mdevice.which);
-                    SDL_GetMouseState(&x, &y);
-                    m_input.SetMousePosition(event.mdevice.which, x, y);
-                    break;
                 case SDL_EVENT_WINDOW_MOUSE_ENTER:
-                    float x, y;
-                    SDL_GetMouseState(&x, &y);
-                    m_input.SetMousePosition(event.mdevice.which, x, y);
-                    break;
-                case SDL_EVENT_MOUSE_REMOVED:
-                    m_input.DelMouse(event.mdevice.which);
+                    LOG_DEBUG("enter window");
+                    {
+                        m_input.AddMouse(0);
+                        float x, y;
+                        SDL_GetMouseState(&x, &y);
+                        m_input.SetMousePosition(0, x, y);
+                        break;
+                    }
+                case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+                    LOG_DEBUG("leave window");
+                    m_input.DelMouse(0);
                     break;
                 case SDL_EVENT_QUIT:
                     readyToClose = true;
@@ -179,13 +182,13 @@ void SDL3GameWindow::Run(WindowApp& app)
                     m_input.SetKey(GetEngineKey(event.key.key), false);
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_DOWN:
-                    m_input.SetMouseButton(event.button.which, GetEngineMouseButton(event.button.button), true);
+                    m_input.SetMouseButton(0, GetEngineMouseButton(event.button.button), true);
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_UP:
-                    m_input.SetMouseButton(event.button.which, GetEngineMouseButton(event.button.button), false);
+                    m_input.SetMouseButton(0, GetEngineMouseButton(event.button.button), false);
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
-                    m_input.SetMouseDelta(event.motion.which, event.motion.xrel, event.motion.yrel);
+                    m_input.SetMouseDelta(0, event.motion.xrel, event.motion.yrel);
                     break;
                 case SDL_EVENT_FINGER_DOWN:
                     m_input.SetTouchDown(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);

@@ -5,20 +5,26 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <set>
 #include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "binding_group.hpp"
 #include "buffer.hpp"
 #include "command_buffer.hpp"
 #include "fence.hpp"
 #include "frame_buffer.hpp"
+#include "oge/graphics/configs.hpp"
 #include "pipeline.hpp"
 #include "texture.hpp"
 
 // extern "C" {
 #include "vk_mem_alloc.h"
+#include "vulkan/vulkan_core.h"
 //}
 
 #define LOGGER_NAME "Vulkan"
@@ -137,6 +143,12 @@ struct QueueIndices
     std::optional<uint32_t> transfer;
     std::optional<uint32_t> present;
 
+    std::unordered_map<uint32_t, uint32_t> uniqueQueueFamilies;
+    uint32_t graphicsIdx = 0;
+    uint32_t computeIdx = 0;
+    uint32_t transferIdx = 0;
+    uint32_t presentIdx = 0;
+
     bool IsComplete() const
     {
         return graphics.has_value() && compute.has_value() && transfer.has_value() && present.has_value();
@@ -169,6 +181,30 @@ static QueueIndices FindQueues(VkPhysicalDevice device, VkSurfaceKHR surface)
     }
 
     if (!indices.transfer.has_value()) indices.transfer = indices.graphics;
+
+    indices.uniqueQueueFamilies[indices.present.value()] = 1;
+    indices.presentIdx = 0;
+    // {
+    //     auto it = uniqueQueueFamilies.find(queueIndices.graphics.value());
+    //     if (it != uniqueQueueFamilies.end())
+    //         uniqueQueueFamilies.emplace(queueIndices.graphics.value(), 0);
+    //     uniqueQueueFamilies[queueIndices.graphics.value()]++;
+    // }
+    // {
+    //     auto it = uniqueQueueFamilies.find(queueIndices.compute.value());
+    //     if (it != uniqueQueueFamilies.end())
+    //         uniqueQueueFamilies.emplace(queueIndices.graphics.value(), 0);
+    //     uniqueQueueFamilies[queueIndices.graphics.value()]++;
+    // }
+    {
+        auto it = indices.uniqueQueueFamilies.find(indices.transfer.value());
+        if (it != indices.uniqueQueueFamilies.end()) indices.uniqueQueueFamilies.emplace(indices.transfer.value(), 0);
+        if (indices.uniqueQueueFamilies[indices.transfer.value()] < families[indices.transfer.value()].queueCount)
+        {
+            indices.transferIdx = indices.uniqueQueueFamilies[indices.transfer.value()];
+            indices.uniqueQueueFamilies[indices.transfer.value()]++;
+        }
+    }
 
     return indices;
 }
@@ -366,10 +402,7 @@ struct SelectedDevice
     SwapchainSupport swapchainSupport;
     QueueIndices queueIndices;
 
-    bool IsValid() const
-    {
-        return physicalDevice != VK_NULL_HANDLE;
-    }
+    bool IsValid() const { return physicalDevice != VK_NULL_HANDLE; }
 };
 
 static SelectedDevice SelectPhysicalDevice(VkInstance instance, VkSurfaceKHR surface,
@@ -566,13 +599,12 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
     PrintAllPhysicalDeviceInfo(m_device.instance);
 
     std::vector<const char*> deviceExtensionGroups = {
-        VK_EXT_MEMORY_BUDGET_EXTENSION_NAME, VK_EXT_DEVICE_MEMORY_REPORT_EXTENSION_NAME,
+        VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
+        VK_EXT_DEVICE_MEMORY_REPORT_EXTENSION_NAME,
     };
     std::vector deviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-    auto selectedDevice =
-        SelectPhysicalDevice(m_device.instance, m_device.surface, deviceExtensions);
-    if (!selectedDevice.IsValid())
-        throw std::runtime_error("cannot find suitable GPU");
+    auto selectedDevice = SelectPhysicalDevice(m_device.instance, m_device.surface, deviceExtensions);
+    if (!selectedDevice.IsValid()) throw std::runtime_error("cannot find suitable GPU");
     for (auto ext : deviceExtensionGroups)
     {
         deviceExtensions.push_back(ext);
@@ -596,16 +628,14 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
 
     {
         float queuePriority = 1.0f;
-        std::set<uint32_t> uniqueQueueFamilies = {queueIndices.graphics.value(), queueIndices.compute.value(),
-                                                  queueIndices.transfer.value(), queueIndices.present.value()};
 
         std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-        for (uint32_t queueFamily : uniqueQueueFamilies)
+        for (auto [queueFamily, cnt] : queueIndices.uniqueQueueFamilies)
         {
             VkDeviceQueueCreateInfo queueCreateInfo{};
             queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
             queueCreateInfo.queueFamilyIndex = queueFamily;
-            queueCreateInfo.queueCount = 1;
+            queueCreateInfo.queueCount = cnt;
             queueCreateInfo.pQueuePriorities = &queuePriority;
             queueCreateInfos.push_back(queueCreateInfo);
         }
@@ -627,10 +657,20 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
         createInfo.pEnabledFeatures = &enabledFeatures;
 
         vkCreateDevice(physicalDevice, &createInfo, nullptr, &m_device.device);
-        vkGetDeviceQueue(m_device.device, queueIndices.graphics.value(), 0, &m_device.m_graphicsQueue);
-        vkGetDeviceQueue(m_device.device, queueIndices.compute.value(), 0, &m_device.m_computeQueue);
-        vkGetDeviceQueue(m_device.device, queueIndices.transfer.value(), 0, &m_device.m_transferQueue);
-        vkGetDeviceQueue(m_device.device, queueIndices.present.value(), 0, &m_device.m_presentQueue);
+        // vkGetDeviceQueue(m_device.device, queueIndices.graphics.value(), 0, &m_device.m_graphicsQueue);
+        // vkGetDeviceQueue(m_device.device, queueIndices.compute.value(), 0, &m_device.m_computeQueue);
+        vkGetDeviceQueue(m_device.device, queueIndices.present.value(), queueIndices.presentIdx, &m_device.m_presentQueue);
+        if (queueIndices.present.value() == queueIndices.transfer.value())
+        {
+            if (queueIndices.transferIdx != queueIndices.presentIdx)
+                vkGetDeviceQueue(m_device.device, queueIndices.transfer.value(), queueIndices.transferIdx, &m_device.m_transferQueue);
+        }
+        else
+        {
+            vkGetDeviceQueue(m_device.device, queueIndices.transfer.value(), queueIndices.transferIdx, &m_device.m_transferQueue);
+        }
+        LOG_INFO("present queue family: {}, handle: {}", queueIndices.present.value(), static_cast<void*>(m_device.m_presentQueue));
+        LOG_INFO("transfer queue family: {}, handle: {}", queueIndices.transfer.value(), static_cast<void*>(m_device.m_transferQueue));
 
         VmaAllocatorCreateInfo allocatorInfo{};
         allocatorInfo.physicalDevice = physicalDevice;
@@ -1104,42 +1144,68 @@ EndFrameAction VulkanBackend::EndFrame()
     FrameData& frame = m_frames[m_frameIndex];
     VkSwapchainKHR& swapchain = m_swapchain.swapchain;
 
+    if (m_device.m_transferQueue != VK_NULL_HANDLE)
     {
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        {
+            VkSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-        auto queueIdx = static_cast<uint32_t>(QueueType::Transfer);
-        auto& transferCmdBuffers = frame.vkCmdBuffers[queueIdx];
-        auto& frame = m_frames[m_frameIndex];
-        submitInfo.waitSemaphoreCount = 0;
-        submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
-        submitInfo.pWaitDstStageMask = VK_NULL_HANDLE;
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &frame.imageAvailableAndTransferComplete[1];
-        submitInfo.commandBufferCount = frame.cmdUsedCount[queueIdx];
-        submitInfo.pCommandBuffers = transferCmdBuffers.data();
+            auto queueIdx = static_cast<uint32_t>(QueueType::Transfer);
+            auto& transferCmdBuffers = frame.vkCmdBuffers[queueIdx];
+            auto& frame = m_frames[m_frameIndex];
+            submitInfo.waitSemaphoreCount = 0;
+            submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
+            submitInfo.pWaitDstStageMask = VK_NULL_HANDLE;
+            submitInfo.signalSemaphoreCount = 1;
+            submitInfo.pSignalSemaphores = &frame.imageAvailableAndTransferComplete[1];
+            submitInfo.commandBufferCount = frame.cmdUsedCount[queueIdx];
+            submitInfo.pCommandBuffers = transferCmdBuffers.data();
 
-        vkQueueSubmit(m_device.m_transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
+            vkQueueSubmit(m_device.m_transferQueue, 1, &submitInfo, VK_NULL_HANDLE);
+        }
+
+        {
+            VkSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+
+            auto queueIdx = static_cast<uint32_t>(QueueType::Present);
+            auto& presentCmdBuffers = frame.vkCmdBuffers[queueIdx];
+            auto& frame = m_frames[m_frameIndex];
+            static VkPipelineStageFlags waitStage[2] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                                        VK_PIPELINE_STAGE_TRANSFER_BIT};
+            submitInfo.waitSemaphoreCount = 2;
+            submitInfo.pWaitSemaphores = frame.imageAvailableAndTransferComplete;
+            submitInfo.pWaitDstStageMask = waitStage;
+            submitInfo.signalSemaphoreCount = 1;
+            submitInfo.pSignalSemaphores = &m_imagesFinishRender[m_imageIndex];
+            submitInfo.commandBufferCount = frame.cmdUsedCount[queueIdx];
+            submitInfo.pCommandBuffers = presentCmdBuffers.data();
+
+            vkQueueSubmit(m_device.m_presentQueue, 1, &submitInfo, frame.inFlightFence);
+        }
     }
-
+    else
     {
-        VkSubmitInfo submitInfo{};
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        {
+            auto queueIdx = static_cast<uint32_t>(QueueType::Present);
+            auto& presentCmdBuffers = frame.vkCmdBuffers[queueIdx];
+            std::vector<VkCommandBuffer> cmds(frame.vkCmdBuffers[static_cast<uint32_t>(QueueType::Transfer)]);
+            for (auto c : presentCmdBuffers) cmds.push_back(c);
 
-        auto queueIdx = static_cast<uint32_t>(QueueType::Present);
-        auto& presentCmdBuffers = frame.vkCmdBuffers[queueIdx];
-        auto& frame = m_frames[m_frameIndex];
-        static VkPipelineStageFlags waitStage[2] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                                    VK_PIPELINE_STAGE_TRANSFER_BIT};
-        submitInfo.waitSemaphoreCount = 2;
-        submitInfo.pWaitSemaphores = frame.imageAvailableAndTransferComplete;
-        submitInfo.pWaitDstStageMask = waitStage;
-        submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &m_imagesFinishRender[m_imageIndex];
-        submitInfo.commandBufferCount = frame.cmdUsedCount[queueIdx];
-        submitInfo.pCommandBuffers = presentCmdBuffers.data();
+            VkSubmitInfo submitInfo{};
+            submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+            auto& frame = m_frames[m_frameIndex];
+            static VkPipelineStageFlags waitStage[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+            submitInfo.waitSemaphoreCount = 1;
+            submitInfo.pWaitSemaphores = frame.imageAvailableAndTransferComplete;
+            submitInfo.pWaitDstStageMask = waitStage;
+            submitInfo.signalSemaphoreCount = 1;
+            submitInfo.pSignalSemaphores = &m_imagesFinishRender[m_imageIndex];
+            submitInfo.commandBufferCount = cmds.size();
+            submitInfo.pCommandBuffers = cmds.data();
 
-        vkQueueSubmit(m_device.m_presentQueue, 1, &submitInfo, frame.inFlightFence);
+            vkQueueSubmit(m_device.m_presentQueue, 1, &submitInfo, frame.inFlightFence);
+        }
     }
 
     // Present
@@ -1278,7 +1344,10 @@ ICommandList& VulkanBackend::CreateCommandList(QueueType queueType)
     }
     else
     {
-        LOG_DEBUG("allocate cmd list");
+        if (queueType == QueueType::Present)
+            LOG_DEBUG("allocate cmd list present");
+        else if (queueType == QueueType::Transfer)
+            LOG_DEBUG("allocate cmd list transfer");
         // allocate new one
         VkCommandBufferAllocateInfo alloc{};
         alloc.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -1296,4 +1365,4 @@ ICommandList& VulkanBackend::CreateCommandList(QueueType queueType)
 
     return *reinterpret_cast<ICommandList*>(cmd);
 }
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

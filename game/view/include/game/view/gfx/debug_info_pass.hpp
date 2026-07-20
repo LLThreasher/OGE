@@ -9,8 +9,8 @@ namespace game::view::gfx
 {
 using namespace oge::graphics;
 
-constexpr size_t NUM_DEBUG_VERTICES = 2048;
-constexpr size_t NUM_DEBUG_INDICES = NUM_DEBUG_VERTICES / 4 * 6;
+constexpr uint32_t NUM_DEBUG_VERTICES = 2048;
+constexpr uint32_t NUM_DEBUG_INDICES = NUM_DEBUG_VERTICES / 4 * 6;
 
 class DebugInfoPass : public Pass<CmdDrawDebugText, CmdDrawDebugRect>
 {

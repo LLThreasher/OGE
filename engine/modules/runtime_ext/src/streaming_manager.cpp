@@ -121,7 +121,7 @@ void StreamingManager::UploadBuffer(uint32_t fidx, BufferUploadDesc& desc, IComm
     auto target = desc.gpuBuffer;
     transferCmd.CopyBuffer(m_ringStagingBuffer.GetBuffer(), target.buffer, target.size, desc.staging.alloc.offset,
                            target.offset);
-    transferCmd.BufferBarrier(target.buffer, target.usage | BufferUsage::TransferDst, target.usage);
+    transferCmd.BufferBarrier(target.buffer, target.usage | BufferUsage::TransferDst, target.usage, target.offset, target.size);
     m_stagingAllocationToFree[fidx].emplace(desc.bundle, desc.staging.alloc);
 }
 

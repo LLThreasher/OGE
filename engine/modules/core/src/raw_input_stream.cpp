@@ -100,11 +100,6 @@ uint32_t RawInputStream::FindMouse(int id)
     {
         if (activePtrs.contains(i) && mouseIds[i] == id) return i;
     }
-    AddMouse(id);
-    for (uint32_t i = 0; i < MousePtrInputIndices.size(); ++i)
-    {
-        if (activePtrs.contains(i) && mouseIds[i] == id) return i;
-    }
     return 0;
 }
 

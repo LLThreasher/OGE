@@ -1,5 +1,7 @@
 #include "command_buffer.hpp"
 
+#include <cstddef>
+#include <cstdint>
 #include <cstring>
 
 #include "binding_group.hpp"
@@ -7,6 +9,7 @@
 #include "frame_buffer.hpp"
 #include "pipeline.hpp"
 #include "texture.hpp"
+#include "vulkan/vulkan_core.h"
 
 #define LOGGER_NAME "Vulkan"
 #include "oge/log.hpp"
@@ -233,7 +236,12 @@ void VulkanCommandBuffer::DispatchIndirect(GPUBufferHandle handle, uint64_t offs
     vkCmdDispatchIndirect(m_cmd, buffer->buffer, offset);
 }
 
-void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage before, BufferUsage after)
+void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage before, BufferUsage after, uint64_t offset)
+{
+    VulkanCommandBuffer::BufferBarrier(handle, before, after, offset, VK_WHOLE_SIZE);
+}
+
+void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage before, BufferUsage after, uint64_t offset, uint64_t size)
 {
     VulkanBuffer* buffer = m_backend->m_buffers.Get(handle);
 
@@ -244,8 +252,8 @@ void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage befo
     barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
     barrier.buffer = buffer->buffer;
-    barrier.offset = 0;
-    barrier.size = VK_WHOLE_SIZE;
+    barrier.offset = offset;
+    barrier.size = size;
 
     vkCmdPipelineBarrier(m_cmd, ConvertPipelineStage(before), ConvertPipelineStage(after), 0, 0, nullptr, 1, &barrier,
                          0, nullptr);

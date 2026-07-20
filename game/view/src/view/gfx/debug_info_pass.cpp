@@ -1,5 +1,7 @@
 #include "game/view/gfx/debug_info_pass.hpp"
 
+#include <cstddef>
+#include <cstdint>
 #include <sstream>
 
 #include "internals.hpp"
@@ -46,19 +48,19 @@ void DebugInfoPass::onAttach(InitDrawContext& ctx)
     BufferDesc vBuf{};
     vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
     vBuf.memory = MemoryUsage::GPUOnly;
-    vBuf.size = NUM_DEBUG_VERTICES * sizeof(Vertex);
+    vBuf.size = NUM_DEBUG_VERTICES * sizeof(Vertex) * backend.FramesInFlight();
     vertexBuffer = backend.CreateBuffer(vBuf);
     LOG_DEBUG("debug vbuff created");
 
     BufferDesc iBuf{};
     iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
     iBuf.memory = MemoryUsage::GPUOnly;
-    iBuf.size = NUM_DEBUG_INDICES * sizeof(uint16_t);
+    iBuf.size = NUM_DEBUG_INDICES * sizeof(uint16_t) * backend.FramesInFlight();
     indexBuffer = backend.CreateBuffer(iBuf);
     LOG_DEBUG("debug ibuff created");
 
     uint16_t* iptr = indices;
-    for (size_t i = 0; i < NUM_DEBUG_INDICES / 6; i++)
+    for (size_t i = 0; i < NUM_DEBUG_INDICES / 6; ++i)
     {
         *(iptr++) = i * 4;
         *(iptr++) = i * 4 + 1;
@@ -67,8 +69,11 @@ void DebugInfoPass::onAttach(InitDrawContext& ctx)
         *(iptr++) = i * 4 + 3;
         *(iptr++) = i * 4;
     }
-    ctx.assets.streamingManager.Upload<UploadType::Immediate>(std::as_bytes(std::span(indices, NUM_DEBUG_INDICES)),
-                                                              BufferTarget{BufferUsage::Index, indexBuffer});
+    for (uint32_t i = 0; i < backend.FramesInFlight(); ++i)
+    {
+        ctx.assets.streamingManager.Upload<UploadType::Immediate>(std::as_bytes(std::span(indices, NUM_DEBUG_INDICES)),
+                                                                BufferTarget{BufferUsage::Index, indexBuffer, i * NUM_DEBUG_INDICES * uint32_t(sizeof(uint16_t)), NUM_DEBUG_INDICES * uint32_t(sizeof(uint16_t))});
+    }
 }
 
 void DebugInfoPass::onDetach(InitDrawContext& ctx) {}
@@ -153,15 +158,15 @@ void DebugInfoPass::onUpdate(DrawContext& ctx, View view)
 
     auto& tCmd = ctx.transferCmd;
     auto& cmd = ctx.drawCmd;
-    tCmd.UpdateBuffer(vertexBuffer, 0, numQuads * 4 * sizeof(Vertex), vertices);
+    tCmd.UpdateBuffer(vertexBuffer, NUM_DEBUG_VERTICES * sizeof(Vertex) * ctx.backend.CurrentFrameIndex(), numQuads * 4 * sizeof(Vertex), vertices);
     // tCmd.UpdateBuffer(indexBuffer, 0, numQuads * 6 * sizeof(uint16_t), indices);
-    tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
+    tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex, NUM_DEBUG_VERTICES * sizeof(Vertex) * ctx.backend.CurrentFrameIndex(), numQuads * 4 * sizeof(Vertex));
     // tCmd.BufferBarrier(indexBuffer, BufferUsage::Index | BufferUsage::TransferDst, BufferUsage::Index);
 
     cmd.BindGraphicsPipeline(pipeline);
     cmd.PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
-    cmd.BindVertexBuffer(vertexBuffer);
-    cmd.BindIndexBuffer(indexBuffer, 0, IndexFormat::Uint16);
+    cmd.BindVertexBuffer(vertexBuffer, NUM_DEBUG_VERTICES * sizeof(Vertex) * ctx.backend.CurrentFrameIndex());
+    cmd.BindIndexBuffer(indexBuffer, NUM_DEBUG_INDICES * sizeof(uint16_t) * ctx.backend.CurrentFrameIndex(), IndexFormat::Uint16);
     cmd.DrawIndexed(numQuads * 6, 1, 0, 0, 0);
 }
 }  // namespace oge::runtime::renderer

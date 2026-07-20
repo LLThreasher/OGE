@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include "oge/graphics/objects.hpp"
 #include "oge/graphics/configs.hpp"
 
@@ -60,7 +61,8 @@ class ICommandList
     virtual void DispatchIndirect(GPUBufferHandle indirectBuffer, uint64_t offset) = 0;
 
     // ----- Barriers -----
-    virtual void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after) = 0;
+    virtual void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after, uint64_t offset = 0) = 0;
+    virtual void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after, uint64_t offset, uint64_t size) = 0;
 
     virtual void TextureBarrier(GPUTextureHandle, TextureState, uint32_t baseLayer = 0, uint32_t layerCount = 1) = 0;
 };

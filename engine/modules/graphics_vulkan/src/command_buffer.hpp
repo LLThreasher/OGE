@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <span>
 #include <vulkan/vulkan.h>
 
@@ -67,7 +68,8 @@ class VulkanCommandBuffer final : public ICommandList
     void DispatchIndirect(GPUBufferHandle indirectBuffer, uint64_t offset) override;
 
     // ----- Barriers -----
-    void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after) override;
+    void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after, uint64_t offset) override;
+    void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after, uint64_t offset, uint64_t size) override;
 
     void TextureBarrier(GPUTextureHandle, TextureState, uint32_t baseLayer = 0, uint32_t layerCount = 1) override;
 

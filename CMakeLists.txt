@@ -53,9 +53,8 @@ if(CMAKE_EXPORT_COMPILE_COMMANDS)
     set(CLANGD_FILE_CONTENT
 "CompileFlags:
   CompilationDatabase: ${CLANGD_BUILD_DIR}
-
-Diagnostics:
-  UnusedIncludes: Strict
+  Compiler: ${CMAKE_CXX_COMPILER}
+  Add: [-I/usr/local/include]
 
 Index:
   Background: Build
