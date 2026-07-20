@@ -56,32 +56,30 @@ struct PlayerInputEvent
     }
 };
 
+using PlayerActionStream = DiscreteEventStream<PlayerInputEvent, 16>;
+
 class PlayerInputStream
 {
-    DiscreteEventStream<PlayerInputEvent, 16> actions;
+    PlayerActionStream actions;
     math::vec2 move = {};
     math::vec2 pan = {};
     bool moveDirty = false;
     bool panDirty = false;
+    PlayerActionStream::Cursor actionCursor = {};
 
    public:
-    struct Cursor
-    {
-        DiscreteEventStream<PlayerInputEvent>::Cursor actionCursor;
-    };
-
     int LatestAction() const { return actions.Head().actionMask; }
 
-    bool HasAction(Cursor& cursor) const
+    bool HasAction() const
     {
         DiscreteEventStream<PlayerInputEvent>::Cursor _c;
         actions.AdvanceCursor(_c);
-        return _c != cursor.actionCursor;
+        return _c != actionCursor;
     }
 
-    bool PollAction(Cursor& cursor, PlayerInputEvent& event) const
+    bool PollAction(PlayerInputEvent& event)
     {
-        return actions.PollOne(cursor.actionCursor, event);
+        return actions.PollOne(actionCursor, event);
     }
 
     bool PollMoveDelta(math::vec2& out)

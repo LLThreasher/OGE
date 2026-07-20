@@ -4,12 +4,12 @@
 
 #include "game/input/player_input_stream.hpp"
 #include "game/ui/objects.hpp"
+#include "oge/fmt.hpp"
 #include "oge/input/keyboard.hpp"
 #include "oge/input/mouse.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/log.hpp"
 #include "oge/math.hpp"
-#include "oge/fmt.hpp"
 
 namespace game::input
 {
@@ -29,7 +29,8 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
         (keys.get(KeyCode::KY_W) ? 1.f : 0.f) - (keys.get(KeyCode::KY_S) ? 1.f : 0.f),
     };
     out.InsertMoveDelta(moveDelta);
-    math::vec2 panDelta = raw.PollPtrDelta(mouseIdx, raw_idx) * math::vec2{hfov, vfov};
+    math::vec2 panDelta = raw.PollPtrDelta(0, raw_idx) * math::vec2{hfov, vfov};
+    LOG_DEBUG("pan delta {} {}", panDelta, raw_idx.ptrCursors[0]);
     out.InsertPanDelta(panDelta);
 
     PlayerInputEvent pEvent{{0.5f, 0.5f}};
@@ -53,15 +54,19 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
         }
         else if (event.type == InputEventType::KeyDown)
         {
-            pEvent.set<PlayerAction::Jump>();
+            if (event.key == KeyCode::KY_SPACE) pEvent.set<PlayerAction::Jump>();
+        }
+        else if (event.type == InputEventType::KeyUp)
+        {
+            if (event.key == KeyCode::KY_SPACE) pEvent.unset<PlayerAction::Jump>();
         }
     }
     out.InsertAction(pEvent);
 }
 
-void WidgetInput::onAttach(InputContext& ctx) { ctx.windowCtx.SetMouseVisible(false); }
+void WidgetInput::onAttach(InputContext& ctx) {  }
 
-void WidgetInput::onDetach(InputContext& ctx) { ctx.windowCtx.SetMouseVisible(true); }
+void WidgetInput::onDetach(InputContext& ctx) {  }
 
 void WidgetInput::onUpdate(FInputContext& ctx)
 {
@@ -69,8 +74,12 @@ void WidgetInput::onUpdate(FInputContext& ctx)
     auto& game = ctx.uiWorld;
     // handle move
     {
-        auto drag = game.try_get<UIDrag>(moveWidget);
-        if (drag != nullptr)
+        auto [dragRel, _] = TryGetReleasedDragSrc(game, moveWidget);
+        if (dragRel != nullptr)
+        {
+            out.InsertMoveDelta({});
+        }
+        else if (auto drag = game.try_get<UIDrag>(moveWidget))
         {
             math::vec2 moveDelta = drag->dragLastPos - drag->dragStartPos;
             moveDelta = -moveDelta;

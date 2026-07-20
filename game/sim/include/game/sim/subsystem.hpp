@@ -35,6 +35,20 @@ class SubsystemPipeline : public FixedStepPipeline<Subsystem, float>
 
 void RegisterSubsystems(AnythingFactory& af);
 
+#define DECL_FNS(SysName)                   \
+   public:                                  \
+    DECL_ID(SysName)                        \
+    SysName() : Subsystem(Id) {}            \
+    void onAttach(GameState& ctx) override; \
+    void onDetach(GameState& ctx) override; \
+    void onUpdate(FGameState& ctx) override;
+
+#define DECL_SYS(SysName)            \
+    class SysName : public Subsystem \
+    {                                \
+        DECL_FNS(SysName)            \
+    };
+
 class SubsystemDebugText : public Subsystem
 {
     float currentFPS = 0.f;
@@ -43,23 +57,13 @@ class SubsystemDebugText : public Subsystem
     uint64_t frameCount = 0;
     FramePerfStatus totalPerfStatus = {};
     FramePerfStatus perfStatus = {};
-
-   public:
-    DECL_ID(SubsystemDebugText);
-    SubsystemDebugText() : Subsystem(Id) {}
-    void onAttach(GameState& ctx) override;
-    void onDetach(GameState& ctx) override;
-    void onUpdate(FGameState& ctx) override;
+    DECL_FNS(SubsystemDebugText)
 };
 
-class SubsystemPlayer : public Subsystem
-{
-    input::PlayerInputStream::Cursor pIdx;
-   public:
-    DECL_ID(SubsystemPlayer);
-    SubsystemPlayer() : Subsystem(Id) {}
-    void onAttach(GameState& ctx) override;
-    void onDetach(GameState& ctx) override;
-    void onUpdate(FGameState& ctx) override;
-};
+DECL_SYS(SubsystemPlayer);
+DECL_SYS(SubsystemPhysics);
+DECL_SYS(SubsystemCreature);
+
 }  // namespace game::sim
+
+#undef DECL_FNS

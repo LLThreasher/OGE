@@ -44,7 +44,8 @@ class InputSource : public Stage<InputContext, FInputContext>
     struct Def
     {
         PlayerInputStream* target;
-        const ComponentPerspectiveCamera* pcam;
+        float hfov;
+        float vfov;
         union
         {
             struct
@@ -99,9 +100,8 @@ class WidgetInput : public InputSource
     {
         viewWidget = def.widgetInput.viewWidget;
         moveWidget = def.widgetInput.moveWidget;
-        auto& pcam = *def.pcam;
-        vfov = -pcam.fov;
-        hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
+        vfov = def.vfov;
+        hfov = def.hfov;
     }
 
     static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
@@ -127,9 +127,8 @@ class KeyMouseInput : public InputSource
     KeyMouseInput(const Def& def) : InputSource(Id), out(*def.target)
     {
         mouseIdx = def.mouseIuput.mouseIdx;
-        auto& pcam = *def.pcam;
-        vfov = -pcam.fov;
-        hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
+        vfov = def.vfov;
+        hfov = def.hfov;
     }
 
     static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)

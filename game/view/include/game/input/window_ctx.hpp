@@ -11,14 +11,19 @@ namespace game
 using namespace oge::flag_helper;
 using oge::platform::AppFrameAction;
 
-class WindowCtx
+struct WindowCtx
 {
-    AppFrameAction frameAction;
+    AppFrameAction frameAction = AppFrameAction::None;
 
 public:
     void SetMouseVisible(bool val)
     {
         frameAction |= (val ? AppFrameAction::UnwrapMouse : AppFrameAction::WrapMouse);
+    }
+
+    void Clear()
+    {
+        frameAction = AppFrameAction::None;
     }
 };
 }  // namespace game

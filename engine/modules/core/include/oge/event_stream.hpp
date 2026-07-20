@@ -20,6 +20,7 @@ class DiscreteEventStream
 
     bool PollOne(Cursor& cursor, T& output, const Cursor& frontier) const
     {
+        if (cursor == 0) AdvanceCursor(cursor);
         if (cursor >= frontier) return false;
         if (m_currentHead - cursor > bufferSize)
             LOG_WARN("stale cursor detected at {}, current head {}", cursor, m_currentHead);
@@ -37,7 +38,7 @@ class DiscreteEventStream
 
    protected:
     T m_ringBuffer[bufferSize] = {};
-    Cursor m_currentHead = 1;
+    Cursor m_currentHead = 2;
 };
 
 template <typename T>
@@ -56,10 +57,12 @@ class AccumulativeEventStream : public DiscreteEventStream<T, bufferSize>
 
     T PollDelta(Cursor& cursor, const Cursor& frontier) const
     {
+        if (cursor == 0)
+            this->AdvanceCursor(cursor);
         if (cursor >= frontier) return {};
         if (this->m_currentHead - cursor > bufferSize)
             LOG_WARN("stale cursor detected at {}, current head {}", cursor, this->m_currentHead);
-        auto res = this->m_ringBuffer[(frontier - 1) % bufferSize] - this->m_ringBuffer[cursor % bufferSize];
+        auto res = this->m_ringBuffer[(frontier - 1) % bufferSize] - this->m_ringBuffer[(cursor - 1) % bufferSize];
         cursor = frontier;
         return res;
     }

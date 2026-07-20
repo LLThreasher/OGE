@@ -31,6 +31,7 @@ struct SceneFrame
     float dt;
     oge::input::RawInputStream& is;
     FramePerfStatus perfStats;
+    AppFrameAction& frameAction;
 };
 
 class Scene
@@ -48,16 +49,14 @@ class Scene
         ~Ctx() { viewExecutor.Detach(); }
     };
 
+   protected:
     std::optional<Ctx> m_ctx;
-    input::PlayerInputStream m_playerIn;
 
     sim::GameState m_gameState;
     view::RendererState m_renderState;
     input::InputContext m_inputState;
-
     WindowCtx m_windowCtx;
 
-   protected:
     entt::registry m_world;
     sim::SubsystemPipeline m_subsystems;
     view::RenderPipeline m_renderers;
@@ -91,6 +90,8 @@ class Scene
         m_world.ctx().insert_or_assign(f.perfStats);
         m_subsystems.Update(f.dt);
         m_renderers.Update(view::RendererFrameData{f.dt, m_ctx.value().assets, m_ctx.value().s_queue});
+        f.frameAction |= m_windowCtx.frameAction;
+        m_windowCtx.Clear();
     }
 
     void Render(float dt) { m_ctx.value().viewExecutor.Update(dt); }

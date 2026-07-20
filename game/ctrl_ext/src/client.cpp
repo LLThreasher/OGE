@@ -5,6 +5,7 @@
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/vulkan/create_backend.hpp"
 #include "oge/log.hpp"
+#include "oge/platform/window_app.hpp"
 #include "oge/runtime/gfx/chunk_allocator2.hpp"
 #include "oge/runtime/gfx/skyline_allocator.hpp"
 #include "oge/platform/perf.hpp"
@@ -54,12 +55,16 @@ AppFrameAction Client::Update(float dt, oge::input::RawInputStream& input)
     auto watch = oge::Stopwatch::Start();
     auto& backend = *m_backend;
 
+    AppFrameAction appRes = AppFrameAction::None;
     m_events.update();
-    SceneRunner::UpdateScene({dt, input, m_perfStats});
+    SceneRunner::UpdateScene({dt, input, m_perfStats, appRes});
+    if (appRes != AppFrameAction::None)
+    {
+        LOG_DEBUG("new appRes: {}", (uint32_t)appRes);
+    }
 
     perfStats.logicTime = watch.Restart();
 
-    AppFrameAction appRes = AppFrameAction::None;
     auto res = backend.BeginFrame();
     if (res == BeginFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
     if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;

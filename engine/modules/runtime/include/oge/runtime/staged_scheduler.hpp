@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <functional>
 #include <memory>
 #include <type_traits>
@@ -41,21 +42,34 @@ class BasePipeline
    public:
     BasePipeline(TCtx& ctx, AnythingFactory& factory) : m_ctx(ctx), m_factory(factory) {}
 
-    size_t AddStage(std::unique_ptr<TStage> stage)
+    TStage* AddStage(std::unique_ptr<TStage> stage)
     {
         m_stages.push_back(std::move(stage));
         assert(m_stages.back() && "stage not registered");
         m_stages.back()->onAttach(m_ctx);
-        return m_stages.size() - 1;
+        return m_stages.back().get();
     }
 
-    void RemoveStage(size_t idx)
+    std::unique_ptr<TStage> SwapOutStage(std::unique_ptr<TStage> newStage, TStage* oldStage)
     {
-        if (idx < m_stages.size())
-        {
-            m_stages[idx].onDetach(m_ctx);
-            m_stages.erase(m_stages.begin() + idx);
-        }
+        auto it = FindStage(oldStage);
+        if (it == m_stages.end()) return nullptr;
+
+        it->get()->onDetach(m_ctx);
+
+        std::unique_ptr<TStage> removed = std::move(*it);
+        *it = std::move(newStage);
+
+        it->get()->onAttach(m_ctx);
+
+        return removed;
+    }
+
+    void RemoveStage(TStage* handle)
+    {
+        auto it = FindStage(handle);
+        it->get()->onDetach(m_ctx);
+        m_stages.erase(it);
     }
 
     void Update(TFrameData frame)
@@ -71,7 +85,23 @@ class BasePipeline
                        });
     }
 
+    void Clear()
+    {
+        for (auto& stage : m_stages)
+        {
+            stage->onDetach(m_ctx);
+        }
+        m_stages.clear();
+    }
+
    protected:
+    auto FindStage(TStage* handle)
+    {
+        auto it =
+            std::find_if(m_stages.begin(), m_stages.end(), [handle](const auto& ptr) { return ptr.get() == handle; });
+        return it;
+    }
+
     std::vector<std::unique_ptr<TStage>> m_stages;
     AnythingFactory& m_factory;
     TCtx& m_ctx;
@@ -80,29 +110,30 @@ class BasePipeline
 template <typename TControl, typename TStage, typename TFrameData = float>
 class DefaultPipeline : public BasePipeline<TControl, TStage, TFrameData>
 {
-public:
+   public:
     DefaultPipeline(TStage::Ctx& ctx, AnythingFactory& af) : BasePipeline<TControl, TStage, TFrameData>(ctx, af) {}
     template <typename TSys>
-    void AddStage()
+    TStage* AddStage()
     {
-        BasePipeline<TControl, TStage, TFrameData>::AddStage(this->m_factory.template BuildABC<TStage>(TSys::Id));
+        return BasePipeline<TControl, TStage, TFrameData>::AddStage(this->m_factory.template BuildABC<TStage>(TSys::Id));
     }
 };
 
 template <typename TControl, typename TStage, typename TFrameData = float>
 class DefPipeline : public BasePipeline<TControl, TStage, TFrameData>
 {
-public:
+   public:
     DefPipeline(TStage::Ctx& ctx, AnythingFactory& af) : BasePipeline<TControl, TStage, TFrameData>(ctx, af) {}
     template <typename TSys>
-    void AddStage(TStage::Def def)
+    TStage* AddStage(TStage::Def def)
     {
-        BasePipeline<TControl, TStage, TFrameData>::AddStage(this->m_factory.template BuildABC<TStage>(TSys::Id, def));
+        return BasePipeline<TControl, TStage, TFrameData>::AddStage(this->m_factory.template BuildABC<TStage>(TSys::Id, def));
     }
 };
 
 template <typename TControl, typename TStage, typename TFrameData = float>
-using Pipeline = std::conditional_t<IsABC<TStage>, DefPipeline<TControl, TStage, TFrameData>, DefaultPipeline<TControl, TStage, TFrameData>>;
+using Pipeline = std::conditional_t<IsABC<TStage>, DefPipeline<TControl, TStage, TFrameData>,
+                                    DefaultPipeline<TControl, TStage, TFrameData>>;
 
 template <typename TStage, typename TFrameData = float>
 class FramePipeline : public Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>

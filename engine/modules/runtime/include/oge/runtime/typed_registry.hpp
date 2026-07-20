@@ -11,7 +11,7 @@
 
 #define DECL_ID(Name)                           \
     static constexpr const char* IdStr = #Name; \
-    static constexpr oge_id_type Id = entt::hashed_string(#Name).value();
+    static constexpr oge_id_type Id = entt::hashed_string(IdStr).value();
 
 namespace oge::runtime
 {

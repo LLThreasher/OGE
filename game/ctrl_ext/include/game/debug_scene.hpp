@@ -1,3 +1,7 @@
+#include <algorithm>
+#include <memory>
+
+#include "entt/entity/fwd.hpp"
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/input/input_source.hpp"
@@ -10,19 +14,27 @@
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
 #include "game/view/terrain/terrain_renderer.hpp"
+#include "oge/input/keyboard.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 
 namespace game
 {
 class DebugScene3 : public Scene
 {
+    using InputDef = input::InputSource::Def;
+
+    entt::entity m_player;
+    InputDef m_widgetInputDef;
+
    public:
     DebugScene3(AppContext ctx) : Scene(std::move(ctx))
     {
-        m_inputs.AddStage<input::UIDragInput>(input::InputSource::Def{});
         m_subsystems.AddStage<sim::SubsystemDebugText>();
         m_subsystems.AddStage<sim::SubsystemTerrain>();
         m_subsystems.AddStage<sim::SubsystemPlayer>();
+        m_subsystems.AddStage<sim::SubsystemCreature>();
+        m_subsystems.AddStage<sim::SubsystemPhysics>();
+
         m_renderers.AddStage<view::TerrainRenderer>();
         m_renderers.AddStage<view::DebugInfoRenderer>();
         m_renderers.AddStage<view::UIRenderer>();
@@ -50,9 +62,9 @@ class DebugScene3 : public Scene
         }
 
         auto vpe = ui::CreateGameView(m_world, {math::vec2{0, 0}, math::vec2{1, 1}});
-        auto player = ComponentPlayer::CreatePlayer(m_world, {20.f, 20.f, 20.f});
+        m_player = ComponentPlayer::CreatePlayer(m_world, {20.f, 20.f, 20.f});
         {
-            ComponentCamera& cam = m_world.get<ComponentCamera>(player);
+            ComponentCamera& cam = m_world.get<ComponentCamera>(m_player);
             cam.position = {20.f, 20.f, 20.f};
 
             glm::vec3 target = {0.f, 0.f, 0.f};
@@ -61,10 +73,10 @@ class DebugScene3 : public Scene
             cam.yaw = std::atan2(cam.forward.x, cam.forward.z);
             cam.pitch = std::asin(cam.forward.y);
 
-            ComponentPerspectiveCamera& pcam = m_world.get<ComponentPerspectiveCamera>(player);
+            ComponentPerspectiveCamera& pcam = m_world.get<ComponentPerspectiveCamera>(m_player);
             pcam.fov = math::radians(45.f);
         }
-        m_world.get<view::ViewPanel>(vpe).activeCamera = player;
+        m_world.get<view::ViewPanel>(vpe).activeCamera = m_player;
         m_world.patch<view::ViewPanel>(vpe);
 
         // m_terminalButton = ui::CreateButton(world, context, {math::vec2{0.f, 0.f}, math::vec2{0.1f, 0.1f}});
@@ -109,11 +121,42 @@ class DebugScene3 : public Scene
         m_world.emplace<ui::UIZLevel>(mvWidget, 1);
         m_world.emplace<ui::UIRaycastTarget>(mvWidget);
 
-        m_world.emplace<InputSourceWidget>(player, mvWidget, lookWidget);
+        m_world.emplace<InputSourceWidget>(m_player, mvWidget, lookWidget);
 
-        m_inputs.AddStage<input::WidgetInput>(
-            input::InputSource::Def{.target=m_world.try_get<input::PlayerInputStream>(player),
-                                    .pcam=m_world.try_get<const ComponentPerspectiveCamera>(player), .widgetInput={lookWidget, mvWidget}});
+        auto& pcam = m_world.get<const ComponentPerspectiveCamera>(m_player);
+        m_widgetInputDef = InputDef{.target = m_world.try_get<input::PlayerInputStream>(m_player)};
+        auto extent = m_ctx.value().assets.backend.SwapchainExtent();
+        m_widgetInputDef.vfov = -pcam.fov;
+        m_widgetInputDef.hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
+        m_widgetInputDef.hfov /= (float)extent.x;
+        m_widgetInputDef.vfov /= (float)extent.y;
+        m_widgetInputDef.widgetInput = {lookWidget, mvWidget};
+
+        m_inputs.AddStage<input::UIDragInput>(InputDef{});
+        m_inputs.AddStage<input::WidgetInput>(m_widgetInputDef);
+    }
+
+    void Update(SceneFrame f) override
+    {
+        using oge::input::KeyCode;
+
+        auto& keys = f.is.ActiveKeys();
+        if (keys.contains(KeyCode::KY_G))
+        {
+            m_inputs.Clear();
+            m_inputs.AddStage<input::KeyMouseInput>(
+                InputDef{.target = m_world.try_get<input::PlayerInputStream>(m_player),
+                         .hfov = m_widgetInputDef.hfov,
+                         .vfov = m_widgetInputDef.vfov,
+                         .mouseIuput = {0}});
+        }
+        else if (keys.contains(KeyCode::KY_ESCAPE))
+        {
+            m_inputs.Clear();
+            m_inputs.AddStage<input::UIDragInput>(InputDef{});
+            m_inputs.AddStage<input::WidgetInput>(m_widgetInputDef);
+        }
+        Scene::Update(std::move(f));
     }
 };
 }  // namespace game

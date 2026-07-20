@@ -50,7 +50,7 @@ void SubsystemPlayer::onUpdate(FGameState& ctx)
     {
         PlayerInputEvent event;
         creature.jumpOrder = false;
-        while (input.PollAction(pIdx, event))
+        while (input.PollAction(event))
         {
             creature.jumpOrder = creature.jumpOrder || body.isGrounded && event.get<PlayerAction::Jump>();
             if (event.actionMask != 0)
