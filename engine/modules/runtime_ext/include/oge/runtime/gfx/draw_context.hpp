@@ -1,5 +1,6 @@
 #pragma once
 
+#include "oge/graphics/backend.hpp"
 #include "oge/graphics/forward.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
 #include "oge/runtime/gfx/skyline_allocator.hpp"
@@ -49,6 +50,7 @@ struct DrawContext
 
     DrawContext(float dt, InitDrawContext& ctx);
     ~DrawContext();
+    NO_COPY(DrawContext);
 };
 }  // namespace gfx
 }  // namespace game::view

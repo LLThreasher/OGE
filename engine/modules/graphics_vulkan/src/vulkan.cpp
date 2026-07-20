@@ -740,6 +740,11 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
 
     m_frames.resize(swapchainSupport.framesInFlight > MAX_FRAMES_IN_FLIGHT ? MAX_FRAMES_IN_FLIGHT
                                                                            : swapchainSupport.framesInFlight);
+    m_frames.shrink_to_fit();
+    for (int i = 0; i < m_frames.size(); ++i)
+    {
+        m_frames[i] = {};
+    }
     LOG_INFO("chosen frames in flight: {}", m_frames.size());
 
     for (auto& frame : m_frames)
@@ -1161,7 +1166,7 @@ EndFrameAction VulkanBackend::EndFrame()
 
             auto queueIdx = static_cast<uint32_t>(QueueType::Transfer);
             auto& transferCmdBuffers = frame.vkCmdBuffers[queueIdx];
-            if (frame.cmdUsedCount[queueIdx] > 0) frame.cmdBuffers[queueIdx][0].InternalEnd();
+            for (size_t i = 0; i < frame.cmdUsedCount[queueIdx]; ++i) frame.cmdBuffers[queueIdx][i].InternalEnd();
             submitInfo.waitSemaphoreCount = 0;
             submitInfo.pWaitSemaphores = VK_NULL_HANDLE;
             submitInfo.pWaitDstStageMask = VK_NULL_HANDLE;
@@ -1179,7 +1184,7 @@ EndFrameAction VulkanBackend::EndFrame()
 
             auto queueIdx = static_cast<uint32_t>(QueueType::Present);
             auto& presentCmdBuffers = frame.vkCmdBuffers[queueIdx];
-            if (frame.cmdUsedCount[queueIdx] > 0) frame.cmdBuffers[queueIdx][0].InternalEnd();
+            for (size_t i = 0; i < frame.cmdUsedCount[queueIdx]; ++i) frame.cmdBuffers[queueIdx][i].InternalEnd();
             static VkPipelineStageFlags waitStage[2] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                                                         VK_PIPELINE_STAGE_TRANSFER_BIT};
             submitInfo.waitSemaphoreCount = 2;
@@ -1197,7 +1202,7 @@ EndFrameAction VulkanBackend::EndFrame()
     {
         {
             auto queueIdx = static_cast<uint32_t>(QueueType::Present);
-            if (frame.cmdUsedCount[queueIdx] > 0) frame.cmdBuffers[queueIdx][0].InternalEnd();
+            for (size_t i = 0; i < frame.cmdUsedCount[queueIdx]; ++i) frame.cmdBuffers[queueIdx][i].InternalEnd();
             auto& presentCmdBuffers = frame.vkCmdBuffers[queueIdx];
             auto& transferCmdBuffers = frame.vkCmdBuffers[static_cast<uint32_t>(QueueType::Transfer)];
             std::array<VkCommandBuffer, MAX_CMD_BUFFER_PER_QUEUE * 2> cmds;
@@ -1207,7 +1212,6 @@ EndFrameAction VulkanBackend::EndFrame()
 
             VkSubmitInfo submitInfo{};
             submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-            auto& frame = m_frames[m_frameIndex];
             static VkPipelineStageFlags waitStage[1] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
             submitInfo.waitSemaphoreCount = 1;
             submitInfo.pWaitSemaphores = frame.imageAvailableAndTransferComplete;
@@ -1347,8 +1351,8 @@ ICommandList& VulkanBackend::CreateCommandList(QueueType queueType)
     assert(queueType == QueueType::Present || queueType == QueueType::Transfer);
     FrameData& frame = m_frames[m_frameIndex];
 
-    uint32_t queueIndex = static_cast<uint32_t>(queueType);
     if (m_device.m_transferQueue == VK_NULL_HANDLE) queueType = QueueType::Present;
+    uint32_t queueIndex = static_cast<uint32_t>(queueType);
     VulkanCommandBuffer* cmd;
 
     if (frame.cmdUsedCount[queueIndex] < frame.cmdBuffers[queueIndex].size())
@@ -1356,7 +1360,7 @@ ICommandList& VulkanBackend::CreateCommandList(QueueType queueType)
         cmd = &frame.cmdBuffers[queueIndex][frame.cmdUsedCount[queueIndex]];
         cmd->Clear();
 
-        if (frame.cmdUsedCount[queueIndex] == 0) frame.cmdBuffers[queueIndex][0].InternalBegin();
+        cmd->InternalBegin();
 
         frame.cmdUsedCount[queueIndex]++;
     }
@@ -1384,7 +1388,7 @@ ICommandList& VulkanBackend::CreateCommandList(QueueType queueType)
         cmd = &frame.cmdBuffers[queueIndex].emplace_back(queueType, m_device.device, vkCmd, this,
                                                          frame.cmdUsedCount[queueIndex] != 0);
 
-        if (frame.cmdUsedCount[queueIndex] == 0) frame.cmdBuffers[queueIndex][0].InternalBegin();
+        cmd->InternalBegin();
 
         frame.cmdUsedCount[queueIndex]++;
     }

@@ -67,9 +67,7 @@ AppFrameAction Client::Update(float dt, oge::input::RawInputStream& input)
     perfStats.inputProcessingTime = watch.Restart();
 
     auto& tcmd = backend.CreateCommandList(QueueType::Transfer);
-    tcmd.Begin();
     m_sm.RunUploadStep(backend, tcmd);
-    tcmd.End();
 
     perfStats.assetUploadTime = watch.Restart();
 

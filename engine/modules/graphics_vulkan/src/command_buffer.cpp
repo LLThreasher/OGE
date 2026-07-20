@@ -1,5 +1,6 @@
 #include "command_buffer.hpp"
 
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -18,7 +19,8 @@ namespace oge::graphics::vulkan
 {
 void VulkanCommandBuffer::Begin()
 {
-    if (m_useEnd) InternalBegin();
+    // if (m_useEnd) InternalBegin();
+    assert(false);
 }
 
 void VulkanCommandBuffer::InternalBegin()
@@ -28,6 +30,7 @@ void VulkanCommandBuffer::InternalBegin()
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
     vkBeginCommandBuffer(m_cmd, &beginInfo);
+    // LOG_DEBUG("begin mcd {}", (void*)m_cmd);
 }
 
 void VulkanCommandBuffer::SetViewRect(int32_t x, int32_t y, uint32_t extentX, uint32_t extentY)
@@ -49,9 +52,17 @@ void VulkanCommandBuffer::SetViewRect(int32_t x, int32_t y, uint32_t extentX, ui
     vkCmdSetScissor(m_cmd, 0, 1, &scissor);
 }
 
-void VulkanCommandBuffer::InternalEnd() { vkEndCommandBuffer(m_cmd); }
+void VulkanCommandBuffer::InternalEnd()
+{
+    vkEndCommandBuffer(m_cmd);
+    // LOG_DEBUG("end mcd {}", (void*)m_cmd);
+}
 
-void VulkanCommandBuffer::End() { if (m_useEnd) InternalEnd(); }
+void VulkanCommandBuffer::End()
+{
+    // if (m_useEnd) InternalEnd();
+    assert(false);
+}
 
 void VulkanCommandBuffer::BeginRenderPass(const GPURenderPassHandle renderPass, const GPUFrameBufferHandle frameBuffer,
                                           const ClearValues& clearValues)
@@ -248,7 +259,8 @@ void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage befo
     VulkanCommandBuffer::BufferBarrier(handle, before, after, offset, VK_WHOLE_SIZE);
 }
 
-void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage before, BufferUsage after, uint64_t offset, uint64_t size)
+void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage before, BufferUsage after, uint64_t offset,
+                                        uint64_t size)
 {
     VulkanBuffer* buffer = m_backend->m_buffers.Get(handle);
 
@@ -301,4 +313,4 @@ void VulkanCommandBuffer::TextureBarrier(GPUTextureHandle handle, TextureState n
 
     texture->currentStatePerLayer[baseLayer] = newState;
 }
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

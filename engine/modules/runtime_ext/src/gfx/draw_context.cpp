@@ -17,7 +17,7 @@ InitDrawContext::InitDrawContext(OGEContextReadOnly& ctx) : assets(ctx)
 DrawContext::DrawContext(float dt, InitDrawContext& ctx)
     : backend(ctx.assets.backend),
       uniformArena(ctx.uniformArena),
-      transferCmd(backend.CreateCommandList(QueueType::Transfer)),
+      transferCmd(backend.CreateCommandList(QueueType::Present)),
       drawCmd(backend.CreateCommandList(QueueType::Present)),
       chunkAllocator(ctx.assets.chunkAllocator),
       spriteAllocator(ctx.assets.spriteAllocator),
@@ -25,9 +25,6 @@ DrawContext::DrawContext(float dt, InitDrawContext& ctx)
 {
     auto& cmd = drawCmd;
     auto& tCmd = transferCmd;
-
-    cmd.Begin();
-    tCmd.Begin();
 
     ClearValues values{};
     values.colorClears[0] = {0.1f, 0.2f, 0.4f, 1.0f};
@@ -43,9 +40,6 @@ DrawContext::~DrawContext()
     auto& tCmd = transferCmd;
 
     cmd.EndRenderPass();
-
-    tCmd.End();
-    cmd.End();
 
     uniformArena.Flush(backend);
     uniformArena.AdvanceFrame();

@@ -37,6 +37,15 @@ struct FrameData
     VkSemaphore imageAvailableAndTransferComplete[2] = {};
     VkSemaphore renderFinished = VK_NULL_HANDLE;
     VkFence inFlightFence = VK_NULL_HANDLE;
+
+    FrameData()
+    {
+        for (int i = 0; i < 4; ++i)
+        {
+            cmdBuffers[i].reserve(MAX_CMD_BUFFER_PER_QUEUE);
+            vkCmdBuffers[i].reserve(MAX_CMD_BUFFER_PER_QUEUE);
+        }
+    }
 };
 
 struct VulkanBuffer;
@@ -507,7 +516,7 @@ class VulkanBackend final : public IGraphicsBackend
     VulkanDevice m_device = {};
     VulkanSwapchain m_swapchain = {};
     uint32_t m_frameIndex = 0;
-    std::vector<FrameData> m_frames;
+    std::vector<FrameData> m_frames = {};
     uint32_t m_imageIndex = 0;
     std::vector<VkFence> m_imagesInFlight = {};
     uint32_t m_imagesAvailableSlot = 0;

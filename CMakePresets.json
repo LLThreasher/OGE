@@ -25,7 +25,7 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "MAX_FRAMES_IN_FLIGHT": "3",
+        "MAX_FRAMES_IN_FLIGHT": "1",
         "BUILD_VULKAN": "ON",
         "BUILD_WINDOW_SDL3": "ON",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
