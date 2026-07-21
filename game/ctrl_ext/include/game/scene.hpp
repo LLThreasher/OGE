@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include "entt/signal/fwd.hpp"
 #include "game/app_context.hpp"
@@ -36,7 +37,7 @@ struct SceneFrame
 
 class Scene
 {
-    using ViewExecutor = view::ViewExecutor<view::SubmissionQueue, TerrainPass2, DebugInfoPass>;
+    using ViewExecutor = view::ViewExecutor<view::SubmissionQueue, TerrainPass2, UIPass, DebugInfoPass>;
     struct Ctx
     {
         OGEContext& ctx;
@@ -53,14 +54,15 @@ class Scene
     std::optional<Ctx> m_ctx;
 
     sim::GameState m_gameState;
-    view::RendererState m_renderState;
     input::InputContext m_inputState;
     WindowCtx m_windowCtx;
 
     entt::registry m_world;
     sim::SubsystemPipeline m_subsystems;
-    view::RenderPipeline m_renderers;
     input::InputPipeline m_inputs;
+
+    std::optional<view::RendererState> m_renderState;
+    std::optional<view::RenderPipeline> m_renderers;
 
     ViewExecutor& GetPasses()
     {
@@ -70,9 +72,7 @@ class Scene
    public:
     Scene(AppContext ctx)
         : m_gameState(m_world, ctx.events),
-          m_renderState(m_world, ctx.events),
           m_subsystems(m_gameState, ctx.any_factory),
-          m_renderers(m_renderState, ctx.any_factory),
           m_inputState(m_windowCtx, m_world),
           m_inputs(m_inputState, ctx.any_factory)
     {
@@ -80,7 +80,10 @@ class Scene
 
     virtual ~Scene() {}
 
-    virtual void Attach(OGEContext& ctx) { m_ctx.emplace(ctx); }
+    virtual void Attach(OGEContext& ctx, AnythingFactory& af) { 
+        m_renderState.emplace(m_world, m_gameState.events, AssetContext(ctx));
+        m_renderers.emplace(*&m_renderState.value(), af);
+        m_ctx.emplace(ctx); }
 
     virtual void Detach() { m_ctx.reset(); }
 
@@ -89,7 +92,7 @@ class Scene
         m_inputs.Update({f.dt, f.is});
         m_world.ctx().insert_or_assign(f.perfStats);
         m_subsystems.Update(f.dt);
-        m_renderers.Update(view::RendererFrameData{f.dt, m_ctx.value().assets, m_ctx.value().s_queue});
+        m_renderers->Update(view::RendererFrameData{f.dt, m_ctx.value().assets, m_ctx.value().s_queue});
         f.frameAction |= m_windowCtx.frameAction;
         m_windowCtx.Clear();
     }
@@ -131,7 +134,7 @@ class SceneRunner
             {
                 m_currentScene->Detach();
             }
-            m_nextScene->Attach(m_ctx);
+            m_nextScene->Attach(m_ctx, m_anyFactory);
             m_currentScene = m_nextScene;
             m_nextScene = nullptr;
         }

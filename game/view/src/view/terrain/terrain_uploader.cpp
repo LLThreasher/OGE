@@ -32,7 +32,6 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, AssetConte
                 }
                 terrain.residentChunks.insert_or_assign(chunk, pterrain);
                 terrain.builtChunkMeshes.Destroy(chunkMesh);
-                LOG_INFO("rchunk size {}, bcm size {}", terrain.residentChunks.size(), terrain.builtChunkMeshes.Size());
             });
 
         auto mesh = terrain.builtChunkMeshes.Get(chunkMesh);

@@ -110,22 +110,20 @@ void DebugInfoPass::onUpdate(DrawContext& ctx, View view)
         vertices[3] = {{5.f, 65.f + height, 0.f}, {0, 0, 0, 128}};
 
         numQuads = 1;
+        numQuads += stb_easy_font_print(10.f, 60.f, const_cast<char*>(cs), NULL, &vertices[4],
+                                        (NUM_DEBUG_VERTICES - 4) * sizeof(Vertex));
+
+        for (size_t i = 0; i < numQuads; i++)
+        {
+            vertices[i * 4 + 0].pos *= 3;
+            vertices[i * 4 + 1].pos *= 3;
+            vertices[i * 4 + 2].pos *= 3;
+            vertices[i * 4 + 3].pos *= 3;
+        }
     }
     else
     {
         numQuads = 0;
-        return;
-    }
-
-    numQuads += stb_easy_font_print(10.f, 60.f, const_cast<char*>(cs), NULL, &vertices[4],
-                                    (NUM_DEBUG_VERTICES - 4) * sizeof(Vertex));
-
-    for (size_t i = 0; i < numQuads; i++)
-    {
-        vertices[i * 4 + 0].pos *= 3;
-        vertices[i * 4 + 1].pos *= 3;
-        vertices[i * 4 + 2].pos *= 3;
-        vertices[i * 4 + 3].pos *= 3;
     }
 
     for (auto rect : view.Get<CmdDrawDebugRect>())

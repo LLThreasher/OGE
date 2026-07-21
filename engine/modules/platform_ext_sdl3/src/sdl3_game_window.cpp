@@ -225,6 +225,10 @@ void SDL3GameWindow::Run(WindowApp& app)
         else if ((appFrameAction & AppFrameAction::UnwrapMouse) == AppFrameAction::UnwrapMouse)
         {
             SDL_SetWindowRelativeMouseMode(m_window, false);
+
+            float x, y;
+            SDL_GetMouseState(&x, &y);
+            m_input.SetMousePosition(0, x, y);
         }
     }
 

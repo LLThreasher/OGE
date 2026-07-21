@@ -4,6 +4,7 @@
 #include "game/view/submission_queue.hpp"
 #include "oge/point2.hpp"
 #include "oge/runtime/gfx/commands.hpp"
+#include "oge/graphics/backend.hpp"
 
 namespace game::view
 {
@@ -50,7 +51,7 @@ void UIRenderer::onAttach(RendererState& ctx)
     ctx.events.sink<SurfaceRecreateEvent>().connect<&onSurfaceRecreate>(game);
 
     auto rootView = game.create();
-    game.emplace<ScreenRect>(rootView, I16Point2{0, 0}, U16Point2{0, 0});
+    game.emplace<ScreenRect>(rootView, I16Point2{0, 0}, ctx.assets.backend.SwapchainExtent());
     game.emplace<UIRoot>(rootView);
 }
 
@@ -76,7 +77,7 @@ void UIRenderer::onUpdate(FRendererState& f)
     auto spQueue = f.submissionQueue.GetSingle(GameViewType::Overlay).View<oge::runtime::gfx::CmdDrawSprite>();
     for (auto [entity, uitext, rect] : game.view<UIText, ScreenRect>().each())
     {
-        uitext.font->CreateTextSprites(spQueue, uitext, rect);
+        uitext.font->CreateTextSprites(spQueue, uitext.data, rect);
         // f.graphicQueue.Add<CmdDrawDebugRect>(GameViewType::Overlay, CmdDrawDebugRect{rect, COLOR_GREY});
     }
 

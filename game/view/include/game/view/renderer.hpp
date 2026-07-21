@@ -1,9 +1,12 @@
 #pragma once
 
+#include <memory>
 #include "game/view/submission_queue.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/gfx/uniform_arena.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
+#include "oge/runtime/ui/objects.hpp"
+#include "oge/runtime/asset_ctx.hpp"
 
 namespace oge::runtime
 {
@@ -17,6 +20,7 @@ struct RendererState
 {
     entt::registry& world;
     entt::dispatcher& events;
+    AssetContext assets;
 };
 
 struct RendererFrameData
@@ -60,6 +64,7 @@ void RegisterRenderers(AnythingFactory& af);
 
 class DebugInfoRenderer : public Renderer
 {
+    std::shared_ptr<ui::IFont> debugFont;
    public:
     DECL_ID(DebugInfoRenderer);
     DebugInfoRenderer() : Renderer(Id) {}

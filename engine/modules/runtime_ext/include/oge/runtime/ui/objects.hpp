@@ -27,14 +27,19 @@ struct UISprite
     ColorRGBA8 color = COLOR_WHITE;
 };
 
-struct UIText
+struct UITextData
 {
-    std::shared_ptr<IFont> font;
     std::string text = "";
     uint32_t size = 16;
     ColorRGBA8 color = COLOR_WHITE;
     bool enableWrap = false;
     bool enableCutoff = false;
+};
+
+struct UIText
+{
+    std::shared_ptr<IFont> font;
+    UITextData data;
 };
 
 struct UIZLevel
@@ -86,7 +91,7 @@ class IFont
 {
    public:
     virtual ~IFont() = default;
-    virtual void CreateTextSprites(SubmissionView<gfx::CmdDrawSprite>& squeue, UIText text, ScreenRect rect) = 0;
+    virtual void CreateTextSprites(SubmissionView<gfx::CmdDrawSprite>& squeue, UITextData text, ScreenRect rect) = 0;
 };
 std::unique_ptr<IFont> LoadASCIIBitmapFont16x6(AssetContext& ctx, std::string_view textureId);
 

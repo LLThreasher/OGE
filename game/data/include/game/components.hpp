@@ -46,10 +46,6 @@ struct InputSourceWidget
     entt::entity viewWidget;
 };
 
-struct InputSourceKeyMouse
-{
-};
-
 struct ComponentPhysicBody
 {
     math::vec3 pos = {};

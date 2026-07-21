@@ -11,7 +11,7 @@ class BitmapFont16x6 : public IFont
    public:
     ~BitmapFont16x6() = default;
     BitmapFont16x6(GPUTextureHandle texture, float textAspect) : m_texture(texture), m_textAspectRatio(textAspect) {}
-    void CreateTextSprites(SubmissionView<gfx::CmdDrawSprite>& squeue, UIText text, ScreenRect rect) override;
+    void CreateTextSprites(SubmissionView<gfx::CmdDrawSprite>& squeue, UITextData text, ScreenRect rect) override;
 
    private:
     GPUTextureHandle m_texture;
@@ -26,7 +26,7 @@ std::unique_ptr<IFont> LoadASCIIBitmapFont16x6(AssetContext& context, std::strin
     return std::unique_ptr<IFont>(new BitmapFont16x6(texture, aspect));
 }
 
-void BitmapFont16x6::CreateTextSprites(SubmissionView<gfx::CmdDrawSprite>& squeue, UIText text, ScreenRect rect)
+void BitmapFont16x6::CreateTextSprites(SubmissionView<gfx::CmdDrawSprite>& squeue, UITextData text, ScreenRect rect)
 {
     uint16_t ySize = text.size;
     uint16_t xSize = math::ceil((float)text.size * m_textAspectRatio);

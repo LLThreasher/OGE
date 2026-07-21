@@ -30,7 +30,7 @@ entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRe
     game.emplace<UIParent>(view, res);
     game.emplace<UIRect>(view, UIRect{math::vec2{0.f, 0.f}, math::vec2{1.f, 1.f}});
     game.emplace<UIText>(view,
-                         UIText{.font = asset.LoadASCIIBitmapFont16x6("om_tall_plain_idx.png"), .text = "Terminal"});
+                         UIText{.font = asset.LoadASCIIBitmapFont16x6("om_tall_plain_idx.png"), .data = {.text="Terminal"}});
     return res;
 }
 
