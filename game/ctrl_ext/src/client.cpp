@@ -55,12 +55,14 @@ AppFrameAction Client::Update(float dt, InputProvider PollInputs)
     auto watch = oge::Stopwatch::Start();
     auto& backend = *m_backend;
 
+    PollInputs(m_input);
+
     auto res = backend.BeginFrame();
     if (res == BeginFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
     if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;
 
     PollInputs(m_input);
-
+    
     perfStats.inputProcessingTime = watch.Restart();
 
     m_events.update();
