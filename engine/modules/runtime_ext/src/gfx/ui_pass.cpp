@@ -1,12 +1,14 @@
 #include "oge/runtime/gfx/ui_pass.hpp"
 
-#include "oge/runtime/gfx/draw_context.hpp"
+#include <cstdint>
+
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/command_list.hpp"
 #include "oge/graphics/objects.hpp"
 #include "oge/runtime/asset_ctx.hpp"
-#include "oge/runtime/streaming_manager.hpp"
 #include "oge/runtime/asset_manager.hpp"
+#include "oge/runtime/gfx/draw_context.hpp"
+#include "oge/runtime/streaming_manager.hpp"
 
 using namespace oge::graphics;
 
@@ -70,31 +72,25 @@ void UIPass::onAttach(InitDrawContext& ctx)
         pipelineHandle = backend.CreateGraphicsPipeline(desc);
     }
 
-    BufferDesc vBuf{};
-    vBuf.usage = BufferUsage::Vertex | BufferUsage::TransferDst;
-    vBuf.memory = MemoryUsage::CPUToGPU;
-    vBuf.size = VERT_COUNT * sizeof(Vertex);
-    vertexBuffer = backend.CreateBuffer(vBuf, &vertexBufferCpu);
+    vertexArena.Initialize(backend, VERT_COUNT * sizeof(Vertex));
+    indexArena.Initialize(backend, INDEX_COUNT * sizeof(uint16_t));
 
-    BufferDesc iBuf{};
-    iBuf.usage = BufferUsage::Index | BufferUsage::TransferDst;
-    iBuf.memory = MemoryUsage::GPUOnly;
-    iBuf.size = INDEX_COUNT * sizeof(uint16_t);
-    indexBuffer = backend.CreateBuffer(iBuf);
-
-    indices.resize(INDEX_COUNT);
-    uint16_t* iptr = indices.data();
-    for (size_t i = 0; i < INDEX_COUNT / 6; i++)
+    for (size_t j = 0; j < backend.FramesInFlight(); ++j)
     {
-        *(iptr++) = i * 4;
-        *(iptr++) = i * 4 + 1;
-        *(iptr++) = i * 4 + 2;
-        *(iptr++) = i * 4 + 2;
-        *(iptr++) = i * 4 + 3;
-        *(iptr++) = i * 4;
+        auto iAlloc = indexArena.Allocate(INDEX_COUNT * sizeof(uint16_t));
+        uint16_t* iptr = (uint16_t*)iAlloc.cpuPtr;
+        for (size_t i = 0; i < INDEX_COUNT / 6; ++i)
+        {
+            *(iptr++) = i * 4;
+            *(iptr++) = i * 4 + 1;
+            *(iptr++) = i * 4 + 2;
+            *(iptr++) = i * 4 + 2;
+            *(iptr++) = i * 4 + 3;
+            *(iptr++) = i * 4;
+        }
+        indexArena.AdvanceFrame();
     }
-    ctx.assets.streamingManager.UploadBuffer<UploadType::Immediate>(
-        indices, {.usage = BufferUsage::Index, .buffer = indexBuffer});
+    indexArena.Flush(backend);
 }
 
 void UIPass::onDetach(InitDrawContext& ctx) {}
@@ -126,26 +122,27 @@ void UIPass::onUpdate(DrawContext& ctx, View view)
 
     auto& cmd = ctx.drawCmd;
 
-    uint32_t vBuffOffset = 0;
-    for (auto [tex, vertices] : classedVertices)
+    cmd.BindGraphicsPipeline(pipelineHandle);
+    auto vBufBase = vertexArena.Allocate(0).offset;
+    cmd.BindVertexBuffer(vertexArena.GetBuffer(), vBufBase);
+    cmd.BindIndexBuffer(indexArena.GetBuffer(), indexArena.Allocate(INDEX_COUNT).offset, IndexFormat::Uint16);
+    uint32_t bindingSetIdx = 0;
+    for (const auto& it : classedVertices)
     {
         // tCmd.UpdateBuffer(vertexBuffer, vBuffOffset, vertices.size() * sizeof(Vertex), vertices.data());
         // tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
 
-        memcpy(reinterpret_cast<std::byte*>(vertexBufferCpu) + vBuffOffset, vertices.data(),
-               vertices.size() * sizeof(Vertex));
+        auto& vertices = it.second;
+        auto& tex = it.first;
+        auto vBuf = vertexArena.Allocate(vertices.size() * sizeof(Vertex));
+        memcpy(vBuf.cpuPtr, vertices.data(), vertices.size() * sizeof(Vertex));
 
-        cmd.BindGraphicsPipeline(pipelineHandle);
         cmd.BindBindingGroup(GetOrCreateBindingGroup(ctx.backend, tex), 0);
         cmd.PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
-        cmd.BindVertexBuffer(vertexBuffer, vBuffOffset);
-        cmd.BindIndexBuffer(indexBuffer, 0, IndexFormat::Uint16);
-        cmd.DrawIndexed(vertices.size() / 4 * 6, 1, 0, 0, 0);
-
-        vBuffOffset += vertices.size() * sizeof(Vertex);
-        assert(vBuffOffset < VERT_COUNT * sizeof(Vertex));
+        cmd.DrawIndexed(vertices.size() / 4 * 6, 1, 0, (vBuf.offset - vBufBase) / sizeof(Vertex), 0);
     }
-    GPUBufferSpan ranges[] = {GPUBufferSpan{{.offset = 0, .size = vBuffOffset}, vertexBuffer}};
-    ctx.backend.FlushStagingBufferRanges(ranges);
+    vertexArena.Flush(ctx.backend);
+    vertexArena.AdvanceFrame();
+    indexArena.AdvanceFrame();
 }
-}  // namespace oge::runtime::renderer
+}  // namespace oge::runtime::gfx

@@ -47,28 +47,30 @@ void Client::Initialize(WindowHandle* handle)
     m_events.enqueue(SurfaceRecreateEvent{m_backend->SwapchainExtent(), m_backend->SwapchainPretransform()});
 }
 
-AppFrameAction Client::Update(float dt, oge::input::RawInputStream& input)
+AppFrameAction Client::Update(float dt, InputProvider PollInputs)
 {
     FramePerfStatus perfStats{};
     perfStats.cpuUsage = GetCPUUsage();
+    AppFrameAction appRes = AppFrameAction::None;
     auto watch = oge::Stopwatch::Start();
     auto& backend = *m_backend;
 
-    AppFrameAction appRes = AppFrameAction::None;
+    auto res = backend.BeginFrame();
+    if (res == BeginFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
+    if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;
+
+    PollInputs(m_input);
+
+    perfStats.inputProcessingTime = watch.Restart();
+
     m_events.update();
-    SceneRunner::UpdateScene({dt, input, m_perfStats, appRes});
+    SceneRunner::UpdateScene({dt, m_input, m_perfStats, appRes});
     if (appRes != AppFrameAction::None)
     {
         LOG_DEBUG("new appRes: {}", (uint32_t)appRes);
     }
 
     perfStats.logicTime = watch.Restart();
-
-    auto res = backend.BeginFrame();
-    if (res == BeginFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
-    if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;
-
-    perfStats.inputProcessingTime = watch.Restart();
 
     auto& tcmd = backend.CreateCommandList(QueueType::Transfer);
     m_sm.RunUploadStep(backend, tcmd);

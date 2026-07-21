@@ -53,7 +53,8 @@ class InputSource : public Stage<InputContext, FInputContext>
                 entt::entity viewWidget;
                 entt::entity moveWidget;
             } widgetInput;
-            struct {
+            struct
+            {
                 size_t mouseIdx;
             } mouseIuput;
         };
@@ -68,11 +69,10 @@ class UIDragInput : public InputSource
 {
     std::array<entt::entity, RawInputStream::PtrInputCount> activeDrags;
     RawInputStream::Cursor raw_idx = {};
+
    public:
     DECL_ID(UIDragInput);
-    UIDragInput() : InputSource(Id)
-    {
-    }
+    UIDragInput() : InputSource(Id) {}
 
     static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
     {

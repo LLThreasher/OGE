@@ -21,26 +21,52 @@ struct FGameState : GameState
     FGameState(float dt, GameState& state) : dt(dt), GameState(state) {}
 };
 
+struct SubsystemPhysicsData
+{
+    bool isFrame = false;
+};
+
 class Subsystem : public Stage<GameState, FGameState>
 {
    public:
     Subsystem(oge_id_type id) : Stage<GameState, FGameState>(id) {}
 };
 
+class RealtimeSystem : public Subsystem
+{
+    public:
+    struct Def
+    {
+        union {
+            SubsystemPhysicsData subsystemPhysicsData;
+        };
+    };
+    RealtimeSystem(oge_id_type id) : Subsystem(id) {}
+};
+
 class SubsystemPipeline : public FixedStepPipeline<Subsystem, float>
 {
    public:
-    SubsystemPipeline(GameState& state, AnythingFactory& af, float updateInterval) : FixedStepPipeline<Subsystem, float>(state, af, updateInterval) {}
+    SubsystemPipeline(GameState& state, AnythingFactory& af, float updateInterval)
+        : FixedStepPipeline<Subsystem, float>(state, af, updateInterval)
+    {
+    }
+};
+
+class RealtimeSubsystemPipeline : public FramePipeline<RealtimeSystem, float>
+{
+   public:
+    RealtimeSubsystemPipeline(GameState& state, AnythingFactory& af) : FramePipeline<RealtimeSystem, float>(state, af) {}
 };
 
 void RegisterSubsystems(AnythingFactory& af);
 
-#define DECL_FNS(SysName)                   \
-   public:                                  \
-    DECL_ID(SysName)                        \
-    SysName() : Subsystem(Id) {}            \
-    void onAttach(GameState& ctx) override; \
-    void onDetach(GameState& ctx) override; \
+#define DECL_FNS(SysName)                                                        \
+   public:                                                                       \
+    DECL_ID(SysName)                                                             \
+    SysName() : Subsystem(Id) {}                                                 \
+    void onAttach(GameState& ctx) override;                                      \
+    void onDetach(GameState& ctx) override;                                      \
     void onUpdate(FGameState& ctx) override;
 
 #define DECL_SYS(SysName)            \
@@ -59,9 +85,40 @@ class SubsystemDebugText : public Subsystem
     DECL_FNS(SubsystemDebugText)
 };
 
-DECL_SYS(SubsystemPlayer);
-DECL_SYS(SubsystemPhysics);
 DECL_SYS(SubsystemCreature);
+
+class SubsystemPlayer : public RealtimeSystem
+{
+    SubsystemPhysicsData m_data;
+
+   public:
+    DECL_ID(SubsystemPlayer)
+    SubsystemPlayer() : m_data({}), RealtimeSystem(Id) {}
+    static std::unique_ptr<RealtimeSystem> Build(const Def& def, AnythingFactory& af)
+    {
+        return std::make_unique<SubsystemPlayer>();
+    }
+    void onAttach(GameState& ctx) override;
+    void onDetach(GameState& ctx) override;
+    void onUpdate(FGameState& ctx) override;
+};
+
+class SubsystemPhysics : public RealtimeSystem
+{
+    SubsystemPhysicsData m_data;
+
+   public:
+    DECL_ID(SubsystemPhysics)
+    SubsystemPhysics() : m_data({}), RealtimeSystem(Id) {}
+    SubsystemPhysics(SubsystemPhysicsData data) : m_data(data), RealtimeSystem(Id) {}
+    static std::unique_ptr<RealtimeSystem> Build(const Def& def, AnythingFactory& af)
+    {
+        return std::make_unique<SubsystemPhysics>(def.subsystemPhysicsData);
+    }
+    void onAttach(GameState& ctx) override;
+    void onDetach(GameState& ctx) override;
+    void onUpdate(FGameState& ctx) override;
+};
 
 }  // namespace game::sim
 

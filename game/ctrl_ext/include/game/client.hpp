@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/scene.hpp"
+#include "oge/input/raw_input_stream.hpp"
 #include "oge/platform/window_app.hpp"
 #include "oge/runtime/asset_manager.hpp"
 #include "oge/runtime/asset_pool.hpp"
@@ -17,13 +18,14 @@ class Client : public WindowApp, public SceneRunner
    public:
     Client();
     void Initialize(WindowHandle*) override;
-    AppFrameAction Update(float dt, oge::input::RawInputStream& input) override;
+    AppFrameAction Update(float dt, InputProvider pollInputs) override;
     void Shutdown() override;
 
     void OnWindowRecreate(WindowHandle*) override;
     void OnResize(int width, int height) override;
 
    private:
+    oge::input::RawInputStream m_input;
     FramePerfStatus m_perfStats;
     entt::registry m_metaWorld;
     OGEContext m_ctx;

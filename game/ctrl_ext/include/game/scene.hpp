@@ -58,6 +58,7 @@ class Scene
 
     entt::registry m_world;
     sim::SubsystemPipeline m_subsystems;
+    sim::RealtimeSubsystemPipeline m_realtimeSubsystems;
     input::InputPipeline m_inputs;
 
     entt::registry m_renderWorld;
@@ -73,6 +74,7 @@ class Scene
     Scene(AppContext ctx)
         : m_gameState(m_world, ctx.events),
           m_subsystems(m_gameState, ctx.any_factory, 1.f / 30.f),
+          m_realtimeSubsystems(m_gameState, ctx.any_factory),
           m_inputState(m_windowCtx, m_world),
           m_inputs(m_inputState, ctx.any_factory)
     {
@@ -92,6 +94,7 @@ class Scene
         m_inputs.Update({f.dt, f.is});
         m_world.ctx().insert_or_assign(f.perfStats);
         m_subsystems.Update(f.dt);
+        m_realtimeSubsystems.Update(f.dt);
         m_renderers->Update(view::RendererFrameData{f.dt, m_ctx.value().assets, m_ctx.value().s_queue, m_subsystems.GetAlpha()});
         f.frameAction |= m_windowCtx.frameAction;
         m_windowCtx.Clear();

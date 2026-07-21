@@ -25,7 +25,7 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "MAX_FRAMES_IN_FLIGHT": "2",
+        "MAX_FRAMES_IN_FLIGHT": "1",
         "MAX_CMD_BUFFER_PER_QUEUE": "1",
         "FORCE_SINGLE_QUEUE": "ON",
         "BUILD_VULKAN": "ON",

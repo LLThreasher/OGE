@@ -1,7 +1,9 @@
 #pragma once
 
+#include "oge/graphics/configs.hpp"
 #include "oge/runtime/gfx/commands.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
+#include "oge/runtime/gfx/uniform_arena.hpp"
 #include "oge/submission_group.hpp"
 
 namespace oge::runtime::gfx
@@ -36,9 +38,8 @@ class UIPass : public Pass<CmdDrawSprite>
 
     PushConstant pushConstant;
 
-    GPUBufferHandle vertexBuffer;
-    void* vertexBufferCpu;
-    GPUBufferHandle indexBuffer;
+    FrameArena vertexArena = {BufferUsage::Vertex};
+    FrameArena indexArena = {BufferUsage::Index};
     GPUPipelineHandle pipelineHandle;
     GPUBindingGroupLayoutHandle bindingGroupLayout;
 };

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cinttypes>
+#include <functional>
 
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/platform/window_handle.hpp"
@@ -16,11 +17,13 @@ enum class AppFrameAction : uint32_t
     UnwrapMouse = 1 << 2,
 };
 
+using InputProvider = std::function<void(input::RawInputStream& input)>;
+
 class WindowApp
 {
    public:
     virtual void Initialize(WindowHandle* handle) = 0;
-    virtual AppFrameAction Update(float dt, input::RawInputStream& input) = 0;
+    virtual AppFrameAction Update(float dt, InputProvider pollInputs) = 0;
     virtual void Shutdown() = 0;
 
     virtual void OnWindowRecreate(WindowHandle*) = 0;

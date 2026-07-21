@@ -1,3 +1,4 @@
+#include <functional>
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_timer.h"
 #include "oge/platform/window_app.hpp"
@@ -135,12 +136,8 @@ void SDL3GameWindow::Run(WindowApp& app)
     double elapsedS = 0.0;
     double finalDeltaTime = 0.0;
 
-    while (!readyToClose)
-    {
-        uint64_t frameStartTicks = SDL_GetPerformanceCounter();
-
-        float x, y;
-        m_input.NewFrame();
+    std::function<void(input::RawInputStream&)> pollInputs = [&](input::RawInputStream& is){
+        is.NewFrame();
         while (SDL_PollEvent(&event))
         {
             switch (event.type)
@@ -148,15 +145,15 @@ void SDL3GameWindow::Run(WindowApp& app)
                 case SDL_EVENT_WINDOW_MOUSE_ENTER:
                     LOG_DEBUG("enter window");
                     {
-                        m_input.AddMouse(0);
+                        is.AddMouse(0);
                         float x, y;
                         SDL_GetMouseState(&x, &y);
-                        m_input.SetMousePosition(0, x, y);
+                        is.SetMousePosition(0, x, y);
                         break;
                     }
                 case SDL_EVENT_WINDOW_MOUSE_LEAVE:
                     LOG_DEBUG("leave window");
-                    m_input.DelMouse(0);
+                    is.DelMouse(0);
                     break;
                 case SDL_EVENT_QUIT:
                     readyToClose = true;
@@ -176,39 +173,45 @@ void SDL3GameWindow::Run(WindowApp& app)
                 }
                 break;
                 case SDL_EVENT_KEY_DOWN:
-                    m_input.SetKey(GetEngineKey(event.key.key), true);
+                    is.SetKey(GetEngineKey(event.key.key), true);
                     break;
                 case SDL_EVENT_KEY_UP:
-                    m_input.SetKey(GetEngineKey(event.key.key), false);
+                    is.SetKey(GetEngineKey(event.key.key), false);
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_DOWN:
-                    m_input.SetMouseButton(0, GetEngineMouseButton(event.button.button), true);
+                    is.SetMouseButton(0, GetEngineMouseButton(event.button.button), true);
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_UP:
-                    m_input.SetMouseButton(0, GetEngineMouseButton(event.button.button), false);
+                    is.SetMouseButton(0, GetEngineMouseButton(event.button.button), false);
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
-                    m_input.SetMouseDelta(0, event.motion.xrel, event.motion.yrel);
+                    is.SetMouseDelta(0, event.motion.xrel, event.motion.yrel);
                     break;
                 case SDL_EVENT_FINGER_DOWN:
-                    m_input.SetTouchDown(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                    is.SetTouchDown(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
                     // LOG_DEBUG("finger down {}", event.tfinger.fingerID);
                     break;
                 case SDL_EVENT_FINGER_MOTION:
-                    m_input.SetTouchUpdate(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                    is.SetTouchUpdate(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
                     // LOG_DEBUG("finger move {}", event.tfinger.fingerID);
                     break;
                 case SDL_EVENT_FINGER_UP:
                 case SDL_EVENT_FINGER_CANCELED:
-                    m_input.SetTouchUp(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                    is.SetTouchUp(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
                     // LOG_DEBUG("finger up {}", event.tfinger.fingerID);
                     break;
             }
         }
+    };
+
+    while (!readyToClose)
+    {
+        uint64_t frameStartTicks = SDL_GetPerformanceCounter();
+
 
         if (waitingSurface) continue;
 
-        auto appFrameAction = app.Update(finalDeltaTime, m_input);
+        auto appFrameAction = app.Update(finalDeltaTime, pollInputs);
         if ((appFrameAction & AppFrameAction::WaitSurface) == AppFrameAction::WaitSurface)
         {
             waitingSurface = true;
@@ -226,9 +229,12 @@ void SDL3GameWindow::Run(WindowApp& app)
         {
             SDL_SetWindowRelativeMouseMode(m_window, false);
 
-            float x, y;
-            SDL_GetMouseState(&x, &y);
-            m_input.SetMousePosition(0, x, y);
+            SDL_Event event;
+            SDL_zero(event);
+            event.type = SDL_EVENT_WINDOW_MOUSE_LEAVE;
+            SDL_PushEvent(&event);
+            event.type = SDL_EVENT_WINDOW_MOUSE_ENTER;
+            SDL_PushEvent(&event);
         }
     }
 

@@ -15,6 +15,7 @@ entt::entity ComponentPlayer::CreatePlayer(entt::registry& world, math::vec3 pos
     auto res = world.create();
     auto& b = world.emplace<ComponentPhysicBody>(res, pos);
     b.stepAssist = 1.01f;
+    b.isRealtime = true;
     world.emplace<ComponentAABBCollider>(
         res, ComponentAABBCollider{.aabb = {math::vec3{0.f, 0.f, 0.f}, math::vec3{0.7f, 1.8f, 0.7f}}});
     world.emplace<ComponentCamera>(res);

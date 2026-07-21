@@ -1,6 +1,7 @@
 #include "game/components.hpp"
 #include "game/ui/objects.hpp"
 #include "game/view/renderer.hpp"
+#include "oge/log.hpp"
 #include "oge/math.hpp"
 
 namespace game::view
@@ -32,7 +33,7 @@ void CameraRenderer::onAttach(RendererState& ctx)
     game.on_update<ScreenRect>().connect<&CameraRenderer::onViewPanelUpdate>(this);
     game.on_construct<ViewPanel>().connect<&CameraRenderer::onViewPanelUpdate>(this);
     game.on_update<ViewPanel>().connect<&CameraRenderer::onViewPanelUpdate>(this);
-    game.on_construct<ComponentCamera>().connect<&onCameraCreated>(ctx.renderWorld);
+    // game.on_construct<ComponentCamera>().connect<&onCameraCreated>(ctx.renderWorld);
 }
 
 void CameraRenderer::onViewPanelUpdate(entt::registry& world, entt::entity entity)
@@ -57,8 +58,7 @@ void CameraRenderer::onUpdate(FRendererState& ctx)
         cmdview.rect = rect;
         if (auto camera = game.try_get<ComponentCamera>(view.activeCamera))
         {
-            auto& prevCam = ctx.renderWorld.get<ComponentCamera>(view.activeCamera);
-            cmdview.view = interpolate_and_replace(prevCam, *camera, ctx.alpha).view();
+            cmdview.view = camera->view();
         }
         if (auto pcamera = game.try_get<ComponentPerspectiveCamera>(view.activeCamera))
         {

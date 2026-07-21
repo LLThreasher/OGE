@@ -23,7 +23,6 @@ class SDL3GameWindow : public Window
     void PollEvents();
     WindowHandle GetCurrentWindow();
 
-    RawInputStream m_input;
     SDL_Window* m_window;
     Timer m_timer;
     bool m_shouldClose = false;

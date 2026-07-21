@@ -247,7 +247,7 @@ static void QuerySwapchainSupport(VkPhysicalDevice device, VkSurfaceKHR surface,
     swapchainSupport.presentModes.resize(presentModeCount);
     vkGetPhysicalDeviceSurfacePresentModesKHR(device, surface, &presentModeCount, swapchainSupport.presentModes.data());
 
-    swapchainSupport.framesInFlight = capabilities.minImageCount + 1;
+    swapchainSupport.framesInFlight = capabilities.minImageCount == 1 ? capabilities.minImageCount + 1 : capabilities.minImageCount;
     if (capabilities.maxImageCount > 0 && swapchainSupport.framesInFlight > capabilities.maxImageCount)
     {
         swapchainSupport.framesInFlight = capabilities.maxImageCount;
@@ -881,7 +881,7 @@ bool VulkanBackend::RecreateSwapchain()
 
     m_swapchain.nextExtent = m_swapchain.extent;
 
-    uint32_t imageCount = capabilities.minImageCount + 1;
+    uint32_t imageCount = capabilities.minImageCount <= 2 ? capabilities.minImageCount + 1 : capabilities.minImageCount;
     if (capabilities.maxImageCount > 0 && imageCount > capabilities.maxImageCount)
     {
         imageCount = capabilities.maxImageCount;

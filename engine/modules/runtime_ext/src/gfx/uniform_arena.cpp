@@ -16,9 +16,9 @@ FrameArena::FrameArena(BufferUsage usage) : m_usage(usage)
 void FrameArena::Initialize(IGraphicsBackend& backend, uint32_t capacity)
 {
     // capacity = backend.MaxUniformBufferSize() > capacity ? capacity : backend.MaxUniformBufferSize();
-    m_capacityPerFrame = capacity;
-    m_framesInFlight = backend.FramesInFlight();
     m_alignment = m_usage == BufferUsage::Uniform ? backend.UniformBufferAlignment() : 4;
+    m_capacityPerFrame = math::align(capacity, m_alignment);
+    m_framesInFlight = backend.FramesInFlight();
     m_alignedCapacityPerFrame = math::align(m_capacityPerFrame, m_alignment);
 
     BufferDesc desc{};
@@ -65,8 +65,8 @@ void FrameArena::Flush(IGraphicsBackend& backend)
 {
     GPUBufferSpan range;
     range.buffer = m_gpuBuffer;
-    range.offset = 0;
-    range.size = m_head;
+    range.offset = m_frameIdx * m_alignedCapacityPerFrame;
+    range.size = m_head - m_frameIdx * m_alignedCapacityPerFrame;
     backend.FlushStagingBufferRanges(std::span(&range, 1));
 }
 }  // namespace oge::runtime
