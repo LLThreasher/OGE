@@ -58,8 +58,6 @@ struct FRendererState
 
 class Renderer : public Stage<RendererState, FRendererState>
 {
-   public:
-    Renderer(oge_id_type id) : Stage<RendererState, FRendererState>(id) {}
 };
 
 class RenderPipeline : public FramePipeline<Renderer, RendererFrameData>
@@ -78,7 +76,6 @@ class DebugInfoRenderer : public Renderer
     std::string gpuDebugString;
    public:
     DECL_ID(DebugInfoRenderer);
-    DebugInfoRenderer() : Renderer(Id) {}
     void onAttach(RendererState&) override;
     void onDetach(RendererState&) override;
     void onUpdate(FRendererState&) override;
@@ -93,7 +90,6 @@ class CameraRenderer : public Renderer
     void onViewPanelUpdate(entt::registry& world, entt::entity entity);
    public:
     DECL_ID(CameraRenderer);
-    CameraRenderer() : Renderer(Id) {}
     void onAttach(RendererState&) override;
     void onDetach(RendererState&) override;
     void onUpdate(FRendererState&) override;
@@ -103,7 +99,6 @@ class UIRenderer : public Renderer
 {
    public:
     DECL_ID(UIRenderer);
-    UIRenderer() : Renderer(Id) {}
     void onAttach(RendererState&) override;
     void onDetach(RendererState&) override;
     void onUpdate(FRendererState&) override;

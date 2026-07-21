@@ -13,6 +13,18 @@ namespace game::math
 namespace game
 {
 using oge::AABB;
+
+enum class UpdateType
+{
+    FixedStep,
+    Realtime,
+};
+
+template <UpdateType>
+struct UpdateTag
+{
+};
+
 struct ComponentCamera
 {
     float yaw;
@@ -57,7 +69,6 @@ struct ComponentPhysicBody
     uint32_t onTopOfBlkValue = 0;
     bool isGrounded = false;
     bool enableGravity = true;
-    bool isRealtime = false;
 };
 
 struct ComponentCreature

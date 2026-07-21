@@ -62,12 +62,13 @@ class DebugScene3 : public Scene
     {
         m_subsystems.AddStage<sim::SubsystemDebugText>();
         m_subsystems.AddStage<sim::SubsystemTerrain>();
-        m_subsystems.AddStage<sim::SubsystemCreature>();
-        m_subsystems.AddStage<sim::SubsystemPhysics>();
+        m_subsystems.AddStage<sim::SubsystemPlayer<UpdateType::FixedStep>>();
+        m_subsystems.AddStage<sim::SubsystemCreature<UpdateType::FixedStep>>();
+        m_subsystems.AddStage<sim::SubsystemPhysics<UpdateType::FixedStep>>();
 
-        m_realtimeSubsystems.AddStage<sim::SubsystemPlayer>({});
-        m_realtimeSubsystems.AddStage<sim::SubsystemCreature>({true});
-        m_realtimeSubsystems.AddStage<sim::SubsystemPhysics>({true});
+        m_realtimeSubsystems.AddStage<sim::SubsystemPlayer<UpdateType::Realtime>>();
+        m_realtimeSubsystems.AddStage<sim::SubsystemCreature<UpdateType::Realtime>>();
+        m_realtimeSubsystems.AddStage<sim::SubsystemPhysics<UpdateType::Realtime>>();
 
         auto& blocks = m_world.ctx().emplace<terrain::BlockRegistry>();
         blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1, });

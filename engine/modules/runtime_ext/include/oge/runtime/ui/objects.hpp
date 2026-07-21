@@ -94,7 +94,7 @@ class IFont
     virtual ~IFont() = default;
     virtual void CreateTextSprites(SubmissionView<gfx::CmdDrawSprite>& squeue, UITextData text, ScreenRect rect) = 0;
 };
-std::unique_ptr<IFont> LoadASCIIBitmapFont16x6(AssetContext& ctx, std::string_view textureId);
+std::unique_ptr<IFont> LoadASCIIBitmapFontMxN(int m, int n, AssetContext& ctx, std::string_view textureId);
 
 math::vec2 ScreenSpaceToRelSpace(const ScreenRect rect, math::vec2 screenPos);
 math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, entt::entity rectEntity, math::vec2 screenPos);

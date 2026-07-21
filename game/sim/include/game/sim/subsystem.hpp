@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/components.hpp"
 #include "game/frame_perf.hpp"  // debug info pass
 #include "game/input/player_input_stream.hpp"
 #include "oge/runtime/entt.hpp"
@@ -28,21 +29,6 @@ struct SubsystemPhysicsData
 
 class Subsystem : public Stage<GameState, FGameState>
 {
-   public:
-    Subsystem(oge_id_type id) : Stage<GameState, FGameState>(id) {}
-};
-
-class RealtimeSystem : public Subsystem
-{
-   public:
-    struct Def
-    {
-        union
-        {
-            SubsystemPhysicsData subsystemPhysicsData;
-        };
-    };
-    RealtimeSystem(oge_id_type id) : Subsystem(id) {}
 };
 
 class SubsystemPipeline : public FixedStepPipeline<Subsystem, float>
@@ -54,12 +40,10 @@ class SubsystemPipeline : public FixedStepPipeline<Subsystem, float>
     }
 };
 
-class RealtimeSubsystemPipeline : public FramePipeline<RealtimeSystem, float>
+class RealtimeSubsystemPipeline : public FramePipeline<Subsystem, float>
 {
    public:
-    RealtimeSubsystemPipeline(GameState& state, AnythingFactory& af) : FramePipeline<RealtimeSystem, float>(state, af)
-    {
-    }
+    RealtimeSubsystemPipeline(GameState& state, AnythingFactory& af) : FramePipeline<Subsystem, float>(state, af) {}
 };
 
 void RegisterSubsystems(AnythingFactory& af);
@@ -75,18 +59,6 @@ void RegisterSubsystems(AnythingFactory& af);
     class SysName : public Subsystem \
     {                                \
         DECL_FNS(SysName)            \
-        SysName() : Subsystem(Id) {} \
-    };
-
-#define DECL_REALTIME_SYS(SysName)                                                        \
-    class SysName : public RealtimeSystem                                                 \
-    {                                                                                     \
-        DECL_FNS(SysName)                                                                 \
-        SysName() : RealtimeSystem(Id) {}                                                 \
-        static std::unique_ptr<RealtimeSystem> Build(const Def& def, AnythingFactory& af) \
-        {                                                                                 \
-            return std::make_unique<SysName>();                                           \
-        }                                                                                 \
     };
 
 class SubsystemDebugText : public Subsystem
@@ -97,43 +69,34 @@ class SubsystemDebugText : public Subsystem
     FramePerfStatus totalPerfStatus = {};
     FramePerfStatus perfStatus = {};
     DECL_FNS(SubsystemDebugText)
-    SubsystemDebugText() : Subsystem(Id) {}
 };
 
-class SubsystemCreature : public RealtimeSystem
+template <UpdateType utype>
+class SubsystemCreature : public Subsystem
 {
-    SubsystemPhysicsData m_data;
-
    public:
-    DECL_ID(SubsystemCreature)
-    SubsystemCreature() : m_data({}), RealtimeSystem(Id) {}
-    SubsystemCreature(SubsystemPhysicsData data) : m_data(data), RealtimeSystem(Id) {}
-    static std::unique_ptr<RealtimeSystem> Build(const Def& def, AnythingFactory& af)
-    {
-        return std::make_unique<SubsystemCreature>(def.subsystemPhysicsData);
-    }
+    DECL_ID(SubsystemCreature<utype>)
     void onAttach(GameState& ctx) override;
     void onDetach(GameState& ctx) override;
     void onUpdate(FGameState& ctx) override;
 };
 
-class SubsystemPlayer : public RealtimeSystem
+template <UpdateType utype>
+class SubsystemPlayer : public Subsystem
 {
-    SubsystemPhysicsData m_data;
-
    public:
-    DECL_ID(SubsystemPlayer)
-    SubsystemPlayer() : m_data({}), RealtimeSystem(Id) {}
-    SubsystemPlayer(SubsystemPhysicsData data) : m_data(data), RealtimeSystem(Id) {}
-    static std::unique_ptr<RealtimeSystem> Build(const Def& def, AnythingFactory& af)
-    {
-        return std::make_unique<SubsystemPlayer>(def.subsystemPhysicsData);
-    }
+    DECL_ID(SubsystemPlayer<utype>)
+
     void onAttach(GameState& ctx) override;
     void onDetach(GameState& ctx) override;
     void onUpdate(FGameState& ctx) override;
 };
-
-}  // namespace game::sim
 
 #undef DECL_FNS
+#undef DECL_SYS
+
+#define DECL_UTYPES_IMPL(SysName)                  \
+    template class SysName<UpdateType::FixedStep>; \
+    template class SysName<UpdateType::Realtime>;
+
+}  // namespace game::sim

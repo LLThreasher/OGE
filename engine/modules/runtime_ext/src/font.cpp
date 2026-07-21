@@ -18,11 +18,13 @@ class BitmapFont16x6 : public IFont
     float m_textAspectRatio;
 };
 
-std::unique_ptr<IFont> LoadASCIIBitmapFont16x6(AssetContext& context, std::string_view textureId)
+std::unique_ptr<IFont> LoadASCIIBitmapFontMxN(int m, int n, AssetContext& context, std::string_view textureId)
 {
     auto texture = context.LoadTexture(textureId);
     auto info = context.assetManager.GetTextureInfo(textureId);
-    auto aspect = (float)(info->width / 16) / (float)(info->height / 6);
+    assert((info->width % m) == 0);
+    assert((info->height % n) == 0);
+    auto aspect = (float)(info->width / m) / (float)(info->height / n);
     return std::unique_ptr<IFont>(new BitmapFont16x6(texture, aspect));
 }
 

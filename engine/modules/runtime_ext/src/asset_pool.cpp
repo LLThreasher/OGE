@@ -66,12 +66,17 @@ void AssetPool::Cache(const std::string_view& id, const std::shared_ptr<ui::IFon
 
 std::shared_ptr<ui::IFont> AssetContext::LoadASCIIBitmapFont16x6(const std::string_view& id)
 {
+    return LoadASCIIBitmapFontMxN(16, 6, id);
+}
+
+std::shared_ptr<ui::IFont> AssetContext::LoadASCIIBitmapFontMxN(int m, int n, const std::string_view& id)
+{
     std::shared_ptr<ui::IFont> ptr;
     if (assetPool.Load(id, ptr))
     {
         return ptr;
     }
-    auto unique = ui::LoadASCIIBitmapFont16x6(*this, std::string(id));
+    auto unique = ui::LoadASCIIBitmapFontMxN(m, n, *this, std::string(id));
     ptr = std::shared_ptr<ui::IFont>(unique.release());
     assetPool.Cache(id, ptr);
     return ptr;

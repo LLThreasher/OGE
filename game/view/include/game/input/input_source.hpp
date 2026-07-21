@@ -59,8 +59,6 @@ class InputSource : public Stage<InputContext, FInputContext>
             } mouseIuput;
         };
     };
-
-    InputSource(oge_id_type id) : Stage<InputContext, FInputContext>(id) {}
 };
 
 void RegisterInputSources(AnythingFactory& af);
@@ -72,7 +70,6 @@ class UIDragInput : public InputSource
 
    public:
     DECL_ID(UIDragInput);
-    UIDragInput() : InputSource(Id) {}
 
     static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
     {
@@ -96,7 +93,7 @@ class WidgetInput : public InputSource
 
    public:
     DECL_ID(WidgetInput);
-    WidgetInput(const Def& def) : InputSource(Id), out(*def.target)
+    WidgetInput(const Def& def) : out(*def.target)
     {
         viewWidget = def.widgetInput.viewWidget;
         moveWidget = def.widgetInput.moveWidget;
@@ -124,7 +121,7 @@ class KeyMouseInput : public InputSource
 
    public:
     DECL_ID(KeyMouseInput);
-    KeyMouseInput(const Def& def) : InputSource(Id), out(*def.target)
+    KeyMouseInput(const Def& def) : InputSource(), out(*def.target)
     {
         mouseIdx = def.mouseIuput.mouseIdx;
         vfov = def.vfov;

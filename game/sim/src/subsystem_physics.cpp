@@ -1,3 +1,5 @@
+#include "game/sim/subsystem_physics.hpp"
+
 #include <unordered_map>
 
 #include "game/components.hpp"
@@ -6,7 +8,6 @@
 #include "game/terrain/terrain_view.hpp"
 #include "oge/aabb.hpp"
 #include "oge/aabb_ops.hpp"
-#include "game/sim/subsystem_physics.hpp"
 
 namespace game::sim
 {
@@ -17,8 +18,14 @@ using ::game::terrain::AABBList;
 using ::game::terrain::BlockRegistry;
 using ::game::terrain::TerrainView;
 
-void SubsystemPhysics::onAttach(Ctx& ctx) {}
-void SubsystemPhysics::onDetach(Ctx& ctx) {}
+template <UpdateType utype>
+void SubsystemPhysics<utype>::onAttach(Ctx& ctx)
+{
+}
+template <UpdateType utype>
+void SubsystemPhysics<utype>::onDetach(Ctx& ctx)
+{
+}
 
 template <size_t idx>
 inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, const TerrainView& terrain,
@@ -131,13 +138,14 @@ inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, co
     return hasCollision;
 }
 
-void SubsystemPhysics::onUpdate(FrameCtx& ctx)
+template <UpdateType utype>
+void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
 {
     // update positions with velocity
     auto& game = ctx.world;
     auto& blocks = game.ctx().get<BlockRegistry>();
     auto& terrain = game.ctx().get<TerrainView>();
-    for (auto [e, body] : game.view<ComponentPhysicBody>().each())
+    for (auto [e, body] : game.view<UpdateTag<utype>, ComponentPhysicBody>().each())
     {
         if (body.enableGravity) body.acceleration.y -= 9.8f;
         body.velocity += body.acceleration * ctx.dt;
@@ -145,10 +153,9 @@ void SubsystemPhysics::onUpdate(FrameCtx& ctx)
     }
 
     // collision between physical body and terrain Y
-    for (auto [e, collider, body] : game.view<const ComponentAABBCollider, const ComponentPhysicBody>().each())
+    for (auto [e, collider, body] :
+         game.view<UpdateTag<utype>, const ComponentAABBCollider, const ComponentPhysicBody>().each())
     {
-        if (m_data.isFrame != body.isRealtime) continue;
-
         auto& [collisions, blkVals] = cachedCollisions[e];
         auto realAABB = collider.aabb + body.pos;
         auto yOffset = body.velocity.y * ctx.dt;
@@ -180,10 +187,9 @@ void SubsystemPhysics::onUpdate(FrameCtx& ctx)
     cachedCollisions.clear();
 
     // collision between physical body and terrain X
-    for (auto [e, collider, body] : game.view<const ComponentAABBCollider, const ComponentPhysicBody>().each())
+    for (auto [e, collider, body] :
+         game.view<UpdateTag<utype>, const ComponentAABBCollider, const ComponentPhysicBody>().each())
     {
-        if (m_data.isFrame != body.isRealtime) continue;
-
         auto& [collisions, blkVals] = cachedCollisions[e];
         auto realAABB = collider.aabb + body.pos;
         auto xOffset = body.velocity.x * ctx.dt;
@@ -226,10 +232,9 @@ void SubsystemPhysics::onUpdate(FrameCtx& ctx)
     cachedCollisions.clear();
 
     // collision between physical body and terrain Z
-    for (auto [e, collider, body] : game.view<const ComponentAABBCollider, const ComponentPhysicBody>().each())
+    for (auto [e, collider, body] :
+         game.view<UpdateTag<utype>, const ComponentAABBCollider, const ComponentPhysicBody>().each())
     {
-        if (m_data.isFrame != body.isRealtime) continue;
-
         auto& [collisions, blkVals] = cachedCollisions[e];
         auto realAABB = collider.aabb + body.pos;
         auto zOffset = body.velocity.z * ctx.dt;
@@ -269,4 +274,6 @@ void SubsystemPhysics::onUpdate(FrameCtx& ctx)
         if (res.type == oge::COLLISION_TYPE_NEG_Z && body.velocity.z > 0.f) body.velocity.z = 0;
     }
 }
+
+DECL_UTYPES_IMPL(SubsystemPhysics)
 }  // namespace game::sim

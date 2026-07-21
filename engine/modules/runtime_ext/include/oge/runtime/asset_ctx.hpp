@@ -66,6 +66,7 @@ struct AssetContext : AssetBase
                                res);
     }
 
+    std::shared_ptr<ui::IFont> LoadASCIIBitmapFontMxN(int m, int n, const std::string_view& id);
     std::shared_ptr<ui::IFont> LoadASCIIBitmapFont16x6(const std::string_view& id);
 };
 

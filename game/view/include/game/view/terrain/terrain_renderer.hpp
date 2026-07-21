@@ -122,8 +122,8 @@ struct TerrainRendererDesc
 class TerrainRenderer : public Renderer
 {
    public:
+    TerrainRenderer() {}
     DECL_ID(TerrainRenderer);
-    TerrainRenderer() : Renderer(Id) {}
     NO_COPY(TerrainRenderer);
     ~TerrainRenderer() = default;
 

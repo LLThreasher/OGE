@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "oge/log.hpp"
 #include "oge/runtime/tick_scheduler.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
@@ -15,13 +16,9 @@ namespace oge::runtime
 template <typename TCtx, typename TFrameCtx>
 class Stage
 {
-   protected:
-    explicit Stage(oge_id_type id) : id_(id) {}
-
    public:
     using Ctx = TCtx;
     using FrameCtx = TFrameCtx;
-    oge_id_type id() const noexcept { return id_; }
 
     virtual ~Stage() = default;
 
@@ -45,7 +42,7 @@ class BasePipeline
     TStage* AddStage(std::unique_ptr<TStage> stage)
     {
         m_stages.push_back(std::move(stage));
-        assert(m_stages.back() && "stage not registered");
+        assert(m_stages.back() != nullptr && "nullptr stage");
         m_stages.back()->onAttach(m_ctx);
         return m_stages.back().get();
     }
@@ -115,7 +112,7 @@ class DefaultPipeline : public BasePipeline<TControl, TStage, TFrameData>
     template <typename TSys>
     TStage* AddStage()
     {
-        return BasePipeline<TControl, TStage, TFrameData>::AddStage(this->m_factory.template BuildABC<TStage>(TSys::Id));
+        return BasePipeline<TControl, TStage, TFrameData>::AddStage(this->m_factory.template BuildABC<TStage>(entt::type_hash<TSys>::value()));
     }
 };
 
@@ -127,7 +124,8 @@ class DefPipeline : public BasePipeline<TControl, TStage, TFrameData>
     template <typename TSys>
     TStage* AddStage(TStage::Def def)
     {
-        return BasePipeline<TControl, TStage, TFrameData>::AddStage(this->m_factory.template BuildABC<TStage>(TSys::Id, def));
+        return BasePipeline<TControl, TStage, TFrameData>::AddStage(
+            this->m_factory.template BuildABC<TStage>(entt::type_hash<TSys>::value(), def));
     }
 };
 
@@ -153,7 +151,10 @@ class FixedStepPipeline : public Pipeline<FixedStepPipeline<TStage, FrameData>, 
 {
    public:
     using TPipeline = Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>;
-    FixedStepPipeline(TStage::Ctx& ctx, AnythingFactory& af, float updateInterval = 1.f / 60.f) : TPipeline(ctx, af), m_tickScheduler(updateInterval) {}
+    FixedStepPipeline(TStage::Ctx& ctx, AnythingFactory& af, float updateInterval = 1.f / 60.f)
+        : TPipeline(ctx, af), m_tickScheduler(updateInterval)
+    {
+    }
     template <typename Fn>
     void onUpdate(FrameData frame, typename TStage::Ctx& ctx, Fn&& update)
     {
@@ -176,10 +177,7 @@ class FixedStepPipeline : public Pipeline<FixedStepPipeline<TStage, FrameData>, 
         }
     }
 
-    float GetAlpha()
-    {
-        return m_tickScheduler.GetAlpha();
-    }
+    float GetAlpha() { return m_tickScheduler.GetAlpha(); }
 
    private:
     TickScheduler m_tickScheduler;

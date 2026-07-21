@@ -6,15 +6,21 @@ namespace game::sim
 {
 using game::sim::SubsystemCreature;
 
-void SubsystemCreature::onAttach(Ctx& ctx) {}
-void SubsystemCreature::onDetach(Ctx& ctx) {}
+template <UpdateType utype>
+void SubsystemCreature<utype>::onAttach(Ctx& ctx)
+{
+}
+template <UpdateType utype>
+void SubsystemCreature<utype>::onDetach(Ctx& ctx)
+{
+}
 
-void SubsystemCreature::onUpdate(FrameCtx& ctx)
+template <UpdateType utype>
+void SubsystemCreature<utype>::onUpdate(FrameCtx& ctx)
 {
     auto& blocks = ctx.world.ctx().get<terrain::BlockRegistry>();
-    for (auto [e, creature, body] : ctx.world.view<ComponentCreature, ComponentPhysicBody>().each())
+    for (auto [e, creature, body] : ctx.world.view<UpdateTag<utype>, ComponentCreature, ComponentPhysicBody>().each())
     {
-        if (m_data.isFrame != body.isRealtime) continue;
         float friction = blocks.GetBlockFriction(blocks.GetBlockId(body.onTopOfBlkValue));
 
         if (!body.enableGravity)
@@ -33,4 +39,6 @@ void SubsystemCreature::onUpdate(FrameCtx& ctx)
         creature.jumpOrder = false;
     }
 }
+
+DECL_UTYPES_IMPL(SubsystemCreature)
 }  // namespace game::sim

@@ -46,7 +46,7 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
         gpuDebugString.clear();
         gpuDebugString.append(gpuInfo.name);
         gpuDebugString.push_back('\n');
-        std::format_to(std::back_inserter(gpuDebugString), "FPS {}\n", 1.f / ctx.dt);
+        std::format_to(std::back_inserter(gpuDebugString), "FPS {:.2f}\n", 1.f / ctx.dt);
         std::format_to(std::back_inserter(gpuDebugString), "GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024,
                        m_budgetGPUMem / 1024 / 1024);
     }

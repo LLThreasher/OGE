@@ -45,8 +45,8 @@ class TerrainGenerator
 class SubsystemTerrain : public Subsystem
 {
    public:
+    SubsystemTerrain() {}
     DECL_ID(SubsystemTerrain);
-    SubsystemTerrain() : Subsystem(Id) {}
     NO_COPY(SubsystemTerrain);
     ~SubsystemTerrain() = default;
 
