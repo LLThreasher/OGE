@@ -110,7 +110,7 @@ class PlayerInputStream
 
     void InsertMoveDelta(math::vec2 delta)
     {
-        move += delta;
+        move = delta;
         moveDirty = true;
     }
 

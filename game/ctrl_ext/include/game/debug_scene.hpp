@@ -16,6 +16,7 @@
 #include "oge/input/keyboard.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/typed_registry.hpp"
+#include "game/sim/subsystem_physics.hpp"
 
 namespace game
 {
@@ -48,8 +49,8 @@ class DebugScene3 : public Scene
         auto m_widgetInputDef = InputDef{.target = m_world.try_get<input::PlayerInputStream>(m_player)};
         m_widgetInputDef.vfov = -pcam.fov;
         m_widgetInputDef.hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
-        m_widgetInputDef.vfov *= 3.f;
-        m_widgetInputDef.hfov *= 4.f;
+        m_widgetInputDef.vfov *= 2.f;
+        m_widgetInputDef.hfov *= 3.f;
         m_widgetInputDef.widgetInput = {lookWidget, mvWidget};
 
         m_inputs.AddStage<input::UIDragInput>(InputDef{});
@@ -64,8 +65,9 @@ class DebugScene3 : public Scene
         m_subsystems.AddStage<sim::SubsystemCreature>();
         m_subsystems.AddStage<sim::SubsystemPhysics>();
 
-        m_realtimeSubsystems.AddStage<sim::SubsystemPhysics>({true});
         m_realtimeSubsystems.AddStage<sim::SubsystemPlayer>({});
+        m_realtimeSubsystems.AddStage<sim::SubsystemCreature>({true});
+        m_realtimeSubsystems.AddStage<sim::SubsystemPhysics>({true});
 
         auto& blocks = m_world.ctx().emplace<terrain::BlockRegistry>();
         blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1, });

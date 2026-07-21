@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string_view>
 #include "oge/aabb.hpp"
 #include "oge/math.hpp"
 #include "oge/runtime/entt.hpp"
@@ -91,7 +92,7 @@ struct ComponentPlayer
 
 struct DebugText
 {
-    std::string text;
+    std::string_view text;
 };
 
 }  // namespace game

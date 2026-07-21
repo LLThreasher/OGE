@@ -14,6 +14,7 @@ void SubsystemCreature::onUpdate(FrameCtx& ctx)
     auto& blocks = ctx.world.ctx().get<terrain::BlockRegistry>();
     for (auto [e, creature, body] : ctx.world.view<ComponentCreature, ComponentPhysicBody>().each())
     {
+        if (m_data.isFrame != body.isRealtime) continue;
         float friction = blocks.GetBlockFriction(blocks.GetBlockId(body.onTopOfBlkValue));
 
         if (!body.enableGravity)

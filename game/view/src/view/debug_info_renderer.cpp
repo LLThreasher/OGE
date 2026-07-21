@@ -1,4 +1,5 @@
 #include <format>
+#include <iterator>
 
 #include "game/components.hpp"
 #include "game/view/renderer.hpp"
@@ -38,9 +39,20 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
         debugString.append(txt.text);
         debugString.push_back('\n');
     }
-    debugString.append(gpuInfo.name);
-    debugString.push_back('\n');
-    std::format_to(std::back_inserter(debugString), "GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024, m_budgetGPUMem / 1024 / 1024);
-    debugFont->CreateTextSprites(spriteQueue, {debugString, 32}, {{{10, 10}, ctx.assets.backend.SwapchainExtent() - oge::U16Point2{10u, 10u}}});
+
+    if (tickScheduler.Poll(ctx.dt))
+    {
+        tickScheduler.ConsumeTick();
+        gpuDebugString.clear();
+        gpuDebugString.append(gpuInfo.name);
+        gpuDebugString.push_back('\n');
+        std::format_to(std::back_inserter(gpuDebugString), "FPS {}\n", 1.f / ctx.dt);
+        std::format_to(std::back_inserter(gpuDebugString), "GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024,
+                       m_budgetGPUMem / 1024 / 1024);
+    }
+    
+    debugString.append(gpuDebugString);
+    debugFont->CreateTextSprites(spriteQueue, {debugString, 32},
+                                 {{{10, 10}, ctx.assets.backend.SwapchainExtent() - oge::U16Point2{10u, 10u}}});
 }
 }  // namespace game::view

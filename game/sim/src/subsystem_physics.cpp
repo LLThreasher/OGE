@@ -6,6 +6,7 @@
 #include "game/terrain/terrain_view.hpp"
 #include "oge/aabb.hpp"
 #include "oge/aabb_ops.hpp"
+#include "game/sim/subsystem_physics.hpp"
 
 namespace game::sim
 {
@@ -138,14 +139,10 @@ void SubsystemPhysics::onUpdate(FrameCtx& ctx)
     auto& terrain = game.ctx().get<TerrainView>();
     for (auto [e, body] : game.view<ComponentPhysicBody>().each())
     {
-        if (m_data.isFrame != body.isRealtime) continue;
-
         if (body.enableGravity) body.acceleration.y -= 9.8f;
         body.velocity += body.acceleration * ctx.dt;
         body.acceleration = {};
     }
-
-    std::unordered_map<entt::entity, std::tuple<CollisionResult2, uint32_t>> cachedCollisions;
 
     // collision between physical body and terrain Y
     for (auto [e, collider, body] : game.view<const ComponentAABBCollider, const ComponentPhysicBody>().each())

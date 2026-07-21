@@ -2,6 +2,7 @@
 #include <type_traits>
 #include "game/sim/subsystem.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
+#include "game/sim/subsystem_physics.hpp"
 
 #define RR(SysName) R<SysName>(af)
 

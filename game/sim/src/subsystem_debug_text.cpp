@@ -36,9 +36,9 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
     static std::string buffer;
     buffer.clear();
     std::format_to(std::back_inserter(buffer),
-                   "{}\nFPS {:.2f} ({:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f})\nCPU: {:.2f}%\nMEM: {} MB {} KB",
+                   "{}\n{:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f}\nCPU: {:.2f}%\nMEM: {} MB {} KB",
                    BUILD_TAG,
-                   1000.f / perfStatus.actualFrameTime(), perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime,
+                   perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime,
                    perfStatus.assetUploadTime, perfStatus.renderSubmitTime, perfStatus.cpuUsage,
                    GetRAMUsage() / 1024 / 1024, (GetRAMUsage() / 1024) % 1024);
 

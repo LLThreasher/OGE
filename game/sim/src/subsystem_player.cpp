@@ -1,3 +1,4 @@
+#include <iterator>
 #include "game/components.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/sim/subsystem.hpp"
@@ -58,7 +59,6 @@ void SubsystemPlayer::onUpdate(FGameState& ctx)
         math::vec2 moveDelta;
         if (input.PollMoveDelta(moveDelta))
         {
-            moveDelta /= ctx.dt;
             auto right = camera.right();
             if (body.enableGravity)
             {
@@ -71,11 +71,16 @@ void SubsystemPlayer::onUpdate(FGameState& ctx)
             }
         }
 
+        camera.position = body.pos + math::vec3{(collider.aabb.min.x + collider.aabb.max.x) / 2.f, 1.65f,
+                                                (collider.aabb.min.z + collider.aabb.max.z) / 2.f};
+
+        if (m_data.isFrame) return;
+
         PlayerInputEvent event;
         creature.jumpOrder = false;
         while (input.PollAction(event))
         {
-            creature.jumpOrder = creature.jumpOrder || body.isGrounded && event.get<PlayerAction::Jump>();
+            creature.jumpOrder = creature.jumpOrder || event.get<PlayerAction::Jump>();
             if (event.actionMask != 0)
             {
                 auto raycastResult = terrain.CastRay(camera.position, ScreenToRay(camera, pcam, event.actionPos));
@@ -106,9 +111,6 @@ void SubsystemPlayer::onUpdate(FGameState& ctx)
                 }
             }
         }
-
-        camera.position = body.pos + math::vec3{(collider.aabb.min.x + collider.aabb.max.x) / 2.f, 1.65f,
-                                                (collider.aabb.min.z + collider.aabb.max.z) / 2.f};
     }
 }
 }  // namespace sim

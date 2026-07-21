@@ -133,6 +133,11 @@ void SDL3GameWindow::Run(WindowApp& app)
     bool waitingSurface = false;
     SDL_Event event;
 
+    auto mode = SDL_GetCurrentDisplayMode(0);
+
+    float refresh = mode && (mode->refresh_rate > 0) ? mode->refresh_rate : 60.0f;
+    const float TargetframeDelayS = 1.f / refresh;
+
     double elapsedS = 0.0;
     double finalDeltaTime = 0.0;
 
@@ -208,7 +213,6 @@ void SDL3GameWindow::Run(WindowApp& app)
     {
         uint64_t frameStartTicks = SDL_GetPerformanceCounter();
 
-
         if (waitingSurface) continue;
 
         auto appFrameAction = app.Update(finalDeltaTime, pollInputs);
@@ -236,6 +240,17 @@ void SDL3GameWindow::Run(WindowApp& app)
             event.type = SDL_EVENT_WINDOW_MOUSE_ENTER;
             SDL_PushEvent(&event);
         }
+
+#if PLATFORM_ANDROID
+        if (finalDeltaTime < TargetframeDelayS)
+        {
+            SDL_Delay(uint32_t(1000.f * (TargetframeDelayS - finalDeltaTime)));
+        }
+
+        frameEndTicks = SDL_GetPerformanceCounter();
+        elapsedS = (double)(frameEndTicks - frameStartTicks) / perfFrequency;
+        finalDeltaTime = elapsedS;
+#endif
     }
 
     app.Shutdown();

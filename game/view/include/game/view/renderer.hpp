@@ -5,8 +5,10 @@
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/gfx/uniform_arena.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
+#include "oge/runtime/tick_scheduler.hpp"
 #include "oge/runtime/ui/objects.hpp"
 #include "oge/runtime/asset_ctx.hpp"
+#include "oge/timer.hpp"
 
 namespace oge::runtime
 {
@@ -70,8 +72,10 @@ void RegisterRenderers(AnythingFactory& af);
 
 class DebugInfoRenderer : public Renderer
 {
+    oge::runtime::TickScheduler tickScheduler{1.f};
     std::shared_ptr<ui::IFont> debugFont;
     std::string debugString;
+    std::string gpuDebugString;
    public:
     DECL_ID(DebugInfoRenderer);
     DebugInfoRenderer() : Renderer(Id) {}
