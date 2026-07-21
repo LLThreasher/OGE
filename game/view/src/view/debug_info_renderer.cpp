@@ -13,9 +13,11 @@ namespace game::view
 void DebugInfoRenderer::onAttach(RendererState& ctx)
 {
     debugFont = ctx.assets.LoadASCIIBitmapFont16x6("om_tall_plain_idx.png");
+    debugString.reserve(256);
 }
 
 void DebugInfoRenderer::onDetach(RendererState& ctx) {}
+
 void DebugInfoRenderer::onUpdate(FRendererState& ctx)
 {
     auto gpuInfo = ctx.assets.backend.GetGPUInfo();
@@ -30,15 +32,15 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
 
     auto spriteQueue = ctx.submissionQueue.View<oge::runtime::gfx::CmdDrawSprite>().GetSingle(GameViewType::Overlay);
 
-    std::stringstream ss;
+    debugString.clear();
     for (auto [e, txt] : ctx.world.view<const DebugText>().each())
     {
-        ss << txt.text << std::endl;
+        debugString.append(txt.text);
+        debugString.push_back('\n');
     }
-    ss << gpuInfo.name << std::endl;
-    ss << std::format("GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024, m_budgetGPUMem / 1024 / 1024) << std::endl;
-    std::string s = ss.str();
-
-    debugFont->CreateTextSprites(spriteQueue, {s}, {{{10, 10}, ctx.assets.backend.SwapchainExtent() - oge::U16Point2{10u, 10u}}});
+    debugString.append(gpuInfo.name);
+    debugString.push_back('\n');
+    std::format_to(std::back_inserter(debugString), "GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024, m_budgetGPUMem / 1024 / 1024);
+    debugFont->CreateTextSprites(spriteQueue, {debugString}, {{{10, 10}, ctx.assets.backend.SwapchainExtent() - oge::U16Point2{10u, 10u}}});
 }
 }  // namespace game::view

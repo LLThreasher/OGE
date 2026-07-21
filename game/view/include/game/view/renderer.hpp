@@ -65,6 +65,7 @@ void RegisterRenderers(AnythingFactory& af);
 class DebugInfoRenderer : public Renderer
 {
     std::shared_ptr<ui::IFont> debugFont;
+    std::string debugString;
    public:
     DECL_ID(DebugInfoRenderer);
     DebugInfoRenderer() : Renderer(Id) {}

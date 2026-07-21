@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string_view>
 #include "oge/rect.hpp"
 #include "oge/input/mouse.hpp"
 #include "oge/runtime/entt.hpp"
@@ -29,7 +30,7 @@ struct UISprite
 
 struct UITextData
 {
-    std::string text = "";
+    std::string_view text = "";
     uint32_t size = 16;
     ColorRGBA8 color = COLOR_WHITE;
     bool enableWrap = false;
