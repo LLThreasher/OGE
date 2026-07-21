@@ -1,3 +1,7 @@
+find_package(Git REQUIRED)
+
+message(STATUS "Preset: ${CMAKE_PRESET_NAME}")
+
 execute_process(
     COMMAND ${GIT_EXECUTABLE} describe --always --dirty --tags
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

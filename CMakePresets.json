@@ -2,12 +2,21 @@
   "version": 3,
   "configurePresets": [
     {
+      "name": "base",
+      "description": "base of everything",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}",
+      "cacheVariables": {
+        "CMAKE_PRESET_NAME": "${presetName}"
+      }
+    },
+    {
       "name": "android-base",
       "description": "Build Android",
       "hidden": true,
+      "inherits": "base",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
-      "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
         "BUILD_ANDROID": "ON",
         "MAX_FRAMES_IN_FLIGHT": "2",
@@ -19,9 +28,8 @@
       "name": "macos-base",
       "description": "面向具有 VSCode 开发环境的 MacOS",
       "hidden": true,
+      "inherits": "base",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
-      "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
@@ -42,9 +50,8 @@
       "name": "windows-base",
       "description": "面向具有 Visual Studio 开发环境的 Windows。",
       "hidden": true,
+      "inherits": "base",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
-      "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang-cl.exe",
         "CMAKE_CXX_COMPILER": "clang-cl.exe",
@@ -61,9 +68,8 @@
       "name": "linux-base",
       "description": "面向Linux桌面环境",
       "hidden": true,
+      "inherits": "base",
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}",
-      "installDir": "${sourceDir}/out/install/${presetName}",
       "cacheVariables": {
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",

@@ -1,8 +1,5 @@
 add_library(oge_graphics INTERFACE)
 
-message(STATUS "Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
-message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
-
 file(GLOB_RECURSE SOURCE_FILES 
     CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/include/*.hpp"

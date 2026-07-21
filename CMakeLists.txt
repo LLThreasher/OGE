@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.28)
 
+include(cmake/utils.cmake)
+
+message(STATUS "Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
+
 if (BUILD_ANDROID)
 message(STATUS "building android")
 project(OneGame LANGUAGES NONE)
@@ -35,14 +40,13 @@ if (ipo_supported)
 endif()
 endif()
 
-include(cmake/utils.cmake)
+include(cmake/build_config.cmake)
 
 if(NOT BUILD_ANDROID)
 add_subdirectory(engine)
 add_subdirectory(game)
 add_subdirectory(game_desktop)
 
-include(cmake/build_config.cmake)
 target_include_directories(
     game_data
     PUBLIC
@@ -89,6 +93,7 @@ endif()
 
 set(GRADLEW_ARGS "-DMAX_CMD_BUFFER_PER_QUEUE=${MAX_CMD_BUFFER_PER_QUEUE}")
 set(GRADLEW_ARGS "${GRADLEW_ARGS};-DFORCE_SINGLE_QUEUE=${FORCE_SINGLE_QUEUE}")
+set(GRADLEW_ARGS "${GRADLEW_ARGS};-DBUILD_TAG=${BUILD_TAG}")
 set(GRADLEW_ARGS "${GRADLEW_ARGS};-DMAX_FRAMES_IN_FLIGHT=${MAX_FRAMES_IN_FLIGHT}")
 set(GRADLEW_ARGS "${GRADLEW_ARGS};-DBUILD_WINDOW_SDL3=ON;-DBUILD_VULKAN=ON")
 if (ENABLE_PERF)
