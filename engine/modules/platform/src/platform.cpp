@@ -45,6 +45,11 @@ double GetGPUUsage() { return -1.0; }
 #include <iostream>
 #include <sstream>
 
+#include <fstream>
+#include <string>
+#include <thread>
+#include <chrono>
+
 namespace
 {
 
@@ -145,51 +150,63 @@ double get_system_uptime()
     return uptime;
 }
 
-float get_app_cpu_percentage()
-{
-    FILE* fp = fopen("/proc/self/stat", "r");
-    if (!fp) return 0.0f;
+struct CpuTimes {
+    long long user;
+    long long nice;
+    long long system;
+    long long idle;
+    long long iowait;
+    long long irq;
+    long long softirq;
+    long long steal;
+};
 
-    // FIX 1: Properly size the buffer array
-    char buffer[1024];
-    long utime = 0, stime = 0;
-    long long starttime = 0;
+CpuTimes readCpuTimes() {
+    std::ifstream file("/proc/stat");
+    std::string line;
+    CpuTimes times{0};
 
-    if (fgets(buffer, sizeof(buffer), fp) != nullptr)
-    {
-        // Find the last closing parenthesis protecting process names with spaces
-        char* last_paren = strrchr(buffer, ')');
-        if (last_paren)
-        {
-            // FIX 2: Correctly map fields relative to the ')' token.
-            // After ')', the fields are:
-            // 3:state, 4:ppid, 5:pgrp, 6:session, 7:tty_nr, 8:tpgid, 9:flags,
-            // 10:minflt, 11:cminflt, 12:majflt, 13:cmajflt
-            // 14:utime, 15:stime, 16:cutime, 17:cstime, 18:priority, 19:nice,
-            // 20:num_threads, 21:itrealvalue, 22:starttime
-            sscanf(last_paren + 2, "%*c %*d %*d %*d %*d %*d %*u %*u %*u %*u %*u %ld %ld %*d %*d %*d %*d %*d %*d %lld",
-                   &utime, &stime, &starttime);
-        }
+    if (std::getline(file, line)) {
+        std::istringstream ss(line);
+        std::string cpu;
+        ss >> cpu; // skip "cpu"
+
+        ss >> times.user
+           >> times.nice
+           >> times.system
+           >> times.idle
+           >> times.iowait
+           >> times.irq
+           >> times.softirq
+           >> times.steal;
     }
-    fclose(fp);
 
-    // If parsing completely failed, abort early
-    if (utime == 0 && stime == 0) return 0.0f;
-
-    long ticks_per_sec = sysconf(_SC_CLK_TCK);
-    double uptime = get_system_uptime();
-
-    double process_time_sec = (double)(utime + stime) / ticks_per_sec;
-    double process_lifetime_sec = uptime - ((double)starttime / ticks_per_sec);
-
-    if (process_lifetime_sec <= 0.0) return 0.0f;
-
-    // This is the lifetime usage scaled to 0-100% per core
-    float cpu_percentage = (process_time_sec / process_lifetime_sec) * 100.0f;
-    return cpu_percentage / get_core_count();
+    return times;
 }
 
-double GetCPUUsage() { return get_app_cpu_percentage(); }
+float getCpuUsagePercent() {
+    CpuTimes t1 = readCpuTimes();
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    CpuTimes t2 = readCpuTimes();
+
+    long long idle1 = t1.idle + t1.iowait;
+    long long idle2 = t2.idle + t2.iowait;
+
+    long long nonIdle1 = t1.user + t1.nice + t1.system + t1.irq + t1.softirq + t1.steal;
+    long long nonIdle2 = t2.user + t2.nice + t2.system + t2.irq + t2.softirq + t2.steal;
+
+    long long total1 = idle1 + nonIdle1;
+    long long total2 = idle2 + nonIdle2;
+
+    long long totalDelta = total2 - total1;
+    long long idleDelta = idle2 - idle1;
+
+    if (totalDelta == 0) return 0.0f;
+
+    return (float)(totalDelta - idleDelta) * 100.0f / totalDelta;
+}
+
+double GetCPUUsage() { return 0.0; }
 
 double GetGPUUsage() { return -1.0; }
 }

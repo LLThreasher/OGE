@@ -19,6 +19,7 @@ namespace game::view
 struct RendererState
 {
     entt::registry& world;
+    entt::registry& renderWorld;
     entt::dispatcher& events;
     AssetContext assets;
 };
@@ -28,20 +29,25 @@ struct RendererFrameData
     float dt;
     AssetContext& assets;
     SubmissionQueue& submissionQueue;
+    float alpha = 0.f;
 };
 
 struct FRendererState
 {
     float dt;
+    float alpha;
     AssetContext& assets;
     SubmissionQueue& submissionQueue;
     const entt::registry& world;
+    entt::registry& renderWorld;
     entt::dispatcher& events;
 
     FRendererState(RendererFrameData& frame, RendererState& state)
         : dt(frame.dt),
+        alpha(frame.alpha),
           assets(frame.assets),
           world(state.world),
+          renderWorld(state.renderWorld),
           submissionQueue(frame.submissionQueue),
           events(state.events)
     {

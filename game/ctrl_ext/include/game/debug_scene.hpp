@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <memory>
 
-#include "entt/entity/fwd.hpp"
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/input/input_source.hpp"
@@ -111,7 +110,7 @@ class DebugScene3 : public Scene
 
         // m_terminalButton = ui::CreateButton(world, context, {math::vec2{0.f, 0.f}, math::vec2{0.1f, 0.1f}});
 
-        auto font = assets.LoadASCIIBitmapFont16x6("om_large_plain_idx.png");
+        // auto font = assets.LoadASCIIBitmapFont16x6("om_large_plain_idx.png");
 
         // {
         //     auto e = world.create();

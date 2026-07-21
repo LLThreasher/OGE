@@ -1,6 +1,5 @@
 #pragma once
 
-#include "entt/signal/fwd.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/typed_registry.hpp"
 

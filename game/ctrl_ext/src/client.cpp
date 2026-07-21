@@ -1,6 +1,5 @@
 #include "game/client.hpp"
 
-#include "entt/signal/fwd.hpp"
 #include "game/scene.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/vulkan/create_backend.hpp"
@@ -105,5 +104,6 @@ void Client::OnWindowRecreate(WindowHandle* handle)
 void Client::OnResize(int width, int height)
 {
     m_backend->Resize(width, height);
+    m_events.enqueue(SurfaceRecreateEvent{m_backend->SwapchainExtent(), m_backend->SwapchainPretransform()});
 }
 }  // namespace game

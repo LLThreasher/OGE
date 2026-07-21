@@ -3,6 +3,7 @@
 
 #include "game/client.hpp"
 #include "game/debug_scene.hpp"
+#include "game/debug_scene2.hpp"
 #include "oge/platform/sdl3/create_window.hpp"
 #include "oge/platform/window.hpp"
 #include "oge/platform/window_app.hpp"

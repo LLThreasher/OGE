@@ -1,6 +1,5 @@
 #pragma once
 
-#include "entt/signal/fwd.hpp"
 #include "game/scene.hpp"
 #include "oge/platform/window_app.hpp"
 #include "oge/runtime/asset_manager.hpp"

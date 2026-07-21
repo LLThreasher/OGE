@@ -9,7 +9,6 @@ void SubsystemDebugText::onAttach(GameState& ctx)
 {
     frameCount = 0;
     accumTime = 0.f;
-    currentFPS = 0.f;
     currentFrameTime = 0.f;
     perfStatus = {};
     totalPerfStatus = {};
@@ -31,9 +30,6 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
         perfStatus = totalPerfStatus / frameCount;
         totalPerfStatus = {};
 
-        currentFrameTime = accumTime / frameCount;
-        currentFPS = 1 / currentFrameTime;
-        currentFrameTime *= 1000.f;
         accumTime = 0;
         frameCount = 0;
     }
@@ -42,7 +38,7 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
     std::format_to(std::back_inserter(buffer),
                    "{}\nFPS {:.2f} ({:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f})\nCPU: {:.2f}%\nMEM: {} MB {} KB",
                    BUILD_TAG,
-                   currentFPS, perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime,
+                   1000.f / perfStatus.actualFrameTime(), perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime,
                    perfStatus.assetUploadTime, perfStatus.renderSubmitTime, perfStatus.cpuUsage,
                    GetRAMUsage() / 1024 / 1024, (GetRAMUsage() / 1024) % 1024);
 

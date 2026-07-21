@@ -41,6 +41,6 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
     debugString.append(gpuInfo.name);
     debugString.push_back('\n');
     std::format_to(std::back_inserter(debugString), "GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024, m_budgetGPUMem / 1024 / 1024);
-    debugFont->CreateTextSprites(spriteQueue, {debugString}, {{{10, 10}, ctx.assets.backend.SwapchainExtent() - oge::U16Point2{10u, 10u}}});
+    debugFont->CreateTextSprites(spriteQueue, {debugString, 32}, {{{10, 10}, ctx.assets.backend.SwapchainExtent() - oge::U16Point2{10u, 10u}}});
 }
 }  // namespace game::view

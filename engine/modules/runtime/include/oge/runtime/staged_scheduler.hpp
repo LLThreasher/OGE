@@ -153,7 +153,7 @@ class FixedStepPipeline : public Pipeline<FixedStepPipeline<TStage, FrameData>, 
 {
    public:
     using TPipeline = Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>;
-    FixedStepPipeline(TStage::Ctx& ctx, AnythingFactory& af) : TPipeline(ctx, af) {}
+    FixedStepPipeline(TStage::Ctx& ctx, AnythingFactory& af, float updateInterval = 1.f / 60.f) : TPipeline(ctx, af), m_tickScheduler(updateInterval) {}
     template <typename Fn>
     void onUpdate(FrameData frame, typename TStage::Ctx& ctx, Fn&& update)
     {
@@ -174,6 +174,11 @@ class FixedStepPipeline : public Pipeline<FixedStepPipeline<TStage, FrameData>, 
             update(typename TStage::FrameCtx(frame, ctx));
             _dt = m_tickScheduler.ConsumeTick();
         }
+    }
+
+    float GetAlpha()
+    {
+        return m_tickScheduler.GetAlpha();
     }
 
    private:

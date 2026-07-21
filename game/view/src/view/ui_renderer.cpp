@@ -2,6 +2,7 @@
 #include "game/ui/objects.hpp"
 #include "game/events.hpp"
 #include "game/view/submission_queue.hpp"
+#include "oge/log.hpp"
 #include "oge/point2.hpp"
 #include "oge/runtime/gfx/commands.hpp"
 #include "oge/graphics/backend.hpp"

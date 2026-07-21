@@ -57,6 +57,7 @@ void SubsystemPlayer::onUpdate(FGameState& ctx)
         math::vec2 moveDelta;
         if (input.PollMoveDelta(moveDelta))
         {
+            moveDelta /= ctx.dt;
             auto right = camera.right();
             if (body.enableGravity)
             {

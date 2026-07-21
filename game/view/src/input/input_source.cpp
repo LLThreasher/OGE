@@ -28,7 +28,7 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
         (keys.get(KeyCode::KY_A) ? 1.f : 0.f) - (keys.get(KeyCode::KY_D) ? 1.f : 0.f),
         (keys.get(KeyCode::KY_W) ? 1.f : 0.f) - (keys.get(KeyCode::KY_S) ? 1.f : 0.f),
     };
-    out.InsertMoveDelta(moveDelta);
+    out.InsertMoveDelta(moveDelta * ctx.dt);
     math::vec2 panDelta = raw.PollPtrDelta(mouseIdx, raw_idx) * math::vec2{hfov, vfov};
     out.InsertPanDelta(panDelta);
 
@@ -83,7 +83,7 @@ void WidgetInput::onUpdate(FInputContext& ctx)
             auto widgetSize = game.get<UIRect>(moveWidget).extent;
             moveDelta /= widgetSize * 0.5f;
             if (math::len_sq(moveDelta) > 1.f) moveDelta = math::normalize(moveDelta);
-            out.InsertMoveDelta(moveDelta);
+            out.InsertMoveDelta(moveDelta * ctx.dt);
         }
     }
     // handle pan

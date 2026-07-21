@@ -30,7 +30,7 @@ class Subsystem : public Stage<GameState, FGameState>
 class SubsystemPipeline : public FixedStepPipeline<Subsystem, float>
 {
    public:
-    SubsystemPipeline(GameState& state, AnythingFactory& af) : FixedStepPipeline<Subsystem, float>(state, af) {}
+    SubsystemPipeline(GameState& state, AnythingFactory& af, float updateInterval) : FixedStepPipeline<Subsystem, float>(state, af, updateInterval) {}
 };
 
 void RegisterSubsystems(AnythingFactory& af);
@@ -51,7 +51,6 @@ void RegisterSubsystems(AnythingFactory& af);
 
 class SubsystemDebugText : public Subsystem
 {
-    float currentFPS = 0.f;
     float currentFrameTime = 0.f;
     float accumTime = 0.f;
     uint64_t frameCount = 0;
