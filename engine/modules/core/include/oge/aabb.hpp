@@ -12,4 +12,8 @@ struct AABB
     AABB operator+(const math::vec3& other) const noexcept { return {min + other, max + other}; }
 };
 
-}  // namespace OneGame::Engine
+inline bool operator==(const AABB& a, const AABB& b) noexcept { return a.min == b.min && a.max == b.max; }
+
+inline bool operator!=(const AABB& a, const AABB& b) noexcept { return !(a == b); }
+
+}  // namespace oge

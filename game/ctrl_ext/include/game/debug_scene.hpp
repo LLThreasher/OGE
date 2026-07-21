@@ -41,7 +41,7 @@ class DebugScene3 : public Scene
         m_renderers.AddStage<view::CameraRenderer>();
 
         auto& blocks = m_world.ctx().emplace<terrain::BlockRegistry>();
-        blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1});
+        blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1, });
         blocks.RegisterBlock("wood", {"Wood", "wood_plank.png", 1});
         blocks.RegisterBlock("stone", {"Stone", "green_stone.png", 1});
 

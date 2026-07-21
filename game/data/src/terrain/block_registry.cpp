@@ -1,14 +1,38 @@
 #include "game/terrain/block_registry.hpp"
 
+#include <algorithm>
+#include <array>
+#include <span>
+#include <vector>
+
+#include "oge/aabb.hpp"
+
 namespace game::terrain
 {
-BlockRegistry::BlockRegistry() { RegisterBlock("air", {}); }
+
+BlockConfig::BlockConfig(std::string blockDisplayName, std::string textureId, uint32_t blockFlags,
+                         std::vector<AABB> aabb)
+    : blockDisplayName(blockDisplayName), blockFlags(blockFlags), aabbs(std::move(aabb))
+{
+    for (int i = 0; i < 6; ++i)
+    {
+        textureSlotPerFace[i] = textureId;
+    }
+}
+
+BlockRegistry::BlockRegistry()
+{
+    BlockConfig airConfig = {};
+    airConfig.aabbs = {};
+    RegisterBlock("air", airConfig);
+}
 
 void BlockRegistry::RegisterBlock(std::string blockIdName, BlockConfig config)
 {
     m_blockDisplayNames.resize(m_nextIdx + 1);
     m_blockFlags.resize(m_nextIdx + 1);
     m_textureSlots.resize(m_nextIdx + 1);
+    m_aabbLookup.resize(m_nextIdx + 1);
 
     m_idNameToBlockId[blockIdName] = m_nextIdx;
     m_blockDisplayNames[m_nextIdx] = config.blockDisplayName;
@@ -24,6 +48,25 @@ void BlockRegistry::RegisterBlock(std::string blockIdName, BlockConfig config)
             m_blockTextureArray.push_back(id);
         }
         m_textureSlots[m_nextIdx][i] = it->second;
+    }
+    auto it = std::search(m_aabbs.begin(), m_aabbs.end(), config.aabbs.begin(), config.aabbs.end());
+
+    if (it != m_aabbs.end())
+    {
+        m_aabbLookup[m_nextIdx] = std::span<AABB>(it, config.aabbs.size());
+    }
+    else if (config.aabbs.empty())
+    {
+        m_aabbLookup[m_nextIdx] = std::span<AABB>();
+    }
+    else
+    {
+        for (const auto& aabb : config.aabbs)
+        {
+            m_aabbs.push_back(aabb);
+        }
+
+        m_aabbLookup[m_nextIdx] = std::span<AABB>(m_aabbs.end() - config.aabbs.size(), config.aabbs.size());
     }
 
     m_nextIdx += 1;
@@ -48,22 +91,14 @@ const std::array<uint8_t, 6>& BlockRegistry::GetTextureSlot(const uint16_t block
     return m_textureSlots[blockIdx];
 }
 
-const AABBList BlockRegistry::GetBlockAABBList(uint16_t blockIdx) const
-{
-    if (blockIdx == 0) return {};
-    return {AABB{{0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}}};
-}
+AABBList BlockRegistry::GetBlockAABBList(uint16_t blockIdx) const { return m_aabbLookup[blockIdx]; }
 
-const AABBList BlockRegistry::GetDefaultBlockAABBList() const
-{
-    return {AABB{{0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}}};
-}
+AABBList BlockRegistry::GetDefaultBlockAABBList() { return std::span<const AABB>(&DEFAULT_BLOCK_AABB, 1); }
 
 float BlockRegistry::GetBlockFriction(uint16_t blockIdx) const
 {
-    if (blockIdx == 0)
-        return 0.01f;
+    if (blockIdx == 0) return 0.01f;
     return 0.5f;
 }
 
-}  // namespace OneGame::Engine::Terrain
+}  // namespace game::terrain

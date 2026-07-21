@@ -1,6 +1,7 @@
 #include "game/components.hpp"
 #include "game/view/terrain/terrain_renderer.hpp"
 #include "oge/graphics/objects.hpp"
+#include "oge/log.hpp"
 #include "oge/runtime/streaming_manager.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/gfx/chunk_allocator2.hpp"
@@ -31,6 +32,7 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, AssetConte
                 }
                 terrain.residentChunks.insert_or_assign(chunk, pterrain);
                 terrain.builtChunkMeshes.Destroy(chunkMesh);
+                LOG_INFO("rchunk size {}, bcm size {}", terrain.residentChunks.size(), terrain.builtChunkMeshes.Size());
             });
 
         auto mesh = terrain.builtChunkMeshes.Get(chunkMesh);
