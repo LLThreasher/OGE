@@ -48,6 +48,27 @@ void SubsystemPlayer::onUpdate(FGameState& ctx)
                    ComponentPlayer, ComponentPhysicBody, ComponentCreature>()
              .each())
     {
+        math::vec2 panDelta;
+        if (input.PollPanDelta(panDelta))
+        {
+            camera.ApplyDelta(panDelta.x, panDelta.y);
+        }
+
+        math::vec2 moveDelta;
+        if (input.PollMoveDelta(moveDelta))
+        {
+            auto right = camera.right();
+            if (body.enableGravity)
+            {
+                creature.moveOrder = math::normalize({camera.forward.x, 0, camera.forward.z}) * moveDelta.y +
+                                     math::vec3{right.x, 0, right.z} * moveDelta.x;
+            }
+            else
+            {
+                creature.moveOrder = camera.forward * moveDelta.y + right * moveDelta.x;
+            }
+        }
+
         PlayerInputEvent event;
         creature.jumpOrder = false;
         while (input.PollAction(event))
@@ -81,27 +102,6 @@ void SubsystemPlayer::onUpdate(FGameState& ctx)
                     }
                     player.lastActionTime = 0.2f;
                 }
-            }
-        }
-
-        math::vec2 panDelta;
-        if (input.PollPanDelta(panDelta))
-        {
-            camera.ApplyDelta(panDelta.x, panDelta.y);
-        }
-
-        math::vec2 moveDelta;
-        if (input.PollMoveDelta(moveDelta))
-        {
-            auto right = camera.right();
-            if (body.enableGravity)
-            {
-                creature.moveOrder = math::normalize({camera.forward.x, 0, camera.forward.z}) * moveDelta.y +
-                                     math::vec3{right.x, 0, right.z} * moveDelta.x;
-            }
-            else
-            {
-                creature.moveOrder = camera.forward * moveDelta.y + right * moveDelta.x;
             }
         }
 

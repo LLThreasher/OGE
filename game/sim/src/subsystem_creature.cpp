@@ -27,6 +27,9 @@ void SubsystemCreature::onUpdate(FrameCtx& ctx)
         {
             body.velocity.y += creature.initJumpSpeed;
         }
+
+        creature.moveOrder = {};
+        creature.jumpOrder = false;
     }
 }
 }  // namespace game::sim

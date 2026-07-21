@@ -1,0 +1,15 @@
+#pragma once
+
+/* Git */
+#define BUILD_TAG "@BUILD_TAG@"
+
+/* Build system */
+#define BUILD_PRESET "@BUILD_PRESET@"
+#define BUILD_TYPE "@BUILD_TYPE@"
+
+/* Compiler */
+#define BUILD_COMPILER "@CMAKE_CXX_COMPILER_ID@"
+#define BUILD_COMPILER_VERSION "@CMAKE_CXX_COMPILER_VERSION@"
+
+/* Platform */
+#define BUILD_SYSTEM "@CMAKE_SYSTEM_NAME@"

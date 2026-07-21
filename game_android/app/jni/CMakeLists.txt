@@ -20,3 +20,9 @@ add_subdirectory(engine)
 add_subdirectory(game)
 add_subdirectory(src)
 
+include(cmake/build_config.cmake)
+target_include_directories(
+    game_data
+    PUBLIC
+    ${GENERATED_DIR}
+)

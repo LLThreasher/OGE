@@ -125,11 +125,8 @@ class DebugScene3 : public Scene
 
         auto& pcam = m_world.get<const ComponentPerspectiveCamera>(m_player);
         m_widgetInputDef = InputDef{.target = m_world.try_get<input::PlayerInputStream>(m_player)};
-        auto extent = m_ctx.value().assets.backend.SwapchainExtent();
         m_widgetInputDef.vfov = -pcam.fov;
         m_widgetInputDef.hfov = 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
-        m_widgetInputDef.hfov /= (float)extent.x;
-        m_widgetInputDef.vfov /= (float)extent.y;
         m_widgetInputDef.widgetInput = {lookWidget, mvWidget};
 
         m_inputs.AddStage<input::UIDragInput>(InputDef{});
@@ -143,11 +140,12 @@ class DebugScene3 : public Scene
         auto& keys = f.is.ActiveKeys();
         if (keys.contains(KeyCode::KY_G))
         {
+            auto extent = m_ctx.value().assets.backend.SwapchainExtent();
             m_inputs.Clear();
             m_inputs.AddStage<input::KeyMouseInput>(
                 InputDef{.target = m_world.try_get<input::PlayerInputStream>(m_player),
-                         .hfov = m_widgetInputDef.hfov,
-                         .vfov = m_widgetInputDef.vfov,
+                         .hfov = m_widgetInputDef.hfov / (float)extent.x,
+                         .vfov = m_widgetInputDef.vfov / (float)extent.y,
                          .mouseIuput = {0}});
         }
         else if (keys.contains(KeyCode::KY_ESCAPE))

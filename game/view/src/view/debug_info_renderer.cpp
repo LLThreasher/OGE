@@ -22,11 +22,11 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
         m_budgetGPUMem = memUsage.heapBudget[0];
     }
 
-    ctx.submissionQueue.Add<CmdDrawDebugText>(GameViewType::Overlay, gpuInfo.name);
-    ctx.submissionQueue.Add<CmdDrawDebugText>(GameViewType::Overlay, std::format("GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024, m_budgetGPUMem / 1024 / 1024));
-    for (auto [e, txt] : ctx.world.view<const DebugText, Ready>().each())
+    for (auto [e, txt] : ctx.world.view<const DebugText>().each())
     {
         ctx.submissionQueue.Add<CmdDrawDebugText>(GameViewType::Overlay, txt.text);
     }
+    ctx.submissionQueue.Add<CmdDrawDebugText>(GameViewType::Overlay, gpuInfo.name);
+    ctx.submissionQueue.Add<CmdDrawDebugText>(GameViewType::Overlay, std::format("GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024, m_budgetGPUMem / 1024 / 1024));
 }
 }  // namespace game::view

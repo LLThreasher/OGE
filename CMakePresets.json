@@ -11,7 +11,7 @@
       "cacheVariables": {
         "BUILD_ANDROID": "ON",
         "MAX_FRAMES_IN_FLIGHT": "2",
-        "MAX_CMD_BUFFER_PER_QUEUE" : "1",
+        "MAX_CMD_BUFFER_PER_QUEUE": "1",
         "FORCE_SINGLE_QUEUE": "ON"
       }
     },
@@ -25,8 +25,8 @@
       "cacheVariables": {
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
-        "MAX_FRAMES_IN_FLIGHT": "1",
-        "MAX_CMD_BUFFER_PER_QUEUE" : "1",
+        "MAX_FRAMES_IN_FLIGHT": "2",
+        "MAX_CMD_BUFFER_PER_QUEUE": "1",
         "FORCE_SINGLE_QUEUE": "ON",
         "BUILD_VULKAN": "ON",
         "BUILD_WINDOW_SDL3": "ON",
@@ -81,35 +81,51 @@
       "displayName": "Linux Debug",
       "description": "使用GCC工具链定向到Linux (Debug)",
       "inherits": "linux-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "ENABLE_PERF": "ON" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_PERF": "ON"
+      }
     },
     {
       "name": "linux-release",
       "displayName": "Apple Silicon Release",
       "description": "使用GCC工具链定向到Linux (Release)",
       "inherits": "linux-debug",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     },
     {
       "name": "apple-debug",
       "displayName": "Apple Silicon Debug",
       "description": "使用 Visual Studio 开发环境定向到 Apple Silicon (64 位)。(Debug)",
       "inherits": "macos-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "ENABLE_PERF": "ON", "ENABLE_ASAN" : "ON" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_PERF": "ON",
+        "ENABLE_ASAN": "ON"
+      }
     },
     {
       "name": "apple-release",
       "displayName": "Apple Silicon Release",
       "description": "使用 Visual Studio 开发环境定向到 Apple Silicon (64 位)。(Release)",
       "inherits": "apple-debug",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release", "ENABLE_PERF": "OFF", "ENABLE_ASAN" : "OFF" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_PERF": "OFF",
+        "ENABLE_ASAN": "OFF"
+      }
     },
     {
       "name": "apple-perf",
       "displayName": "Apple Silicon Perf",
       "description": "使用 Visual Studio 开发环境定向到 Apple Silicon (64 位)。(RelWithDebInfo)",
       "inherits": "apple-debug",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo", "ENABLE_PERF": "ON" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "ENABLE_PERF": "ON"
+      }
     },
     {
       "name": "x64-debug",
@@ -120,33 +136,44 @@
         "value": "x64",
         "strategy": "external"
       },
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     },
     {
       "name": "x64-release",
       "displayName": "x64 Release",
       "description": "使用 Visual Studio 开发环境定向到 Windows (64 位)。(Release)",
       "inherits": "x64-debug",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     },
     {
       "name": "x64-perf",
       "displayName": "x64 Perf",
       "description": "使用 Visual Studio 开发环境定向到 Windows (64 位)。(RelWithDebInfo)",
       "inherits": "x64-debug",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo", "ENABLE_VULKAN_VALIDATION": "ON" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "ENABLE_VULKAN_VALIDATION": "ON"
+      }
     },
     {
       "name": "android-debug",
       "displayName": "Android Debug",
       "inherits": "android-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     },
     {
       "name": "android-release",
       "displayName": "Android Release",
       "inherits": "android-base",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ]
 }

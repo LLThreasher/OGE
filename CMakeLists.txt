@@ -42,6 +42,13 @@ add_subdirectory(engine)
 add_subdirectory(game)
 add_subdirectory(game_desktop)
 
+include(cmake/build_config.cmake)
+target_include_directories(
+    game_data
+    PUBLIC
+    ${GENERATED_DIR}
+)
+
 # export compile commands
 if(CMAKE_EXPORT_COMPILE_COMMANDS)
     # Compute relative build directory

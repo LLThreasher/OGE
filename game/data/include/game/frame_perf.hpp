@@ -4,11 +4,11 @@ namespace game
 {
 struct FramePerfStatus
 {
-    float inputProcessingTime;
-    float logicTime;
-    float assetUploadTime;
-    float renderSubmitTime;
-    float cpuUsage;
+    float inputProcessingTime = 0.f;
+    float logicTime = 0.f;
+    float assetUploadTime = 0.f;
+    float renderSubmitTime = 0.f;
+    float cpuUsage = 0.f;
 
     float actualFrameTime() const { return inputProcessingTime + logicTime + assetUploadTime + renderSubmitTime; }
 

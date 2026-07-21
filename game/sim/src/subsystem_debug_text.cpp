@@ -1,6 +1,7 @@
 #include "game/components.hpp"
 #include "game/sim/subsystem.hpp"
 #include "oge/platform/perf.hpp"
+#include "build_config.h"
 
 namespace game::sim
 {
@@ -19,10 +20,7 @@ void SubsystemDebugText::onDetach(GameState& ctx) {}
 void SubsystemDebugText::onUpdate(FGameState& ctx)
 {
     using namespace oge::platform;
-    for (auto e : ctx.world.view<const DebugText>())
-    {
-        if (ctx.world.all_of<Ready>(e)) ctx.world.destroy(e);
-    }
+    ctx.world.clear<DebugText>();
 
     ++frameCount;
     accumTime += ctx.dt;
@@ -42,13 +40,13 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
     static std::string buffer;
     buffer.clear();
     std::format_to(std::back_inserter(buffer),
-                   "FPS {:.2f} ({:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f})\nCPU: {:.2f}%\nMEM: {} MB {} KB",
+                   "{}\nFPS {:.2f} ({:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f})\nCPU: {:.2f}%\nMEM: {} MB {} KB",
+                   BUILD_TAG,
                    currentFPS, perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime,
                    perfStatus.assetUploadTime, perfStatus.renderSubmitTime, perfStatus.cpuUsage,
                    GetRAMUsage() / 1024 / 1024, (GetRAMUsage() / 1024) % 1024);
 
     auto entity = ctx.world.create();
     ctx.world.emplace<DebugText>(entity, buffer);
-    ctx.world.emplace<Ready>(entity);
 }
 }  // namespace game::sim

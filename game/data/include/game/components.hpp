@@ -67,6 +67,7 @@ struct ComponentCreature
     float maxSpeed = 1.f;
     float initJumpSpeed = math::sqrt(2.f * 1.55f * 9.8f);
     math::vec3 moveOrder = {};
+    math::vec2 lookOrder = {};
     bool jumpOrder = false;
 
     void SetMaxJumpHeight(float height) { initJumpSpeed = math::sqrt(2.f * height * 9.8f); }
@@ -94,10 +95,6 @@ struct ComponentPlayer
 struct DebugText
 {
     std::string text;
-};
-
-struct Ready
-{
 };
 
 }  // namespace game

@@ -29,8 +29,7 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
         (keys.get(KeyCode::KY_W) ? 1.f : 0.f) - (keys.get(KeyCode::KY_S) ? 1.f : 0.f),
     };
     out.InsertMoveDelta(moveDelta);
-    math::vec2 panDelta = raw.PollPtrDelta(0, raw_idx) * math::vec2{hfov, vfov};
-    LOG_DEBUG("pan delta {} {}", panDelta, raw_idx.ptrCursors[0]);
+    math::vec2 panDelta = raw.PollPtrDelta(mouseIdx, raw_idx) * math::vec2{hfov, vfov};
     out.InsertPanDelta(panDelta);
 
     PlayerInputEvent pEvent{{0.5f, 0.5f}};
@@ -64,22 +63,20 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
     out.InsertAction(pEvent);
 }
 
-void WidgetInput::onAttach(InputContext& ctx) {  }
+void WidgetInput::onAttach(InputContext& ctx) {}
 
-void WidgetInput::onDetach(InputContext& ctx) {  }
+void WidgetInput::onDetach(InputContext& ctx) {}
 
 void WidgetInput::onUpdate(FInputContext& ctx)
 {
     using namespace ::game::ui;
+    PlayerInputEvent pEvent{};
+    pEvent.actionMask = out.LatestAction() & (1 << static_cast<uint32_t>(PlayerAction::Digging));
+
     auto& game = ctx.uiWorld;
     // handle move
     {
-        auto [dragRel, _] = TryGetReleasedDragSrc(game, moveWidget);
-        if (dragRel != nullptr)
-        {
-            out.InsertMoveDelta({});
-        }
-        else if (auto drag = game.try_get<UIDrag>(moveWidget))
+        if (auto drag = game.try_get<UIDrag>(moveWidget))
         {
             math::vec2 moveDelta = drag->dragLastPos - drag->dragStartPos;
             moveDelta = -moveDelta;
@@ -91,9 +88,9 @@ void WidgetInput::onUpdate(FInputContext& ctx)
     }
     // handle pan
     {
-        PlayerInputEvent pEvent{};
-        pEvent.actionMask = out.LatestAction() & (1 << static_cast<uint32_t>(PlayerAction::Digging));
         auto drag = game.try_get<UIDrag>(viewWidget);
+        auto [dragRel, _] = ui::TryGetReleasedDragSrc(game, viewWidget);
+
         if (!isDigging)
         {
             if (drag != nullptr)
@@ -104,11 +101,21 @@ void WidgetInput::onUpdate(FInputContext& ctx)
                     pEvent.set<PlayerAction::Digging>();
                     pEvent.actionPos = drag->dragLastPos;
                 }
+                else if (dragRel != nullptr && dragRel->IsClick(game))
+                {
+                    pEvent.set<PlayerAction::Placing>();
+                    pEvent.actionPos = dragRel->dragLastPos;
+                }
                 else
                 {
                     out.InsertPanDelta(math::vec2{drag->dragDelta * math::vec2{hfov, vfov}} * 2.f);
                 }
             }
+        }
+        else if (dragRel != nullptr)
+        {
+            isDigging = false;
+            pEvent.unset<PlayerAction::Digging>();
         }
         else
         {
@@ -116,19 +123,6 @@ void WidgetInput::onUpdate(FInputContext& ctx)
             pEvent.actionPos = drag->dragLastPos;
         }
 
-        auto [dragRel, _] = ui::TryGetReleasedDragSrc(game, viewWidget);
-        if (dragRel != nullptr)
-        {
-            if (isDigging)
-            {
-                isDigging = false;
-                pEvent.unset<PlayerAction::Digging>();
-            }
-            else if (dragRel->IsClick(game))
-            {
-                out.InsertAction({dragRel->dragLastPos, PlayerAction::Placing});
-            }
-        }
         out.InsertAction(pEvent);
     }
 }

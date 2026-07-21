@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
+#include <cassert>
 
 #include "oge/log.hpp"
 #include "oge/runtime/entt.hpp"
