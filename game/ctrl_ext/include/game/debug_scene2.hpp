@@ -5,7 +5,7 @@
 #include "game/components.hpp"
 #include "game/input/input_source.hpp"
 #include "game/input/player_input_stream.hpp"
-#include "game/scene.hpp"
+#include "game/graphical_scene.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
 #include "game/ui/objects.hpp"
@@ -19,7 +19,7 @@
 
 namespace game
 {
-class DebugScene2 : public Scene
+class DebugScene2 : public GraphicalScene
 {
     using InputDef = input::InputSource::Def;
 
@@ -55,7 +55,7 @@ class DebugScene2 : public Scene
     }
 
    public:
-    DebugScene2(AppContext ctx) : Scene(std::move(ctx))
+    DebugScene2(AppContext ctx) : GraphicalScene(std::move(ctx))
     {
         m_subsystems.AddStage<sim::SubsystemDebugText>();
         // m_subsystems.AddStage<sim::SubsystemTerrain>();
@@ -76,7 +76,7 @@ class DebugScene2 : public Scene
 
     void Attach(OGEContext& ctx, AnythingFactory& af) override
     {
-        Scene::Attach(ctx, af);
+        GraphicalScene::Attach(ctx, af);
 
         // m_renderers->AddStage<view::TerrainRenderer>();
         m_renderers->AddStage<view::DebugInfoRenderer>();
@@ -139,7 +139,7 @@ class DebugScene2 : public Scene
         // AddWidgetInput(assets);
     }
 
-    void Update(SceneFrame f) override
+    void Update(Frame f) override
     {
         // using oge::input::KeyCode;
 
@@ -172,7 +172,7 @@ class DebugScene2 : public Scene
         //     m_inputs.Clear();
         //     AddWidgetInput(m_ctx->assets);
         // }
-        Scene::Update(std::move(f));
+        GraphicalScene::Update(std::move(f));
     }
 };
 }  // namespace game

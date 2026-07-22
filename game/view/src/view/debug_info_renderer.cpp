@@ -51,8 +51,10 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
                        m_budgetGPUMem / 1024 / 1024);
     }
     
+    uint8_t offsetX = 40;
+    uint8_t offsetY = 10;
     debugString.append(gpuDebugString);
     debugFont->CreateTextSprites(spriteQueue, {debugString, 32},
-                                 {{{10, 10}, ctx.assets.backend.SwapchainExtent() - oge::U16Point2{10u, 10u}}});
+                                 {{{offsetX, offsetY}, ctx.assets.backend.SwapchainExtent() - oge::U16Point2{offsetX, offsetY}}});
 }
 }  // namespace game::view

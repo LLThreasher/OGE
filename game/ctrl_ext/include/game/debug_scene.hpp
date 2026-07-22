@@ -1,11 +1,12 @@
 #include <algorithm>
 #include <memory>
 
+#include "entt/entity/fwd.hpp"
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/input/input_source.hpp"
 #include "game/input/player_input_stream.hpp"
-#include "game/scene.hpp"
+#include "game/graphical_scene.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
 #include "game/ui/objects.hpp"
@@ -20,10 +21,11 @@
 
 namespace game
 {
-class DebugScene3 : public Scene
+class DebugScene3 : public GraphicalScene
 {
     using InputDef = input::InputSource::Def;
 
+    entt::entity m_cross;
     entt::entity m_player;
     bool usingKeyMouse = false;
 
@@ -58,7 +60,7 @@ class DebugScene3 : public Scene
     }
 
    public:
-    DebugScene3(AppContext ctx) : Scene(std::move(ctx))
+    DebugScene3(AppContext ctx) : GraphicalScene(std::move(ctx))
     {
         m_subsystems.AddStage<sim::SubsystemDebugText>();
         m_subsystems.AddStage<sim::SubsystemTerrain>();
@@ -83,7 +85,7 @@ class DebugScene3 : public Scene
 
     void Attach(OGEContext& ctx, AnythingFactory& af) override
     {
-        Scene::Attach(ctx, af);
+        GraphicalScene::Attach(ctx, af);
 
         m_renderers->AddStage<view::TerrainRenderer>();
         m_renderers->AddStage<view::DebugInfoRenderer>();
@@ -134,19 +136,10 @@ class DebugScene3 : public Scene
         //     // world.emplace<UIZLevel>(e, 1);
         // }
 
-        // put something in the middle of the screen
-        ui::UISprite crossSprite{.sprite = assets.LoadTexture("cross.png")};
-        auto cubeEntity = m_world.create();
-        m_world.emplace<ui::UIRect>(cubeEntity,
-                                    math::vec2{0.5f - 0.01f, 0.5f - 0.01f * assets.backend.SwapchainAspect()},
-                                    math::vec2{0.01f, 0.01f * assets.backend.SwapchainAspect()});
-        m_world.emplace<ui::UISprite>(cubeEntity, crossSprite);
-        m_world.emplace<ui::UIZLevel>(cubeEntity, 1);
-
         AddWidgetInput(assets);
     }
 
-    void Update(SceneFrame f) override
+    void Update(Frame f) override
     {
         using oge::input::KeyCode;
 
@@ -172,14 +165,24 @@ class DebugScene3 : public Scene
                          .hfov = m_widgetInputDef.hfov / (float)extent.x,
                          .vfov = m_widgetInputDef.vfov / (float)extent.y,
                          .mouseIuput = {0}});
+
+            // put something in the middle of the screen
+            ui::UISprite crossSprite{.sprite = m_ctx->assets.LoadTexture("cross.png")};
+            m_cross = m_world.create();
+            m_world.emplace<ui::UIRect>(m_cross,
+                                        math::vec2{0.5f - 0.01f, 0.5f - 0.01f * m_ctx->assets.backend.SwapchainAspect()},
+                                        math::vec2{0.01f, 0.01f * m_ctx->assets.backend.SwapchainAspect()});
+            m_world.emplace<ui::UISprite>(m_cross, crossSprite);
+            m_world.emplace<ui::UIZLevel>(m_cross, 1);
         }
         else if (keys.contains(KeyCode::KY_ESCAPE) && usingKeyMouse)
         {
             usingKeyMouse = false;
             m_inputs.Clear();
+            m_world.destroy(m_cross);
             AddWidgetInput(m_ctx->assets);
         }
-        Scene::Update(std::move(f));
+        GraphicalScene::Update(std::move(f));
     }
 };
 }  // namespace game

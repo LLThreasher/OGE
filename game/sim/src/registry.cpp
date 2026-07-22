@@ -1,5 +1,6 @@
 #include <concepts>
 #include <type_traits>
+#include "game/sim/registry.hpp"
 #include "game/components.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"

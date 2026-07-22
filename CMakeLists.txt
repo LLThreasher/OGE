@@ -5,7 +5,9 @@ include(cmake/utils.cmake)
 message(STATUS "Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
 
-if (BUILD_ANDROID)
+option(GAME_BUILD_TARGET "Target to build" "Client")
+
+if (GAME_BUILD_TARGET STREQUAL "android")
 message(STATUS "building android")
 project(OneGame LANGUAGES NONE)
 else()
@@ -42,10 +44,14 @@ endif()
 
 include(cmake/build_config.cmake)
 
-if(NOT BUILD_ANDROID)
+if(NOT GAME_BUILD_TARGET STREQUAL "android")
 add_subdirectory(engine)
 add_subdirectory(game)
+if(GAME_BUILD_TARGET STREQUAL "client")
 add_subdirectory(game_desktop)
+elseif(GAME_BUILD_TARGET STREQUAL "server")
+add_subdirectory(game_server)
+endif()
 
 target_include_directories(
     game_data

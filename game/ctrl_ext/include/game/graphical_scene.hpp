@@ -26,16 +26,8 @@ using oge::runtime::AssetContext;
 using oge::runtime::OGEContext;
 using oge::runtime::gfx::UIPass;
 
-struct SceneFrame
-{
-    float dt;
-    oge::input::RawInputStream& is;
-    FramePerfStatus perfStats;
-    AppFrameAction& frameAction;
-};
-
-class Scene
-{
+class GraphicalScene
+{   
     using ViewExecutor = view::ViewExecutor<view::SubmissionQueue, TerrainPass2, UIPass, DebugInfoPass>;
     struct Ctx
     {
@@ -71,7 +63,15 @@ class Scene
     }
 
    public:
-    Scene(AppContext ctx)
+    struct Frame
+    {
+        float dt;
+        oge::input::RawInputStream& is;
+        FramePerfStatus perfStats;
+        AppFrameAction& frameAction;
+    };
+
+    GraphicalScene(AppContext ctx)
         : m_gameState(m_world, ctx.events),
           m_subsystems(m_gameState, ctx.any_factory, 1.f / 30.f),
           m_realtimeSubsystems(m_gameState, ctx.any_factory),
@@ -80,7 +80,7 @@ class Scene
     {
     }
 
-    virtual ~Scene() {}
+    virtual ~GraphicalScene() {}
 
     virtual void Attach(OGEContext& ctx, AnythingFactory& af) { 
         m_renderState.emplace(m_world, m_renderWorld, m_gameState.events, AssetContext(ctx));
@@ -89,7 +89,7 @@ class Scene
 
     virtual void Detach() { m_ctx.reset(); }
 
-    virtual void Update(SceneFrame f)
+    virtual void Update(Frame f)
     {
         m_inputs.Update({f.dt, f.is});
         m_world.ctx().insert_or_assign(f.perfStats);
@@ -103,66 +103,4 @@ class Scene
     void Render(float dt) { m_ctx.value().viewExecutor.Update(dt); }
 };
 
-class SceneRunner
-{
-   public:
-    SceneRunner(OGEContext& ctx)
-        : m_ctx(ctx),
-        m_anyFactory(ctx),
-        m_appCtx(m_anyFactory, m_events)
-    {
-        RegisterScene<Scene>();
-        SwitchToScene<Scene>();
-    }
-
-    template <typename TScene>
-        requires std::derived_from<TScene, Scene>
-    void RegisterScene()
-    {
-        m_scenes.emplace(std::type_index(typeid(TScene)), std::make_unique<TScene>(m_appCtx));
-    }
-
-    template <typename TScene>
-    void SwitchToScene()
-    {
-        m_nextScene = m_scenes.find(std::type_index(typeid(TScene)))->second.get();
-    }
-
-   protected:
-    void UpdateScene(SceneFrame f)
-    {
-        if (m_nextScene != nullptr)
-        {
-            if (m_currentScene != nullptr)
-            {
-                m_currentScene->Detach();
-            }
-            m_nextScene->Attach(m_ctx, m_anyFactory);
-            m_currentScene = m_nextScene;
-            m_nextScene = nullptr;
-        }
-        m_currentScene->Update(std::move(f));
-    }
-
-    void RenderScene(float dt) { m_currentScene->Render(dt); }
-
-    void DetachScene()
-    {
-        m_currentScene->Detach();
-        m_nextScene = m_currentScene;
-        m_currentScene = nullptr;
-    }
-
-   protected:
-    AnythingFactory m_anyFactory;
-    entt::dispatcher m_events;
-
-   private:
-    OGEContext& m_ctx;
-    AppContext m_appCtx;
-
-    std::unordered_map<std::type_index, std::unique_ptr<Scene>> m_scenes;
-    Scene* m_nextScene = nullptr;
-    Scene* m_currentScene = nullptr;
-};
 }  // namespace game

@@ -39,8 +39,7 @@ FetchContent_Declare(
 FetchContent_Declare(
     SDL
     GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-    # GIT_TAG        release-3.4.12
-    GIT_TAG        9c30a7cc82274ffff188fc8f61de2ba28c3681da
+    GIT_TAG        release-3.4.12
 )
 
 FetchContent_Declare(

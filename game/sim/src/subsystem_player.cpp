@@ -92,38 +92,40 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
             while (input.PollAction(event))
             {
                 creature.jumpOrder = creature.jumpOrder || event.get<PlayerAction::Jump>();
-                if (event.actionMask != 0 && player.lastActionTime <= 0.f)
+                if (event.actionMask != 0)
                 {
-                    auto raycastResult = terrain.CastRay(camera.position, ScreenToRay(camera, pcam, event.actionPos));
-                    if (raycastResult.has_value())
+                    if (player.lastActionTime <= 0.f)
                     {
-                        if (event.get<PlayerAction::Digging>())
+                        auto raycastResult = terrain.CastRay(camera.position, ScreenToRay(camera, pcam, event.actionPos));
+                        if (raycastResult.has_value())
                         {
-                            terrain.SetBlock(raycastResult.value().hitPos, 0);
-                        }
-                        if (event.get<PlayerAction::Placing>())
-                        {
-                            auto blockId = blocks.GetBlockId("stone");
-                            auto blockValue = blockId;
-                            auto placePos = raycastResult->hitPos + oge::perFaceOffset[raycastResult->hitFace];
-                            auto blkAABBs = blocks.GetBlockAABBList(blockId);
-                            bool canPlace = true;
-                            for (auto blkAABB : blkAABBs)
+                            if (event.get<PlayerAction::Digging>())
                             {
-                                if (CheckOverlap(collider.aabb + body.pos, blkAABB + placePos))
-                                {
-                                    canPlace = false;
-                                    break;
-                                }
+                                terrain.SetBlock(raycastResult.value().hitPos, 0);
                             }
-                            if (canPlace) terrain.SetBlock(placePos, blockValue);
+                            if (event.get<PlayerAction::Placing>())
+                            {
+                                auto blockId = blocks.GetBlockId("stone");
+                                auto blockValue = blockId;
+                                auto placePos = raycastResult->hitPos + oge::perFaceOffset[raycastResult->hitFace];
+                                auto blkAABBs = blocks.GetBlockAABBList(blockId);
+                                bool canPlace = true;
+                                for (auto blkAABB : blkAABBs)
+                                {
+                                    if (CheckOverlap(collider.aabb + body.pos, blkAABB + placePos))
+                                    {
+                                        canPlace = false;
+                                        break;
+                                    }
+                                }
+                                if (canPlace) terrain.SetBlock(placePos, blockValue);
+                            }
+                            player.lastActionTime = 0.2f;
                         }
-                        player.lastActionTime = 1.2f;
                     }
                 }
                 else
                 {
-                    LOG_DEBUG("reset action time");
                     player.lastActionTime = 0.f;
                 }
             }

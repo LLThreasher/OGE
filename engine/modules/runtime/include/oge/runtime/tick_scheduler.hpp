@@ -13,7 +13,6 @@ class TickScheduler
    public:
     explicit TickScheduler(float interval = 1 / 60.0f);
 
-    // Blocks until at least one fixed tick is available.
     // Returns true if a tick is ready.
     bool Poll(float dt);
 
@@ -31,10 +30,10 @@ class TickScheduler
     const float m_maxFrameTime = 0.25f;
 };
 
-class HeadlessTickScheduler
+class BlockingTickScheduler
 {
    public:
-    explicit HeadlessTickScheduler(double tickRate);
+    explicit BlockingTickScheduler(double tickRate);
 
     double WaitForNextTick();
 

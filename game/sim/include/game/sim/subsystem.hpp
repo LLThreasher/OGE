@@ -3,6 +3,7 @@
 #include "game/components.hpp"
 #include "game/frame_perf.hpp"  // debug info pass
 #include "game/input/player_input_stream.hpp"
+#include "oge/runtime/asset_manager.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
 
@@ -34,6 +35,7 @@ class Subsystem : public Stage<GameState, FGameState>
 class SubsystemPipeline : public FixedStepPipeline<Subsystem, float>
 {
    public:
+    NO_COPY(SubsystemPipeline)
     SubsystemPipeline(GameState& state, AnythingFactory& af, float updateInterval)
         : FixedStepPipeline<Subsystem, float>(state, af, updateInterval)
     {
@@ -45,8 +47,6 @@ class RealtimeSubsystemPipeline : public FramePipeline<Subsystem, float>
    public:
     RealtimeSubsystemPipeline(GameState& state, AnythingFactory& af) : FramePipeline<Subsystem, float>(state, af) {}
 };
-
-void RegisterSubsystems(AnythingFactory& af);
 
 #define DECL_FNS(SysName)                   \
    public:                                  \

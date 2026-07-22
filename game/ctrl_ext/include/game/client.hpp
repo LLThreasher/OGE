@@ -1,19 +1,20 @@
 #pragma once
 
-#include "game/scene.hpp"
+#include "game/graphical_scene.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/platform/window_app.hpp"
 #include "oge/runtime/asset_manager.hpp"
 #include "oge/runtime/asset_pool.hpp"
 #include "oge/runtime/streaming_manager.hpp"
 #include "oge/runtime/typed_registry.hpp"
+#include "game/scene_runner.hpp"
 
 namespace game
 {
 using namespace oge::platform;
 using namespace oge::runtime;
 
-class Client : public WindowApp, public SceneRunner
+class Client : public WindowApp, public SceneRunner<GraphicalScene>
 {
    public:
     Client();

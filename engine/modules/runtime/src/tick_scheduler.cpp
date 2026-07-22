@@ -29,13 +29,13 @@ float TickScheduler::ConsumeTick()
 
 float TickScheduler::GetAlpha() const { return m_accumulator / m_fixedDelta; }
 
-HeadlessTickScheduler::HeadlessTickScheduler(double tickRate)
+BlockingTickScheduler::BlockingTickScheduler(double tickRate)
     : m_tickInterval(std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(1.0 / tickRate)))
 {
     m_nextTick = clock::now();
 }
 
-double HeadlessTickScheduler::WaitForNextTick()
+double BlockingTickScheduler::WaitForNextTick()
 {
     m_nextTick += m_tickInterval;
 

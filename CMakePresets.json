@@ -18,7 +18,7 @@
       "inherits": "base",
       "generator": "Ninja",
       "cacheVariables": {
-        "BUILD_ANDROID": "ON",
+        "GAME_BUILD_TARGET": "android",
         "MAX_FRAMES_IN_FLIGHT": "2",
         "MAX_CMD_BUFFER_PER_QUEUE": "1",
         "FORCE_SINGLE_QUEUE": "ON"
@@ -31,6 +31,7 @@
       "inherits": "base",
       "generator": "Ninja",
       "cacheVariables": {
+        "GAME_BUILD_TARGET": "client",
         "CMAKE_C_COMPILER": "clang",
         "CMAKE_CXX_COMPILER": "clang++",
         "MAX_FRAMES_IN_FLIGHT": "1",
@@ -53,6 +54,7 @@
       "inherits": "base",
       "generator": "Ninja",
       "cacheVariables": {
+        "GAME_BUILD_TARGET": "client",
         "CMAKE_C_COMPILER": "clang-cl.exe",
         "CMAKE_CXX_COMPILER": "clang-cl.exe",
         "MAX_FRAMES_IN_FLIGHT": "2",
@@ -71,6 +73,7 @@
       "inherits": "base",
       "generator": "Ninja",
       "cacheVariables": {
+        "GAME_BUILD_TARGET": "client",
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
         "MAX_FRAMES_IN_FLIGHT": "1",
@@ -80,6 +83,21 @@
         "type": "equals",
         "lhs": "${hostSystemName}",
         "rhs": "Linux"
+      }
+    },
+    {
+      "name": "server-base",
+      "description": "Headless server build",
+      "hidden": true,
+      "inherits": "base",
+      "generator": "Ninja",
+      "cacheVariables": {
+        "GAME_BUILD_TARGET": "server",
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+        "BUILD_VULKAN": "OFF",
+        "BUILD_WINDOW_SDL3": "OFF",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       }
     },
     {
@@ -99,6 +117,28 @@
       "inherits": "linux-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "server-debug",
+      "displayName": "Server Debug",
+      "description": "Build Headless Server. (Debug)",
+      "inherits": "server-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "ENABLE_PERF": "ON",
+        "ENABLE_ASAN": "ON"
+      }
+    },
+    {
+      "name": "server-release",
+      "displayName": "Server Release",
+      "description": "Build Headless Server. (Release)",
+      "inherits": "server-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "ENABLE_PERF": "OFF",
+        "ENABLE_ASAN": "OFF"
       }
     },
     {

@@ -13,7 +13,7 @@
 #include "oge/fmt.hpp"
 #include "game/input/input_source.hpp"
 
-#include "game/sim/subsystem.hpp"
+#include "game/sim/registry.hpp"
 #include "game/view/renderer.hpp"
 #include "game/events.hpp"
 
@@ -79,7 +79,7 @@ AppFrameAction Client::Update(float dt, InputProvider PollInputs)
 
     perfStats.assetUploadTime = watch.Restart();
 
-    SceneRunner::RenderScene(dt);
+    CurrentScene()->Render(dt);
 
     auto endRes = backend.EndFrame();
     if (endRes == EndFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
