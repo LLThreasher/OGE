@@ -25,4 +25,8 @@ target_include_directories(oge_runtime
 
 add_library(oge::runtime ALIAS oge_runtime)
 
-target_link_libraries(oge_runtime PUBLIC oge::core oge::platform EnTT::EnTT)
+target_link_libraries(oge_runtime
+PUBLIC oge::core oge::platform
+EnTT::EnTT
+PRIVATE
+        enet)

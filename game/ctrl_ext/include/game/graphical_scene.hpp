@@ -15,6 +15,7 @@
 #include "oge/runtime/gfx/draw_context.hpp"
 #include "oge/runtime/gfx/ui_pass.hpp"
 #include "oge/runtime/typed_registry.hpp"
+#include "game/json.hpp"
 
 namespace game
 {
@@ -82,7 +83,7 @@ class GraphicalScene
 
     virtual ~GraphicalScene() {}
 
-    virtual void Attach(OGEContext& ctx, AnythingFactory& af) { 
+    virtual void Attach(const json::Value& args, OGEContext& ctx, AnythingFactory& af) { 
         m_renderState.emplace(m_world, m_renderWorld, m_gameState.events, AssetContext(ctx));
         m_renderers.emplace(*&m_renderState.value(), af);
         m_ctx.emplace(ctx); }

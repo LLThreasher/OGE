@@ -4,6 +4,7 @@
 #include "game/sim/subsystem.hpp"
 #include "oge/runtime/asset_base.hpp"
 #include "oge/runtime/typed_registry.hpp"
+#include "game/json.hpp"
 
 namespace game
 {
@@ -40,7 +41,7 @@ class Scene
     {
     }
 
-    virtual void Attach(OGEContext& ctx, AnythingFactory& af)
+    virtual void Attach(const json::Value& args, OGEContext& ctx, AnythingFactory& af)
     {
         m_ctx.emplace(ctx);
     }

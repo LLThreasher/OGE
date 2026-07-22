@@ -7,6 +7,7 @@
 #include "game/input/input_source.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/graphical_scene.hpp"
+#include "game/json.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
 #include "game/ui/objects.hpp"
@@ -71,7 +72,10 @@ class DebugScene3 : public GraphicalScene
         m_realtimeSubsystems.AddStage<sim::SubsystemPlayer<UpdateType::Realtime>>();
         m_realtimeSubsystems.AddStage<sim::SubsystemCreature<UpdateType::Realtime>>();
         m_realtimeSubsystems.AddStage<sim::SubsystemPhysics<UpdateType::Realtime>>();
+    }
 
+    void Attach(const json::Value& args, OGEContext& ctx, AnythingFactory& af) override
+    {
         auto& blocks = m_world.ctx().emplace<terrain::BlockRegistry>();
         blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1, });
         blocks.RegisterBlock("wood", {"Wood", "wood_plank.png", 1});
@@ -81,11 +85,8 @@ class DebugScene3 : public GraphicalScene
 
         auto desc = m_world.ctx().emplace<terrain::TerrainDesc>();
         desc.chunkViewDistance = 1;
-    }
-
-    void Attach(OGEContext& ctx, AnythingFactory& af) override
-    {
-        GraphicalScene::Attach(ctx, af);
+        
+        GraphicalScene::Attach(args, ctx, af);
 
         m_renderers->AddStage<view::TerrainRenderer>();
         m_renderers->AddStage<view::DebugInfoRenderer>();

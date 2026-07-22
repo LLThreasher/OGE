@@ -1,10 +1,13 @@
 #pragma once
+#include <algorithm>
 #include <concepts>
 
+#include "entt/core/fwd.hpp"
 #include "game/app_context.hpp"
 #include "game/frame_perf.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/runtime/typed_registry.hpp"
+#include "game/json.hpp"
 
 namespace game
 {
@@ -12,10 +15,10 @@ using oge::runtime::OGEContext;
 
 template <typename T>
 concept IsScene =
-    requires(T s, float dt, T::Frame f, OGEContext& rctx, AnythingFactory& af) {
+    requires(T s, float dt, const json::Value& args, T::Frame f, OGEContext& rctx, AnythingFactory& af) {
         typename T::Frame;
         std::constructible_from<T, AppContext>;
-        { s.Attach(rctx, af) };
+        { s.Attach(args, rctx, af) };
         { s.Update(f) };
         { s.Detach() };
     };
@@ -41,8 +44,9 @@ class SceneRunner
     }
 
     template <typename TScene>
-    void SwitchToScene()
+    void SwitchToScene(json::Value sceneArgs = nullptr)
     {
+        m_nextSceneArgs = std::move(sceneArgs);
         m_nextScene =
             m_scenes.find(std::type_index(typeid(TScene)))->second.get();
     }
@@ -58,7 +62,7 @@ class SceneRunner
             {
                 m_currentScene->Detach();
             }
-            m_nextScene->Attach(m_ctx, m_anyFactory);
+            m_nextScene->Attach(m_nextSceneArgs, m_ctx, m_anyFactory);
             m_currentScene = m_nextScene;
             m_nextScene = nullptr;
         }
@@ -82,6 +86,7 @@ class SceneRunner
     AppContext m_appCtx;
 
     std::unordered_map<std::type_index, std::unique_ptr<TSceneBase>> m_scenes;
+    json::Value m_nextSceneArgs = nullptr;
     TSceneBase* m_nextScene = nullptr;
     TSceneBase* m_currentScene = nullptr;
 };
