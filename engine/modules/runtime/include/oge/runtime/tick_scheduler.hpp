@@ -33,7 +33,7 @@ class TickScheduler
 class BlockingTickScheduler
 {
    public:
-    explicit BlockingTickScheduler(double tickRate);
+    explicit BlockingTickScheduler(float interval = 1 / 30.f);
 
     double WaitForNextTick();
 

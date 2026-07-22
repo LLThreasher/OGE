@@ -39,12 +39,6 @@ using oge::Point3;
 using oge::Pool;
 using oge::LocalPoint3;
 
-struct TerrainDesc
-{
-    int chunkViewDistance = 8;
-    int terrainGenChunkBudget = 8;
-};
-
 enum class TerrainObject
 {
     Chunk,

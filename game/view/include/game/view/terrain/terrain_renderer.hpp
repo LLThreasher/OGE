@@ -114,11 +114,6 @@ class TerrainUploader
     void UploadTerrain(TerrainPresentationData& terrain, AssetContext& ctx);
 };
 
-struct TerrainRendererDesc
-{
-    int meshingQuadBudget = 4096 * 4;
-};
-
 class TerrainRenderer : public Renderer
 {
    public:

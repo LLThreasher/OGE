@@ -1,8 +1,8 @@
 #pragma once
+#include <cassert>
 #include <cstring>
 #include <stdexcept>
 #include <vector>
-#include <cassert>
 
 namespace oge::runtime::net
 {
@@ -78,13 +78,20 @@ class Object
    public:
     void Serialize(Buffer& buffer)
     {
-        static_cast<Derived*>(this)->VisitFields([&](auto& field) { field.Serialize(buffer); });
+        static_cast<Derived*>(this)->VisitFields([&](auto& field)
+                                                 { field.Serialize(buffer); });
     }
 
     void Deserialize(Buffer& buffer)
     {
-        static_cast<Derived*>(this)->VisitFields([&](auto& field) { field.Deserialize(buffer); });
+        static_cast<Derived*>(this)->VisitFields(
+            [&](auto& field) { field.Deserialize(buffer); });
     }
 };
 
-}  // namespace OneGame::Engine::Net
+#define NET_OBJ(Name) struct Name : net::Object<Name>
+#define NET_OBJ_FN        \
+    template <typename F> \
+    void VisitFields(F&& visit)
+
+}  // namespace oge::runtime::net

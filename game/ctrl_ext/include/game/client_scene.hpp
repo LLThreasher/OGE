@@ -22,17 +22,6 @@ enum class ClientState
     Disconnected,
 };
 
-class DistrubutedGameWorld
-{
-    struct WorldConfig : net::Object<WorldConfig>
-    {
-        template<typename F>
-        void VisitFields(F&& visitor)
-        {
-        }
-    };
-};
-
 class ClientScene
 {
     GraphicalScene* child;
