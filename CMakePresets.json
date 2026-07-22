@@ -19,8 +19,8 @@
       "generator": "Ninja",
       "cacheVariables": {
         "GAME_BUILD_TARGET": "android",
-        "MAX_FRAMES_IN_FLIGHT": "2",
-        "MAX_CMD_BUFFER_PER_QUEUE": "1",
+        "MAX_FRAMES_IN_FLIGHT": "1",
+        "MAX_CMD_BUFFER_PER_QUEUE": "2",
         "FORCE_SINGLE_QUEUE": "ON"
       }
     },

@@ -16,6 +16,7 @@
 #include "oge/input/keyboard.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/typed_registry.hpp"
+#include "game/json.hpp"
 
 namespace game
 {
@@ -74,9 +75,9 @@ class DebugScene2 : public GraphicalScene
         // desc.chunkViewDistance = 1;
     }
 
-    void Attach(OGEContext& ctx, AnythingFactory& af) override
+    void Attach(const json::Value& args, OGEContext& ctx, AnythingFactory& af) override
     {
-        GraphicalScene::Attach(ctx, af);
+        GraphicalScene::Attach(args, ctx, af);
 
         // m_renderers->AddStage<view::TerrainRenderer>();
         m_renderers->AddStage<view::DebugInfoRenderer>();
