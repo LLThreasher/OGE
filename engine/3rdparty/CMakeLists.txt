@@ -55,12 +55,20 @@ FetchContent_Declare(
     GIT_TAG        master
 )
 
+FetchContent_Declare(
+    fmt
+    GIT_REPOSITORY https://github.com/fmtlib/fmt.git
+    GIT_TAG        12.2.0
+)
+
 FetchContent_MakeAvailable(glm)
 FetchContent_MakeAvailable(entt)
 FetchContent_MakeAvailable(freetype)
 FetchContent_MakeAvailable(enet)
+FetchContent_MakeAvailable(fmt)
 
-set(SPDLOG_USE_STD_FORMAT ON CACHE BOOL "" FORCE)
+# set(SPDLOG_USE_STD_FORMAT ON CACHE BOOL "" FORCE)
+set(SPDLOG_FMT_EXTERNAL ON)
 FetchContent_MakeAvailable(spdlog)
 
 if(BUILD_WINDOW_SDL3)

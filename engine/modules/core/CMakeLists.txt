@@ -30,6 +30,6 @@ PUBLIC
 )
 endif()
 
-target_link_libraries(oge_core PUBLIC glm::glm)
+target_link_libraries(oge_core PUBLIC glm::glm fmt::fmt)
 
 add_library(oge::core ALIAS oge_core)

@@ -92,9 +92,8 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
     map[SDLK_Y] = KeyCode::KY_Y;
     map[SDLK_Z] = KeyCode::KY_Z;
 
-    LOG_INFO("SDL3 GameWindow Created");
+    LOG_INFO("Creating SDL3 GameWindow");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
-    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
     // 1. Initialize SDL
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);
 
@@ -106,11 +105,14 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
 #endif
     window_width = width;
     window_height = height;
+    LOG_INFO("SDL3 GameWindow Created");
 }
 
 void SDL3GameWindow::Run(WindowApp& app)
 {
+    LOG_INFO("SDL3 GameWindow ShowWindow");
     SDL_ShowWindow(m_window);
+    LOG_INFO("Begin initializing");
 #if !defined(OGE_DEBUG) || defined(PLATFORM_ANDROID)
     try
     {

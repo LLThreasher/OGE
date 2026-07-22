@@ -1,16 +1,9 @@
-#pragma once
-#include <array>
-#include <cassert>
-#include <cstdint>
-#include <vector>
+#include "oge/chunk_allocator.hpp"
 
-namespace oge::runtime::gfx
+namespace oge
 {
-class ChunkAllocator
-{
-   public:
     // maxChunks must be divisible by 4
-    explicit ChunkAllocator(uint32_t maxChunks)
+    ChunkAllocator::ChunkAllocator(uint32_t maxChunks)
     {
         m_totalChunks = maxChunks;
         m_blockOrder.resize(maxChunks);
@@ -23,32 +16,19 @@ class ChunkAllocator
     }
 
     // size must be 1, 2, or 4
-    int Allocate(uint32_t size)
+    int ChunkAllocator::Allocate(uint32_t size)
     {
         uint32_t order = SizeToOrder(size);
         return AllocateOrder(order);
     }
 
-    void Free(uint32_t index, uint32_t size)
+    void ChunkAllocator::Free(uint32_t index, uint32_t size)
     {
         uint32_t order = SizeToOrder(size);
         FreeOrder(index, order);
     }
 
-    uint32_t GetMaxNumChunks() const { return m_totalChunks; }
-
-   private:
-    static constexpr uint32_t INVALID_ORDER = 0xFFFFFFFF;
-
-    uint32_t m_totalChunks;
-
-    // Free lists for order 0, 1, 2
-    std::array<std::vector<uint32_t>, 3> m_freeLists;
-
-    // Tracks the order of each block (only valid at block starts)
-    std::vector<uint32_t> m_blockOrder;
-
-    static uint32_t SizeToOrder(uint32_t size)
+    uint32_t ChunkAllocator::SizeToOrder(uint32_t size)
     {
         switch (size)
         {
@@ -64,11 +44,11 @@ class ChunkAllocator
         }
     }
 
-    static uint32_t OrderToSize(uint32_t order) { return 1u << order; }
+    uint32_t ChunkAllocator::OrderToSize(uint32_t order) { return 1u << order; }
 
-    uint32_t BuddyIndex(uint32_t index, uint32_t order) const { return index ^ OrderToSize(order); }
+    uint32_t ChunkAllocator::BuddyIndex(uint32_t index, uint32_t order) const { return index ^ OrderToSize(order); }
 
-    int AllocateOrder(uint32_t order)
+    int ChunkAllocator::AllocateOrder(uint32_t order)
     {
         // Try exact order
         if (!m_freeLists[order].empty())
@@ -106,7 +86,7 @@ class ChunkAllocator
         return -1;  // out of memory
     }
 
-    void FreeOrder(uint32_t index, uint32_t order)
+    void ChunkAllocator::FreeOrder(uint32_t index, uint32_t order)
     {
         assert(index < m_totalChunks);
 
@@ -130,7 +110,7 @@ class ChunkAllocator
         m_freeLists[order].push_back(index);
     }
 
-    void RemoveFromFreeList(uint32_t index, uint32_t order)
+    void ChunkAllocator::RemoveFromFreeList(uint32_t index, uint32_t order)
     {
         auto& list = m_freeLists[order];
 
@@ -146,5 +126,4 @@ class ChunkAllocator
 
         assert(false && "Buddy not found in free list");
     }
-};
-}  // namespace OneGame::Engine::Graphics
+}

@@ -1,4 +1,4 @@
-#include "game/view/gfx/terrain_pass.hpp"
+#include "game/view/gfx/terrain_pass2.hpp"
 
 #include "internals.hpp"
 #include "game/terrain/defs.hpp"

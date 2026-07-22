@@ -3,7 +3,7 @@
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/objects.hpp"
 #include "oge/runtime/objects_ext.hpp"
-#include "chunk_allocator.hpp"
+#include "oge/chunk_allocator.hpp"
 
 namespace oge::runtime::gfx
 {

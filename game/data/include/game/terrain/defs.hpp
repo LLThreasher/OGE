@@ -20,7 +20,7 @@ constexpr int CHUNK_SHIFT_Z = 8;
 
 NET_OBJ(TerrainRendererDesc)
 {
-    int meshingQuadBudget = 4096 * 4;
+    net::UInt32 meshingQuadBudget = 4096 * 4;
 
     NET_OBJ_FN
     {
@@ -30,8 +30,8 @@ NET_OBJ(TerrainRendererDesc)
 
 NET_OBJ(TerrainDesc)
 {
-    int chunkViewDistance = 8;
-    int terrainGenChunkBudget = 8;
+    net::Int32 chunkViewDistance = 8;
+    net::Int32 terrainGenChunkBudget = 8;
 
     NET_OBJ_FN
     {

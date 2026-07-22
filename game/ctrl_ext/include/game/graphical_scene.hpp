@@ -1,21 +1,27 @@
 #pragma once
 
+#include <array>
 #include <memory>
+#include <memory_resource>
 #include <optional>
+#include <valarray>
+#include <vector>
 
 #include "game/app_context.hpp"
 #include "game/input/input_source.hpp"
+#include "game/json.hpp"
+#include "game/memory_context.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/view/gfx/debug_info_pass.hpp"
-#include "game/view/gfx/terrain_pass.hpp"
+#include "game/view/gfx/terrain_pass2.hpp"
 #include "game/view/gfx/view_executor.hpp"
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
+#include "oge/array_helper.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
 #include "oge/runtime/gfx/ui_pass.hpp"
 #include "oge/runtime/typed_registry.hpp"
-#include "game/json.hpp"
 
 namespace game
 {
@@ -28,21 +34,23 @@ using oge::runtime::OGEContext;
 using oge::runtime::gfx::UIPass;
 
 class GraphicalScene
-{   
-    using ViewExecutor = view::ViewExecutor<view::SubmissionQueue, TerrainPass2, UIPass, DebugInfoPass>;
+{
+    using ViewExecutor =
+        view::ViewExecutor<TerrainPass2, UIPass, DebugInfoPass>;
     struct Ctx
     {
         OGEContext& ctx;
         AssetContext assets;
-        view::SubmissionQueue s_queue;
-        ViewExecutor viewExecutor;
 
-        Ctx(OGEContext& ctx) : ctx(ctx), assets(ctx), viewExecutor(s_queue) { viewExecutor.Attach(ctx); }
-
-        ~Ctx() { viewExecutor.Detach(); }
+        Ctx(OGEContext& ctx) : ctx(ctx), assets(ctx) {}
     };
 
    protected:
+    MemoryContext m_memory{{MAX_FRAMES_IN_FLIGHT, 1 * 1024 * 1024}, {1 * 1024 * 1024, 5.f}};
+    std::array<view::SubmissionQueue, 3> m_squeue{m_memory.frameBuffer.Get(0),
+                                                  m_memory.frameBuffer.Get(1),
+                                                  m_memory.frameBuffer.Get(2)};
+    ViewExecutor m_viewExecutor;
     std::optional<Ctx> m_ctx;
 
     sim::GameState m_gameState;
@@ -58,10 +66,7 @@ class GraphicalScene
     std::optional<view::RendererState> m_renderState;
     std::optional<view::RenderPipeline> m_renderers;
 
-    ViewExecutor& GetPasses()
-    {
-        return m_ctx.value().viewExecutor;
-    }
+    ViewExecutor& GetPasses() { return m_viewExecutor; }
 
    public:
     struct Frame
@@ -73,7 +78,7 @@ class GraphicalScene
     };
 
     GraphicalScene(AppContext ctx)
-        : m_gameState(m_world, ctx.events),
+        : m_gameState(m_world, ctx.events, m_memory),
           m_subsystems(m_gameState, ctx.any_factory, 1.f / 30.f),
           m_realtimeSubsystems(m_gameState, ctx.any_factory),
           m_inputState(m_windowCtx, m_world),
@@ -83,25 +88,42 @@ class GraphicalScene
 
     virtual ~GraphicalScene() {}
 
-    virtual void Attach(const json::Value& args, OGEContext& ctx, AnythingFactory& af) { 
-        m_renderState.emplace(m_world, m_renderWorld, m_gameState.events, AssetContext(ctx));
+    virtual void Attach(const json::Value& args, OGEContext& ctx,
+                        AnythingFactory& af)
+    {
+        m_renderState.emplace(m_world, m_renderWorld, m_gameState.events,
+                              m_memory, AssetContext(ctx));
         m_renderers.emplace(*&m_renderState.value(), af);
-        m_ctx.emplace(ctx); }
+        m_ctx.emplace(ctx);
+        m_viewExecutor.Attach(ctx);
+    }
 
-    virtual void Detach() { m_ctx.reset(); }
+    virtual void Detach()
+    {
+        m_viewExecutor.Detach();
+        m_ctx.reset();
+    }
 
     virtual void Update(Frame f)
     {
+        m_memory.Update(f.dt);
         m_inputs.Update({f.dt, f.is});
         m_world.ctx().insert_or_assign(f.perfStats);
         m_subsystems.Update(f.dt);
         m_realtimeSubsystems.Update(f.dt);
-        m_renderers->Update(view::RendererFrameData{f.dt, m_ctx.value().assets, m_ctx.value().s_queue, m_subsystems.GetAlpha()});
+
+        m_squeue[m_memory.frameBuffer.Idx()].Clear();
+        m_renderers->Update(view::RendererFrameData{
+            f.dt, m_ctx.value().assets, m_squeue[m_memory.frameBuffer.Idx()],
+            m_subsystems.GetAlpha()});
         f.frameAction |= m_windowCtx.frameAction;
         m_windowCtx.Clear();
     }
 
-    void Render(float dt) { m_ctx.value().viewExecutor.Update(dt); }
+    void Render(float dt)
+    {
+        m_viewExecutor.Update(dt, m_squeue[m_memory.frameBuffer.Idx()]);
+    }
 };
 
 }  // namespace game

@@ -25,14 +25,30 @@ class SpdLogger : public ILogger
 #endif
 
         m_logger = std::make_shared<spdlog::logger>("oge", sink);
-        m_logger->sinks().push_back(m_ring_sink);
+        // m_logger->sinks().push_back(m_ring_sink);
         m_logger->set_level(spdlog::level::trace);
         m_logger->flush_on(spdlog::level::trace);
 
         spdlog::register_logger(m_logger);
     }
 
-    void Log(LogLevel level, std::string_view msg) override { m_logger->log(ToSpdLevel(level), msg); }
+    void Log(LogLevel level, std::string_view msg) override
+    {
+        m_logger->log(ToSpdLevel(level), msg);
+        if (m_sink) m_sink(level, msg, m_sinkUser);
+    }
+
+    void SetSink(SinkFn fn, void* user) override
+    {
+        m_sink = fn;
+        m_sinkUser = user;
+    }
+
+    void ClearSink() override
+    {
+        m_sink = nullptr;
+        m_sinkUser = nullptr;
+    }
 
    private:
     static spdlog::level::level_enum ToSpdLevel(LogLevel level)
@@ -57,7 +73,10 @@ class SpdLogger : public ILogger
 
    private:
     std::shared_ptr<spdlog::logger> m_logger;
-    std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> m_ring_sink =
-        std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt>(new spdlog::sinks::ringbuffer_sink_mt(128));
+    SinkFn m_sink = nullptr;
+    void* m_sinkUser = nullptr;
+    // std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt> m_ring_sink =
+    //     std::shared_ptr<spdlog::sinks::ringbuffer_sink_mt>(new
+    //     spdlog::sinks::ringbuffer_sink_mt(128));
 };
 }  // namespace oge::platform

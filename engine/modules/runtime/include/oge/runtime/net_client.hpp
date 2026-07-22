@@ -1,7 +1,11 @@
 #pragma once
 
+#include <cstddef>
 #include "oge/log.hpp"
+#include "oge/ring_allocator.hpp"
 #include "oge/runtime/entt.hpp"
+#include "oge/runtime/net_packet_producer.hpp"
+#include "oge/runtime/net_serializer.hpp"
 
 struct _ENetPeer;
 struct _ENetHost;
@@ -32,13 +36,13 @@ struct OnClientDisconnected
 
 struct OnClientPacketReceived
 {
-    uint8_t* data;
-    size_t length;
+    net::Buffer data;
 };
 
 class NetClient
 {
    public:
+    NetClient(size_t size) : sendPacketProducer(size) {}
     ~NetClient() { Shutdown(); }
 
     bool Initialize(size_t channelCount = 2);
@@ -53,17 +57,24 @@ class NetClient
 
     void Shutdown();
 
-    void SendReliable(const void* data, size_t size, uint8_t channel = 0);
+    net::Buffer StartPacket(size_t size);
 
-    void SendUnreliable(const void* data, size_t size, uint8_t channel = 1);
+    void SendReliable(net::Buffer data, uint8_t channel = 0);
+
+    void SendUnreliable(net::Buffer data, uint8_t channel = 1);
 
    private:
-    void OnPacketReceived(uint8_t* data, size_t length) { LOG_INFO("Client received {} bytes", length); }
+    void OnPacketReceived(uint8_t* data, size_t length)
+    {
+        LOG_INFO("Client received {} bytes", length);
+    }
 
    private:
     float connectWaitTime;
     ClientStatus status = ClientStatus::Disconnected;
     ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
+
+    NetPacketProducer sendPacketProducer;
 };
-}  // namespace OneGame::Engine
+}  // namespace oge::runtime

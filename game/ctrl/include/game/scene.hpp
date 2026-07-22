@@ -28,6 +28,7 @@ class Scene
     };
 
    protected:
+    MemoryContext m_memory = {{1, 8*1024}, {1*256*1024, 10.f}}; // 8k per frame, 256k per 5 sec
     std::optional<Ctx> m_ctx;
 
     sim::GameState m_gameState;
@@ -36,7 +37,7 @@ class Scene
 
    public:
     Scene(AppContext ctx)
-        : m_gameState(m_world, ctx.events),
+        : m_gameState(m_world, ctx.events, m_memory),
           m_subsystems(m_gameState, ctx.any_factory, 1.f / 30.f)
     {
     }

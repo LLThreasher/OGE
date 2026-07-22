@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include "game/memory_context.hpp"
 #include "game/view/submission_queue.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/gfx/uniform_arena.hpp"
@@ -23,6 +24,7 @@ struct RendererState
     entt::registry& world;
     entt::registry& renderWorld;
     entt::dispatcher& events;
+    MemoryContext& memory;
     AssetContext assets;
 };
 
@@ -43,6 +45,7 @@ struct FRendererState
     const entt::registry& world;
     entt::registry& renderWorld;
     entt::dispatcher& events;
+    MemoryContext& memory;
 
     FRendererState(RendererFrameData& frame, RendererState& state)
         : dt(frame.dt),
@@ -51,7 +54,8 @@ struct FRendererState
           world(state.world),
           renderWorld(state.renderWorld),
           submissionQueue(frame.submissionQueue),
-          events(state.events)
+          events(state.events),
+          memory(state.memory)
     {
     }
 };
@@ -70,10 +74,6 @@ void RegisterRenderers(AnythingFactory& af);
 
 class DebugInfoRenderer : public Renderer
 {
-    oge::runtime::TickScheduler tickScheduler{1.f};
-    std::shared_ptr<ui::IFont> debugFont;
-    std::string debugString;
-    std::string gpuDebugString;
    public:
     DECL_ID(DebugInfoRenderer);
     void onAttach(RendererState&) override;
@@ -83,6 +83,9 @@ private:
     float m_duration = 0;
     uint32_t m_currentGPUMem = 0;
     uint32_t m_budgetGPUMem = 0;
+    oge::runtime::TickScheduler tickScheduler{1.f};
+    std::shared_ptr<ui::IFont> debugFont;
+    std::string gpuDebugString;
 };
 
 class CameraRenderer : public Renderer

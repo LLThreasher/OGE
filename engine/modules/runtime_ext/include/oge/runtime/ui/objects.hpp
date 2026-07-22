@@ -28,6 +28,12 @@ struct UISprite
     ColorRGBA8 color = COLOR_WHITE;
 };
 
+enum class TextAlignment : uint8_t
+{
+    Left = 0,
+    Right,
+};
+
 struct UITextData
 {
     std::string_view text = "";
@@ -35,6 +41,7 @@ struct UITextData
     ColorRGBA8 color = COLOR_WHITE;
     bool enableWrap = false;
     bool enableCutoff = false;
+    TextAlignment alignment;
 };
 
 struct UIText
@@ -92,7 +99,7 @@ class IFont
 {
    public:
     virtual ~IFont() = default;
-    virtual void CreateTextSprites(SubmissionView<gfx::CmdDrawSprite>& squeue, UITextData text, ScreenRect rect) = 0;
+    virtual void CreateTextSprites(SubmissionView<gfx::CmdDrawSprite> squeue, UITextData text, ScreenRect rect) = 0;
 };
 std::unique_ptr<IFont> LoadASCIIBitmapFontMxN(int m, int n, AssetContext& ctx, std::string_view textureId);
 

@@ -1,9 +1,12 @@
 #pragma once
 
+#include <cstddef>
+#include <cstdint>
 #include <cstdlib>
+#include <span>
 #include <vector>
 #include <unordered_map>
-#include <mutex>
+#include <cassert>
 
 namespace oge
 {
@@ -43,36 +46,84 @@ class RingAllocator
     uint64_t m_lastFlushHead = 0;
 
     std::unordered_map<uint64_t, uint64_t> m_pendingFrees;
-    mutable std::mutex m_mutex;
 };
 
 class CpuRingBuffer
 {
 public:
-    void Initialize(uint64_t size)
+    explicit CpuRingBuffer(uint64_t size)
     {
         m_allocator.Initialize(size, 4);
         m_memory.resize(size);
     }
 
-    bool TryAllocate(uint64_t size, RingAllocator::Allocation& out)
+    bool TryAllocate(uint64_t size, std::span<std::byte>& out)
     {
-        return m_allocator.TryAllocate(size, out);
+        RingAllocator::Allocation alloc;
+        if (m_allocator.TryAllocate(size, alloc))
+        {
+            out = std::span<std::byte>{m_memory.data() + alloc.offset, static_cast<size_t>(alloc.size)};
+            return true;
+        }
+        return false;
     }
 
-    void* GetPointer(uint64_t offset)
+    void Free(std::span<std::byte> span)
     {
-        return m_memory.data() + offset;
-    }
-
-    void Free(uint64_t offset, uint64_t size)
-    {
-        m_allocator.Free(offset, size);
+        assert(&span[0] - m_memory.data() < m_memory.size());
+        m_allocator.Free(&span[0] - m_memory.data(), span.size());
     }
 
 private:
     RingAllocator m_allocator;
-    std::vector<uint8_t> m_memory;
+    std::vector<std::byte> m_memory;
+};
+
+class CpuRingAllocator
+{
+public:
+    explicit CpuRingAllocator(uint64_t size)
+    {
+        m_allocator.Initialize(size, alignof(std::max_align_t));
+        m_memory.resize(size);
+    }
+
+    void* malloc(uint64_t size)
+    {
+        const uint64_t totalSize = size + sizeof(uint64_t);
+
+        RingAllocator::Allocation alloc;
+        if (!m_allocator.TryAllocate(totalSize, alloc))
+            return nullptr;
+
+        // write header
+        auto* header = reinterpret_cast<uint64_t*>(&m_memory[alloc.offset]);
+        *header = totalSize;
+
+        return &m_memory[alloc.offset + sizeof(uint64_t)];
+    }
+
+    void Free(void* ptr)
+    {
+        assert(ptr != nullptr);
+
+        auto* base = m_memory.data();
+        auto* userPtr = reinterpret_cast<std::byte*>(ptr);
+
+        uint64_t userOffset = userPtr - base;
+        assert(userOffset >= sizeof(uint64_t));
+
+        uint64_t headerOffset = userOffset - sizeof(uint64_t);
+
+        auto* header = reinterpret_cast<uint64_t*>(&m_memory[headerOffset]);
+        uint64_t totalSize = *header;
+
+        m_allocator.Free(headerOffset, totalSize);
+    }
+
+private:
+    RingAllocator m_allocator;
+    std::vector<std::byte> m_memory;
 };
 
 }  // namespace oge

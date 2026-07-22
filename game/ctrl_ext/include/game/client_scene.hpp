@@ -22,9 +22,8 @@ enum class ClientState
     Disconnected,
 };
 
-class ClientScene
+class ClientScene : GraphicalScene
 {
-    GraphicalScene* child;
 public:
     
 };

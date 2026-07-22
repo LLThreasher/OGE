@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
-#include <format>
+#include <string_view>
+#include <fmt/format.h>
 
 #define LOG_INFO(...) oge::Log(oge::LogLevel::Info, __VA_ARGS__)
 #define LOG_WARN(...) oge::Log(oge::LogLevel::Warn, __VA_ARGS__)
@@ -28,17 +28,21 @@ enum class LogLevel
 class ILogger
 {
    public:
+    using SinkFn = void(*)(LogLevel, std::string_view, void* user);
+
     virtual ~ILogger() = default;
     virtual void Log(LogLevel level, std::string_view msg) = 0;
+    virtual void SetSink(SinkFn fn, void* user) = 0;
+    virtual void ClearSink() = 0;
 };
 
 void SetLogger(ILogger*);
 ILogger* GetLogger();
 
 template<typename... Args>
-void Log(LogLevel lvl, std::format_string<Args...> fmt, Args&&... args)
+void Log(LogLevel lvl, fmt::format_string<Args...> fmt, Args&&... args)
 {
-    auto msg = std::format(fmt, std::forward<Args>(args)...);
+    auto msg = fmt::format(fmt, std::forward<Args>(args)...);
     GetLogger()->Log(lvl, msg);
 }
 

@@ -2,7 +2,6 @@
 #include <algorithm>
 #include <concepts>
 
-#include "entt/core/fwd.hpp"
 #include "game/app_context.hpp"
 #include "game/frame_perf.hpp"
 #include "oge/input/raw_input_stream.hpp"

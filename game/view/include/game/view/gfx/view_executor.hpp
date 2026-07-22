@@ -12,11 +12,12 @@ namespace game::view::gfx
 {
 using namespace oge::runtime::gfx;
 
-template <typename TQueue, typename... Passes>
+template <typename... Passes>
 class ViewExecutor
 {
    public:
-    ViewExecutor(TQueue& queue) : m_queue(queue) {}
+    ViewExecutor() {}
+    
     void Attach(OGEContextReadOnly& ctx)
     {
         m_ctx.emplace(ctx);
@@ -29,18 +30,18 @@ class ViewExecutor
         m_ctx.reset();
     }
 
-    void Update(float dt)
+    template<typename TQueue>
+    void Update(float dt, TQueue& s_queue)
     {
         DrawContext ctx(dt, m_ctx.value());
-        m_queue.template Add<CmdAddView>(GameViewType::Overlay, IRect16{{0, 0}, ctx.backend.SwapchainExtent()});
+        s_queue.template Add<CmdAddView>(GameViewType::Overlay, IRect16{{0, 0}, ctx.backend.SwapchainExtent()});
         for (auto view : ALL_GAME_VIEWS)
         {
-            DrawView(ctx, m_queue.GetSingle(view));
+            DrawView(ctx, s_queue.GetSingle(view));
         }
         {
-            DrawView(ctx, m_queue.GetSingle(GameViewType::Overlay));
+            DrawView(ctx, s_queue.GetSingle(GameViewType::Overlay));
         }
-        m_queue.Clear();
     }
 
     template <typename Pass>
@@ -51,7 +52,7 @@ class ViewExecutor
 
    private:
     template <typename TView>
-    void DrawView(DrawContext& ctx, TView queue)
+    void DrawView(DrawContext& ctx, TView& queue)
     {
         auto& views = queue.template Get<CmdAddView>();
         if (views.empty()) return;
@@ -83,7 +84,6 @@ class ViewExecutor
             m_passes);
     }
 
-    TQueue& m_queue;
     std::optional<InitDrawContext> m_ctx;
     std::tuple<Passes...> m_passes;
 };

@@ -36,7 +36,7 @@ class TerrainGenerator
 {
    public:
     void GenerateTerrain(TerrainData& terrain, BlockRegistry& blocks);
-    void SetTerrainGenChunkBudget(int chunkBudget) { terrainGenChunkBudget = chunkBudget; }
+    void SetTerrainGenChunkBudget(int32_t chunkBudget) { terrainGenChunkBudget = chunkBudget; }
 
    private:
     int terrainGenChunkBudget = 8;

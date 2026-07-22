@@ -20,7 +20,7 @@ class Pass
    public:
     using View = SubmissionView<Args...>;
     template <typename TQueue>
-    TQueue::template TView<Args...> ExtractView(TQueue queue)
+    TQueue::template TView<Args...> ExtractView(TQueue& queue)
     {
         return queue.template View<Args...>();
     }

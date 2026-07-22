@@ -2,9 +2,12 @@
 
 #include <enet/enet.h>
 
+#include "oge/runtime/net_serializer.hpp"
+
 namespace oge::runtime
 {
-bool NetServer::Initialize(uint16_t port, size_t maxClients, size_t channelCount)
+bool NetServer::Initialize(uint16_t port, size_t maxClients,
+                           size_t channelCount)
 {
     if (enet_initialize() != 0)
     {
@@ -45,8 +48,12 @@ void NetServer::Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs)
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
-                OnPacketReceived(event.peer, event.packet->data, event.packet->dataLength);
-                dispatcher.trigger<OnServerReceivePacket>({event.peer, event.packet->data, event.packet->dataLength});
+                OnPacketReceived(event.peer, event.packet->data,
+                                 event.packet->dataLength);
+                dispatcher.trigger<OnServerReceivePacket>(
+                    {event.peer,
+                     net::Buffer{event.packet->data, event.packet->dataLength}
+                         .ToReadOnly()});
                 enet_packet_destroy(event.packet);
                 break;
 
@@ -72,17 +79,29 @@ void NetServer::Shutdown()
     }
 }
 
-void NetServer::SendReliable(ENetPeer* peer, const void* data, size_t size, uint8_t channel)
+net::Buffer NetServer::StartPacket(size_t size)
 {
-    ENetPacket* packet = enet_packet_create(data, size, ENET_PACKET_FLAG_RELIABLE);
+    return sendPacketProducer.AllocPacket(size);
+}
+
+void NetServer::SendReliable(ENetPeer* peer, net::Buffer data,
+                             uint8_t channel)
+{
+    ENetPacket* packet =
+        enet_packet_create(data.Data().data(), data.Data().size(), ENET_PACKET_FLAG_RELIABLE);
+    
+    sendPacketProducer.FreePacket(data);
 
     enet_peer_send(peer, channel, packet);
 }
 
-void NetServer::SendUnreliable(ENetPeer* peer, const void* data, size_t size, uint8_t channel)
+void NetServer::SendUnreliable(ENetPeer* peer, net::Buffer data,
+                               uint8_t channel)
 {
-    ENetPacket* packet = enet_packet_create(data, size, 0);
+    ENetPacket* packet = enet_packet_create(data.Data().data(), data.Data().size(), 0);
+
+    sendPacketProducer.FreePacket(data);
 
     enet_peer_send(peer, channel, packet);
 }
-}  // namespace OneGame::Engine
+}  // namespace oge::runtime

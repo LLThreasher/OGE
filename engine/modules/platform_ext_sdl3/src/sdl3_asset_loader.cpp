@@ -13,7 +13,7 @@ bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
 #ifdef PLATFORM_ANDROID
     void* fileBuffer = SDL_LoadFile(std::string(id).c_str(), &fileSize);
 #else
-    std::string path = std::format("{}assets/{}", SDL_GetBasePath(), id);
+    std::string path = fmt::format("{}assets/{}", SDL_GetBasePath(), id);
     void* fileBuffer = SDL_LoadFile(path.c_str(), &fileSize);
 #endif
 

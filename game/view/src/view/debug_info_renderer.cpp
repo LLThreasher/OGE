@@ -1,5 +1,6 @@
 #include <format>
 #include <iterator>
+#include <string>
 
 #include "game/components.hpp"
 #include "game/view/renderer.hpp"
@@ -14,7 +15,6 @@ namespace game::view
 void DebugInfoRenderer::onAttach(RendererState& ctx)
 {
     debugFont = ctx.assets.LoadASCIIBitmapFont16x6("om_tall_plain_idx.png");
-    debugString.reserve(256);
 }
 
 void DebugInfoRenderer::onDetach(RendererState& ctx) {}
@@ -31,9 +31,10 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
         m_budgetGPUMem = memUsage.heapBudget[0];
     }
 
-    auto spriteQueue = ctx.submissionQueue.View<oge::runtime::gfx::CmdDrawSprite>().GetSingle(GameViewType::Overlay);
+    auto& spriteQueue = ctx.submissionQueue.View<oge::runtime::gfx::CmdDrawSprite>().GetSingle(GameViewType::Overlay);
 
-    debugString.clear();
+    std::pmr::string debugString{ctx.memory.frameBuffer.Resource()};
+    debugString.reserve(1024);
     for (auto [e, txt] : ctx.world.view<const DebugText>().each())
     {
         debugString.append(txt.text);
@@ -46,8 +47,8 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
         gpuDebugString.clear();
         gpuDebugString.append(gpuInfo.name);
         gpuDebugString.push_back('\n');
-        std::format_to(std::back_inserter(gpuDebugString), "FPS {:.2f}\n", 1.f / ctx.dt);
-        std::format_to(std::back_inserter(gpuDebugString), "GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024,
+        fmt::format_to(std::back_inserter(gpuDebugString), "FPS {:.2f}\n", 1.f / ctx.dt);
+        fmt::format_to(std::back_inserter(gpuDebugString), "GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024,
                        m_budgetGPUMem / 1024 / 1024);
     }
     

@@ -2,7 +2,7 @@
 
 #if defined(IO_USE_NATIVE)
 
-#include <format>
+#include <fmt/format.h>
 #include <fstream>
 #include <vector>
 
@@ -41,7 +41,7 @@ namespace oge::platform
 {
 bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
 {
-    auto filePath = std::format("{}/assets/{}", GetBinaryLocation(), id);
+    auto filePath = fmt::format("{}/assets/{}", GetBinaryLocation(), id);
     std::ifstream file(filePath, std::ios::ate | std::ios::binary);
 
     if (!file.is_open())

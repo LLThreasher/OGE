@@ -103,7 +103,8 @@ struct ComponentPlayer
 
 struct DebugText
 {
-    std::string_view text;
+    std::pmr::string text;
+    float remainingTime = 0.f;
 };
 
 }  // namespace game

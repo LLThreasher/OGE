@@ -1,8 +1,6 @@
 #pragma once
 #include <cassert>
 #include <cstdint>
-#include <map>
-#include <mutex>
 
 #include "oge/graphics/objects.hpp"
 #include "oge/runtime/objects_ext.hpp"

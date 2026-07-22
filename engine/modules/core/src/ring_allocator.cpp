@@ -15,8 +15,6 @@ namespace oge
 
     bool RingAllocator::TryAllocate(uint64_t size, Allocation& out)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
-
         size = Align(size);
 
         if (!HasSpace(size)) return false;
@@ -38,8 +36,6 @@ namespace oge
 
     void RingAllocator::Free(uint64_t offset, uint64_t size)
     {
-        std::lock_guard<std::mutex> lock(m_mutex);
-
         m_pendingFrees[offset] = size;
 
         auto it = m_pendingFrees.find(m_tail);

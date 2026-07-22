@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <memory>
 
-#include "entt/entity/fwd.hpp"
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/input/input_source.hpp"
@@ -11,7 +10,7 @@
 #include "game/sim/subsystem.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
 #include "game/ui/objects.hpp"
-#include "game/view/gfx/terrain_pass.hpp"
+#include "game/view/gfx/terrain_pass2.hpp"
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
 #include "game/view/terrain/terrain_renderer.hpp"

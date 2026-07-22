@@ -1,6 +1,12 @@
 #pragma once
 
+#include <format>
+#include <iterator>
+#include <memory_resource>
+#include <string>
+
 #include "game/components.hpp"
+#include "game/memory_context.hpp"
 #include "game/frame_perf.hpp"  // debug info pass
 #include "game/input/player_input_stream.hpp"
 #include "oge/runtime/asset_manager.hpp"
@@ -15,37 +21,52 @@ struct GameState
 {
     entt::registry& world;
     entt::dispatcher& events;
+    MemoryContext& memory;
 };
+
+using GameFrame = float;
 
 struct FGameState : GameState
 {
     float dt;
-    FGameState(float dt, GameState& state) : dt(dt), GameState(state) {}
+    FGameState(GameFrame f, GameState& state) : dt(f), GameState(state) {}
 };
 
-struct SubsystemPhysicsData
+struct ShowDebugTextEvent
 {
-    bool isFrame = false;
+    std::pmr::string text;
 };
 
 class Subsystem : public Stage<GameState, FGameState>
 {
+   protected:
+    template <typename FMT, typename... Args>
+    void ShowDebugText(FGameState& f, FMT& fmt, Args&... args)
+    {
+        std::pmr::string msg{f.memory.frameBuffer.Resource()};
+        fmt::format_to(std::back_insert_iterator(msg), fmt, args...);
+        f.events.trigger<ShowDebugTextEvent>({msg});
+    }
 };
 
-class SubsystemPipeline : public FixedStepPipeline<Subsystem, float>
+class SubsystemPipeline : public FixedStepPipeline<Subsystem, GameFrame>
 {
    public:
     NO_COPY(SubsystemPipeline)
-    SubsystemPipeline(GameState& state, AnythingFactory& af, float updateInterval)
-        : FixedStepPipeline<Subsystem, float>(state, af, updateInterval)
+    SubsystemPipeline(GameState& state, AnythingFactory& af,
+                      float updateInterval)
+        : FixedStepPipeline<Subsystem, GameFrame>(state, af, updateInterval)
     {
     }
 };
 
-class RealtimeSubsystemPipeline : public FramePipeline<Subsystem, float>
+class RealtimeSubsystemPipeline : public FramePipeline<Subsystem, GameFrame>
 {
    public:
-    RealtimeSubsystemPipeline(GameState& state, AnythingFactory& af) : FramePipeline<Subsystem, float>(state, af) {}
+    RealtimeSubsystemPipeline(GameState& state, AnythingFactory& af)
+        : FramePipeline<Subsystem, GameFrame>(state, af)
+    {
+    }
 };
 
 #define DECL_FNS(SysName)                   \

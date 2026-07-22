@@ -1,12 +1,12 @@
 #pragma once
 
-#include <format>
+#include <fmt/format.h>
 
 #include "oge/math.hpp"
 #include "oge/point2.hpp"
 #include "oge/point3.hpp"
 
-namespace std
+namespace fmt
 {
 template <>
 struct formatter<oge::math::vec2>

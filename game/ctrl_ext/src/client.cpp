@@ -57,13 +57,15 @@ AppFrameAction Client::Update(float dt, InputProvider PollInputs)
 
     PollInputs(m_input);
 
+    perfStats.inputProcessingTime = watch.Restart();
+
     auto res = backend.BeginFrame();
     if (res == BeginFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
     if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;
 
+    watch.Restart();
     PollInputs(m_input);
-    
-    perfStats.inputProcessingTime = watch.Restart();
+    perfStats.inputProcessingTime += watch.Restart();
 
     m_events.update();
     SceneRunner::UpdateScene({dt, m_input, m_perfStats, appRes});
