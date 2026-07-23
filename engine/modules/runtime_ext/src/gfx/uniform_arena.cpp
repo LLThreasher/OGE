@@ -4,6 +4,7 @@
 #include "oge/graphics/configs.hpp"
 #include "oge/log.hpp"
 #include "oge/math.hpp"
+#include "oge/runtime/objects_ext.hpp"
 
 namespace oge::runtime::gfx
 {
@@ -44,21 +45,33 @@ void FrameArena::AdvanceFrame()
 
 StagingAllocation FrameArena::Allocate(uint32_t size)
 {
+    StagingAllocation res{};
+    TryAllocate(size, res);
+    return res;
+}
+
+bool FrameArena::TryAllocate(uint32_t size, StagingAllocation& alloc)
+{
     uint32_t alignedSize = math::align(size, m_alignment);
 
     uint32_t frameBase = m_frameIdx * m_alignedCapacityPerFrame;
-    uint32_t frameEnd = frameBase + m_alignedCapacityPerFrame;
+    uint32_t frameEnd  = frameBase + m_alignedCapacityPerFrame;
 
-    assert(m_head + alignedSize <= frameEnd);
+    // Ensure head is inside this frame (safety check)
+    if (m_head < frameBase)
+        m_head = frameBase;
 
-    StagingAllocation result{};
-    result.offset = m_head;
-    result.size = alignedSize;
-    result.cpuPtr = static_cast<uint8_t*>(m_cpuBuffer) + m_head;
+    // Overflow check
+    if (m_head + alignedSize > frameEnd)
+        return false;
+
+    alloc.offset = m_head;
+    alloc.size   = alignedSize;
+    alloc.cpuPtr = static_cast<uint8_t*>(m_cpuBuffer) + m_head;
 
     m_head += alignedSize;
 
-    return result;
+    return true;
 }
 
 void FrameArena::Flush(IGraphicsBackend& backend)

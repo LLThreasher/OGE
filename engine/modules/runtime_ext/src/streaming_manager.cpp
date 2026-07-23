@@ -25,11 +25,6 @@ void StreamingManager::Shutdown(IGraphicsBackend& backend)
     m_ringStagingBuffer.Shutdown(backend);
 }
 
-RingStagingBuffer& StreamingManager::GetStagingBuffer()
-{
-    return m_ringStagingBuffer;
-}
-
 ResourceBundleHandle StreamingManager::CreateResourceBundle(
     std::function<void()> callback)
 {
@@ -119,14 +114,16 @@ StreamingManager::AllocationResult StreamingManager::AllocateStagingBuffer(
     {
         if constexpr (uploadType == UploadType::Immediate)
         {
-            LOG_ERROR("SM: immediate upload overflows staging buffer, switch to "
-                   "async to avoid this");
+            LOG_ERROR(
+                "SM: immediate upload overflows staging buffer, switch to "
+                "async to avoid this");
         }
         else
         {
             // allocate extra staging memory on cpu
             LOG_INFO("SM: using cpu cache");
-            m_buffersQueuedInCPU.push({{}, std::pmr::vector<std::byte>{&m_memory}});
+            m_buffersQueuedInCPU.push(
+                {{}, std::pmr::vector<std::byte>{&m_memory}});
             auto& [_, buf] = m_buffersQueuedInCPU.back();
             buf.resize(dataSizeInBytes);
             memcpy(buf.data(), data.data(), dataSizeInBytes);
@@ -180,7 +177,6 @@ void StreamingManager::RunUploadStep(IGraphicsBackend& backend,
         // LOG_DEBUG("checking to free {} {}", fidx,
         // m_stagingAllocationToFree[fidx].size());
         auto& [event, buffer] = m_stagingAllocationToFree[fidx].front();
-        m_ringStagingBuffer.Free(buffer.offset, buffer.size);
         m_stagingAllocationToFree[fidx].pop();
         if (event.IsValid())
         {
@@ -234,6 +230,7 @@ void StreamingManager::RunUploadStep(IGraphicsBackend& backend,
     }
 
     m_ringStagingBuffer.Flush(backend);
+    m_ringStagingBuffer.AdvanceFrame();
 }
 
 template StreamingManager::AllocationResult

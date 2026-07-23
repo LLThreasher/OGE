@@ -23,6 +23,7 @@ class FrameArena
 
     void AdvanceFrame();
     StagingAllocation Allocate(uint32_t size);
+    bool TryAllocate(uint32_t size, StagingAllocation& alloc);
 
     void Flush(IGraphicsBackend& backend);
 

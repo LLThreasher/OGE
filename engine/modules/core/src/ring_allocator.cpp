@@ -17,34 +17,66 @@ namespace oge
     {
         size = Align(size);
 
-        if (!HasSpace(size)) return false;
-
-        if (m_head + size > m_capacity)
+        // Case 1: head >= tail
+        if (m_head >= m_tail)
         {
-            // wrap
-            if (m_tail != m_head) m_pendingFrees[m_head] = m_capacity - m_head;
+            // Try allocate without wrap
+            if (m_head + size <= m_capacity)
+            {
+                out.offset = m_head;
+                out.size = size;
+                m_head += size;
+                return true;
+            }
 
-            m_head = 0;
+            // Try wrap to zero
+            if (size < m_tail)
+            {
+                // Mark remaining region as padding
+                if (m_head != m_capacity)
+                    m_pendingFrees[m_head] = m_capacity - m_head;
+
+                m_head = 0;
+
+                out.offset = m_head;
+                out.size = size;
+                m_head += size;
+                return true;
+            }
+
+            return false;
         }
+        else
+        {
+            // Case 2: head < tail
+            if (m_head + size < m_tail)
+            {
+                out.offset = m_head;
+                out.size = size;
+                m_head += size;
+                return true;
+            }
 
-        out.offset = m_head;
-        out.size = size;
-
-        m_head += size;
-        return true;
+            return false;
+        }
     }
-
+    
     void RingAllocator::Free(uint64_t offset, uint64_t size)
     {
+        size = Align(size);
+
         m_pendingFrees[offset] = size;
 
-        auto it = m_pendingFrees.find(m_tail);
-        while (it != m_pendingFrees.end())
+        while (true)
         {
+            auto it = m_pendingFrees.find(m_tail);
+            if (it == m_pendingFrees.end())
+                break;
+
             uint64_t blockSize = it->second;
             m_pendingFrees.erase(it);
+
             m_tail = (m_tail + blockSize) % m_capacity;
-            it = m_pendingFrees.find(m_tail);
         }
     }
 
