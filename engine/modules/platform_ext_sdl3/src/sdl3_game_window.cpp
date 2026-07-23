@@ -154,16 +154,18 @@ void SDL3GameWindow::Run(WindowApp& app)
                     auto handle = GetCurrentWindow();
                     app.OnWindowRecreate(&handle);
                     waitingSurface = false;
+                    break;
                 }
-                break;
                 case SDL_EVENT_WINDOW_RESIZED:
                 {
                     int new_width = event.window.data1;
                     int new_height = event.window.data2;
                     app.OnResize(new_width, new_height);
+                    break;
                 }
                 case SDL_EVENT_QUIT:
                     readyToClose = true;
+                    LOG_INFO("quit recived");
                     break;
                 case SDL_EVENT_WINDOW_MOUSE_ENTER:
                     LOG_DEBUG("enter window");
@@ -178,7 +180,6 @@ void SDL3GameWindow::Run(WindowApp& app)
                     LOG_DEBUG("leave window");
                     is.DelMouse(0);
                     break;
-                break;
                 case SDL_EVENT_KEY_DOWN:
                     is.SetKey(GetEngineKey(event.key.key), true);
                     break;

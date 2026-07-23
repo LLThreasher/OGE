@@ -56,11 +56,11 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
     auto entity = ctx.world.create();
     auto& txt = ctx.world.emplace<DebugText>(entity, std::pmr::string{std::pmr::new_delete_resource()});
     fmt::format_to(std::back_inserter(txt.text),
-                   "{}\n{:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f}\nCPU: {:.2f}%\nMEM: {} MB | NB {} MB | NA {}",
+                   "{}\n{:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f}\nCPU: {:.2f}%\nMEM: {} MB | NB {} MB",
                    BUILD_TAG,
                    perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime,
                    perfStatus.assetUploadTime, perfStatus.renderSubmitTime, cpuUsage,
-                   ramInfo.RSS / 1024 / 1024, ramInfo.NativeHeapBlks / 1024 / 1024, ramInfo.NativeHeapReserved);
+                   ramInfo.RSS / 1024 / 1024, ramInfo.NativeHeapBlks / 1024 / 1024);
 
 }
 }  // namespace game::sim

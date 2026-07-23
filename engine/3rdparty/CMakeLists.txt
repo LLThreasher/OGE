@@ -68,7 +68,7 @@ FetchContent_MakeAvailable(enet)
 FetchContent_MakeAvailable(fmt)
 
 # set(SPDLOG_USE_STD_FORMAT ON CACHE BOOL "" FORCE)
-set(SPDLOG_FMT_EXTERNAL ON)
+set(SPDLOG_FMT_EXTERNAL ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(spdlog)
 
 if(BUILD_WINDOW_SDL3)

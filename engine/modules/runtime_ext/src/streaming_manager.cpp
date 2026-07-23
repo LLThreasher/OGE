@@ -114,16 +114,14 @@ StreamingManager::AllocationResult StreamingManager::AllocateStagingBuffer(
     {
         if constexpr (uploadType == UploadType::Immediate)
         {
-            LOG_ERROR(
-                "SM: immediate upload overflows staging buffer, switch to "
-                "async to avoid this");
+            LOG_ERROR("SM: immediate upload overflows staging buffer, switch to "
+                   "async to avoid this");
         }
         else
         {
             // allocate extra staging memory on cpu
             LOG_INFO("SM: using cpu cache");
-            m_buffersQueuedInCPU.push(
-                {{}, std::pmr::vector<std::byte>{&m_memory}});
+            m_buffersQueuedInCPU.push({{}, std::pmr::vector<std::byte>{&m_memory}});
             auto& [_, buf] = m_buffersQueuedInCPU.back();
             buf.resize(dataSizeInBytes);
             memcpy(buf.data(), data.data(), dataSizeInBytes);

@@ -1,21 +1,27 @@
 #include "oge/input/raw_input_stream.hpp"
 
+#include "oge/fmt.hpp"
 #include "oge/log.hpp"
 #include "oge/math.hpp"
-#include "oge/fmt.hpp"
 
 namespace oge::input
 {
-void RawInputStream::AdvanceCursor(Cursor& cursor) const { cursor = frameFrontier.cursor; }
+void RawInputStream::AdvanceCursor(Cursor& cursor) const
+{
+    cursor = frameFrontier.cursor;
+}
 
 bool RawInputStream::PollEvent(Cursor& cursor, InputEvent& eventOut) const
 {
-    return events.PollOne(cursor.eventCursor, eventOut, frameFrontier.cursor.eventCursor);
+    return events.PollOne(cursor.eventCursor, eventOut,
+                          frameFrontier.cursor.eventCursor);
 }
 
-bool RawInputStream::PollPtr(size_t ptrIdx, Cursor& cursor, math::vec2& posOut) const
+bool RawInputStream::PollPtr(size_t ptrIdx, Cursor& cursor,
+                             math::vec2& posOut) const
 {
-    return pointers[ptrIdx].PollOne(cursor.ptrCursors[ptrIdx], posOut, frameFrontier.cursor.ptrCursors[ptrIdx]);
+    return pointers[ptrIdx].PollOne(cursor.ptrCursors[ptrIdx], posOut,
+                                    frameFrontier.cursor.ptrCursors[ptrIdx]);
 }
 
 math::vec2 RawInputStream::PollPtrLatest(size_t ptrIdx, Cursor& cursor) const
@@ -27,7 +33,8 @@ math::vec2 RawInputStream::PollPtrLatest(size_t ptrIdx, Cursor& cursor) const
 
 math::vec2 RawInputStream::PollPtrDelta(size_t ptrIdx, Cursor& cursor) const
 {
-    return pointers[ptrIdx].PollDelta(cursor.ptrCursors[ptrIdx], frameFrontier.cursor.ptrCursors[ptrIdx]);
+    return pointers[ptrIdx].PollDelta(cursor.ptrCursors[ptrIdx],
+                                      frameFrontier.cursor.ptrCursors[ptrIdx]);
 }
 
 void RawInputStream::NewFrame()
@@ -36,6 +43,10 @@ void RawInputStream::NewFrame()
     frameFrontier.activeKeys = activeKeys;
     frameFrontier.dirtyPtrs = dirtyPtrs;
     events.AdvanceCursor(frameFrontier.cursor.eventCursor);
+    for (size_t i : toRemovePtrs)
+    {
+        activePtrs.remove(i - PtrInputCount);
+    }
     for (size_t i : dirtyPtrs)
     {
         pointers[i].Push(pointerPos[i]);
@@ -55,7 +66,8 @@ void RawInputStream::SetKey(KeyCode key, bool down)
 void RawInputStream::SetMouseButton(int id, MouseButton button, bool down)
 {
     auto ptr_idx = FindMouse(id);
-    InputEvent res{down ? InputEventType::MouseButtonDown : InputEventType::MouseButtonUp};
+    InputEvent res{down ? InputEventType::MouseButtonDown
+                        : InputEventType::MouseButtonUp};
     res.mouse = {ptr_idx, button};
     events.Push(res);
 }
@@ -99,8 +111,8 @@ void RawInputStream::DelMouse(int id)
     InputEvent res2{InputEventType::RemoveMouse};
     res2.pointerIdx = FindMouse(id);
     events.Push(res2);
-    activePtrs.remove(res2.pointerIdx);
     LOG_DEBUG("remove mouse {} from slot {}", id, res2.pointerIdx);
+    toRemovePtrs.add(res2.pointerIdx);
 }
 
 uint32_t RawInputStream::FindMouse(int id) const
@@ -116,7 +128,8 @@ uint32_t RawInputStream::FindTouch(uint64_t id) const
 {
     for (uint32_t i = 0; i < TouchPtrInputIndices.size(); ++i)
     {
-        if (activePtrs.contains(MaxMousePtrCount + i) && touchIds[i] == id) return i + MaxMousePtrCount;
+        if (activePtrs.contains(MaxMousePtrCount + i) && touchIds[i] == id)
+            return i + MaxMousePtrCount;
     }
     return 0xff;
 }
@@ -160,8 +173,7 @@ void RawInputStream::SetTouchUp(uint64_t id, float x, float y)
     LOG_DEBUG("del touch {} at slot {}", id, res.pointerIdx);
     events.Push(res);
     pointerPos[res.pointerIdx] = math::vec2{x, y};
-    dirtyPtrs.add(res.pointerIdx);
-    activePtrs.remove(res.pointerIdx);
+    toRemovePtrs.add(res.pointerIdx);
 }
 
 }  // namespace oge::input

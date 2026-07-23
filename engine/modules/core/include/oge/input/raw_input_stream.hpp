@@ -116,6 +116,7 @@ class RawInputStream
     } frameFrontier;
     BitSet32 activePtrs;
     BitSet32 dirtyPtrs;
+    BitSet32 toRemovePtrs;
     KeySet activeKeys;
 };
 
