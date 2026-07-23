@@ -3,46 +3,54 @@ find_package(Git REQUIRED)
 message(STATUS "Preset: ${CMAKE_PRESET_NAME}")
 
 execute_process(
-    COMMAND ${GIT_EXECUTABLE} describe --always --dirty --tags
+    COMMAND ${GIT_EXECUTABLE} describe --always --tags
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     OUTPUT_VARIABLE GIT_HASH
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-# Default values
-set(MARKETING_VERSION "0.0.0")
-set(BUILD_NUMBER "0")
-set(COMMIT_HASH "")
-set(DIRTY_FLAG "")
+execute_process(
+    COMMAND ${GIT_EXECUTABLE} describe --tags --abbrev=0
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE GIT_TAG
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
 
-# Split by "-"
-string(REPLACE "-" ";" GIT_PARTS "${GIT_HASH}")
-list(LENGTH GIT_PARTS PART_COUNT)
-
-if(PART_COUNT EQUAL 1)
-    # Exactly on a tag: v1.4.2
-    string(REGEX REPLACE "^v" "" MARKETING_VERSION "${GIT_HASH}")
-
-elseif(PART_COUNT GREATER_EQUAL 3)
-    # v1.4.2-15-gabc1234[-dirty]
-
-    list(GET GIT_PARTS 0 TAG_PART)
-    list(GET GIT_PARTS 1 BUILD_NUMBER)
-    list(GET GIT_PARTS 2 HASH_PART)
-
-    string(REGEX REPLACE "^v" "" MARKETING_VERSION "${TAG_PART}")
-    string(REGEX REPLACE "^g" "" COMMIT_HASH "${HASH_PART}")
-
-    if(PART_COUNT GREATER 3)
-        list(GET GIT_PARTS 3 DIRTY_FLAG)
-    endif()
+if("${GIT_TAG}" STREQUAL "")
+    set(MARKETING_VERSION "0.0.0")
+else()
+    string(REGEX REPLACE "^v" "" MARKETING_VERSION "${GIT_TAG}")
 endif()
 
+set(BUILD_NUMBER "0")
 execute_process(
     COMMAND ${GIT_EXECUTABLE} rev-list --count HEAD
     OUTPUT_VARIABLE BUILD_NUMBER
     OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+
+execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-parse --short HEAD
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    OUTPUT_VARIABLE COMMIT_HASH
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+
+execute_process(
+    COMMAND ${GIT_EXECUTABLE} diff --quiet
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    RESULT_VARIABLE GIT_DIFF_RESULT
+)
+
+if(GIT_DIFF_RESULT EQUAL 0)
+    # Clean working tree
+    set(DIRTY_FLAG "")
+else()
+    # There are uncommitted changes
+    set(DIRTY_FLAG "dirty")
+endif()
 
 message(STATUS "Marketing Version: ${MARKETING_VERSION}")
 message(STATUS "Build Number: ${BUILD_NUMBER}")

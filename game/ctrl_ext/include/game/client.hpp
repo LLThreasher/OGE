@@ -39,5 +39,7 @@ class Client : public WindowApp, public SceneRunner<GraphicalScene>
 
     DynamicChunkAllocator& m_ca;
     DynamicSkylineAllocator& m_sa;
+
+    bool m_waitingSurface = false;
 };
 }  // namespace game

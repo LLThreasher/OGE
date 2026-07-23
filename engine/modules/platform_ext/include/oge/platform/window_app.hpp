@@ -17,7 +17,7 @@ enum class AppFrameAction : uint32_t
     UnwrapMouse = 1 << 2,
 };
 
-using InputProvider = std::function<void(input::RawInputStream& input)>;
+using InputProvider = std::function<void(input::RawInputStream& input, bool blocking)>;
 
 class WindowApp
 {

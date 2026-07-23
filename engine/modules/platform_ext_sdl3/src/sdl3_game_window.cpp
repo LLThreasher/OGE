@@ -1,4 +1,5 @@
 #include <functional>
+
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_timer.h"
 #include "oge/platform/window_app.hpp"
@@ -102,7 +103,8 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
 #ifdef PLATFORM_ANDROID
     m_window = SDL_CreateWindow(name.c_str(), 0, 0, SDL_WINDOW_FULLSCREEN);
 #else
-    m_window = SDL_CreateWindow(name.c_str(), width, height, SDL_WINDOW_RESIZABLE);
+    m_window =
+        SDL_CreateWindow(name.c_str(), width, height, SDL_WINDOW_RESIZABLE);
 #endif
     window_width = width;
     window_height = height;
@@ -124,7 +126,8 @@ void SDL3GameWindow::Run(WindowApp& app)
     }
     catch (const std::exception& e)
     {
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Vulkan Error", e.what(), m_window);
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Vulkan Error", e.what(),
+                                 m_window);
         SDL_DestroyWindow(m_window);
         SDL_Quit();
         return;
@@ -133,20 +136,30 @@ void SDL3GameWindow::Run(WindowApp& app)
 
     uint64_t perfFrequency = SDL_GetPerformanceFrequency();
     bool readyToClose = false;
-    bool waitingSurface = false;
     SDL_Event event;
 
     auto mode = SDL_GetCurrentDisplayMode(0);
 
-    float refresh = mode && (mode->refresh_rate > 0) ? mode->refresh_rate : 60.0f;
+    float refresh =
+        mode && (mode->refresh_rate > 0) ? mode->refresh_rate : 60.0f;
     const float TargetframeDelayS = 1.f / refresh;
 
     double elapsedS = 0.0;
     double finalDeltaTime = 0.0;
 
-    std::function<void(input::RawInputStream&)> pollInputs = [&](input::RawInputStream& is){
-        is.NewFrame();
-        while (SDL_PollEvent(&event))
+    bool resetMousePos = true;
+    std::function<void(input::RawInputStream&, bool)> pollInputs =
+        [&](input::RawInputStream& is, bool blocking)
+    {
+        if (resetMousePos)
+        {
+            float x, y;
+            SDL_GetMouseState(&x, &y);
+            is.SetMousePosition(0, x, y);
+            resetMousePos = false;
+        }
+        while ((!blocking && SDL_PollEvent(&event)) ||
+               (blocking && SDL_WaitEvent(&event)))
         {
             switch (event.type)
             {
@@ -154,7 +167,6 @@ void SDL3GameWindow::Run(WindowApp& app)
                 {
                     auto handle = GetCurrentWindow();
                     app.OnWindowRecreate(&handle);
-                    waitingSurface = false;
                     break;
                 }
                 case SDL_EVENT_WINDOW_RESIZED:
@@ -188,25 +200,30 @@ void SDL3GameWindow::Run(WindowApp& app)
                     is.SetKey(GetEngineKey(event.key.key), false);
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_DOWN:
-                    is.SetMouseButton(0, GetEngineMouseButton(event.button.button), true);
+                    is.SetMouseButton(
+                        0, GetEngineMouseButton(event.button.button), true);
                     break;
                 case SDL_EVENT_MOUSE_BUTTON_UP:
-                    is.SetMouseButton(0, GetEngineMouseButton(event.button.button), false);
+                    is.SetMouseButton(
+                        0, GetEngineMouseButton(event.button.button), false);
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
                     is.SetMouseDelta(0, event.motion.xrel, event.motion.yrel);
                     break;
                 case SDL_EVENT_FINGER_DOWN:
-                    is.SetTouchDown(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                    is.SetTouchDown(event.tfinger.fingerID, event.tfinger.x,
+                                    event.tfinger.y);
                     // LOG_DEBUG("finger down {}", event.tfinger.fingerID);
                     break;
                 case SDL_EVENT_FINGER_MOTION:
-                    is.SetTouchUpdate(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                    is.SetTouchUpdate(event.tfinger.fingerID, event.tfinger.x,
+                                      event.tfinger.y);
                     // LOG_DEBUG("finger move {}", event.tfinger.fingerID);
                     break;
                 case SDL_EVENT_FINGER_UP:
                 case SDL_EVENT_FINGER_CANCELED:
-                    is.SetTouchUp(event.tfinger.fingerID, event.tfinger.x, event.tfinger.y);
+                    is.SetTouchUp(event.tfinger.fingerID, event.tfinger.x,
+                                  event.tfinger.y);
                     // LOG_DEBUG("finger up {}", event.tfinger.fingerID);
                     break;
             }
@@ -217,32 +234,23 @@ void SDL3GameWindow::Run(WindowApp& app)
     {
         uint64_t frameStartTicks = SDL_GetPerformanceCounter();
 
-        if (waitingSurface) continue;
-
         auto appFrameAction = app.Update(finalDeltaTime, pollInputs);
-        if ((appFrameAction & AppFrameAction::WaitSurface) == AppFrameAction::WaitSurface)
-        {
-            waitingSurface = true;
-        }
 
         uint64_t frameEndTicks = SDL_GetPerformanceCounter();
         elapsedS = (double)(frameEndTicks - frameStartTicks) / perfFrequency;
         finalDeltaTime = elapsedS;
 
-        if ((appFrameAction & AppFrameAction::WrapMouse) == AppFrameAction::WrapMouse)
+        if ((appFrameAction & AppFrameAction::WrapMouse) ==
+            AppFrameAction::WrapMouse)
         {
             SDL_SetWindowRelativeMouseMode(m_window, true);
         }
-        else if ((appFrameAction & AppFrameAction::UnwrapMouse) == AppFrameAction::UnwrapMouse)
+        else if ((appFrameAction & AppFrameAction::UnwrapMouse) ==
+                 AppFrameAction::UnwrapMouse)
         {
             SDL_SetWindowRelativeMouseMode(m_window, false);
-
-            SDL_Event event;
-            SDL_zero(event);
-            event.type = SDL_EVENT_WINDOW_MOUSE_LEAVE;
-            SDL_PushEvent(&event);
-            event.type = SDL_EVENT_WINDOW_MOUSE_ENTER;
-            SDL_PushEvent(&event);
+            SDL_WarpMouseInWindow(m_window, window_width / 2.f, window_height / 2.f);
+            resetMousePos = true;
         }
 
 #if PLATFORM_ANDROID
@@ -262,7 +270,8 @@ void SDL3GameWindow::Run(WindowApp& app)
     SDL_Quit();
 }
 
-std::unique_ptr<Window> CreateSDL3Window(const std::string& title, int width, int height)
+std::unique_ptr<Window> CreateSDL3Window(const std::string& title, int width,
+                                         int height)
 {
     return std::make_unique<SDL3GameWindow>(title, width, height);
 }

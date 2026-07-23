@@ -54,16 +54,26 @@ AppFrameAction Client::Update(float dt, InputProvider PollInputs)
     auto watch = oge::Stopwatch::Start();
     auto& backend = *m_backend;
 
-    PollInputs(m_input);
+    m_input.NewFrame();
+    // we block if we are waiting for surface
+    PollInputs(m_input, m_waitingSurface);
+
+    if (m_waitingSurface) {
+        return appRes | AppFrameAction::WaitSurface;
+    }
 
     perfStats.inputProcessingTime = watch.Restart();
 
     auto res = backend.BeginFrame();
-    if (res == BeginFrameAction::RecreateSurface) return appRes | AppFrameAction::WaitSurface;
+
+    if (res == BeginFrameAction::RecreateSurface) {
+        m_waitingSurface = true;
+        return appRes | AppFrameAction::WaitSurface;
+    }
     if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;
 
     watch.Restart();
-    PollInputs(m_input);
+    PollInputs(m_input, false);
     perfStats.inputProcessingTime += watch.Restart();
 
     m_events.update();
@@ -101,6 +111,7 @@ void Client::Shutdown()
 
 void Client::OnWindowRecreate(WindowHandle* handle)
 {
+    m_waitingSurface = false;
     m_backend->RecreateSurface(handle);
     LOG_DEBUG("trigger surface recreate {}", m_backend->SwapchainExtent());
     m_events.enqueue(SurfaceRecreateEvent{m_backend->SwapchainExtent(), m_backend->SwapchainPretransform()});
