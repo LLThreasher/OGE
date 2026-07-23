@@ -24,7 +24,7 @@ void FrameArena::Initialize(IGraphicsBackend& backend, uint32_t capacity)
 
     BufferDesc desc{};
     desc.memory = MemoryUsage::CPUToGPU;
-    desc.usage = m_usage | BufferUsage::TransferDst;
+    desc.usage = m_usage | BufferUsage::TransferDst | BufferUsage::TransferSrc;
     desc.size = m_capacityPerFrame * backend.FramesInFlight();
     m_gpuBuffer = backend.CreateBuffer(desc, &m_cpuBuffer);
 }
