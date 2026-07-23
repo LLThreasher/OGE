@@ -50,15 +50,17 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
 
         accumTime = 0;
         frameCount = 0;
+        ramInfo = GetRAMUsage();
+        cpuUsage = GetCPUUsage();
     }
     auto entity = ctx.world.create();
     auto& txt = ctx.world.emplace<DebugText>(entity, std::pmr::string{std::pmr::new_delete_resource()});
     fmt::format_to(std::back_inserter(txt.text),
-                   "{}\n{:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f}\nCPU: {:.2f}%\nMEM: {} MB {} KB",
+                   "{}\n{:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f}\nCPU: {:.2f}%\nMEM: {} MB | NB {} MB | NA {}",
                    BUILD_TAG,
                    perfStatus.actualFrameTime(), perfStatus.inputProcessingTime, perfStatus.logicTime,
-                   perfStatus.assetUploadTime, perfStatus.renderSubmitTime, perfStatus.cpuUsage,
-                   GetRAMUsage() / 1024 / 1024, (GetRAMUsage() / 1024) % 1024);
+                   perfStatus.assetUploadTime, perfStatus.renderSubmitTime, cpuUsage,
+                   ramInfo.RSS / 1024 / 1024, ramInfo.NativeHeapBlks / 1024 / 1024, ramInfo.NativeHeapReserved);
 
 }
 }  // namespace game::sim

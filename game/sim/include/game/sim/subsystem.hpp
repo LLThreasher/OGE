@@ -9,6 +9,7 @@
 #include "game/memory_context.hpp"
 #include "game/frame_perf.hpp"  // debug info pass
 #include "game/input/player_input_stream.hpp"
+#include "oge/platform/perf.hpp"
 #include "oge/runtime/asset_manager.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
@@ -89,6 +90,8 @@ class SubsystemDebugText : public Subsystem
     uint64_t frameCount = 0;
     FramePerfStatus totalPerfStatus = {};
     FramePerfStatus perfStatus = {};
+    oge::platform::RAMInfo ramInfo = {};
+    double cpuUsage = {};
     DECL_FNS(SubsystemDebugText)
 };
 

@@ -118,95 +118,88 @@ void PrintStackTrace()
     LOG_ERROR("{}", oss.str().c_str());
 }
 
-unsigned long long GetRAMUsage()
+RAMInfo GetRAMUsage()
 {
     FILE* fp = fopen("/proc/self/statm", "r");
-    if (!fp) return 0;
+    if (!fp) return {};
 
     long pages = 0;
     // The second token is the Resident Set Size (RSS)
     if (fscanf(fp, "%*d %ld", &pages) != 1)
     {
         fclose(fp);
-        return 0;
+        return {};
     }
     fclose(fp);
-    return pages * sysconf(_SC_PAGESIZE);  // Convert pages to bytes
-}
-int get_core_count() { return sysconf(_SC_NPROCESSORS_CONF); }
 
-double get_system_uptime()
+    struct mallinfo2 info = mallinfo2();
+    return {static_cast<unsigned long long>(pages * sysconf(_SC_PAGESIZE)), info.uordblks, info.arena};  // Convert pages to bytes
+}
+
+long long GetProcessCPUTime()
 {
-    double uptime = 0.0;
-    FILE* fp = fopen("/proc/uptime", "r");
-    if (fp)
-    {
-        if (fscanf(fp, "%lf", &uptime) != 1)
-        {
-            uptime = 0.0;
-        }
+    FILE* fp = fopen("/proc/self/stat", "r");
+    if (!fp) return -1;
+
+    char line[1024];
+    if (!fgets(line, sizeof(line), fp)) {
         fclose(fp);
-    }
-    return uptime;
-}
-
-struct CpuTimes {
-    long long user;
-    long long nice;
-    long long system;
-    long long idle;
-    long long iowait;
-    long long irq;
-    long long softirq;
-    long long steal;
-};
-
-CpuTimes readCpuTimes() {
-    std::ifstream file("/proc/stat");
-    std::string line;
-    CpuTimes times{0};
-
-    if (std::getline(file, line)) {
-        std::istringstream ss(line);
-        std::string cpu;
-        ss >> cpu; // skip "cpu"
-
-        ss >> times.user
-           >> times.nice
-           >> times.system
-           >> times.idle
-           >> times.iowait
-           >> times.irq
-           >> times.softirq
-           >> times.steal;
+        return -2;
     }
 
-    return times;
+    fclose(fp);
+
+    // Find the last ')'
+    char* after_paren = strrchr(line, ')');
+    if (!after_paren) return -3;
+
+    // Move past ") "
+    after_paren += 2;
+
+    // Now parse fields starting from state (field 3)
+    // utime = field 14
+    // stime = field 15
+    // Since we skipped first 2 fields, we now skip 11 more
+
+    unsigned long long utime = 0, stime = 0;
+
+    sscanf(after_paren,
+        "%*c "        // state
+        "%*d %*d %*d %*d %*d "
+        "%*u %*u %*u %*u %*u "
+        "%llu %llu",
+        &utime, &stime);
+
+    return utime + stime;
 }
 
-float getCpuUsagePercent() {
-    CpuTimes t1 = readCpuTimes();
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-    CpuTimes t2 = readCpuTimes();
+double GetCPUUsage()
+{
+    static unsigned long long last_time = 0;
+    static auto last_clock = std::chrono::steady_clock::now();
 
-    long long idle1 = t1.idle + t1.iowait;
-    long long idle2 = t2.idle + t2.iowait;
+    unsigned long long total_ticks = GetProcessCPUTime();
+    if (total_ticks <= 0) return 0.0;
 
-    long long nonIdle1 = t1.user + t1.nice + t1.system + t1.irq + t1.softirq + t1.steal;
-    long long nonIdle2 = t2.user + t2.nice + t2.system + t2.irq + t2.softirq + t2.steal;
+    auto now = std::chrono::steady_clock::now();
+    double elapsed_wall =
+        std::chrono::duration<double>(now - last_clock).count();
 
-    long long total1 = idle1 + nonIdle1;
-    long long total2 = idle2 + nonIdle2;
+    if (elapsed_wall <= 0.0) return 0.0;
 
-    long long totalDelta = total2 - total1;
-    long long idleDelta = idle2 - idle1;
+    unsigned long long tick_diff = total_ticks - last_time;
 
-    if (totalDelta == 0) return 0.0f;
+    long ticks_per_sec = sysconf(_SC_CLK_TCK);
 
-    return (float)(totalDelta - idleDelta) * 100.0f / totalDelta;
+    double cpu_seconds = (double)tick_diff / ticks_per_sec;
+
+    double cpu_percent = (cpu_seconds / elapsed_wall) * 100.0;
+
+    last_time = total_ticks;
+    last_clock = now;
+
+    return cpu_percent;
 }
-
-double GetCPUUsage() { return 0.0; }
 
 double GetGPUUsage() { return -1.0; }
 }
@@ -218,6 +211,7 @@ double GetGPUUsage() { return -1.0; }
 #include <stdlib.h>
 
 #include <chrono>
+#include <malloc/malloc.h>
 
 namespace oge::platform
 {
@@ -238,16 +232,19 @@ void PrintStackTrace()
 double GetGPUUsage() { return -1.0; }
 
 // Returns the resident memory (RAM) used by the current process in bytes
-unsigned long long GetRAMUsage()
+RAMInfo GetRAMUsage()
 {
     task_basic_info_data_t info;
     mach_msg_type_number_t size = TASK_BASIC_INFO_COUNT;
 
     if (task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&info, &size) == KERN_SUCCESS)
     {
-        return info.resident_size;
+        malloc_statistics_t stats;
+        malloc_zone_statistics(NULL, &stats);
+
+        return {info.resident_size, stats.size_in_use};
     }
-    return 0;
+    return {0};
 }
 
 // Returns the CPU usage percentage of the current process (100.0 means 1 core is fully utilized)
@@ -320,7 +317,7 @@ double GetCPUUsage()
 
 #else
 void oge::platform::PrintStackTrace() {}
-unsigned long long GetRAMUsage() { return 0; }
+RAMInfo GetRAMUsage() { return {}; }
 double GetCPUUsage() { return -1.0; }
 double GetGPUUsage() { return -1.0; }
 #endif

@@ -50,7 +50,6 @@ void Client::Initialize(WindowHandle* handle)
 AppFrameAction Client::Update(float dt, InputProvider PollInputs)
 {
     FramePerfStatus perfStats{};
-    perfStats.cpuUsage = GetCPUUsage();
     AppFrameAction appRes = AppFrameAction::None;
     auto watch = oge::Stopwatch::Start();
     auto& backend = *m_backend;

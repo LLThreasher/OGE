@@ -149,22 +149,6 @@ void SDL3GameWindow::Run(WindowApp& app)
         {
             switch (event.type)
             {
-                case SDL_EVENT_WINDOW_MOUSE_ENTER:
-                    LOG_DEBUG("enter window");
-                    {
-                        is.AddMouse(0);
-                        float x, y;
-                        SDL_GetMouseState(&x, &y);
-                        is.SetMousePosition(0, x, y);
-                        break;
-                    }
-                case SDL_EVENT_WINDOW_MOUSE_LEAVE:
-                    LOG_DEBUG("leave window");
-                    is.DelMouse(0);
-                    break;
-                case SDL_EVENT_QUIT:
-                    readyToClose = true;
-                    break;
                 case SDL_EVENT_WINDOW_RESTORED:
                 {
                     auto handle = GetCurrentWindow();
@@ -178,6 +162,22 @@ void SDL3GameWindow::Run(WindowApp& app)
                     int new_height = event.window.data2;
                     app.OnResize(new_width, new_height);
                 }
+                case SDL_EVENT_QUIT:
+                    readyToClose = true;
+                    break;
+                case SDL_EVENT_WINDOW_MOUSE_ENTER:
+                    LOG_DEBUG("enter window");
+                    {
+                        is.AddMouse(0);
+                        float x, y;
+                        SDL_GetMouseState(&x, &y);
+                        is.SetMousePosition(0, x, y);
+                        break;
+                    }
+                case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+                    LOG_DEBUG("leave window");
+                    is.DelMouse(0);
+                    break;
                 break;
                 case SDL_EVENT_KEY_DOWN:
                     is.SetKey(GetEngineKey(event.key.key), true);

@@ -8,7 +8,6 @@ struct FramePerfStatus
     float logicTime = 0.f;
     float assetUploadTime = 0.f;
     float renderSubmitTime = 0.f;
-    float cpuUsage = 0.f;
 
     float actualFrameTime() const { return inputProcessingTime + logicTime + assetUploadTime + renderSubmitTime; }
 
@@ -19,7 +18,6 @@ struct FramePerfStatus
             logicTime + other.logicTime,
             assetUploadTime + other.assetUploadTime,
             renderSubmitTime + other.renderSubmitTime,
-            cpuUsage + other.cpuUsage,
         };
     }
 
@@ -30,7 +28,6 @@ struct FramePerfStatus
             logicTime / divisor,
             assetUploadTime / divisor,
             renderSubmitTime / divisor,
-            cpuUsage / divisor,
         };
     }
 };
