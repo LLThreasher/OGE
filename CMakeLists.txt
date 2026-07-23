@@ -2,9 +2,6 @@ cmake_minimum_required(VERSION 3.28)
 
 include(cmake/utils.cmake)
 
-message(STATUS "Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
-message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
-
 option(GAME_BUILD_TARGET "Target to build" "Client")
 
 if (GAME_BUILD_TARGET STREQUAL "android")
@@ -15,6 +12,9 @@ project(OneGame CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 endif()
+
+message(STATUS "Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
 
 if (CMAKE_BUILD_TYPE STREQUAL "Release")
 if(CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC" OR MSVC)
@@ -117,7 +117,7 @@ set_source_files_properties("${APK_SRC_PATH}" PROPERTIES GENERATED TRUE)
 
 add_custom_target(
     run_gradle_assemble
-    COMMAND "${ANDROID_DIR}/${GRADLEW_COMMAND}" "assemble${CMAKE_BUILD_TYPE}" "--console=plain" "--no-daemon" "--rerun-tasks" "--info" "-PCMAKE_ARGS=${GRADLEW_ARGS}"
+    COMMAND "${ANDROID_DIR}/${GRADLEW_COMMAND}" "assemble${CMAKE_BUILD_TYPE}" "--console=plain" "--no-daemon" "--rerun-tasks" "--info" "-PVERSION_NAME=${MARKETING_VERSION}" "-PVERSION_CODE=${BUILD_NUMBER}" "-PCMAKE_ARGS=${GRADLEW_ARGS}"
     WORKING_DIRECTORY "${ANDROID_DIR}"
     BYPRODUCTS "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}"
     USES_TERMINAL

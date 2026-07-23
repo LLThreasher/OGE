@@ -6,6 +6,9 @@ plugins {
 def buildWithCMake = true;
 def extraArgs = project.findProperty("CMAKE_ARGS")?.split(";") ?: [];
 
+def versionNameFromCMake = project.findProperty("VERSION_NAME") ?: "0.1.0"
+def versionCodeFromCMake = project.findProperty("VERSION_CODE") ?: "1"
+
 android {
     signingConfigs {
         release {
@@ -22,8 +25,8 @@ android {
     defaultConfig {
         minSdkVersion 29
         targetSdkVersion 35
-        versionCode 1
-        versionName "1.0"
+        versionCode versionCodeFromCMake.toInteger()
+        versionName versionNameFromCMake
         externalNativeBuild {
             ndkBuild {
                 arguments "APP_PLATFORM=android-29"

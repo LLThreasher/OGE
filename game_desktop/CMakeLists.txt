@@ -16,6 +16,11 @@ set(APP_NAME PortableApp)
 add_executable(${APP_NAME} MACOSX_BUNDLE main.cpp)
 target_link_libraries(${APP_NAME} PRIVATE game::gui oge::platform::sdl3 oge::graphics::vulkan)
 
+set_target_properties(${APP_NAME} PROPERTIES
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "${MARKETING_VERSION}"
+    MACOSX_BUNDLE_BUNDLE_VERSION "${BUILD_NUMBER}"
+)
+
 compile_shaders(${APP_NAME} ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets2")
 copy_assets(${APP_NAME} ../assets "${CMAKE_CURRENT_BINARY_DIR}/assets2")
 
@@ -37,10 +42,10 @@ set(APPS "\${CMAKE_INSTALL_PREFIX}/${APP_NAME}.app")
 # Directories to look for dependencies
 set(DIRS ${CMAKE_BINARY_DIR})
 
-# install(CODE "include(BundleUtilities)
-#     fixup_bundle(\"${APPS}\" \"\" \"${DIRS}\")")
+install(CODE "include(BundleUtilities)
+    fixup_bundle(\"${APPS}\" \"\" \"${DIRS}\")")
 
-# set(CPACK_GENERATOR "DRAGNDROP")
-# include(CPack)
+set(CPACK_GENERATOR "DRAGNDROP")
+include(CPack)
 
 endif()
