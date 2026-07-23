@@ -11,14 +11,22 @@ compile_shaders(game_desktop ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets")
 copy_assets(game_desktop ../assets "${CMAKE_CURRENT_BINARY_DIR}/assets")
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-set(APP_NAME PortableApp)
+set(APP_ICON ${CMAKE_CURRENT_SOURCE_DIR}/macos/AppIcon.icns)
 
-add_executable(${APP_NAME} MACOSX_BUNDLE main.cpp)
+set_source_files_properties(${APP_ICON} PROPERTIES
+    MACOSX_PACKAGE_LOCATION "Resources"
+)
+
+add_executable(${APP_NAME} MACOSX_BUNDLE main.cpp ${APP_ICON})
 target_link_libraries(${APP_NAME} PRIVATE game::gui oge::platform::sdl3 oge::graphics::vulkan)
 
 set_target_properties(${APP_NAME} PROPERTIES
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${MARKETING_VERSION}"
     MACOSX_BUNDLE_BUNDLE_VERSION "${BUILD_NUMBER}"
+)
+
+set_target_properties(${APP_NAME} PROPERTIES
+    MACOSX_BUNDLE_ICON_FILE AppIcon.icns
 )
 
 compile_shaders(${APP_NAME} ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets2")

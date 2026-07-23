@@ -6,8 +6,10 @@ plugins {
 def buildWithCMake = true;
 def extraArgs = project.findProperty("CMAKE_ARGS")?.split(";") ?: [];
 
-def versionNameFromCMake = project.findProperty("VERSION_NAME") ?: "0.1.0"
-def versionCodeFromCMake = project.findProperty("VERSION_CODE") ?: "1"
+def versionNameFromCMake = project.findProperty("VERSION_NAME") ?: "0.1.0";
+def versionCodeFromCMake = project.findProperty("VERSION_CODE") ?: "1";
+
+def appName = project.findProperty("APP_NAME") ?: "OneGame";
 
 android {
     signingConfigs {
@@ -27,6 +29,7 @@ android {
         targetSdkVersion 35
         versionCode versionCodeFromCMake.toInteger()
         versionName versionNameFromCMake
+        resValue "string", "app_name", appName
         externalNativeBuild {
             ndkBuild {
                 arguments "APP_PLATFORM=android-29"

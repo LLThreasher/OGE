@@ -31,7 +31,7 @@ class CpuDurationFrameArena
 {
    public:
     CpuDurationFrameArena(size_t size, float maxInterval)
-        : arenaA(std::pmr::new_delete_resource()), arenaB(std::pmr::new_delete_resource()), switchInterval(maxInterval * 2)
+        : arenaA(size), arenaB(size), switchInterval(maxInterval * 2)
     {
     }
 

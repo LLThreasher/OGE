@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.28)
 
+set(APP_NAME Arterium)
 include(cmake/utils.cmake)
 
 option(GAME_BUILD_TARGET "Target to build" "Client")
@@ -119,7 +120,7 @@ set_source_files_properties("${APK_SRC_PATH}" PROPERTIES GENERATED TRUE)
 
 add_custom_target(
     run_gradle_assemble
-    COMMAND "${ANDROID_DIR}/${GRADLEW_COMMAND}" "assemble${CMAKE_BUILD_TYPE}" "--console=plain" "--no-daemon" "--rerun-tasks" "--info" "-PVERSION_NAME=${MARKETING_VERSION}" "-PVERSION_CODE=${BUILD_NUMBER}" "-PCMAKE_ARGS=${GRADLEW_ARGS}"
+    COMMAND "${ANDROID_DIR}/${GRADLEW_COMMAND}" "assemble${CMAKE_BUILD_TYPE}" "--console=plain" "--no-daemon" "--rerun-tasks" "--info" "-PAPP_NAME=${APP_NAME}" "-PVERSION_NAME=${MARKETING_VERSION}" "-PVERSION_CODE=${BUILD_NUMBER}" "-PCMAKE_ARGS=${GRADLEW_ARGS}"
     WORKING_DIRECTORY "${ANDROID_DIR}"
     BYPRODUCTS "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}"
     USES_TERMINAL

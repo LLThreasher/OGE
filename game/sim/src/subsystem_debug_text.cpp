@@ -54,7 +54,7 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
         cpuUsage = GetCPUUsage();
     }
     auto entity = ctx.world.create();
-    auto& txt = ctx.world.emplace<DebugText>(entity, std::pmr::string{std::pmr::new_delete_resource()});
+    auto& txt = ctx.world.emplace<DebugText>(entity, std::pmr::string{ctx.memory.frameBuffer.Resource()});
     fmt::format_to(std::back_inserter(txt.text),
                    "{}\n{:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f}\nCPU: {:.2f}%\nMEM: {} MB | NB {} MB",
                    BUILD_TAG,

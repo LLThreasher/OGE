@@ -1,7 +1,10 @@
 #pragma once
 
+#define APP_NAME "@APP_NAME@"
+
 /* Git */
 #define BUILD_TAG "@BUILD_TAG@"
+#define MARKETING_VERSION "@MARKETING_VERSION@"
 
 /* Build system */
 #define BUILD_PRESET "@BUILD_PRESET@"
