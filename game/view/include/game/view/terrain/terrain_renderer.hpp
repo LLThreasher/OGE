@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cassert>
+#include <memory_resource>
 #include <optional>
 #include <queue>
 #include <unordered_map>
@@ -45,7 +46,10 @@ using namespace ::game::terrain;
 
 struct BuiltChunkMesh2
 {
-    std::vector<TexturedQuad> quads;
+    std::pmr::vector<TexturedQuad> quads;
+
+    BuiltChunkMesh2() {}
+    NO_COPY(BuiltChunkMesh2)
 };
 
 struct BuiltMesh
@@ -75,13 +79,16 @@ struct TerrainPresentationData
 
     std::queue<std::tuple<ChunkHandle, BuiltMeshHandle>> uploadMeshQueue;
     std::unordered_map<ChunkHandle, PTerrainMesh, HandleHash<ChunkHandle>> residentChunks;
+
+    TerrainPresentationData() {}
+    NO_COPY(TerrainPresentationData)
 };
 
 class TerrainMeshBuilder
 {
    public:
     void BuildChunkMeshes(const TerrainData& terrain, const BlockRegistry& blocks,
-                          TerrainPresentationData& terrainPData);
+                          TerrainPresentationData& terrainPData, std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
     void SetVertexBudget(uint32_t val) { m_vertexBudget = val; }
 
    private:

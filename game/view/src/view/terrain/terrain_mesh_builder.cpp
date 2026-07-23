@@ -1,4 +1,5 @@
 #include <bit>
+#include <memory_resource>
 
 #include "game/terrain/block_registry.hpp"
 #include "game/view/terrain/terrain_renderer.hpp"
@@ -273,7 +274,7 @@ void TerrainMeshBuilder::ExecuteBuildChunkMesh(TerrainPresentationData& terrain,
 }
 
 void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const BlockRegistry& blocks,
-                                          TerrainPresentationData& pData)
+                                          TerrainPresentationData& pData, std::pmr::memory_resource* memory)
 {
     while (!pData.buildMeshQueue.empty())
     {

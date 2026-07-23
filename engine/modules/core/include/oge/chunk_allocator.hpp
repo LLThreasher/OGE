@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <vector>
+#include "oge/macros.hpp"
 
 namespace oge
 {

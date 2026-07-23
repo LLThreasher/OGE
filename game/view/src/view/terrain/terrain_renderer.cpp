@@ -28,7 +28,7 @@ void TerrainRenderer::onUpdate(FRendererState& ctx)
 {
     auto& terrainData = ctx.world.ctx().get<TerrainView>().m_terrainData;
     m_terrainMeshScheduler.QueueChunksForMeshing(terrainData, m_terrainPData, ctx.events);
-    m_terrainMeshBuilder.BuildChunkMeshes(terrainData, ctx.world.ctx().get<BlockRegistry>(), m_terrainPData);
+    m_terrainMeshBuilder.BuildChunkMeshes(terrainData, ctx.world.ctx().get<BlockRegistry>(), m_terrainPData, ctx.memory.frameBuffer.Resource());
     m_terrainUploader.UploadTerrain(m_terrainPData, ctx.assets);
     m_terrainMeshScheduler.SubmitVisibleChunks(terrainData, m_terrainPData, ctx.world,
                                                ctx.submissionQueue.View<CmdDrawTerrainMeshOpaque>());

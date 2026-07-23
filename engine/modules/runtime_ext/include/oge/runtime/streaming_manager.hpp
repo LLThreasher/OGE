@@ -1,8 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <memory_resource>
 #include <queue>
 #include <span>
+#include <vector>
 
 #include "oge/graphics/objects.hpp"
 #include "oge/pool.hpp"
@@ -10,6 +12,8 @@
 #include "oge/runtime/ring_staging_buffer.hpp"
 #include "oge/graphics/configs.hpp"
 #include "oge/graphics/forward.hpp"
+#include "oge/macros.hpp"
+#include "oge/ring_allocator.hpp"
 
 
 namespace oge::runtime
@@ -66,9 +70,17 @@ class StreamingManager
         ResourceBundleHandle bundle = {};
     };
 
+    enum class AllocationResult
+    {
+        SuccessOnGpu,
+        SuccessOnCpu,
+        Failure,
+    };
+
    public:
-    // 4 MB per frame budget by default
-    StreamingManager(size_t uploadByteBudget = 4 * 1024 * 1024) : m_uploadByteBudget(uploadByteBudget) {}
+    // 4 MB per frame budget, 1 MB cpu cache by default
+    StreamingManager(size_t uploadByteBudget = 1 * 1024 * 1024, size_t cpuCacheSize = 1 * 1024 * 1024) : m_uploadByteBudget(uploadByteBudget) {}
+    NO_COPY(StreamingManager)
     RingStagingBuffer& GetStagingBuffer();
     void Initialize(IGraphicsBackend&);
     void Shutdown(IGraphicsBackend&);
@@ -80,6 +92,12 @@ class StreamingManager
 
     template <UploadType uploadType, typename TData>
     size_t UploadBuffer(const std::vector<TData>& data, const BufferTarget target, ResourceBundleHandle resBundle = {})
+    {
+        return Upload<uploadType>(std::as_bytes(std::span(data)), target, resBundle);
+    }
+
+    template <UploadType uploadType, typename TData>
+    size_t UploadBuffer(const std::pmr::vector<TData>& data, const BufferTarget target, ResourceBundleHandle resBundle = {})
     {
         return Upload<uploadType>(std::as_bytes(std::span(data)), target, resBundle);
     }
@@ -96,14 +114,14 @@ class StreamingManager
     template <UploadType uploadType = UploadType::Immediate>
     void ScheduleBufferUpload(const BufferUploadDesc& desc);
     template <UploadType uploadType = UploadType::Immediate>
-    bool AllocateStagingBuffer(const std::span<const std::byte> data, StagingBuffer&);
+    AllocationResult AllocateStagingBuffer(const std::span<const std::byte> data, StagingBuffer&);
 
     void UploadBuffer(uint32_t fidx, BufferUploadDesc& desc, ICommandList& transferCmd);
     void UploadTexture(uint32_t fidx, BufferUploadDesc& desc, ICommandList& transferCmd);
 
     RingStagingBuffer m_ringStagingBuffer;
     size_t m_uploadByteBudget;
-    std::queue<std::tuple<BufferUploadDesc, std::vector<std::byte>>> m_buffersQueuedInCPU;
+    std::queue<std::tuple<BufferUploadDesc, std::pmr::vector<std::byte>>> m_buffersQueuedInCPU;
     std::queue<BufferUploadDesc> m_buffersToUpload;
     std::queue<BufferUploadDesc> m_buffersToUploadImmediate;
     Pool<StreamingObjects::ResourceBundle, ResourceBundle> m_resourceBundles;
@@ -111,5 +129,7 @@ class StreamingManager
         m_resourceBundleCallbacks;
     std::array<std::queue<std::tuple<ResourceBundleHandle, StagingAllocation>>, MAX_FRAMES_IN_FLIGHT>
         m_stagingAllocationToFree;
+
+    std::pmr::unsynchronized_pool_resource m_memory;
 };
 }  // namespace oge::runtime

@@ -46,10 +46,8 @@ class GraphicalScene
     };
 
    protected:
-    MemoryContext m_memory{{MAX_FRAMES_IN_FLIGHT, 1 * 1024 * 1024}, {1 * 1024 * 1024, 5.f}};
-    std::array<view::SubmissionQueue, 3> m_squeue{m_memory.frameBuffer.Get(0),
-                                                  m_memory.frameBuffer.Get(1),
-                                                  m_memory.frameBuffer.Get(2)};
+    MemoryContext m_memory{{1 * 1024 * 1024}, {1 * 1024 * 1024, 5.f}};
+    view::SubmissionQueue m_squeue{m_memory.frameBuffer.Resource()};
     ViewExecutor m_viewExecutor;
     std::optional<Ctx> m_ctx;
 
@@ -112,9 +110,9 @@ class GraphicalScene
         m_subsystems.Update(f.dt);
         m_realtimeSubsystems.Update(f.dt);
 
-        m_squeue[m_memory.frameBuffer.Idx()].Clear();
+        m_squeue.Clear();
         m_renderers->Update(view::RendererFrameData{
-            f.dt, m_ctx.value().assets, m_squeue[m_memory.frameBuffer.Idx()],
+            f.dt, m_ctx.value().assets, m_squeue,
             m_subsystems.GetAlpha()});
         f.frameAction |= m_windowCtx.frameAction;
         m_windowCtx.Clear();
@@ -122,7 +120,7 @@ class GraphicalScene
 
     void Render(float dt)
     {
-        m_viewExecutor.Update(dt, m_squeue[m_memory.frameBuffer.Idx()]);
+        m_viewExecutor.Update(dt, m_squeue);
     }
 };
 

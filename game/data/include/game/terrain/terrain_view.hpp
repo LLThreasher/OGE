@@ -104,7 +104,7 @@ class ChunkDataCollection
 
 struct PaletteCompressedChunk
 {
-    std::vector<uint32_t> palette;
+    std::pmr::vector<uint32_t> palette;
     uint8_t data[CHUNK_SIZE_TOTAL];
 
     static PaletteCompressedChunk FromChunkData(const ChunkData& c);
@@ -121,6 +121,9 @@ struct TerrainData
     std::unordered_set<Point3> chunksToDestroy;
     std::unordered_map<ChunkHandle, std::vector<LocalUpdateBlockCmd>, HandleHash<ChunkHandle>> blockModificationQueue;
     std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> dirtyChunks;
+
+    TerrainData() {}
+    NO_COPY(TerrainData)
 };
 
 struct ResolveDirtyChunkEvent

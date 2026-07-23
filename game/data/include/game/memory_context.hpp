@@ -11,13 +11,13 @@ class CpuFrameArena
 {
    public:
     CpuFrameArena(size_t bufferSize = 64 * 1024)
-        : buffer_(bufferSize), resource_(buffer_.data(), buffer_.size())
+        : buffer_(bufferSize), resource_(buffer_.data(), buffer_.size(), std::pmr::null_memory_resource())
     {
     }
 
     std::pmr::memory_resource* Resource() { return &resource_; }
 
-    void Update(float dt)
+    void Update()
     {
         resource_.release();  // frees all upstream blocks
     }
@@ -97,12 +97,9 @@ public:
                       size_t bufferSize = 64 * 1024)
         : framesInFlight(framesInFlight),
           arenas{
-              std::pmr::monotonic_buffer_resource(bufferSize),
-              std::pmr::monotonic_buffer_resource(bufferSize),
-              std::pmr::monotonic_buffer_resource(bufferSize)
-            //   std::pmr::monotonic_buffer_resource(framesInFlight >= 1 ? bufferSize : 0, std::pmr::null_memory_resource()),
-            //   std::pmr::monotonic_buffer_resource(framesInFlight >= 2 ? bufferSize : 0, std::pmr::null_memory_resource()),
-            //   std::pmr::monotonic_buffer_resource(framesInFlight == 3 ? bufferSize : 0, std::pmr::null_memory_resource())
+              std::pmr::monotonic_buffer_resource(framesInFlight >= 1 ? bufferSize : 0, std::pmr::null_memory_resource()),
+              std::pmr::monotonic_buffer_resource(framesInFlight >= 2 ? bufferSize : 0, std::pmr::null_memory_resource()),
+              std::pmr::monotonic_buffer_resource(framesInFlight == 3 ? bufferSize : 0, std::pmr::null_memory_resource())
           }
     {
         assert(framesInFlight > 0 && framesInFlight <= 3);
@@ -138,7 +135,7 @@ private:
 
 struct MemoryContext
 {
-    CpuSwapFrameArena frameBuffer;
+    CpuFrameArena frameBuffer;
     CpuDurationFrameArena multiFrameBuffer;
 
     void Update(float dt)
