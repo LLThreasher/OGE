@@ -112,6 +112,8 @@ elseif (CMAKE_BUILD_TYPE STREQUAL "Release")
     set(APK_NAME "release/app-release.apk")
 endif()
 
+set(APK_NAME_OUT "game_${BUILD_TAG}.apk")
+
 set(APK_BUILD_PATH "${ANDROID_DIR}/app/build")
 set_source_files_properties("${APK_SRC_PATH}" PROPERTIES GENERATED TRUE)
 
@@ -133,6 +135,7 @@ set_target_properties(run_gradle_assemble PROPERTIES
 add_custom_target(
     build_apk ALL
     COMMAND ${CMAKE_COMMAND} -E copy "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}" "${CMAKE_BINARY_DIR}/Android-${CMAKE_BUILD_TYPE}.apk" 
+    COMMAND ${CMAKE_COMMAND} -E copy "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}" "${CMAKE_BINARY_DIR}/${APK_NAME_OUT}" 
     DEPENDS run_gradle_assemble "${APK_BUILD_PATH}/outputs/apk/${APK_NAME}"
 )
 install(CODE "
