@@ -93,6 +93,7 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
     map[SDLK_Z] = KeyCode::KY_Z;
 
     LOG_INFO("Creating SDL3 GameWindow");
+    SDL_SetHint(SDL_HINT_MOUSE_TOUCH_EVENTS, "0");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     // 1. Initialize SDL
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS);

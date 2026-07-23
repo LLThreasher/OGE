@@ -39,14 +39,15 @@ math::vec2 RawInputStream::PollPtrDelta(size_t ptrIdx, Cursor& cursor) const
 
 void RawInputStream::NewFrame()
 {
-    frameFrontier.activePtrs = activePtrs;
     frameFrontier.activeKeys = activeKeys;
     frameFrontier.dirtyPtrs = dirtyPtrs;
     events.AdvanceCursor(frameFrontier.cursor.eventCursor);
     for (size_t i : toRemovePtrs)
     {
-        activePtrs.remove(i - PtrInputCount);
+        activePtrs.remove(i);
     }
+    toRemovePtrs.clear();
+    frameFrontier.activePtrs = activePtrs;
     for (size_t i : dirtyPtrs)
     {
         pointers[i].Push(pointerPos[i]);
@@ -113,6 +114,7 @@ void RawInputStream::DelMouse(int id)
     events.Push(res2);
     LOG_DEBUG("remove mouse {} from slot {}", id, res2.pointerIdx);
     toRemovePtrs.add(res2.pointerIdx);
+    dirtyPtrs.add(res2.pointerIdx);
 }
 
 uint32_t RawInputStream::FindMouse(int id) const
@@ -152,6 +154,7 @@ void RawInputStream::SetTouchDown(uint64_t id, float x, float y)
     InputEvent res{InputEventType::PointerDown};
     res.pointerIdx = ptr_idx;
     events.Push(res);
+    LOG_DEBUG("add touch {} at slot {}", id, res.pointerIdx);
 
     pointerPos[res.pointerIdx] = math::vec2{x, y};
     dirtyPtrs.add(res.pointerIdx);
@@ -174,6 +177,7 @@ void RawInputStream::SetTouchUp(uint64_t id, float x, float y)
     events.Push(res);
     pointerPos[res.pointerIdx] = math::vec2{x, y};
     toRemovePtrs.add(res.pointerIdx);
+    dirtyPtrs.add(res.pointerIdx);
 }
 
 }  // namespace oge::input
