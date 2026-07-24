@@ -40,25 +40,6 @@ struct FInputContext
 
 class InputSource : public Stage<InputContext, FInputContext>
 {
-   public:
-    struct Def
-    {
-        PlayerInputStream* target;
-        float hfov;
-        float vfov;
-        union
-        {
-            struct
-            {
-                entt::entity viewWidget;
-                entt::entity moveWidget;
-            } widgetInput;
-            struct
-            {
-                size_t mouseIdx;
-            } mouseIuput;
-        };
-    };
 };
 
 void RegisterInputSources(AnythingFactory& af);
@@ -70,12 +51,6 @@ class UIDragInput : public InputSource
 
    public:
     DECL_ID(UIDragInput);
-
-    static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
-    {
-        return std::make_unique<UIDragInput>();
-    }
-
     void onAttach(InputContext& ctx);
     void onDetach(InputContext& ctx);
     void onUpdate(FInputContext& ctx);
@@ -92,18 +67,22 @@ class WidgetInput : public InputSource
     bool isDigging = false;
 
    public:
-    DECL_ID(WidgetInput);
-    WidgetInput(const Def& def) : out(*def.target)
+    struct Def
     {
-        viewWidget = def.widgetInput.viewWidget;
-        moveWidget = def.widgetInput.moveWidget;
-        vfov = def.vfov;
-        hfov = def.hfov;
-    }
+        PlayerInputStream& target;
+        entt::entity viewWidget;
+        entt::entity moveWidget;
+        float vfov;
+        float hfov;
+    };
 
-    static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
+    DECL_ID(WidgetInput);
+    WidgetInput(Def&& def) : out(def.target)
     {
-        return std::make_unique<WidgetInput>(def);
+        viewWidget = def.viewWidget;
+        moveWidget = def.moveWidget;
+        hfov = def.hfov;
+        vfov = def.vfov;
     }
 
     void onAttach(InputContext& ctx);
@@ -120,17 +99,20 @@ class KeyMouseInput : public InputSource
     RawInputStream::Cursor raw_idx = {};
 
    public:
-    DECL_ID(KeyMouseInput);
-    KeyMouseInput(const Def& def) : InputSource(), out(*def.target)
+    struct Def
     {
-        mouseIdx = def.mouseIuput.mouseIdx;
+        PlayerInputStream& target;
+        size_t mouseIdx;
+        float hfov;
+        float vfov;
+    };
+
+    DECL_ID(KeyMouseInput);
+    KeyMouseInput(Def&& def) : InputSource(), out(def.target)
+    {
+        mouseIdx = def.mouseIdx;
         vfov = def.vfov;
         hfov = def.hfov;
-    }
-
-    static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
-    {
-        return std::make_unique<KeyMouseInput>(def);
     }
 
     void onAttach(InputContext& ctx);
@@ -142,6 +124,6 @@ class InputPipeline : public FramePipeline<InputSource, InputFrame>
 {
     InputContext m_input;
    public:
-    InputPipeline(InputContext&& state, AnythingFactory& af) : m_input(state), FramePipeline<InputSource, InputFrame>(m_input, af) {}
+    InputPipeline(InputContext&& state) : m_input(state), FramePipeline<InputSource, InputFrame>(m_input) {}
 };
 };  // namespace game::input

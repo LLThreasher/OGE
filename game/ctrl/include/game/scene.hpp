@@ -28,17 +28,15 @@ class Scene
     };
 
    protected:
-    MemoryContext m_memory = {{8*1024}, {1*256*1024, 10.f}}; // 8k per frame, 256k per 5 sec
+    MemoryContext m_memory = {{8*1024}, {1*256*1024, 10.f}, {1*256*1024, 0.2f}}; // 8k per frame, 256k per 5 sec
     std::optional<Ctx> m_ctx;
 
-    sim::GameState m_gameState;
     entt::registry m_world;
     sim::SubsystemPipeline m_subsystems;
 
    public:
     Scene(AppContext ctx)
-        : m_gameState(m_world, ctx.events, m_memory),
-          m_subsystems(m_gameState, ctx.any_factory, 1.f / 30.f)
+        : m_subsystems({m_world, ctx.events, m_memory}, 1.f / 30.f)
     {
     }
 

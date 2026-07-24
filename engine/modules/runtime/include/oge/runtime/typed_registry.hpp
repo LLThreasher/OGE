@@ -1,17 +1,24 @@
 #pragma once
 
 #include <cassert>
+#include <concepts>
+#include <cstddef>
 #include <functional>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
+#include <vector>
 
 #include "oge/log.hpp"
 #include "oge/runtime/entt.hpp"
 
-#define DECL_ID(Name)                                                  \
-    static const std::string_view name() { return entt::type_id<Name>().name(); }
+#define DECL_ID(Name)                        \
+    static const std::string_view name()     \
+    {                                        \
+        return entt::type_id<Name>().name(); \
+    }
 
 namespace oge::runtime
 {
@@ -23,10 +30,10 @@ template <typename T>
 concept IsABC = requires { typename T::Def; };
 
 template <typename T, typename ABC>
-concept BuildableToABC = requires(const typename ABC::Def& def, AnythingFactory& factory) {
+concept BuildableToABC = requires() {
     std::derived_from<T, ABC>;
-    // must have static Build function
-    { T::Build(def, factory) } -> std::same_as<std::unique_ptr<ABC>>;
+    typename T::Def;
+    std::constructible_from<T, typename T::Def&&, AnythingFactory>;
 };
 
 template <typename T, typename ABC>
@@ -36,12 +43,11 @@ concept DefaultBuildableToABC = requires() {
 };
 
 template <typename T>
-concept Buildable = requires(const typename T::Def& def, AnythingFactory& factory) {
-    typename T::Def;
-
-    // must have static Build function
-    { T::Build(def, factory) } -> std::same_as<T>;
-};
+concept Buildable =
+    requires(const typename T::Def& def, AnythingFactory& factory) {
+        typename T::Def;
+        std::constructible_from<T, typename T::Def&&, AnythingFactory>;
+    };
 
 template <typename T>
 class DefaultABCFactory
@@ -50,49 +56,66 @@ class DefaultABCFactory
 
    public:
     template <typename Derived>
-        requires DefaultBuildableToABC<Derived, T>
+        requires DefaultBuildableToABC<Derived, T> || BuildableToABC<Derived, T>
     void Register(oge_id_type id)
     {
-        builders.emplace(id, []() -> std::unique_ptr<T> { return std::make_unique<Derived>(); });
+        if constexpr (std::derived_from<Derived, T> &&
+                      std::is_default_constructible_v<Derived>)
+        {
+            static_assert(std::is_default_constructible_v<Derived>);
+            default_builders.emplace(id, []() -> std::unique_ptr<T>
+                                     { return std::make_unique<Derived>(); });
+        }
+        else if constexpr (std::constructible_from<Derived,
+                                                typename Derived::Def&&>)
+        {
+            def_builders.emplace(
+                id,
+                [](entt::any& data) -> std::unique_ptr<T>
+                {
+                    assert(data);
+                    return std::make_unique<Derived>(
+                        std::move(entt::any_cast<typename Derived::Def>(data)));
+                });
+        }
+        else
+        {
+            static_assert(BuildableToABC<Derived, T>);
+            builders.emplace(
+                id,
+                [](entt::any& data, AnythingFactory& af) -> std::unique_ptr<T>
+                {
+                    return std::make_unique<Derived>(
+                        std::move(entt::any_cast<typename Derived::Def>(data)), af);
+                });
+        }
     }
 
-    std::unique_ptr<T> Build(id_type id)
+    std::unique_ptr<T> Build(id_type id, entt::any data, AnythingFactory& af)
     {
-        auto it = builders.find(id);
-        if (it == builders.end()) return nullptr;
-
-        return it->second();
+        {
+            auto it = default_builders.find(id);
+            if (it != default_builders.end()) return it->second();
+        }
+        {
+            auto it = def_builders.find(id);
+            if (it != def_builders.end()) return it->second(data);
+        }
+        {
+            auto it = builders.find(id);
+            if (it != builders.end()) return it->second(data, af);
+        }
+        return nullptr;
     }
 
    private:
-    std::unordered_map<id_type, std::function<std::unique_ptr<T>()>> builders;
-};
-
-template <typename T>
-    requires IsABC<T>
-class ABCFactory
-{
-    using def_type = typename T::Def;
-    using id_type = oge_id_type;
-
-   public:
-    template <typename Derived>
-        requires BuildableToABC<Derived, T>
-    void Register(oge_id_type id)
-    {
-        builders.emplace(id, &Derived::Build);
-    }
-
-    std::unique_ptr<T> Build(id_type id, const def_type& def, AnythingFactory& af)
-    {
-        auto it = builders.find(id);
-        if (it == builders.end()) return nullptr;
-
-        return it->second(def, af);
-    }
-
-   private:
-    std::unordered_map<id_type, std::unique_ptr<T> (*)(const def_type&, AnythingFactory&)> builders;
+    std::unordered_map<id_type, std::function<std::unique_ptr<T>()>>
+        default_builders;
+    std::unordered_map<id_type, std::function<std::unique_ptr<T>(entt::any&)>>
+        def_builders;
+    std::unordered_map<
+        id_type, std::function<std::unique_ptr<T>(entt::any&, AnythingFactory)>>
+        builders;
 };
 
 class OGEContextReadOnly
@@ -135,54 +158,36 @@ class AnythingFactory
     template <typename T>
     void RegisterABC()
     {
-        if constexpr (IsABC<T>)
-        {
-            registry.Emplace<ABCFactory<T>>();
-        }
-        else
-        {
-            registry.Emplace<DefaultABCFactory<T>>();
-        }
+        registry.Emplace<DefaultABCFactory<T>>();
     }
 
     template <typename TBase, typename TDrived>
-        requires IsABC<TBase> && BuildableToABC<TDrived, TBase> || DefaultBuildableToABC<TDrived, TBase>
+        requires IsABC<TBase> && BuildableToABC<TDrived, TBase> ||
+                     DefaultBuildableToABC<TDrived, TBase>
                  void RegisterDrived()
     {
-        oge_id_type id = entt::type_hash<TDrived>::value(); // !!!! this copy is very important for Sys<>, I don't know why
+        oge_id_type id =
+            entt::type_hash<TDrived>::value();  // !!!! this copy is very
+                                                // important for Sys<>, I don't
+                                                // know why
         LOG_INFO("[AF] registering {} as {}", TDrived::name(), id);
-        if constexpr (IsABC<TBase>)
-        {
-            static_assert(BuildableToABC<TDrived, TBase>);
-            registry.Get<ABCFactory<TBase>>()->template Register<TDrived>(id);
-        }
-        else
-        {
-            registry.Get<DefaultABCFactory<TBase>>()->template Register<TDrived>(id);
-        }
+        registry.Get<DefaultABCFactory<TBase>>()->template Register<TDrived>(
+            id);
     }
 
     template <typename T>
-    std::unique_ptr<T> BuildABC(oge_id_type name)
+    std::unique_ptr<T> BuildABC(oge_id_type name, entt::any def = {})
     {
         LOG_DEBUG("adding ABC with id {}", name);
         auto factory = registry.Get<DefaultABCFactory<T>>();
-        assert(factory);
-        return factory->Build(name);
-    }
-
-    template <typename T>
-        requires IsABC<T>
-    std::unique_ptr<T> BuildABC(oge_id_type name, const T::Def& def)
-    {
-        auto factory = registry.Get<ABCFactory<T>>();
         assert(factory);
         return factory->Build(name, def, *this);
     }
 
     template <typename T>
         requires IsABC<T>
-    std::vector<std::unique_ptr<T>> BuildABCVec(const std::vector<oge_id_type>& defs)
+    std::vector<std::unique_ptr<T>> BuildABCVec(
+        const std::vector<oge_id_type>& defs)
     {
         std::vector<std::unique_ptr<T>> res;
         typename T::Def def{};
@@ -196,7 +201,8 @@ class AnythingFactory
 
     template <typename T>
         requires IsABC<T>
-    std::vector<std::unique_ptr<T>> BuildABCVec(const std::vector<std::tuple<oge_id_type, const typename T::Def>>& defs)
+    std::vector<std::unique_ptr<T>> BuildABCVec(
+        const std::vector<std::tuple<oge_id_type, const typename T::Def>>& defs)
     {
         std::vector<std::unique_ptr<T>> res;
         res.reserve(defs.size());

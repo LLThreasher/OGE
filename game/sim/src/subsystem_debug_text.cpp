@@ -13,7 +13,7 @@ static void onLog(oge::LogLevel lvl, std::string_view msg, void* user)
 {
     GameState* ctx = reinterpret_cast<GameState*>(user);
     auto e = ctx->world.create();
-    ctx->world.emplace<DebugText>(e, std::pmr::string{msg, ctx->memory.multiFrameBuffer.Resource()}, 5.f);
+    ctx->world.emplace<DebugText>(e, std::move(std::pmr::string{msg, ctx->memory.multiFrameBuffer.Resource()}), 5.f);
 }
 
 void SubsystemDebugText::onAttach(GameState& ctx)
@@ -54,7 +54,7 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
         cpuUsage = GetCPUUsage();
     }
     auto entity = ctx.world.create();
-    auto& txt = ctx.world.emplace<DebugText>(entity, std::pmr::string{ctx.memory.frameBuffer.Resource()});
+    auto& txt = ctx.world.emplace<DebugText>(entity, std::move(std::pmr::string{ctx.memory.fixedUpdateBuffer.Resource()}));
     fmt::format_to(std::back_inserter(txt.text),
                    "{}\n{:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S {:.2f}\nCPU: {:.2f}%\nMEM: {} MB | NB {} MB",
                    BUILD_TAG,

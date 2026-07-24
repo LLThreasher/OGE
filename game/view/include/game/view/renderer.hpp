@@ -68,7 +68,7 @@ class RenderPipeline : public FramePipeline<Renderer, RendererFrameData>
 {
     RendererState m_state;
    public:
-    RenderPipeline(RendererState&& state, AnythingFactory& af) : m_state(state), FramePipeline<Renderer, RendererFrameData>(m_state, af) {}
+    RenderPipeline(RendererState&& state) : m_state(state), FramePipeline<Renderer, RendererFrameData>(m_state) {}
 };
 
 void RegisterRenderers(AnythingFactory& af);

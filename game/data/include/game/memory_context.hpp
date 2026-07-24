@@ -137,6 +137,7 @@ struct MemoryContext
 {
     CpuFrameArena frameBuffer;
     CpuDurationFrameArena multiFrameBuffer;
+    CpuDurationFrameArena fixedUpdateBuffer;
 
     void Update(float dt)
     {

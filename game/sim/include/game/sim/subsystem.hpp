@@ -55,9 +55,9 @@ class SubsystemPipeline : public FixedStepPipeline<Subsystem, GameFrame>
     GameState m_state;
    public:
     NO_COPY(SubsystemPipeline)
-    SubsystemPipeline(GameState&& state, AnythingFactory& af,
+    SubsystemPipeline(GameState&& state,
                       float updateInterval)
-        : m_state(state), FixedStepPipeline<Subsystem, GameFrame>(m_state, af, updateInterval)
+        : m_state(state), FixedStepPipeline<Subsystem, GameFrame>(m_state, updateInterval)
     {
     }
 };
@@ -66,8 +66,8 @@ class RealtimeSubsystemPipeline : public FramePipeline<Subsystem, GameFrame>
 {
     GameState m_state;
    public:
-    RealtimeSubsystemPipeline(GameState&& state, AnythingFactory& af)
-        : m_state(state), FramePipeline<Subsystem, GameFrame>(m_state, af)
+    RealtimeSubsystemPipeline(GameState&& state)
+        : m_state(state), FramePipeline<Subsystem, GameFrame>(m_state)
     {
     }
 };

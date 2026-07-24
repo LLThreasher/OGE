@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <concepts>
 #include <functional>
 #include <memory>
 #include <type_traits>
@@ -9,6 +10,7 @@
 #include "oge/log.hpp"
 #include "oge/runtime/tick_scheduler.hpp"
 #include "oge/runtime/typed_registry.hpp"
+#include "oge/texture_data.hpp"
 
 namespace oge::runtime
 {
@@ -37,10 +39,28 @@ class BasePipeline
     using TFrameCtx = typename TStage::FrameCtx;
 
    public:
-    BasePipeline(TCtx& ctx, AnythingFactory& factory) : m_ctx(ctx), m_factory(factory) {}
+    BasePipeline(TCtx& ctx) : m_ctx(ctx) {}
+
+    template<typename TDerived>
+    TDerived* AddStage(AnythingFactory& af)
+    {
+        return reinterpret_cast<TDerived*>(AddStage(af, entt::type_hash<TDerived>::value()));
+    }
+
+    template<typename TDerived>
+    TDerived* AddStage(AnythingFactory& af, typename TDerived::Def data)
+    {
+        return reinterpret_cast<TDerived*>(AddStage(af, entt::type_hash<TDerived>::value(), data));
+    }
+
+    TStage* AddStage(AnythingFactory& af, oge_id_type id, entt::any data = {})
+    {
+        return AddStage(af.BuildABC<TStage>(id, data));
+    }
 
     TStage* AddStage(std::unique_ptr<TStage> stage)
     {
+        assert(stage);
         m_stages.push_back(std::move(stage));
         assert(m_stages.back() != nullptr && "nullptr stage");
         m_stages.back()->onAttach(m_ctx);
@@ -100,45 +120,18 @@ class BasePipeline
     }
 
     std::vector<std::unique_ptr<TStage>> m_stages;
-    AnythingFactory& m_factory;
     TCtx& m_ctx;
 };
 
 template <typename TControl, typename TStage, typename TFrameData = float>
-class DefaultPipeline : public BasePipeline<TControl, TStage, TFrameData>
-{
-   public:
-    DefaultPipeline(TStage::Ctx& ctx, AnythingFactory& af) : BasePipeline<TControl, TStage, TFrameData>(ctx, af) {}
-    template <typename TSys>
-    TStage* AddStage()
-    {
-        return BasePipeline<TControl, TStage, TFrameData>::AddStage(this->m_factory.template BuildABC<TStage>(entt::type_hash<TSys>::value()));
-    }
-};
-
-template <typename TControl, typename TStage, typename TFrameData = float>
-class DefPipeline : public BasePipeline<TControl, TStage, TFrameData>
-{
-   public:
-    DefPipeline(TStage::Ctx& ctx, AnythingFactory& af) : BasePipeline<TControl, TStage, TFrameData>(ctx, af) {}
-    template <typename TSys>
-    TStage* AddStage(TStage::Def def)
-    {
-        return BasePipeline<TControl, TStage, TFrameData>::AddStage(
-            this->m_factory.template BuildABC<TStage>(entt::type_hash<TSys>::value(), def));
-    }
-};
-
-template <typename TControl, typename TStage, typename TFrameData = float>
-using Pipeline = std::conditional_t<IsABC<TStage>, DefPipeline<TControl, TStage, TFrameData>,
-                                    DefaultPipeline<TControl, TStage, TFrameData>>;
+using Pipeline = BasePipeline<TControl, TStage, TFrameData>;
 
 template <typename TStage, typename TFrameData = float>
 class FramePipeline : public Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>
 {
    public:
     using TPipeline = Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>;
-    FramePipeline(TStage::Ctx& ctx, AnythingFactory& af) : TPipeline(ctx, af) {}
+    FramePipeline(TStage::Ctx& ctx) : TPipeline(ctx) {}
     template <typename Fn>
     void onUpdate(TFrameData dt, typename TStage::Ctx& ctx, Fn&& update)
     {
@@ -151,8 +144,8 @@ class FixedStepPipeline : public Pipeline<FixedStepPipeline<TStage, FrameData>, 
 {
    public:
     using TPipeline = Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>;
-    FixedStepPipeline(TStage::Ctx& ctx, AnythingFactory& af, float updateInterval = 1.f / 60.f)
-        : TPipeline(ctx, af), m_tickScheduler(updateInterval)
+    FixedStepPipeline(TStage::Ctx& ctx, float updateInterval = 1.f / 60.f)
+        : TPipeline(ctx), m_tickScheduler(updateInterval)
     {
     }
     template <typename Fn>

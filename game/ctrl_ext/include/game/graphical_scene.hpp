@@ -46,7 +46,7 @@ class GraphicalScene
     };
 
    protected:
-    MemoryContext m_memory{{1 * 1024 * 1024}, {1 * 1024 * 1024, 5.f}};
+    MemoryContext m_memory{{1 * 1024 * 1024}, {1 * 1024 * 1024, 10.f}, {1 * 1024 * 1024, 0.2f}};
     view::SubmissionQueue m_squeue{m_memory.frameBuffer.Resource()};
     ViewExecutor m_viewExecutor;
     std::optional<Ctx> m_ctx;
@@ -63,6 +63,8 @@ class GraphicalScene
     entt::registry m_renderWorld;
     std::optional<view::RenderPipeline> m_renderers;
 
+    AnythingFactory& m_af;
+
     ViewExecutor& GetPasses() { return m_viewExecutor; }
 
    public:
@@ -76,8 +78,9 @@ class GraphicalScene
 
     GraphicalScene(AppContext ctx)
         : m_events(ctx.events),
-          m_subsystems({m_world, m_events, m_memory}, ctx.any_factory, 1.f / 30.f),
-          m_realtimeSubsystems({m_world, m_events, m_memory}, ctx.any_factory)
+          m_subsystems({m_world, m_events, m_memory}, 1.f / 30.f),
+          m_realtimeSubsystems({m_world, m_events, m_memory}),
+          m_af(ctx.any_factory)
     {
     }
 
@@ -86,9 +89,9 @@ class GraphicalScene
     virtual void Attach(const json::Value& args, OGEContext& ctx,
                         AnythingFactory& af)
     {
-        m_inputs.emplace(input::InputContext{m_windowCtx, m_world}, af);
+        m_inputs.emplace(input::InputContext{m_windowCtx, m_world});
         m_renderers.emplace(view::RendererState{m_world, m_renderWorld, m_events,
-                              m_memory, AssetContext(ctx)}, af);
+                              m_memory, AssetContext(ctx)});
         m_ctx.emplace(ctx);
         m_viewExecutor.Attach(ctx);
     }
