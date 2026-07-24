@@ -12,17 +12,15 @@ namespace net = oge::runtime::net;
 
 NET_OBJ(GameWorldConfig)
 {
-    terrain::TerrainDesc terrainDesc;
-    terrain::TerrainRendererDesc terrainRendererDesc;
+    terrain::TerrainDesc terrainDesc = {};
     net::List<oge_id_type> subsystems;
-    net::List<oge_id_type> renderers;
+    net::List<oge_id_type> realtimeSubsystems;
 
     NET_OBJ_FN
     {
         visit(terrainDesc);
-        visit(terrainRendererDesc);
         visit(subsystems);
-        visit(renderers);
+        visit(realtimeSubsystems);
     }
 };
 

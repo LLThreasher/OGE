@@ -3,6 +3,7 @@
 
 #include "game/app_context.hpp"
 #include "game/components.hpp"
+#include "game/game_world.hpp"
 #include "game/graphical_scene.hpp"
 #include "game/input/input_source.hpp"
 #include "game/input/player_input_stream.hpp"
@@ -65,18 +66,18 @@ class DebugScene3 : public GraphicalScene
    public:
     DebugScene3(AppContext ctx) : GraphicalScene(std::move(ctx))
     {
-        m_subsystems.AddStage<sim::SubsystemDebugText>(m_af);
-        m_subsystems.AddStage<sim::SubsystemTerrain>(m_af);
-        m_subsystems.AddStage<sim::SubsystemPlayer<UpdateType::FixedStep>>(m_af);
-        m_subsystems.AddStage<sim::SubsystemCreature<UpdateType::FixedStep>>(m_af);
-        m_subsystems.AddStage<sim::SubsystemPhysics<UpdateType::FixedStep>>(m_af);
+        GameWorldConfig config{};
+        config.subsystems.Add(m_af.IdOf<sim::SubsystemDebugText>());
+        config.subsystems.Add(m_af.IdOf<sim::SubsystemTerrain>());
+        config.subsystems.Add(m_af.IdOf<sim::SubsystemPlayer<UpdateType::FixedStep>>());
+        config.subsystems.Add(m_af.IdOf<sim::SubsystemCreature<UpdateType::FixedStep>>());
+        config.subsystems.Add(m_af.IdOf<sim::SubsystemPhysics<UpdateType::FixedStep>>());
 
-        m_realtimeSubsystems
-            .AddStage<sim::SubsystemPlayer<UpdateType::Realtime>>(m_af);
-        m_realtimeSubsystems
-            .AddStage<sim::SubsystemCreature<UpdateType::Realtime>>(m_af);
-        m_realtimeSubsystems
-            .AddStage<sim::SubsystemPhysics<UpdateType::Realtime>>(m_af);
+        config.realtimeSubsystems.Add(m_af.IdOf<sim::SubsystemPlayer<UpdateType::Realtime>>());
+        config.realtimeSubsystems.Add(m_af.IdOf<sim::SubsystemCreature<UpdateType::Realtime>>());
+        config.realtimeSubsystems.Add(m_af.IdOf<sim::SubsystemPhysics<UpdateType::Realtime>>());
+
+        Load(std::move(config));
     }
 
     void Attach(const json::Value& args, OGEContext& ctx,

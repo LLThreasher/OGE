@@ -8,10 +8,12 @@
 #include <vector>
 
 #include "game/app_context.hpp"
+#include "game/game_world.hpp"
 #include "game/input/input_source.hpp"
 #include "game/json.hpp"
 #include "game/memory_context.hpp"
 #include "game/sim/subsystem.hpp"
+#include "game/terrain/defs.hpp"
 #include "game/view/gfx/debug_info_pass.hpp"
 #include "game/view/gfx/terrain_pass2.hpp"
 #include "game/view/gfx/view_executor.hpp"
@@ -94,6 +96,26 @@ class GraphicalScene
                               m_memory, AssetContext(ctx)});
         m_ctx.emplace(ctx);
         m_viewExecutor.Attach(ctx);
+    }
+
+    virtual void Load(GameWorldConfig&& config)
+    {
+        m_world.ctx().emplace<terrain::TerrainDesc>(config.terrainDesc);
+        for (auto stage : config.subsystems)
+        {
+            m_subsystems.AddStage(m_af, stage);
+        }
+        for (auto stage : config.realtimeSubsystems)
+        {
+            m_realtimeSubsystems.AddStage(m_af, stage);
+        }
+    }
+
+    virtual void Unload()
+    {
+        m_world.ctx().clear();
+        m_subsystems.Clear();
+        m_realtimeSubsystems.Clear();
     }
 
     virtual void Detach()

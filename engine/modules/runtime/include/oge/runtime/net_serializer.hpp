@@ -141,6 +141,11 @@ struct List : Object<List<T>>
     {
         return data.end();
     }
+
+    void Add(T&& item)
+    {
+        data.push_back(item);
+    }
 };
 
 #define NET_OBJ(Name) struct Name : public ::oge::runtime::net::Object<Name>

@@ -44,13 +44,13 @@ class BasePipeline
     template<typename TDerived>
     TDerived* AddStage(AnythingFactory& af)
     {
-        return reinterpret_cast<TDerived*>(AddStage(af, entt::type_hash<TDerived>::value()));
+        return reinterpret_cast<TDerived*>(AddStage(af, af.IdOf<TDerived>()));
     }
 
     template<typename TDerived>
     TDerived* AddStage(AnythingFactory& af, typename TDerived::Def data)
     {
-        return reinterpret_cast<TDerived*>(AddStage(af, entt::type_hash<TDerived>::value(), data));
+        return reinterpret_cast<TDerived*>(AddStage(af, af.IdOf<TDerived>(), data));
     }
 
     TStage* AddStage(AnythingFactory& af, oge_id_type id, entt::any data = {})
