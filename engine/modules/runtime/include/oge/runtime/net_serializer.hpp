@@ -1,10 +1,12 @@
 #pragma once
 #include <cassert>
+#include <concepts>
 #include <cstddef>
 #include <cstring>
 #include <span>
 #include <stdexcept>
 #include <vector>
+
 #include "oge/macros.hpp"
 
 namespace oge::runtime::net
@@ -49,10 +51,7 @@ class Buffer
         readPos = 0;
     }
 
-    std::span<std::byte>& RawData()
-    {
-        return data;
-    }
+    std::span<std::byte>& RawData() { return data; }
 
     const std::span<std::byte> Data() const
     {
@@ -109,6 +108,38 @@ class Object
     {
         static_cast<Derived*>(this)->VisitFields(
             [&](auto& field) { field.Deserialize(buffer); });
+    }
+};
+
+template <typename T>
+struct List : Object<List<T>>
+{
+    std::vector<T> data;
+
+    void Serialize(Buffer& buffer)
+    {
+        for (const auto& val : data)
+        {
+            val.VisitFields([&](auto& field) { field.Serialize(buffer); });
+        }
+    }
+
+    void Deserialize(Buffer& buffer)
+    {
+        for (auto& val : data)
+        {
+            val.Deserialize(buffer);
+        }
+    }
+
+    auto begin()
+    {
+        return data.begin();
+    }
+
+    auto end()
+    {
+        return data.end();
     }
 };
 

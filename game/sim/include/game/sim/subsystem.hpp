@@ -52,20 +52,22 @@ class Subsystem : public Stage<GameState, FGameState>
 
 class SubsystemPipeline : public FixedStepPipeline<Subsystem, GameFrame>
 {
+    GameState m_state;
    public:
     NO_COPY(SubsystemPipeline)
-    SubsystemPipeline(GameState& state, AnythingFactory& af,
+    SubsystemPipeline(GameState&& state, AnythingFactory& af,
                       float updateInterval)
-        : FixedStepPipeline<Subsystem, GameFrame>(state, af, updateInterval)
+        : m_state(state), FixedStepPipeline<Subsystem, GameFrame>(m_state, af, updateInterval)
     {
     }
 };
 
 class RealtimeSubsystemPipeline : public FramePipeline<Subsystem, GameFrame>
 {
+    GameState m_state;
    public:
-    RealtimeSubsystemPipeline(GameState& state, AnythingFactory& af)
-        : FramePipeline<Subsystem, GameFrame>(state, af)
+    RealtimeSubsystemPipeline(GameState&& state, AnythingFactory& af)
+        : m_state(state), FramePipeline<Subsystem, GameFrame>(m_state, af)
     {
     }
 };

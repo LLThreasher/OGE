@@ -66,8 +66,9 @@ class Renderer : public Stage<RendererState, FRendererState>
 
 class RenderPipeline : public FramePipeline<Renderer, RendererFrameData>
 {
+    RendererState m_state;
    public:
-    RenderPipeline(RendererState& state, AnythingFactory& af) : FramePipeline<Renderer, RendererFrameData>(state, af) {}
+    RenderPipeline(RendererState&& state, AnythingFactory& af) : m_state(state), FramePipeline<Renderer, RendererFrameData>(m_state, af) {}
 };
 
 void RegisterRenderers(AnythingFactory& af);

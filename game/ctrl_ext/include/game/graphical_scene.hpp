@@ -51,17 +51,16 @@ class GraphicalScene
     ViewExecutor m_viewExecutor;
     std::optional<Ctx> m_ctx;
 
-    sim::GameState m_gameState;
-    input::InputContext m_inputState;
     WindowCtx m_windowCtx;
 
     entt::registry m_world;
+    entt::dispatcher& m_events;
+
     sim::SubsystemPipeline m_subsystems;
     sim::RealtimeSubsystemPipeline m_realtimeSubsystems;
-    input::InputPipeline m_inputs;
+    std::optional<input::InputPipeline> m_inputs;
 
     entt::registry m_renderWorld;
-    std::optional<view::RendererState> m_renderState;
     std::optional<view::RenderPipeline> m_renderers;
 
     ViewExecutor& GetPasses() { return m_viewExecutor; }
@@ -76,11 +75,9 @@ class GraphicalScene
     };
 
     GraphicalScene(AppContext ctx)
-        : m_gameState(m_world, ctx.events, m_memory),
-          m_subsystems(m_gameState, ctx.any_factory, 1.f / 30.f),
-          m_realtimeSubsystems(m_gameState, ctx.any_factory),
-          m_inputState(m_windowCtx, m_world),
-          m_inputs(m_inputState, ctx.any_factory)
+        : m_events(ctx.events),
+          m_subsystems({m_world, m_events, m_memory}, ctx.any_factory, 1.f / 30.f),
+          m_realtimeSubsystems({m_world, m_events, m_memory}, ctx.any_factory)
     {
     }
 
@@ -89,9 +86,9 @@ class GraphicalScene
     virtual void Attach(const json::Value& args, OGEContext& ctx,
                         AnythingFactory& af)
     {
-        m_renderState.emplace(m_world, m_renderWorld, m_gameState.events,
-                              m_memory, AssetContext(ctx));
-        m_renderers.emplace(*&m_renderState.value(), af);
+        m_inputs.emplace(input::InputContext{m_windowCtx, m_world}, af);
+        m_renderers.emplace(view::RendererState{m_world, m_renderWorld, m_events,
+                              m_memory, AssetContext(ctx)}, af);
         m_ctx.emplace(ctx);
         m_viewExecutor.Attach(ctx);
     }
@@ -105,7 +102,7 @@ class GraphicalScene
     virtual void Update(Frame f)
     {
         m_memory.Update(f.dt);
-        m_inputs.Update({f.dt, f.is});
+        m_inputs.value().Update({f.dt, f.is});
         m_world.ctx().insert_or_assign(f.perfStats);
         m_subsystems.Update(f.dt);
         m_realtimeSubsystems.Update(f.dt);

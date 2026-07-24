@@ -11,7 +11,6 @@
 #include "oge/graphics/objects.hpp"
 #include "oge/macros.hpp"
 #include "oge/pool.hpp"
-#include "oge/runtime/entt.hpp"
 #include "oge/runtime/gfx/uniform_arena.hpp"
 
 namespace oge::runtime

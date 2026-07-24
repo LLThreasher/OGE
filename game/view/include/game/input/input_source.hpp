@@ -140,7 +140,8 @@ class KeyMouseInput : public InputSource
 
 class InputPipeline : public FramePipeline<InputSource, InputFrame>
 {
+    InputContext m_input;
    public:
-    InputPipeline(InputContext& state, AnythingFactory& af) : FramePipeline<InputSource, InputFrame>(state, af) {}
+    InputPipeline(InputContext&& state, AnythingFactory& af) : m_input(state), FramePipeline<InputSource, InputFrame>(m_input, af) {}
 };
 };  // namespace game::input
