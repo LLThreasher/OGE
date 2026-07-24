@@ -3,14 +3,16 @@
 #include <enet/enet.h>
 
 #include <cstddef>
+#include <memory_resource>
 
+#include "enet_interface.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 using namespace oge::runtime;
 
-bool NetClient::Initialize(size_t channelCount)
+bool NetClient::Initialize(size_t channelCount, std::pmr::memory_resource* memory)
 {
-    if (enet_initialize() != 0)
+    if (oge_enet_initialize(memory) != 0)
     {
         LOG_ERROR("ENet init failed");
         return false;
@@ -79,13 +81,14 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
+            {
                 OnPacketReceived(event.packet->data, event.packet->dataLength);
+                auto buffer = net::Buffer(event.packet->data, event.packet->dataLength);
                 dispatcher.trigger<OnClientPacketReceived>(
-                    {net::Buffer(event.packet->data, event.packet->dataLength)
-                         .ToReadOnly()});
+                    {buffer.ToReadOnly()});
                 enet_packet_destroy(event.packet);
                 break;
-
+                }
             case ENET_EVENT_TYPE_DISCONNECT:
                 LOG_INFO("Disconnected from server");
                 peer = nullptr;
@@ -116,14 +119,15 @@ void NetClient::Shutdown()
     {
         enet_host_destroy(host);
         host = nullptr;
-        enet_deinitialize();
+        oge_enet_shutdown();
         LOG_INFO("Client shutdown");
     }
 }
 
 net::Buffer NetClient::StartPacket(size_t size)
 {
-    return sendPacketProducer.AllocPacket(size);
+    void* data = m_memory->allocate(size);
+    return net::Buffer(data, size);
 }
 
 void NetClient::SendReliable(net::Buffer data, uint8_t channel)
@@ -132,10 +136,10 @@ void NetClient::SendReliable(net::Buffer data, uint8_t channel)
 
     ENetPacket* packet = enet_packet_create(
         data.Data().data(), data.Data().size(), ENET_PACKET_FLAG_RELIABLE);
-    
-    sendPacketProducer.FreePacket(data);
-
-    enet_peer_send(peer, channel, packet);
+    if (enet_peer_send(peer, channel, packet) < 0)
+    {
+        enet_packet_destroy(packet);
+    }
 }
 
 void NetClient::SendUnreliable(net::Buffer data, uint8_t channel)
@@ -144,8 +148,8 @@ void NetClient::SendUnreliable(net::Buffer data, uint8_t channel)
 
     ENetPacket* packet =
         enet_packet_create(data.Data().data(), data.Data().size(), 0);
-    
-    sendPacketProducer.FreePacket(data);
-
-    enet_peer_send(peer, channel, packet);
+    if (enet_peer_send(peer, channel, packet) < 0)
+    {
+        enet_packet_destroy(packet);
+    }
 }

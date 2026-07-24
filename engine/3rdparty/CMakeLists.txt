@@ -49,11 +49,13 @@ FetchContent_Declare(
     GIT_TAG        VER-2-14-3
 )
 
-FetchContent_Declare(
-    enet
-    GIT_REPOSITORY https://github.com/Lixue9jiu/enet.git
-    GIT_TAG        master
-)
+# FetchContent_Declare(
+#     enet
+#     GIT_REPOSITORY https://github.com/Lixue9jiu/enet.git
+#     GIT_TAG        master
+# )
+
+add_subdirectory(enet)
 
 FetchContent_Declare(
     fmt
@@ -64,7 +66,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(glm)
 FetchContent_MakeAvailable(entt)
 FetchContent_MakeAvailable(freetype)
-FetchContent_MakeAvailable(enet)
+# FetchContent_MakeAvailable(enet)
 FetchContent_MakeAvailable(fmt)
 
 # set(SPDLOG_USE_STD_FORMAT ON CACHE BOOL "" FORCE)

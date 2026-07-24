@@ -1,10 +1,9 @@
 #pragma once
 
 #include <cstddef>
+#include <memory_resource>
 #include "oge/log.hpp"
-#include "oge/ring_allocator.hpp"
 #include "oge/runtime/entt.hpp"
-#include "oge/runtime/net_packet_producer.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 struct _ENetPeer;
@@ -42,10 +41,10 @@ struct OnClientPacketReceived
 class NetClient
 {
    public:
-    NetClient(size_t size) : sendPacketProducer(size) {}
+    NetClient() {}
     ~NetClient() { Shutdown(); }
 
-    bool Initialize(size_t channelCount = 2);
+    bool Initialize(size_t channelCount = 2, std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
 
     bool Connect(const char* ip, uint16_t port, uint32_t timeoutMs = 5000);
 
@@ -75,6 +74,6 @@ class NetClient
     ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
 
-    NetPacketProducer sendPacketProducer;
+    std::pmr::memory_resource* m_memory;
 };
 }  // namespace oge::runtime

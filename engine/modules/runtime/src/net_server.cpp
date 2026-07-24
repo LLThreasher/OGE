@@ -1,15 +1,17 @@
 #include "oge/runtime/net_server.hpp"
 
 #include <enet/enet.h>
+#include <memory_resource>
 
+#include "enet_interface.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 namespace oge::runtime
 {
 bool NetServer::Initialize(uint16_t port, size_t maxClients,
-                           size_t channelCount)
+                           size_t channelCount, std::pmr::memory_resource* memory)
 {
-    if (enet_initialize() != 0)
+    if (oge_enet_initialize(memory) != 0)
     {
         LOG_ERROR("ENet init failed");
         return false;
@@ -74,34 +76,36 @@ void NetServer::Shutdown()
     {
         enet_host_destroy(host);
         host = nullptr;
-        enet_deinitialize();
+        oge_enet_shutdown();
         LOG_INFO("Server shutdown");
     }
 }
 
 net::Buffer NetServer::StartPacket(size_t size)
 {
-    return sendPacketProducer.AllocPacket(size);
+    return net::Buffer(oge_enet_memory->allocate(size), size);
 }
 
-void NetServer::SendReliable(ENetPeer* peer, net::Buffer data,
-                             uint8_t channel)
+void NetServer::SendReliable(ENetPeer* peer, net::Buffer data, uint8_t channel)
 {
-    ENetPacket* packet =
-        enet_packet_create(data.Data().data(), data.Data().size(), ENET_PACKET_FLAG_RELIABLE);
-    
-    sendPacketProducer.FreePacket(data);
+    ENetPacket* packet = enet_packet_create(
+        data.Data().data(), data.Data().size(), ENET_PACKET_FLAG_RELIABLE);
 
-    enet_peer_send(peer, channel, packet);
+    if (enet_peer_send(peer, channel, packet) < 0)
+    {
+        enet_packet_destroy(packet);
+    }
 }
 
 void NetServer::SendUnreliable(ENetPeer* peer, net::Buffer data,
                                uint8_t channel)
 {
-    ENetPacket* packet = enet_packet_create(data.Data().data(), data.Data().size(), 0);
+    ENetPacket* packet =
+        enet_packet_create(data.Data().data(), data.Data().size(), 0);
 
-    sendPacketProducer.FreePacket(data);
-
-    enet_peer_send(peer, channel, packet);
+    if (enet_peer_send(peer, channel, packet) < 0)
+    {
+        enet_packet_destroy(packet);
+    }
 }
 }  // namespace oge::runtime

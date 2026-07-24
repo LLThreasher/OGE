@@ -15,7 +15,7 @@ int main(int argc, char* argv[]) {
 	#ifdef OGE_DEBUG
 	std::string app_name = fmt::format("{}_{}", APP_NAME, BUILD_TAG);
 	#else
-	std::string app_name = fmt::format("{}_{}", APP_NAME, MARKETING_VERSION);
+	std::string app_name = fmt::format("{} {}", APP_NAME, MARKETING_VERSION);
 	#endif
 	auto window = CreateSDL3Window(app_name, 1280, 720);
 	auto app = game::Client();

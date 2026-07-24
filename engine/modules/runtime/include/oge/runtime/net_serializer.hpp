@@ -49,7 +49,7 @@ class Buffer
         readPos = 0;
     }
 
-    const std::span<std::byte>& RawData() const
+    std::span<std::byte>& RawData()
     {
         return data;
     }

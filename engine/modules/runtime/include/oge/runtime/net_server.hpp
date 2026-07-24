@@ -1,10 +1,9 @@
 #pragma once
 
 #include <cstddef>
+
 #include "oge/log.hpp"
-#include "oge/ring_allocator.hpp"
 #include "oge/runtime/entt.hpp"
-#include "oge/runtime/net_packet_producer.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 struct _ENetPeer;
@@ -33,10 +32,12 @@ struct OnServerReceivePacket
 class NetServer
 {
    public:
-    NetServer(size_t sendBufferSize) : sendPacketProducer(sendBufferSize) {}
+    NetServer() {}
     ~NetServer() { Shutdown(); }
 
-    bool Initialize(uint16_t port, size_t maxClients, size_t channelCount = 2);
+    bool Initialize(
+        uint16_t port, size_t maxClients, size_t channelCount = 2,
+        std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
 
     void Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs = 0);
 
@@ -44,11 +45,9 @@ class NetServer
 
     net::Buffer StartPacket(size_t size);
 
-    void SendReliable(ENetPeer* peer, net::Buffer data,
-                      uint8_t channel = 0);
+    void SendReliable(ENetPeer* peer, net::Buffer data, uint8_t channel = 0);
 
-    void SendUnreliable(ENetPeer* peer, net::Buffer data,
-                        uint8_t channel = 1);
+    void SendUnreliable(ENetPeer* peer, net::Buffer data, uint8_t channel = 1);
 
    private:
     void OnClientConnected(ENetPeer* peer) { LOG_INFO("Client connected"); }
@@ -65,7 +64,5 @@ class NetServer
 
    private:
     ENetHost* host = nullptr;
-
-    NetPacketProducer sendPacketProducer;
 };
 }  // namespace oge::runtime
