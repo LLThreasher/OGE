@@ -3,6 +3,7 @@
 #include "oge/platform/sdl3/create_window.hpp"
 #include "game/client.hpp"
 #include "game/debug_scene.hpp"
+#include "game/client_scene.hpp"
 #include "build_config.h"
 
 using namespace oge::platform::sdl3;
@@ -20,7 +21,9 @@ int main(int argc, char* argv[]) {
 	auto window = CreateSDL3Window(app_name, 1280, 720);
 	auto app = game::Client();
 	app.RegisterScene<game::DebugScene3>();
-	app.SwitchToScene<game::DebugScene3>();
+	// app.SwitchToScene<game::DebugScene3>();
+	app.RegisterScene<game::ClientScene>();
+	app.SwitchToScene<game::ClientScene>({{"next_scene", app.Id<game::DebugScene3>()}});
 	window->Run(app);
 	// app.RegisterScene<DebugScene3>();
 	// app.SwitchToScene<DebugScene3>();

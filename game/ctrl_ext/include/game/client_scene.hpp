@@ -1,5 +1,8 @@
 #pragma once
-#include "game/graphical_scene.hpp"
+
+#include "game/game_world.hpp"
+#include "game/json.hpp"
+#include "game/scene_ext.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 namespace game
@@ -22,10 +25,17 @@ enum class ClientState
     Disconnected,
 };
 
-class ClientScene : GraphicalScene
+class ClientScene : public SceneExt
 {
-    GraphicalScene* child;
+    oge_id_type nextSene;
 public:
+    ClientScene(const Def& def) : SceneExt(def)
+    {
+        auto it = def.args.find("next_scene");
+        assert(it != def.args.end());
+        nextSene = std::get<int64_t>(it->second);
+    }
+
     
 };
 } // namespace OneGame

@@ -2,8 +2,10 @@
 #include <algorithm>
 #include <concepts>
 #include <memory>
+#include <optional>
 #include <utility>
 
+#include "entt/core/type_info.hpp"
 #include "game/app_context.hpp"
 #include "game/frame_perf.hpp"
 #include "game/json.hpp"
@@ -16,11 +18,17 @@ namespace game
 using oge::runtime::oge_id_type;
 using oge::runtime::OGEContext;
 
+struct SceneContext
+{
+    std::optional<oge_id_type>& nextScene;
+    json::Object& nextSceneArgs;
+};
+
 template <typename T>
-concept IsScene = requires(T s, T::Frame f) {
+concept IsScene = requires(T s, T::Frame f, SceneContext ctx) {
     typename T::Frame;
-    std::constructible_from<T, AppContext, const json::Value&, OGEContext&>;
-    { s.Update(f) };
+    std::constructible_from<T, AppContext, const json::Object&, OGEContext&>;
+    { s.Update(f, ctx) };
 };
 
 template <typename TSceneBase>
@@ -46,12 +54,17 @@ class SceneRunner
     }
 
     template <typename TScene>
-    void SwitchToScene(json::Value sceneArgs = nullptr)
+    void SwitchToScene(json::Object sceneArgs = {})
     {
         m_nextSceneArgs = std::move(sceneArgs);
         m_nextScene = m_anyFactory.Id<TScene>();
     }
 
+    template<typename T>
+    oge_id_type Id()
+    {
+        return entt::type_hash<T>::value();
+    }
    protected:
     TSceneBase* CurrentScene() { return m_currentScene.get(); }
 
@@ -67,7 +80,7 @@ class SceneRunner
                 m_anyFactory.BuildABC<TSceneBase>(m_nextScene.value(), typename TSceneBase::Def{m_appCtx, m_nextSceneArgs, m_ctx});
             m_nextScene.reset();
         }
-        m_currentScene->Update(std::forward<typename TSceneBase::Frame>(f));
+        m_currentScene->Update(std::forward<typename TSceneBase::Frame>(f), SceneContext{m_nextScene, m_nextSceneArgs});
     }
 
     void DetachScene()
@@ -89,7 +102,7 @@ class SceneRunner
    private:
     AppContext m_appCtx;
 
-    json::Value m_nextSceneArgs = nullptr;
+    json::Object m_nextSceneArgs = {};
     std::optional<oge_id_type> m_nextScene;
     std::optional<oge_id_type> m_currentSceneId;
     std::unique_ptr<TSceneBase> m_currentScene = nullptr;

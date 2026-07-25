@@ -1,8 +1,12 @@
 #pragma once
 
+#include <optional>
+#include <variant>
+
 #include "game/app_context.hpp"
 #include "game/game_world.hpp"
 #include "game/json.hpp"
+#include "game/scene_runner.hpp"
 #include "game/sim/subsystem.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
@@ -28,7 +32,7 @@ class Scene : protected AppRuntime
     struct Def
     {
         AppContext ctx;
-        const json::Value& args;
+        const json::Object& args;
         OGEContext& rctx;
     };
 
@@ -42,8 +46,9 @@ class Scene : protected AppRuntime
 
     virtual ~Scene() {}
 
-    virtual void Update(Frame f)
+    virtual void Update(Frame f, SceneContext sctx)
     {
+        m_ctx.memory.Update(f.dt);
         m_subsystems.Update(f.dt);
         m_realtimeSubsystems.Update(f.dt);
     }

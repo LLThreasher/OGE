@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <memory>
+#include <string>
 
 #include "game/app_context.hpp"
 #include "game/components.hpp"
@@ -9,6 +10,7 @@
 #include "game/json.hpp"
 #include "game/scene.hpp"
 #include "game/scene_ext.hpp"
+#include "game/scene_runner.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
@@ -32,22 +34,38 @@ class DebugScene3 : public SceneExt
    public:
     DebugScene3(const Def& def) : SceneExt(def)
     {
+        auto it = def.args.find("scene_config");
         SceneConfig config{};
-        config.subsystems.Add(Id<sim::SubsystemDebugText>());
-        config.subsystems.Add(Id<sim::SubsystemTerrain>());
-        config.subsystems.Add(
-            Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
-        config.subsystems.Add(
-            Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
-        config.subsystems.Add(
-            Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
+        if (it != def.args.end())
+        {
+            auto jsonConfig = std::get<json::Object>(it->second);
+            for (auto val : std::get<json::Array>(jsonConfig["subsystems"]))
+            {
+                config.subsystems.Add(std::get<int64_t>(val));
+            }
+            for (auto val : std::get<json::Array>(jsonConfig["realtime_subsystems"]))
+            {
+                config.realtimeSubsystems.Add(std::get<int64_t>(val));
+            }
+        }
+        else
+        {
+            config.subsystems.Add(Id<sim::SubsystemDebugText>());
+            config.subsystems.Add(Id<sim::SubsystemTerrain>());
+            config.subsystems.Add(
+                Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
+            config.subsystems.Add(
+                Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
+            config.subsystems.Add(
+                Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
 
-        config.realtimeSubsystems.Add(
-            Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-        config.realtimeSubsystems.Add(
-            Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-        config.realtimeSubsystems.Add(
-            Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
+            config.realtimeSubsystems.Add(
+                Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
+            config.realtimeSubsystems.Add(
+                Id<sim::SubsystemCreature<UpdateType::Realtime>>());
+            config.realtimeSubsystems.Add(
+                Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
+        }
 
         Load(config);
 
@@ -149,7 +167,7 @@ class DebugScene3 : public SceneExt
         m_inputs.AddStage<input::WidgetInput>(AF(), m_widgetInputDef);
     }
 
-    void Update(Frame f) override
+    void Update(Frame f, SceneContext sctx) override
     {
         using oge::input::KeyCode;
 
@@ -202,7 +220,7 @@ class DebugScene3 : public SceneExt
             m_world.destroy(m_cross);
             AddWidgetInput(m_ctx.assets);
         }
-        SceneExt::Update(std::move(f));
+        SceneExt::Update(std::move(f), sctx);
     }
 
     void Load(const SceneConfig& _config) override

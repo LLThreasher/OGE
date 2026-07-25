@@ -6,6 +6,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <typeindex>
 #include <unordered_map>
@@ -152,6 +153,7 @@ class OGEContext : public OGEContextReadOnly
 class AnythingFactory
 {
     OGEContext& registry;
+    std::unordered_map<std::string_view, oge_id_type> idLookup;
 
    public:
     AnythingFactory(OGEContext& ctx) : registry(ctx) {}
@@ -162,11 +164,24 @@ class AnythingFactory
         return entt::type_hash<T>::value();
     }
 
+    oge_id_type Id(std::string_view name)
+    {
+        return idLookup[name];
+    }
+
+    template <typename T>
+    void RegisterId()
+    {
+        LOG_INFO("[AF] registering {} as {}", T::name(), Id<T>());
+        idLookup[T::name()] = Id<T>();
+    }
+
     template <typename T>
     void RegisterABC()
     {
         LOG_INFO("[AF] registering ABC {} as {}", T::name(), Id<T>());
         registry.Emplace<DefaultABCFactory<T>>();
+        RegisterId<T>();
     }
 
     template <typename TBase, typename TDrived>
@@ -175,9 +190,10 @@ class AnythingFactory
                  void RegisterDrived()
     {
         oge_id_type id = Id<TDrived>();
-        LOG_INFO("[AF] registering {} as {}", TDrived::name(), id);
+        LOG_INFO("[AF] registering Derived {} as {}", TDrived::name(), id);
         registry.Get<DefaultABCFactory<TBase>>()->template Register<TDrived>(
             id);
+        RegisterId<TDrived>();
     }
 
     template <typename T>
@@ -214,26 +230,6 @@ class AnythingFactory
         for (const auto& [id, def] : defs)
         {
             res.push_back(BuildABC<T>(id, def));
-        }
-        return res;
-    }
-
-    template <typename T>
-        requires Buildable<T>
-    T Build(const T::Def& def)
-    {
-        return T::Build(def, *this);
-    }
-
-    template <typename T>
-        requires Buildable<T>
-    std::vector<T> BuildVec(const std::vector<typename T::Def>& defs)
-    {
-        std::vector<T> res;
-        res.reserve(defs.size());
-        for (const auto& def : defs)
-        {
-            res.push_back(Build(def, *this));
         }
         return res;
     }

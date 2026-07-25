@@ -5,6 +5,7 @@
 #include "game/json.hpp"
 #include "game/memory_context.hpp"
 #include "game/scene.hpp"
+#include "game/scene_runner.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/view/gfx/debug_info_pass.hpp"
 #include "game/view/gfx/terrain_pass2.hpp"
@@ -41,9 +42,8 @@ class SceneExt : public Scene
     };
 
    public:
-    struct Frame
+    struct Frame : Scene::Frame
     {
-        float dt;
         oge::input::RawInputStream& is;
         FramePerfStatus perfStats;
         AppFrameAction& frameAction;
@@ -74,17 +74,21 @@ class SceneExt : public Scene
 
     virtual ~SceneExt() { m_viewExecutor.Detach(); }
 
-    virtual void Update(Frame f)
+    virtual void Update(Frame f, SceneContext sctx)
     {
-        m_ctx.memory.Update(f.dt);
+        // input processing
         m_inputs.Update({f.dt, f.is});
         m_world.ctx().insert_or_assign(f.perfStats);
-        m_subsystems.Update(f.dt);
-        m_realtimeSubsystems.Update(f.dt);
 
+        // simulation
+        Scene::Update(f, sctx);
+
+        // presentation
         m_squeue.Clear();
         m_renderers.Update(view::RendererFrameData{
             f.dt, m_ctx.assets, m_squeue, m_subsystems.GetAlpha()});
+
+        // window action
         f.frameAction |= m_windowCtx.frameAction;
         m_windowCtx.Clear();
     }
