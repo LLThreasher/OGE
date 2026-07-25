@@ -1,12 +1,15 @@
 #pragma once
 #include <algorithm>
 #include <concepts>
+#include <memory>
+#include <utility>
 
 #include "game/app_context.hpp"
 #include "game/frame_perf.hpp"
+#include "game/json.hpp"
+#include "game/memory_context.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/runtime/typed_registry.hpp"
-#include "game/json.hpp"
 
 namespace game
 {
@@ -14,12 +17,13 @@ using oge::runtime::OGEContext;
 
 template <typename T>
 concept IsScene =
-    requires(T s, float dt, const json::Value& args, T::Frame f, OGEContext& rctx, AnythingFactory& af) {
+    requires(T s, T::Instance ss, const json::Value& args, T::Frame f,
+             OGEContext& rctx) {
         typename T::Frame;
+        typename T::Instance;
         std::constructible_from<T, AppContext>;
-        { s.Attach(args, rctx, af) };
-        { s.Update(f) };
-        { s.Detach() };
+        { s.Attach(args, rctx) } -> std::same_as<std::unique_ptr<typename T::Instance>>;
+        { ss.Update(f) };
     };
 
 template <typename TSceneBase>
@@ -28,7 +32,9 @@ class SceneRunner
 {
    public:
     SceneRunner(OGEContext& ctx)
-        : m_ctx(ctx), m_anyFactory(ctx), m_appCtx(m_anyFactory, m_events)
+        : m_ctx(ctx),
+          m_anyFactory(ctx),
+          m_appCtx(m_anyFactory, m_events, m_memory)
     {
         RegisterScene<TSceneBase>();
         SwitchToScene<TSceneBase>();
@@ -51,7 +57,7 @@ class SceneRunner
     }
 
    protected:
-    TSceneBase* CurrentScene() { return m_currentScene; }
+    TSceneBase::Instance* CurrentScene() { return m_currentSceneInstance.get(); }
 
     void UpdateScene(TSceneBase::Frame f)
     {
@@ -59,19 +65,19 @@ class SceneRunner
         {
             if (m_currentScene != nullptr)
             {
-                m_currentScene->Detach();
+                m_currentSceneInstance.reset();
             }
-            m_nextScene->Attach(m_nextSceneArgs, m_ctx, m_anyFactory);
+            m_currentSceneInstance = std::move(m_nextScene->Attach(m_nextSceneArgs, m_ctx));
             m_currentScene = m_nextScene;
             m_nextScene = nullptr;
         }
-        m_currentScene->Update(std::move(f));
+        m_currentSceneInstance->Update(std::forward<typename TSceneBase::Frame>(f));
     }
 
     void DetachScene()
     {
         if (m_currentScene == nullptr) return;
-        m_currentScene->Detach();
+        m_currentSceneInstance.reset();
         m_nextScene = m_currentScene;
         m_currentScene = nullptr;
     }
@@ -79,6 +85,8 @@ class SceneRunner
    protected:
     AnythingFactory m_anyFactory;
     entt::dispatcher m_events;
+    MemoryContext m_memory = {
+        {1 * 1024 * 1024}, {1 * 1024 * 1024, 10.f}, {1 * 1024 * 1024, 0.2f}};
 
    private:
     OGEContext& m_ctx;
@@ -88,5 +96,6 @@ class SceneRunner
     json::Value m_nextSceneArgs = nullptr;
     TSceneBase* m_nextScene = nullptr;
     TSceneBase* m_currentScene = nullptr;
+    std::unique_ptr<typename TSceneBase::Instance> m_currentSceneInstance;
 };
 }  // namespace game

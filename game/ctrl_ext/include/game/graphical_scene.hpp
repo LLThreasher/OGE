@@ -35,39 +35,23 @@ using oge::runtime::AssetContext;
 using oge::runtime::OGEContext;
 using oge::runtime::gfx::UIPass;
 
-class GraphicalScene
+class GraphicalScene : protected AppRuntime
 {
     using ViewExecutor =
         view::ViewExecutor<TerrainPass2, UIPass, DebugInfoPass>;
-    struct Ctx
+    struct Ctx : AppContext
     {
         OGEContext& ctx;
         AssetContext assets;
 
-        Ctx(OGEContext& ctx) : ctx(ctx), assets(ctx) {}
+        Ctx(AppContext actx, OGEContext& ctx) : AppContext(actx), ctx(ctx), assets(ctx) {}
     };
 
    protected:
-    MemoryContext m_memory{{1 * 1024 * 1024}, {1 * 1024 * 1024, 10.f}, {1 * 1024 * 1024, 0.2f}};
-    view::SubmissionQueue m_squeue{m_memory.frameBuffer.Resource()};
-    ViewExecutor m_viewExecutor;
-    std::optional<Ctx> m_ctx;
-
-    WindowCtx m_windowCtx;
-
     entt::registry m_world;
-    entt::dispatcher& m_events;
 
     sim::SubsystemPipeline m_subsystems;
     sim::RealtimeSubsystemPipeline m_realtimeSubsystems;
-    std::optional<input::InputPipeline> m_inputs;
-
-    entt::registry m_renderWorld;
-    std::optional<view::RenderPipeline> m_renderers;
-
-    AnythingFactory& m_af;
-
-    ViewExecutor& GetPasses() { return m_viewExecutor; }
 
    public:
     struct Frame
@@ -78,24 +62,75 @@ class GraphicalScene
         AppFrameAction& frameAction;
     };
 
+    class Instance : protected AppRuntime
+    {
+       protected:
+        entt::registry& m_world;
+        sim::SubsystemPipeline& m_subsystems;
+        sim::RealtimeSubsystemPipeline& m_realtimeSubsystems;
+        Ctx m_ctx;
+
+        input::InputPipeline m_inputs;
+        WindowCtx m_windowCtx;
+
+        entt::registry m_renderWorld;
+        view::RenderPipeline m_renderers;
+
+        view::SubmissionQueue m_squeue;
+        ViewExecutor m_viewExecutor;
+
+       public:
+        Instance(GraphicalScene& scene, const json::Value& args,
+                 OGEContext& ctx)
+            : AppRuntime(scene),
+              m_ctx(scene.m_ctx, ctx),
+              m_world(scene.m_world),
+              m_subsystems(scene.m_subsystems),
+              m_realtimeSubsystems(scene.m_realtimeSubsystems),
+              m_inputs(input::InputContext{m_windowCtx, scene.m_world}),
+              m_renderers(view::RendererState{scene.m_world, m_renderWorld,
+                                              m_ctx.events, m_ctx.memory,
+                                              AssetContext(ctx)}),
+              m_squeue(m_ctx.memory.frameBuffer.Resource())
+        {
+            m_viewExecutor.Attach(ctx);
+        }
+
+        virtual ~Instance() { m_viewExecutor.Detach(); }
+
+        virtual void Update(Frame f)
+        {
+            m_ctx.memory.Update(f.dt);
+            m_inputs.Update({f.dt, f.is});
+            m_world.ctx().insert_or_assign(f.perfStats);
+            m_subsystems.Update(f.dt);
+            m_realtimeSubsystems.Update(f.dt);
+
+            m_squeue.Clear();
+            m_renderers.Update(view::RendererFrameData{
+                f.dt, m_ctx.assets, m_squeue, m_subsystems.GetAlpha()});
+            f.frameAction |= m_windowCtx.frameAction;
+            m_windowCtx.Clear();
+        }
+
+        ViewExecutor& GetPasses() { return m_viewExecutor; }
+
+        void Render(float dt) { m_viewExecutor.Update(dt, m_squeue); }
+    };
+
     GraphicalScene(AppContext ctx)
-        : m_events(ctx.events),
-          m_subsystems({m_world, m_events, m_memory}, 1.f / 30.f),
-          m_realtimeSubsystems({m_world, m_events, m_memory}),
-          m_af(ctx.any_factory)
+        : AppRuntime(ctx),
+          m_subsystems({m_world, ctx.events, ctx.memory}, 1.f / 30.f),
+          m_realtimeSubsystems({m_world, ctx.events, ctx.memory})
     {
     }
 
     virtual ~GraphicalScene() {}
 
-    virtual void Attach(const json::Value& args, OGEContext& ctx,
-                        AnythingFactory& af)
+    virtual std::unique_ptr<Instance> Attach(const json::Value& args,
+                                             OGEContext& ctx)
     {
-        m_inputs.emplace(input::InputContext{m_windowCtx, m_world});
-        m_renderers.emplace(view::RendererState{m_world, m_renderWorld, m_events,
-                              m_memory, AssetContext(ctx)});
-        m_ctx.emplace(ctx);
-        m_viewExecutor.Attach(ctx);
+        return std::make_unique<Instance>(*this, args, ctx);
     }
 
     virtual void Load(GameWorldConfig&& config)
@@ -103,11 +138,11 @@ class GraphicalScene
         m_world.ctx().emplace<terrain::TerrainDesc>(config.terrainDesc);
         for (auto stage : config.subsystems)
         {
-            m_subsystems.AddStage(m_af, stage);
+            m_subsystems.AddStage(m_ctx.any_factory, stage);
         }
         for (auto stage : config.realtimeSubsystems)
         {
-            m_realtimeSubsystems.AddStage(m_af, stage);
+            m_realtimeSubsystems.AddStage(m_ctx.any_factory, stage);
         }
     }
 
@@ -116,33 +151,6 @@ class GraphicalScene
         m_world.ctx().clear();
         m_subsystems.Clear();
         m_realtimeSubsystems.Clear();
-    }
-
-    virtual void Detach()
-    {
-        m_viewExecutor.Detach();
-        m_ctx.reset();
-    }
-
-    virtual void Update(Frame f)
-    {
-        m_memory.Update(f.dt);
-        m_inputs.value().Update({f.dt, f.is});
-        m_world.ctx().insert_or_assign(f.perfStats);
-        m_subsystems.Update(f.dt);
-        m_realtimeSubsystems.Update(f.dt);
-
-        m_squeue.Clear();
-        m_renderers->Update(view::RendererFrameData{
-            f.dt, m_ctx.value().assets, m_squeue,
-            m_subsystems.GetAlpha()});
-        f.frameAction |= m_windowCtx.frameAction;
-        m_windowCtx.Clear();
-    }
-
-    void Render(float dt)
-    {
-        m_viewExecutor.Update(dt, m_squeue);
     }
 };
 

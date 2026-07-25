@@ -40,17 +40,21 @@ class BasePipeline
 
    public:
     BasePipeline(TCtx& ctx) : m_ctx(ctx) {}
+    ~BasePipeline()
+    {
+        Clear();
+    }
 
     template<typename TDerived>
     TDerived* AddStage(AnythingFactory& af)
     {
-        return reinterpret_cast<TDerived*>(AddStage(af, af.IdOf<TDerived>()));
+        return reinterpret_cast<TDerived*>(AddStage(af, af.Id<TDerived>()));
     }
 
     template<typename TDerived>
     TDerived* AddStage(AnythingFactory& af, typename TDerived::Def data)
     {
-        return reinterpret_cast<TDerived*>(AddStage(af, af.IdOf<TDerived>(), data));
+        return reinterpret_cast<TDerived*>(AddStage(af, af.Id<TDerived>(), data));
     }
 
     TStage* AddStage(AnythingFactory& af, oge_id_type id, entt::any data = {})

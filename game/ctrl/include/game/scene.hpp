@@ -1,6 +1,8 @@
 #pragma once
 
+#include <memory>
 #include "game/app_context.hpp"
+#include "game/memory_context.hpp"
 #include "game/sim/subsystem.hpp"
 #include "oge/runtime/asset_base.hpp"
 #include "oge/runtime/typed_registry.hpp"
@@ -14,39 +16,43 @@ using oge::runtime::OGEContext;
 class Scene
 {
    public:
-    struct Ctx
-    {
-        OGEContext& ctx;
-        oge::runtime::AssetBase assets;
-
-        Ctx(OGEContext& ctx) : ctx(ctx), assets(ctx) {}
-    };
-
     struct Frame
     {
         float dt;
     };
 
-   protected:
-    MemoryContext m_memory = {{8*1024}, {1*256*1024, 10.f}, {1*256*1024, 0.2f}}; // 8k per frame, 256k per 5 sec
-    std::optional<Ctx> m_ctx;
+    class Instance
+    {
+    protected:
+        Scene& m_scene;
+    public:
+        Instance(Scene& scene, const json::Value& args, OGEContext& ctx, AnythingFactory& af) : m_scene(scene)
+        {
+        }
+
+        virtual ~Instance()
+        {
+        }
+        
+        virtual void Update(Frame f)
+        {
+            m_scene.m_subsystems.Update(f.dt);
+        }
+    };
 
     entt::registry m_world;
     sim::SubsystemPipeline m_subsystems;
+    AnythingFactory& m_af;
 
    public:
     Scene(AppContext ctx)
-        : m_subsystems({m_world, ctx.events, m_memory}, 1.f / 30.f)
+        : m_af(ctx.any_factory), m_subsystems({m_world, ctx.events, ctx.memory}, 1.f / 30.f)
     {
     }
 
-    virtual void Attach(const json::Value& args, OGEContext& ctx, AnythingFactory& af)
+    std::unique_ptr<Instance> Attach(const json::Value& args, OGEContext& ctx)
     {
-        m_ctx.emplace(ctx);
+        return std::make_unique<Instance>(*this, args, ctx, m_af);
     }
-
-    virtual void Update(Frame f) { m_subsystems.Update(f.dt); }
-
-    virtual void Detach() { m_ctx.reset(); }
 };
 }  // namespace game

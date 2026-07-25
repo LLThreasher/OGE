@@ -12,3 +12,6 @@
 ## Implementation Checklist
 
 - [ ] Server-Client Protocol
+    - [ ] ClientScene -> wraps SceneExt
+    - [ ] ServerScene -> is Scene
+    - [ ] StandaloneScene -> wraps Scene and SceneExt

@@ -157,7 +157,7 @@ class AnythingFactory
     AnythingFactory(OGEContext& ctx) : registry(ctx) {}
 
     template <typename T>
-    oge_id_type IdOf()
+    oge_id_type Id()
     {
         return entt::type_hash<T>::value();
     }
@@ -173,7 +173,7 @@ class AnythingFactory
                      DefaultBuildableToABC<TDrived, TBase>
                  void RegisterDrived()
     {
-        oge_id_type id = IdOf<TDrived>();
+        oge_id_type id = Id<TDrived>();
         LOG_INFO("[AF] registering {} as {}", TDrived::name(), id);
         registry.Get<DefaultABCFactory<TBase>>()->template Register<TDrived>(
             id);
