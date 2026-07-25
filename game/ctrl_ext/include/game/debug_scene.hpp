@@ -4,7 +4,6 @@
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/game_world.hpp"
-#include "game/graphical_scene.hpp"
 #include "game/input/input_source.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/json.hpp"
@@ -50,7 +49,7 @@ class DebugScene3 : public SceneExt
         config.realtimeSubsystems.Add(
             Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
 
-        Load(std::move(config));
+        Load(config);
 
         m_renderers.AddStage<view::TerrainRenderer>(AF());
         m_renderers.AddStage<view::DebugInfoRenderer>(AF());

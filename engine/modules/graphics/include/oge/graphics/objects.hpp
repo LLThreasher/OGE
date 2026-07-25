@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cinttypes>
-
 #include "oge/handle.hpp"
 #include "oge/rect.hpp"
 

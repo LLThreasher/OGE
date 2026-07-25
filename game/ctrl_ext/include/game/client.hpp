@@ -1,6 +1,5 @@
 #pragma once
 
-#include "game/graphical_scene.hpp"
 #include "game/scene_ext.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/platform/window_app.hpp"
