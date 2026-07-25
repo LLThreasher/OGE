@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/graphical_scene.hpp"
+#include "game/scene_ext.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/platform/window_app.hpp"
 #include "oge/runtime/asset_manager.hpp"
@@ -14,7 +15,7 @@ namespace game
 using namespace oge::platform;
 using namespace oge::runtime;
 
-class Client : public WindowApp, public SceneRunner<GraphicalScene>
+class Client : public WindowApp, public SceneRunner<SceneExt>
 {
    public:
     Client();
@@ -28,8 +29,6 @@ class Client : public WindowApp, public SceneRunner<GraphicalScene>
    private:
     oge::input::RawInputStream m_input;
     FramePerfStatus m_perfStats;
-    entt::registry m_metaWorld;
-    OGEContext m_ctx;
 
     IGraphicsBackend* m_backend;
 

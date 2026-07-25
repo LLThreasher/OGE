@@ -20,13 +20,12 @@
 namespace game
 {
 Client::Client()
-    : m_ctx(m_metaWorld),
-      m_am(*m_ctx.Emplace<AssetManager>()),
+    : m_am(*m_ctx.Emplace<AssetManager>()),
       m_sm(*m_ctx.Emplace<StreamingManager>()),
       m_ap(*m_ctx.Emplace<AssetPool>()),
       m_ca(*m_ctx.Emplace<DynamicChunkAllocator>()),
       m_sa(*m_ctx.Emplace<DynamicSkylineAllocator>()),
-      SceneRunner(m_ctx)
+      SceneRunner()
 {
     using namespace sim;
     using namespace view;

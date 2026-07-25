@@ -13,29 +13,27 @@
 
 namespace game
 {
+using oge::runtime::oge_id_type;
 using oge::runtime::OGEContext;
 
 template <typename T>
-concept IsScene =
-    requires(T s, T::Instance ss, const json::Value& args, T::Frame f,
-             OGEContext& rctx) {
-        typename T::Frame;
-        typename T::Instance;
-        std::constructible_from<T, AppContext>;
-        { s.Attach(args, rctx) } -> std::same_as<std::unique_ptr<typename T::Instance>>;
-        { ss.Update(f) };
-    };
+concept IsScene = requires(T s, T::Frame f) {
+    typename T::Frame;
+    std::constructible_from<T, AppContext, const json::Value&, OGEContext&>;
+    { s.Update(f) };
+};
 
 template <typename TSceneBase>
     requires IsScene<TSceneBase>
 class SceneRunner
 {
    public:
-    SceneRunner(OGEContext& ctx)
-        : m_ctx(ctx),
-          m_anyFactory(ctx),
+    SceneRunner()
+        : m_ctx(m_metaWorld),
+          m_anyFactory(m_ctx),
           m_appCtx(m_anyFactory, m_events, m_memory)
     {
+        m_anyFactory.RegisterABC<TSceneBase>();
         RegisterScene<TSceneBase>();
         SwitchToScene<TSceneBase>();
     }
@@ -44,58 +42,56 @@ class SceneRunner
         requires std::derived_from<TScene, TSceneBase>
     void RegisterScene()
     {
-        m_scenes.emplace(std::type_index(typeid(TScene)),
-                         std::make_unique<TScene>(m_appCtx));
+        m_anyFactory.RegisterDrived<TSceneBase, TScene>();
     }
 
     template <typename TScene>
     void SwitchToScene(json::Value sceneArgs = nullptr)
     {
         m_nextSceneArgs = std::move(sceneArgs);
-        m_nextScene =
-            m_scenes.find(std::type_index(typeid(TScene)))->second.get();
+        m_nextScene = m_anyFactory.Id<TScene>();
     }
 
    protected:
-    TSceneBase::Instance* CurrentScene() { return m_currentSceneInstance.get(); }
+    TSceneBase* CurrentScene() { return m_currentScene.get(); }
 
     void UpdateScene(TSceneBase::Frame f)
     {
-        if (m_nextScene != nullptr)
+        if (m_nextScene.has_value())
         {
             if (m_currentScene != nullptr)
             {
-                m_currentSceneInstance.reset();
+                m_currentScene.reset();
             }
-            m_currentSceneInstance = std::move(m_nextScene->Attach(m_nextSceneArgs, m_ctx));
-            m_currentScene = m_nextScene;
-            m_nextScene = nullptr;
+            m_currentScene =
+                m_anyFactory.BuildABC<TSceneBase>(m_nextScene.value(), typename TSceneBase::Def{m_appCtx, m_nextSceneArgs, m_ctx});
+            m_nextScene.reset();
         }
-        m_currentSceneInstance->Update(std::forward<typename TSceneBase::Frame>(f));
+        m_currentScene->Update(std::forward<typename TSceneBase::Frame>(f));
     }
 
     void DetachScene()
     {
         if (m_currentScene == nullptr) return;
-        m_currentSceneInstance.reset();
-        m_nextScene = m_currentScene;
-        m_currentScene = nullptr;
+        m_nextScene = m_currentSceneId;
+        m_currentScene.reset();
+        m_currentSceneId.reset();
     }
 
    protected:
+    entt::registry m_metaWorld;
+    OGEContext m_ctx;
     AnythingFactory m_anyFactory;
     entt::dispatcher m_events;
     MemoryContext m_memory = {
         {1 * 1024 * 1024}, {1 * 1024 * 1024, 10.f}, {1 * 1024 * 1024, 0.2f}};
 
    private:
-    OGEContext& m_ctx;
     AppContext m_appCtx;
 
-    std::unordered_map<std::type_index, std::unique_ptr<TSceneBase>> m_scenes;
     json::Value m_nextSceneArgs = nullptr;
-    TSceneBase* m_nextScene = nullptr;
-    TSceneBase* m_currentScene = nullptr;
-    std::unique_ptr<typename TSceneBase::Instance> m_currentSceneInstance;
+    std::optional<oge_id_type> m_nextScene;
+    std::optional<oge_id_type> m_currentSceneId;
+    std::unique_ptr<TSceneBase> m_currentScene = nullptr;
 };
 }  // namespace game

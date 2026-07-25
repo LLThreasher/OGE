@@ -35,11 +35,16 @@ struct FInputContext
     const RawInputStream& raw;
     entt::registry& uiWorld;
 
-    FInputContext(InputFrame& f, InputContext& ctx) : dt(f.dt), raw(f.raw), uiWorld(ctx.uiWorld) {}
+    FInputContext(InputFrame& f, InputContext& ctx)
+        : dt(f.dt), raw(f.raw), uiWorld(ctx.uiWorld)
+    {
+    }
 };
 
 class InputSource : public Stage<InputContext, FInputContext>
 {
+   public:
+    DECL_ID(InputSource)
 };
 
 void RegisterInputSources(AnythingFactory& af);
@@ -123,7 +128,11 @@ class KeyMouseInput : public InputSource
 class InputPipeline : public FramePipeline<InputSource, InputFrame>
 {
     InputContext m_input;
+
    public:
-    InputPipeline(InputContext&& state) : m_input(state), FramePipeline<InputSource, InputFrame>(m_input) {}
+    InputPipeline(InputContext&& state)
+        : m_input(state), FramePipeline<InputSource, InputFrame>(m_input)
+    {
+    }
 };
 };  // namespace game::input

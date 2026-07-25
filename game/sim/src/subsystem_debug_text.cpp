@@ -27,7 +27,7 @@ void SubsystemDebugText::onAttach(GameState& ctx)
     oge::GetLogger()->SetSink(onLog, &ctx);
 }
 
-void SubsystemDebugText::onDetach(GameState& ctx) {}
+void SubsystemDebugText::onDetach(GameState& ctx) {oge::GetLogger()->ClearSink();}
 
 void SubsystemDebugText::onUpdate(FGameState& ctx)
 {

@@ -6,13 +6,14 @@
 #include <string>
 
 #include "game/components.hpp"
-#include "game/memory_context.hpp"
 #include "game/frame_perf.hpp"  // debug info pass
 #include "game/input/player_input_stream.hpp"
+#include "game/memory_context.hpp"
 #include "oge/platform/perf.hpp"
 #include "oge/runtime/asset_manager.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
+#include "oge/runtime/typed_registry.hpp"
 
 namespace game::sim
 {
@@ -48,16 +49,20 @@ class Subsystem : public Stage<GameState, FGameState>
         fmt::format_to(std::back_insert_iterator(msg), fmt, args...);
         f.events.trigger<ShowDebugTextEvent>({msg});
     }
+
+   public:
+    DECL_ID(Subsystem)
 };
 
 class SubsystemPipeline : public FixedStepPipeline<Subsystem, GameFrame>
 {
     GameState m_state;
+
    public:
     NO_COPY(SubsystemPipeline)
-    SubsystemPipeline(GameState&& state,
-                      float updateInterval)
-        : m_state(state), FixedStepPipeline<Subsystem, GameFrame>(m_state, updateInterval)
+    SubsystemPipeline(GameState&& state, float updateInterval)
+        : m_state(state),
+          FixedStepPipeline<Subsystem, GameFrame>(m_state, updateInterval)
     {
     }
 };
@@ -65,6 +70,7 @@ class SubsystemPipeline : public FixedStepPipeline<Subsystem, GameFrame>
 class RealtimeSubsystemPipeline : public FramePipeline<Subsystem, GameFrame>
 {
     GameState m_state;
+
    public:
     RealtimeSubsystemPipeline(GameState&& state)
         : m_state(state), FramePipeline<Subsystem, GameFrame>(m_state)

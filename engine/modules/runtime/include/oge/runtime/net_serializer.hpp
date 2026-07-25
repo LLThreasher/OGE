@@ -142,6 +142,16 @@ struct List : Object<List<T>>
         return data.end();
     }
 
+    auto begin() const
+    {
+        return data.begin();
+    }
+
+    auto end() const
+    {
+        return data.end();
+    }
+
     void Add(T&& item)
     {
         data.push_back(item);

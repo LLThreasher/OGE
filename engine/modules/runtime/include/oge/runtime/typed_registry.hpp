@@ -165,6 +165,7 @@ class AnythingFactory
     template <typename T>
     void RegisterABC()
     {
+        LOG_INFO("[AF] registering ABC {} as {}", T::name(), Id<T>());
         registry.Emplace<DefaultABCFactory<T>>();
     }
 

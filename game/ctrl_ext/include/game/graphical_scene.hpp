@@ -133,9 +133,8 @@ class GraphicalScene : protected AppRuntime
         return std::make_unique<Instance>(*this, args, ctx);
     }
 
-    virtual void Load(GameWorldConfig&& config)
+    virtual void Load(SceneConfig&& config)
     {
-        m_world.ctx().emplace<terrain::TerrainDesc>(config.terrainDesc);
         for (auto stage : config.subsystems)
         {
             m_subsystems.AddStage(m_ctx.any_factory, stage);
