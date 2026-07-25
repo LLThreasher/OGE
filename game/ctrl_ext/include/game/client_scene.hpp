@@ -24,6 +24,7 @@ enum class ClientState
 
 class ClientScene : GraphicalScene
 {
+    GraphicalScene* child;
 public:
     
 };
