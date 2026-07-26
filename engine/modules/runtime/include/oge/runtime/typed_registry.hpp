@@ -68,7 +68,7 @@ class DefaultABCFactory
                                      { return std::make_unique<Derived>(); });
         }
         else if constexpr (std::constructible_from<Derived,
-                                                typename Derived::Def&&>)
+                                                   typename Derived::Def&&>)
         {
             def_builders.emplace(
                 id,
@@ -87,7 +87,8 @@ class DefaultABCFactory
                 [](entt::any& data, AnythingFactory& af) -> std::unique_ptr<T>
                 {
                     return std::make_unique<Derived>(
-                        std::move(entt::any_cast<typename Derived::Def>(data)), af);
+                        std::move(entt::any_cast<typename Derived::Def>(data)),
+                        af);
                 });
         }
     }
@@ -164,10 +165,7 @@ class AnythingFactory
         return entt::type_hash<T>::value();
     }
 
-    oge_id_type Id(std::string_view name)
-    {
-        return idLookup[name];
-    }
+    oge_id_type Id(std::string_view name) { return idLookup[name]; }
 
     template <typename T>
     void RegisterId()

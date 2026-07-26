@@ -60,11 +60,12 @@ class SceneRunner
         m_nextScene = m_anyFactory.Id<TScene>();
     }
 
-    template<typename T>
+    template <typename T>
     oge_id_type Id()
     {
         return entt::type_hash<T>::value();
     }
+
    protected:
     TSceneBase* CurrentScene() { return m_currentScene.get(); }
 
@@ -76,11 +77,13 @@ class SceneRunner
             {
                 m_currentScene.reset();
             }
-            m_currentScene =
-                m_anyFactory.BuildABC<TSceneBase>(m_nextScene.value(), typename TSceneBase::Def{m_appCtx, m_nextSceneArgs, m_ctx});
+            m_currentScene = m_anyFactory.BuildABC<TSceneBase>(
+                m_nextScene.value(),
+                typename TSceneBase::Def{m_appCtx, m_nextSceneArgs, m_ctx});
             m_nextScene.reset();
         }
-        m_currentScene->Update(std::forward<typename TSceneBase::Frame>(f), SceneContext{m_nextScene, m_nextSceneArgs});
+        m_currentScene->Update(std::forward<typename TSceneBase::Frame>(f),
+                               SceneContext{m_nextScene, m_nextSceneArgs});
     }
 
     void DetachScene()

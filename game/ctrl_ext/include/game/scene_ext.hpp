@@ -62,12 +62,12 @@ class SceneExt : public Scene
 
     SceneExt(const Def& def)
         : Scene(def),
-            m_ctx(def.ctx, def.rctx),
-            m_inputs(input::InputContext{m_windowCtx, m_world}),
-            m_renderers(view::RendererState{m_world, m_renderWorld,
-                                            m_ctx.events, m_ctx.memory,
-                                            AssetContext(def.rctx)}),
-            m_squeue(m_ctx.memory.frameBuffer.Resource())
+          m_ctx(def.ctx, def.rctx),
+          m_inputs(input::InputContext{m_windowCtx, m_world}),
+          m_renderers(view::RendererState{m_world, m_renderWorld, m_ctx.events,
+                                          m_ctx.memory,
+                                          AssetContext(def.rctx)}),
+          m_squeue(m_ctx.memory.frameBuffer.Resource())
     {
         m_viewExecutor.Attach(def.rctx);
     }
@@ -85,8 +85,8 @@ class SceneExt : public Scene
 
         // presentation
         m_squeue.Clear();
-        m_renderers.Update(view::RendererFrameData{
-            f.dt, m_ctx.assets, m_squeue, m_subsystems.GetAlpha()});
+        m_renderers.Update(view::RendererFrameData{f.dt, m_ctx.assets, m_squeue,
+                                                   m_subsystems.GetAlpha()});
 
         // window action
         f.frameAction |= m_windowCtx.frameAction;

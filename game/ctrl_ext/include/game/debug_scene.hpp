@@ -43,7 +43,8 @@ class DebugScene3 : public SceneExt
             {
                 config.subsystems.Add(std::get<int64_t>(val));
             }
-            for (auto val : std::get<json::Array>(jsonConfig["realtime_subsystems"]))
+            for (auto val :
+                 std::get<json::Array>(jsonConfig["realtime_subsystems"]))
             {
                 config.realtimeSubsystems.Add(std::get<int64_t>(val));
             }

@@ -31,7 +31,9 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
         m_budgetGPUMem = memUsage.heapBudget[0];
     }
 
-    auto& spriteQueue = ctx.submissionQueue.View<oge::runtime::gfx::CmdDrawSprite>().GetSingle(GameViewType::Overlay);
+    auto& spriteQueue =
+        ctx.submissionQueue.View<oge::runtime::gfx::CmdDrawSprite>().GetSingle(
+            GameViewType::Overlay);
 
     std::pmr::string debugString{ctx.memory.frameBuffer.Resource()};
     debugString.reserve(1024);
@@ -47,15 +49,19 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
         gpuDebugString.clear();
         gpuDebugString.append(gpuInfo.name);
         gpuDebugString.push_back('\n');
-        fmt::format_to(std::back_inserter(gpuDebugString), "FPS {:.2f}\n", 1.f / ctx.dt);
-        fmt::format_to(std::back_inserter(gpuDebugString), "GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024,
+        fmt::format_to(std::back_inserter(gpuDebugString), "FPS {:.2f}\n",
+                       1.f / ctx.dt);
+        fmt::format_to(std::back_inserter(gpuDebugString),
+                       "GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024,
                        m_budgetGPUMem / 1024 / 1024);
     }
-    
+
     uint8_t offsetX = 40;
     uint8_t offsetY = 10;
     debugString.append(gpuDebugString);
     debugFont->CreateTextSprites(spriteQueue, {debugString, 32},
-                                 {{{offsetX, offsetY}, ctx.assets.backend.SwapchainExtent() - oge::U16Point2{offsetX, offsetY}}});
+                                 {{{offsetX, offsetY},
+                                   ctx.assets.backend.SwapchainExtent() -
+                                       oge::U16Point2{offsetX, offsetY}}});
 }
 }  // namespace game::view

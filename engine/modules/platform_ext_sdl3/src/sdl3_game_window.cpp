@@ -249,7 +249,8 @@ void SDL3GameWindow::Run(WindowApp& app)
                  AppFrameAction::UnwrapMouse)
         {
             SDL_SetWindowRelativeMouseMode(m_window, false);
-            SDL_WarpMouseInWindow(m_window, window_width / 2.f, window_height / 2.f);
+            SDL_WarpMouseInWindow(m_window, window_width / 2.f,
+                                  window_height / 2.f);
             resetMousePos = true;
         }
 

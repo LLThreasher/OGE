@@ -39,12 +39,14 @@ bool AssetPool::Load(const std::string_view& id, GPUTextureHandle& outTexture)
     }
 }
 
-void AssetPool::Cache(const std::string_view& id, const GPUTextureHandle texture)
+void AssetPool::Cache(const std::string_view& id,
+                      const GPUTextureHandle texture)
 {
     m_texturePool.emplace(id, texture);
 }
 
-bool AssetPool::Load(const std::string_view& id, std::shared_ptr<ui::IFont>& font)
+bool AssetPool::Load(const std::string_view& id,
+                     std::shared_ptr<ui::IFont>& font)
 {
     auto it = m_fontPool.find(std::string(id));
     if (it == m_fontPool.end())
@@ -59,17 +61,20 @@ bool AssetPool::Load(const std::string_view& id, std::shared_ptr<ui::IFont>& fon
     }
 }
 
-void AssetPool::Cache(const std::string_view& id, const std::shared_ptr<ui::IFont> font)
+void AssetPool::Cache(const std::string_view& id,
+                      const std::shared_ptr<ui::IFont> font)
 {
     m_fontPool.emplace(id, font);
 }
 
-std::shared_ptr<ui::IFont> AssetContext::LoadASCIIBitmapFont16x6(const std::string_view& id)
+std::shared_ptr<ui::IFont> AssetContext::LoadASCIIBitmapFont16x6(
+    const std::string_view& id)
 {
     return LoadASCIIBitmapFontMxN(16, 6, id);
 }
 
-std::shared_ptr<ui::IFont> AssetContext::LoadASCIIBitmapFontMxN(int m, int n, const std::string_view& id)
+std::shared_ptr<ui::IFont> AssetContext::LoadASCIIBitmapFontMxN(
+    int m, int n, const std::string_view& id)
 {
     std::shared_ptr<ui::IFont> ptr;
     if (assetPool.Load(id, ptr))
@@ -92,12 +97,14 @@ GPUTextureHandle AssetContext::LoadTexture(const std::string_view& id)
     auto tex = assetManager.LoadTexture(id);
     auto& info = tex->info;
     auto res = backend.AllocateGPUTexture(info.width, info.height);
-    streamingManager.UploadTexture<UploadType::Immediate>(tex->data, {res, {{0, 0}, {info.width, info.height}}});
+    streamingManager.UploadTexture<UploadType::Immediate>(
+        tex->data, {res, {{0, 0}, {info.width, info.height}}});
     assetPool.Cache(id, res);
     return res;
 }
 
-GPUMesh AssetContext::LoadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices,
+GPUMesh AssetContext::LoadMesh(const std::span<const std::byte> vertices,
+                               const std::span<const std::byte> indices,
                                uint32_t indexCount, ResourceBundleHandle res)
 {
     GPUMesh m = AllocateMesh(vertices.size(), indices.size());
@@ -106,13 +113,23 @@ GPUMesh AssetContext::LoadMesh(const std::span<const std::byte> vertices, const 
 }
 
 template <auto uploadType>
-void AssetContext::UploadMesh(const std::span<const std::byte> vertices, const std::span<const std::byte> indices,
-                              GPUMesh& m, uint32_t indexCount, ResourceBundleHandle res)
+void AssetContext::UploadMesh(const std::span<const std::byte> vertices,
+                              const std::span<const std::byte> indices,
+                              GPUMesh& m, uint32_t indexCount,
+                              ResourceBundleHandle res)
 {
     streamingManager.Upload<uploadType>(
-        vertices, BufferTarget{.usage = BufferUsage::Vertex, .buffer = m.vertexBuffer, .offset = m.vOffset}, res);
+        vertices,
+        BufferTarget{.usage = BufferUsage::Vertex,
+                     .buffer = m.vertexBuffer,
+                     .offset = m.vOffset},
+        res);
     streamingManager.Upload<uploadType>(
-        indices, BufferTarget{.usage = BufferUsage::Index, .buffer = m.indexBuffer, .offset = m.iOffset}, res);
+        indices,
+        BufferTarget{.usage = BufferUsage::Index,
+                     .buffer = m.indexBuffer,
+                     .offset = m.iOffset},
+        res);
     m.indexCount = indexCount;
 }
 
@@ -124,10 +141,12 @@ GPUMesh AssetContext::AllocateMesh(int vCount, int iCount)
     return m;
 }
 
-template void AssetContext::UploadMesh<UploadType::Async>(const std::span<const std::byte> vertices,
-                                                          const std::span<const std::byte> indices, GPUMesh& m,
-                                                          uint32_t indexCount, ResourceBundleHandle res);
-template void AssetContext::UploadMesh<UploadType::Immediate>(const std::span<const std::byte> vertices,
-                                                              const std::span<const std::byte> indices, GPUMesh& m,
-                                                              uint32_t indexCount, ResourceBundleHandle res);
+template void AssetContext::UploadMesh<UploadType::Async>(
+    const std::span<const std::byte> vertices,
+    const std::span<const std::byte> indices, GPUMesh& m, uint32_t indexCount,
+    ResourceBundleHandle res);
+template void AssetContext::UploadMesh<UploadType::Immediate>(
+    const std::span<const std::byte> vertices,
+    const std::span<const std::byte> indices, GPUMesh& m, uint32_t indexCount,
+    ResourceBundleHandle res);
 }  // namespace oge::runtime

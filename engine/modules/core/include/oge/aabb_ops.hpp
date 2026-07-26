@@ -14,8 +14,10 @@ constexpr int32_t COLLISION_TYPE_NEG_Z = 5;
 constexpr int32_t COLLISION_TYPE_STEP_Y = 6;
 
 const math::vec3 COLLISION_NORMALS[] = {
-    math::vec3{1.f, 0.f, 0.f}, math::vec3{-1.f, 0.f, 0.f}, math::vec3{0.f, 1.f, 0.f}, math::vec3{0.f, -1.f, 0.f},
-    math::vec3{0.f, 0.f, 1.f}, math::vec3{0.f, 0.f, -1.f}, math::vec3{0.f, 1.f, 0.f}, math::vec3{0.f, -1.f, 0.f},
+    math::vec3{1.f, 0.f, 0.f}, math::vec3{-1.f, 0.f, 0.f},
+    math::vec3{0.f, 1.f, 0.f}, math::vec3{0.f, -1.f, 0.f},
+    math::vec3{0.f, 0.f, 1.f}, math::vec3{0.f, 0.f, -1.f},
+    math::vec3{0.f, 1.f, 0.f}, math::vec3{0.f, -1.f, 0.f},
 };
 
 constexpr float COLLISION_EPSILON = 0.0001f;
@@ -27,7 +29,8 @@ struct CollisionResult2
 };
 
 template <size_t dim>
-inline bool CheckCollision(const AABB& a, const AABB& b, float& offset, int32_t& collisionType)
+inline bool CheckCollision(const AABB& a, const AABB& b, float& offset,
+                           int32_t& collisionType)
 {
     const float a_max = a.max[dim] + COLLISION_EPSILON;
     const float a_min = a.min[dim] - COLLISION_EPSILON;
@@ -71,4 +74,4 @@ inline bool CheckOverlap(const AABB& a, const AABB& b)
     if (a.max.z < b.min.z || a.min.z > b.max.z) return false;
     return true;
 }
-}
+}  // namespace oge

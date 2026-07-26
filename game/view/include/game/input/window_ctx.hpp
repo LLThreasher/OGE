@@ -3,7 +3,7 @@
 
 namespace game::math
 {
-    using namespace oge::math;
+using namespace oge::math;
 }
 
 namespace game
@@ -15,15 +15,13 @@ struct WindowCtx
 {
     AppFrameAction frameAction = AppFrameAction::None;
 
-public:
+   public:
     void SetMouseVisible(bool val)
     {
-        frameAction |= (val ? AppFrameAction::UnwrapMouse : AppFrameAction::WrapMouse);
+        frameAction |=
+            (val ? AppFrameAction::UnwrapMouse : AppFrameAction::WrapMouse);
     }
 
-    void Clear()
-    {
-        frameAction = AppFrameAction::None;
-    }
+    void Clear() { frameAction = AppFrameAction::None; }
 };
 }  // namespace game

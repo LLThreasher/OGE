@@ -1,19 +1,19 @@
 #pragma once
 
 #include "oge/color.hpp"
-#include "oge/rect.hpp"
 #include "oge/point3.hpp"
+#include "oge/rect.hpp"
 #include "oge/runtime/gfx/commands.hpp"
 
 namespace game::math
 {
-    using namespace oge::math;
+using namespace oge::math;
 }
 
 namespace game::view::gfx
 {
-using oge::runtime::GPUChunkedAllocation;
 using oge::Point3;
+using oge::runtime::GPUChunkedAllocation;
 
 using namespace oge::rects;
 using namespace oge::colors;
@@ -82,7 +82,8 @@ struct CmdDrawDebugRect
 struct CmdAddView
 {
     IRect16 rect;
-    math::mat4 view = math::lookAt(math::vec3(20, 20, 20), math::vec3(0, 0, 0), math::vec3(0, 1, 0));
+    math::mat4 view = math::lookAt(math::vec3(20, 20, 20), math::vec3(0, 0, 0),
+                                   math::vec3(0, 1, 0));
     float fov = math::radians(45.0f);
     float aspect = 0.f;
 };
@@ -91,4 +92,4 @@ class RequiresVPTransform
 {
 };
 
-} // namespace game::view::gfx
+}  // namespace game::view::gfx

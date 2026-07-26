@@ -3,9 +3,9 @@
 #include <cinttypes>
 #include <functional>
 
+#include "oge/flag_helper.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/platform/window_handle.hpp"
-#include "oge/flag_helper.hpp"
 
 namespace oge::platform
 {
@@ -17,7 +17,8 @@ enum class AppFrameAction : uint32_t
     UnwrapMouse = 1 << 2,
 };
 
-using InputProvider = std::function<void(input::RawInputStream& input, bool blocking)>;
+using InputProvider =
+    std::function<void(input::RawInputStream& input, bool blocking)>;
 
 class WindowApp
 {

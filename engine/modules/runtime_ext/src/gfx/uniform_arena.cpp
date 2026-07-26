@@ -10,14 +10,14 @@ namespace oge::runtime::gfx
 {
 using namespace graphics;
 
-FrameArena::FrameArena(BufferUsage usage) : m_usage(usage)
-{
-}
+FrameArena::FrameArena(BufferUsage usage) : m_usage(usage) {}
 
 void FrameArena::Initialize(IGraphicsBackend& backend, uint32_t capacity)
 {
-    // capacity = backend.MaxUniformBufferSize() > capacity ? capacity : backend.MaxUniformBufferSize();
-    m_alignment = m_usage == BufferUsage::Uniform ? backend.UniformBufferAlignment() : 4;
+    // capacity = backend.MaxUniformBufferSize() > capacity ? capacity :
+    // backend.MaxUniformBufferSize();
+    m_alignment =
+        m_usage == BufferUsage::Uniform ? backend.UniformBufferAlignment() : 4;
     m_capacityPerFrame = math::align(capacity, m_alignment);
     m_framesInFlight = backend.FramesInFlight();
     m_alignedCapacityPerFrame = math::align(m_capacityPerFrame, m_alignment);
@@ -55,18 +55,16 @@ bool FrameArena::TryAllocate(uint32_t size, StagingAllocation& alloc)
     uint32_t alignedSize = math::align(size, m_alignment);
 
     uint32_t frameBase = m_frameIdx * m_alignedCapacityPerFrame;
-    uint32_t frameEnd  = frameBase + m_alignedCapacityPerFrame;
+    uint32_t frameEnd = frameBase + m_alignedCapacityPerFrame;
 
     // Ensure head is inside this frame (safety check)
-    if (m_head < frameBase)
-        m_head = frameBase;
+    if (m_head < frameBase) m_head = frameBase;
 
     // Overflow check
-    if (m_head + alignedSize > frameEnd)
-        return false;
+    if (m_head + alignedSize > frameEnd) return false;
 
     alloc.offset = m_head;
-    alloc.size   = alignedSize;
+    alloc.size = alignedSize;
     alloc.cpuPtr = static_cast<uint8_t*>(m_cpuBuffer) + m_head;
 
     m_head += alignedSize;
@@ -82,4 +80,4 @@ void FrameArena::Flush(IGraphicsBackend& backend)
     range.size = m_head - m_frameIdx * m_alignedCapacityPerFrame;
     backend.FlushStagingBufferRanges(std::span(&range, 1));
 }
-}  // namespace oge::runtime
+}  // namespace oge::runtime::gfx

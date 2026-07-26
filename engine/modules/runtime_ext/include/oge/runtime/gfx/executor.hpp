@@ -16,12 +16,14 @@ class Executor
     {
         m_queue = ctx.Get<TQueue>();
         m_ctx.emplace(ctx);
-        std::apply([](const Passes&... args) { ((args.onAttach(m_ctx.value())), ...); }, m_passes);
+        std::apply([](const Passes&... args)
+                   { ((args.onAttach(m_ctx.value())), ...); }, m_passes);
     }
 
     void Detach()
     {
-        std::apply([](const Passes&... args) { ((args.onDetach(m_ctx.value())), ...); }, m_passes);
+        std::apply([](const Passes&... args)
+                   { ((args.onDetach(m_ctx.value())), ...); }, m_passes);
         m_ctx.reset();
     }
 
@@ -31,11 +33,8 @@ class Executor
         std::apply(
             [](const Passes&... args)
             {
-                ((
-                     [](auto&& value)
-                     {
-                         value.onUpdate(ctx, value.ExtractView(*m_queue));
-                     }(args)),
+                (([](auto&& value)
+                  { value.onUpdate(ctx, value.ExtractView(*m_queue)); }(args)),
                  ...);
             },
             m_passes);

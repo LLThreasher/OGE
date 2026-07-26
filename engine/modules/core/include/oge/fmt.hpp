@@ -70,4 +70,4 @@ struct formatter<oge::IntPair<T>>
         return format_to(ctx.out(), "({}, {})", p.x, p.y);
     }
 };
-}  // namespace std
+}  // namespace fmt

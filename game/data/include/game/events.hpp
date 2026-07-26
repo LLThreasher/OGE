@@ -8,4 +8,4 @@ struct SurfaceRecreateEvent
     oge::U16Point2 swapchainExtent;
     oge::math::Orientation swapchainPretransform;
 };
-}
+}  // namespace game

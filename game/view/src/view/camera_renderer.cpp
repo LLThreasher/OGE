@@ -7,7 +7,8 @@
 namespace game::view
 {
 using namespace ui;
-static void onCameraCreated(entt::registry& renderWorld, entt::registry& gameWorld, entt::entity e)
+static void onCameraCreated(entt::registry& renderWorld,
+                            entt::registry& gameWorld, entt::entity e)
 {
     if (!renderWorld.valid(e))
     {
@@ -17,7 +18,9 @@ static void onCameraCreated(entt::registry& renderWorld, entt::registry& gameWor
     renderWorld.emplace<ComponentCamera>(e, gameWorld.get<ComponentCamera>(e));
 }
 
-static ComponentCamera interpolate_and_replace(ComponentCamera& a, const ComponentCamera& b, float alpha)
+static ComponentCamera interpolate_and_replace(ComponentCamera& a,
+                                               const ComponentCamera& b,
+                                               float alpha)
 {
     ComponentCamera res;
     res.position = math::lerp(a.position, b.position, alpha);
@@ -29,14 +32,19 @@ static ComponentCamera interpolate_and_replace(ComponentCamera& a, const Compone
 void CameraRenderer::onAttach(RendererState& ctx)
 {
     auto& game = ctx.world;
-    game.on_construct<ScreenRect>().connect<&CameraRenderer::onViewPanelUpdate>(this);
-    game.on_update<ScreenRect>().connect<&CameraRenderer::onViewPanelUpdate>(this);
-    game.on_construct<ViewPanel>().connect<&CameraRenderer::onViewPanelUpdate>(this);
-    game.on_update<ViewPanel>().connect<&CameraRenderer::onViewPanelUpdate>(this);
+    game.on_construct<ScreenRect>().connect<&CameraRenderer::onViewPanelUpdate>(
+        this);
+    game.on_update<ScreenRect>().connect<&CameraRenderer::onViewPanelUpdate>(
+        this);
+    game.on_construct<ViewPanel>().connect<&CameraRenderer::onViewPanelUpdate>(
+        this);
+    game.on_update<ViewPanel>().connect<&CameraRenderer::onViewPanelUpdate>(
+        this);
     // game.on_construct<ComponentCamera>().connect<&onCameraCreated>(ctx.renderWorld);
 }
 
-void CameraRenderer::onViewPanelUpdate(entt::registry& world, entt::entity entity)
+void CameraRenderer::onViewPanelUpdate(entt::registry& world,
+                                       entt::entity entity)
 {
     auto [vp, rect] = world.try_get<ViewPanel, ScreenRect>(entity);
     if (vp != nullptr && rect != nullptr)
@@ -60,7 +68,8 @@ void CameraRenderer::onUpdate(FRendererState& ctx)
         {
             cmdview.view = camera->view();
         }
-        if (auto pcamera = game.try_get<ComponentPerspectiveCamera>(view.activeCamera))
+        if (auto pcamera =
+                game.try_get<ComponentPerspectiveCamera>(view.activeCamera))
         {
             cmdview.fov = pcamera->fov;
             cmdview.aspect = pcamera->aspect;

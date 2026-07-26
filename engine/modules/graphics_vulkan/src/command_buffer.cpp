@@ -28,7 +28,8 @@ void VulkanCommandBuffer::InternalBegin()
     // LOG_DEBUG("begin mcd {}", (void*)m_cmd);
 }
 
-void VulkanCommandBuffer::SetViewRect(int32_t x, int32_t y, uint32_t extentX, uint32_t extentY)
+void VulkanCommandBuffer::SetViewRect(int32_t x, int32_t y, uint32_t extentX,
+                                      uint32_t extentY)
 {
     VkViewport viewport{};
     viewport.x = x;
@@ -53,8 +54,9 @@ void VulkanCommandBuffer::InternalEnd()
     // LOG_DEBUG("end mcd {}", (void*)m_cmd);
 }
 
-void VulkanCommandBuffer::BeginRenderPass(const GPURenderPassHandle renderPass, const GPUFrameBufferHandle frameBuffer,
-                                          const ClearValues& clearValues)
+void VulkanCommandBuffer::BeginRenderPass(
+    const GPURenderPassHandle renderPass,
+    const GPUFrameBufferHandle frameBuffer, const ClearValues& clearValues)
 {
     VulkanRenderPass* rp = m_backend->m_renderPasses.Get(renderPass);
     VulkanFrameBuffer* fb = m_backend->m_frameBuffers.Get(frameBuffer);
@@ -70,12 +72,14 @@ void VulkanCommandBuffer::BeginRenderPass(const GPURenderPassHandle renderPass, 
     std::array<VkClearValue, 5> tmpClearValues{};
     for (; clearCount < rp->desc.colorCount; clearCount++)
     {
-        std::memcpy(&tmpClearValues[clearCount].color.float32, &clearValues.colorClears[clearCount], sizeof(float) * 4);
+        std::memcpy(&tmpClearValues[clearCount].color.float32,
+                    &clearValues.colorClears[clearCount], sizeof(float) * 4);
     }
     if (rp->desc.hasDepth)
     {
         tmpClearValues[clearCount].depthStencil.depth = clearValues.depthClear;
-        tmpClearValues[clearCount].depthStencil.stencil = clearValues.stencilClear;
+        tmpClearValues[clearCount].depthStencil.stencil =
+            clearValues.stencilClear;
         clearCount++;
     }
 
@@ -91,7 +95,8 @@ void VulkanCommandBuffer::BindGraphicsPipeline(GPUPipelineHandle handle)
 {
     VulkanPipeline* pipeline = m_backend->m_pipelines.Get(handle);
 
-    vkCmdBindPipeline(m_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline);
+    vkCmdBindPipeline(m_cmd, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                      pipeline->pipeline);
 
     m_currentPipelineLayout = pipeline->layout;
     m_currentBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -101,13 +106,15 @@ void VulkanCommandBuffer::BindComputePipeline(GPUPipelineHandle handle)
 {
     VulkanPipeline* pipeline = m_backend->m_pipelines.Get(handle);
 
-    vkCmdBindPipeline(m_cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline->pipeline);
+    vkCmdBindPipeline(m_cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                      pipeline->pipeline);
 
     m_currentPipelineLayout = pipeline->layout;
     m_currentBindPoint = VK_PIPELINE_BIND_POINT_COMPUTE;
 }
 
-void VulkanCommandBuffer::BindVertexBuffer(GPUBufferHandle handle, uint64_t offset)
+void VulkanCommandBuffer::BindVertexBuffer(GPUBufferHandle handle,
+                                           uint64_t offset)
 {
     VulkanBuffer* buffer = m_backend->m_buffers.Get(handle);
 
@@ -117,39 +124,50 @@ void VulkanCommandBuffer::BindVertexBuffer(GPUBufferHandle handle, uint64_t offs
     vkCmdBindVertexBuffers(m_cmd, 0, 1, &vkBuffer, &vkOffset);
 }
 
-void VulkanCommandBuffer::BindIndexBuffer(GPUBufferHandle handle, uint64_t offset, IndexFormat indexFormat)
+void VulkanCommandBuffer::BindIndexBuffer(GPUBufferHandle handle,
+                                          uint64_t offset,
+                                          IndexFormat indexFormat)
 {
     VulkanBuffer* buffer = m_backend->m_buffers.Get(handle);
 
     vkCmdBindIndexBuffer(m_cmd, buffer->buffer, offset,
-                         indexFormat == IndexFormat::Uint32 ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
+                         indexFormat == IndexFormat::Uint32
+                             ? VK_INDEX_TYPE_UINT32
+                             : VK_INDEX_TYPE_UINT16);
 }
 
-void VulkanCommandBuffer::BindBindingGroup(GPUBindingGroupHandle handle, uint32_t setIndex,
-                                           std::span<const uint32_t> dynamicOffsets)
+void VulkanCommandBuffer::BindBindingGroup(
+    GPUBindingGroupHandle handle, uint32_t setIndex,
+    std::span<const uint32_t> dynamicOffsets)
 {
-    assert(m_currentPipelineLayout != VK_NULL_HANDLE && "cannot call bind binding group before bind pipeline");
+    assert(m_currentPipelineLayout != VK_NULL_HANDLE &&
+           "cannot call bind binding group before bind pipeline");
     VulkanBindingGroup* group = m_backend->m_bindingGroups.Get(handle);
 
-    vkCmdBindDescriptorSets(m_cmd, m_currentBindPoint, m_currentPipelineLayout, setIndex, 1, &group->descriptorSet,
-                            static_cast<uint32_t>(dynamicOffsets.size()), dynamicOffsets.data());
+    vkCmdBindDescriptorSets(m_cmd, m_currentBindPoint, m_currentPipelineLayout,
+                            setIndex, 1, &group->descriptorSet,
+                            static_cast<uint32_t>(dynamicOffsets.size()),
+                            dynamicOffsets.data());
 }
 
-void VulkanCommandBuffer::PushConstants(ShaderStage stage, const void* data, uint32_t size)
+void VulkanCommandBuffer::PushConstants(ShaderStage stage, const void* data,
+                                        uint32_t size)
 {
     VkShaderStageFlags flags = ToVkShaderStage(stage);
 
     vkCmdPushConstants(m_cmd, m_currentPipelineLayout, flags, 0, size, data);
 }
 
-void VulkanCommandBuffer::UpdateBuffer(GPUBufferHandle handle, uint64_t offset, uint64_t size, const void* data)
+void VulkanCommandBuffer::UpdateBuffer(GPUBufferHandle handle, uint64_t offset,
+                                       uint64_t size, const void* data)
 {
     VulkanBuffer* buffer = m_backend->m_buffers.Get(handle);
 
     vkCmdUpdateBuffer(m_cmd, buffer->buffer, offset, size, data);
 }
 
-void VulkanCommandBuffer::CopyBuffer(GPUBufferHandle srcHandle, GPUBufferHandle dstHandle, uint64_t size,
+void VulkanCommandBuffer::CopyBuffer(GPUBufferHandle srcHandle,
+                                     GPUBufferHandle dstHandle, uint64_t size,
                                      uint64_t srcOffset, uint64_t dstOffset)
 {
     VulkanBuffer* src = m_backend->m_buffers.Get(srcHandle);
@@ -169,8 +187,11 @@ void VulkanCommandBuffer::CopyBuffer(GPUBufferHandle srcHandle, GPUBufferHandle 
     vkCmdCopyBuffer(m_cmd, src->buffer, dst->buffer, 1, &copyRegion);
 }
 
-void VulkanCommandBuffer::CopyBufferToTexture(GPUBufferHandle srcHandle, GPUTextureHandle dstHandle, uint32_t width,
-                                              uint32_t height, uint32_t bufferOffset, CopyTextureTarget target)
+void VulkanCommandBuffer::CopyBufferToTexture(GPUBufferHandle srcHandle,
+                                              GPUTextureHandle dstHandle,
+                                              uint32_t width, uint32_t height,
+                                              uint32_t bufferOffset,
+                                              CopyTextureTarget target)
 {
     VulkanBuffer* src = m_backend->m_buffers.Get(srcHandle);
     VulkanTexture* texture = m_backend->m_textures.Get(dstHandle);
@@ -191,22 +212,27 @@ void VulkanCommandBuffer::CopyBufferToTexture(GPUBufferHandle srcHandle, GPUText
     region.imageExtent.height = height;
     region.imageExtent.depth = 1;
 
-    vkCmdCopyBufferToImage(m_cmd, src->buffer, texture->image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    vkCmdCopyBufferToImage(m_cmd, src->buffer, texture->image,
+                           VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
 }
 
-void VulkanCommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount, uint32_t firstVertex,
-                               uint32_t firstInstance)
+void VulkanCommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount,
+                               uint32_t firstVertex, uint32_t firstInstance)
 {
     vkCmdDraw(m_cmd, vertexCount, instanceCount, firstVertex, firstInstance);
 }
 
-void VulkanCommandBuffer::DrawIndexed(uint32_t indexCount, uint32_t instanceCount, uint32_t firstIndex,
-                                      int32_t vertexOffset, uint32_t firstInstance)
+void VulkanCommandBuffer::DrawIndexed(uint32_t indexCount,
+                                      uint32_t instanceCount,
+                                      uint32_t firstIndex, int32_t vertexOffset,
+                                      uint32_t firstInstance)
 {
-    vkCmdDrawIndexed(m_cmd, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+    vkCmdDrawIndexed(m_cmd, indexCount, instanceCount, firstIndex, vertexOffset,
+                     firstInstance);
 }
 
-void VulkanCommandBuffer::DrawIndirect(GPUBufferHandle indirectBuffer, uint64_t offset, uint32_t drawCount,
+void VulkanCommandBuffer::DrawIndirect(GPUBufferHandle indirectBuffer,
+                                       uint64_t offset, uint32_t drawCount,
                                        uint32_t stride)
 {
     VulkanBuffer* buffer = m_backend->m_buffers.Get(indirectBuffer);
@@ -217,7 +243,9 @@ void VulkanCommandBuffer::DrawIndirect(GPUBufferHandle indirectBuffer, uint64_t 
     vkCmdDrawIndirect(m_cmd, buffer->buffer, offset, drawCount, stride);
 }
 
-void VulkanCommandBuffer::DrawIndexedIndirect(GPUBufferHandle indirectBuffer, uint64_t offset, uint32_t drawCount,
+void VulkanCommandBuffer::DrawIndexedIndirect(GPUBufferHandle indirectBuffer,
+                                              uint64_t offset,
+                                              uint32_t drawCount,
                                               uint32_t stride)
 {
     VulkanBuffer* buffer = m_backend->m_buffers.Get(indirectBuffer);
@@ -228,12 +256,14 @@ void VulkanCommandBuffer::DrawIndexedIndirect(GPUBufferHandle indirectBuffer, ui
     vkCmdDrawIndexedIndirect(m_cmd, buffer->buffer, offset, drawCount, stride);
 }
 
-void VulkanCommandBuffer::Dispatch(uint32_t groupX, uint32_t groupY, uint32_t groupZ)
+void VulkanCommandBuffer::Dispatch(uint32_t groupX, uint32_t groupY,
+                                   uint32_t groupZ)
 {
     vkCmdDispatch(m_cmd, groupX, groupY, groupZ);
 }
 
-void VulkanCommandBuffer::DispatchIndirect(GPUBufferHandle handle, uint64_t offset)
+void VulkanCommandBuffer::DispatchIndirect(GPUBufferHandle handle,
+                                           uint64_t offset)
 {
     VulkanBuffer* buffer = m_backend->m_buffers.Get(handle);
 
@@ -243,13 +273,17 @@ void VulkanCommandBuffer::DispatchIndirect(GPUBufferHandle handle, uint64_t offs
     vkCmdDispatchIndirect(m_cmd, buffer->buffer, offset);
 }
 
-void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage before, BufferUsage after, uint64_t offset)
+void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle,
+                                        BufferUsage before, BufferUsage after,
+                                        uint64_t offset)
 {
-    VulkanCommandBuffer::BufferBarrier(handle, before, after, offset, VK_WHOLE_SIZE);
+    VulkanCommandBuffer::BufferBarrier(handle, before, after, offset,
+                                       VK_WHOLE_SIZE);
 }
 
-void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage before, BufferUsage after, uint64_t offset,
-                                        uint64_t size)
+void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle,
+                                        BufferUsage before, BufferUsage after,
+                                        uint64_t offset, uint64_t size)
 {
     VulkanBuffer* buffer = m_backend->m_buffers.Get(handle);
 
@@ -263,11 +297,14 @@ void VulkanCommandBuffer::BufferBarrier(GPUBufferHandle handle, BufferUsage befo
     barrier.offset = offset;
     barrier.size = size;
 
-    vkCmdPipelineBarrier(m_cmd, ConvertPipelineStage(before), ConvertPipelineStage(after), 0, 0, nullptr, 1, &barrier,
-                         0, nullptr);
+    vkCmdPipelineBarrier(m_cmd, ConvertPipelineStage(before),
+                         ConvertPipelineStage(after), 0, 0, nullptr, 1,
+                         &barrier, 0, nullptr);
 }
 
-void VulkanCommandBuffer::TextureBarrier(GPUTextureHandle handle, TextureState newState, uint32_t baseLayer,
+void VulkanCommandBuffer::TextureBarrier(GPUTextureHandle handle,
+                                         TextureState newState,
+                                         uint32_t baseLayer,
                                          uint32_t layerCount)
 {
     assert(layerCount == 1);
@@ -297,8 +334,9 @@ void VulkanCommandBuffer::TextureBarrier(GPUTextureHandle handle, TextureState n
     barrier.subresourceRange.baseArrayLayer = baseLayer;
     barrier.subresourceRange.layerCount = layerCount;
 
-    vkCmdPipelineBarrier(m_cmd, ToVkPipelineStage(oldState), ToVkPipelineStage(newState), 0, 0, nullptr, 0, nullptr, 1,
-                         &barrier);
+    vkCmdPipelineBarrier(m_cmd, ToVkPipelineStage(oldState),
+                         ToVkPipelineStage(newState), 0, 0, nullptr, 0, nullptr,
+                         1, &barrier);
 
     texture->currentStatePerLayer[baseLayer] = newState;
 }

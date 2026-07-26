@@ -10,7 +10,8 @@
 
 using namespace oge::runtime;
 
-bool NetClient::Initialize(size_t channelCount, std::pmr::memory_resource* memory)
+bool NetClient::Initialize(size_t channelCount,
+                           std::pmr::memory_resource* memory)
 {
     if (oge_enet_initialize(memory) != 0)
     {
@@ -83,12 +84,13 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
             case ENET_EVENT_TYPE_RECEIVE:
             {
                 OnPacketReceived(event.packet->data, event.packet->dataLength);
-                auto buffer = net::Buffer(event.packet->data, event.packet->dataLength);
-                dispatcher.trigger<OnClientPacketReceived>(
+                auto buffer =
+                    net::Buffer(event.packet->data, event.packet->dataLength);
+                dispatcher.trigger<OnClientReceivePacket>(
                     {buffer.ToReadOnly()});
                 enet_packet_destroy(event.packet);
                 break;
-                }
+            }
             case ENET_EVENT_TYPE_DISCONNECT:
                 LOG_INFO("Disconnected from server");
                 peer = nullptr;

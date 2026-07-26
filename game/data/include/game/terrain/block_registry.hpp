@@ -16,15 +16,18 @@ using oge::AABB;
 // support up to 4096 blocks, 256 of which are non-opaque
 constexpr uint32_t OPAQUE_BLOCK_START = 256;
 constexpr uint32_t BLOCK_ID_MASK = (uint32_t)(((uint64_t)1 << 12) - 1);
-constexpr uint32_t BLOCK_META_LIGHT_MASK = (uint32_t)(((uint64_t)1 << 4) - 1) << 12;
-constexpr uint32_t BLOCK_META_COLOR_MASK = (uint32_t)(((uint64_t)1 << 4) - 1) << 16;
+constexpr uint32_t BLOCK_META_LIGHT_MASK = (uint32_t)(((uint64_t)1 << 4) - 1)
+                                           << 12;
+constexpr uint32_t BLOCK_META_COLOR_MASK = (uint32_t)(((uint64_t)1 << 4) - 1)
+                                           << 16;
 
 using BlockMetadata = uint8_t;
 
 inline BlockMetadata GetMetadata(uint32_t blockValue)
 {
     BlockMetadata result;
-    result = (blockValue & (BLOCK_META_LIGHT_MASK | BLOCK_META_COLOR_MASK)) >> 12;
+    result =
+        (blockValue & (BLOCK_META_LIGHT_MASK | BLOCK_META_COLOR_MASK)) >> 12;
     return result;
 }
 
@@ -40,7 +43,9 @@ struct BlockConfig
     uint32_t blockFlags;
     std::vector<AABB> aabbs;
 
-    BlockConfig(std::string blockDisplayName = "Air", std::string textureId = "invalid.png", uint32_t blockFlags = 0, std::vector<AABB> aabbs = {DEFAULT_BLOCK_AABB});
+    BlockConfig(std::string blockDisplayName = "Air",
+                std::string textureId = "invalid.png", uint32_t blockFlags = 0,
+                std::vector<AABB> aabbs = {DEFAULT_BLOCK_AABB});
 };
 
 // size 12 * 2 * 16 = 384 bytes
@@ -51,7 +56,10 @@ class BlockRegistry
    public:
     BlockRegistry();
     void RegisterBlock(std::string blockIdName, BlockConfig config);
-    const std::vector<std::string>& GetBlockTextureArray() { return m_blockTextureArray; }
+    const std::vector<std::string>& GetBlockTextureArray()
+    {
+        return m_blockTextureArray;
+    }
     static uint16_t GetBlockId(uint32_t blockValue);
     uint16_t GetBlockId(const std::string blockIdName) const;
     const std::string& GetBlockDisplayName(uint16_t blockIdx) const;
@@ -73,4 +81,4 @@ class BlockRegistry
     std::vector<AABB> m_aabbs;
     std::vector<AABBList> m_aabbLookup;
 };
-}  // namespace OneGame::Engine::Terrain
+}  // namespace game::terrain

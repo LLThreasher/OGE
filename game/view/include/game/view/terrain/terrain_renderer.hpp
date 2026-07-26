@@ -74,11 +74,13 @@ struct ChunkMeshingWorkerContext
 struct TerrainPresentationData
 {
     std::queue<ChunkHandle> buildMeshQueue;
-    Pool<TerrainObject::MeshingWorkerContext, ChunkMeshingWorkerContext> meshingWorkerContexts;
+    Pool<TerrainObject::MeshingWorkerContext, ChunkMeshingWorkerContext>
+        meshingWorkerContexts;
     Pool<TerrainObject::BuiltChunkMesh, BuiltChunkMesh2> builtChunkMeshes;
 
     std::queue<std::tuple<ChunkHandle, BuiltMeshHandle>> uploadMeshQueue;
-    std::unordered_map<ChunkHandle, PTerrainMesh, HandleHash<ChunkHandle>> residentChunks;
+    std::unordered_map<ChunkHandle, PTerrainMesh, HandleHash<ChunkHandle>>
+        residentChunks;
 
     TerrainPresentationData() {}
     NO_COPY(TerrainPresentationData)
@@ -87,12 +89,15 @@ struct TerrainPresentationData
 class TerrainMeshBuilder
 {
    public:
-    void BuildChunkMeshes(const TerrainData& terrain, const BlockRegistry& blocks,
-                          TerrainPresentationData& terrainPData, std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
+    void BuildChunkMeshes(
+        const TerrainData& terrain, const BlockRegistry& blocks,
+        TerrainPresentationData& terrainPData,
+        std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
     void SetVertexBudget(uint32_t val) { m_vertexBudget = val; }
 
    private:
-    void ExecuteBuildChunkMesh(TerrainPresentationData& pData, MeshingWorkerContextHandle handle,
+    void ExecuteBuildChunkMesh(TerrainPresentationData& pData,
+                               MeshingWorkerContextHandle handle,
                                const BlockRegistry& blocks);
 
     uint32_t m_vertexBudget = 1024;
@@ -104,8 +109,12 @@ class TerrainMeshScheduler
     using View = oge::SubmissionView<gfx::CmdDrawTerrainMeshOpaque>;
 
    public:
-    void QueueChunksForMeshing(const TerrainData& terrain, TerrainPresentationData& pdata, entt::dispatcher& events);
-    void SubmitVisibleChunks(const TerrainData& data, TerrainPresentationData& pdata, const entt::registry& tctx,
+    void QueueChunksForMeshing(const TerrainData& terrain,
+                               TerrainPresentationData& pdata,
+                               entt::dispatcher& events);
+    void SubmitVisibleChunks(const TerrainData& data,
+                             TerrainPresentationData& pdata,
+                             const entt::registry& tctx,
                              ViewSubmissionGroup<View> fd);
 
    private:
@@ -139,6 +148,6 @@ class TerrainRenderer : public Renderer
     TerrainUploader m_terrainUploader;
     TerrainMeshScheduler m_terrainMeshScheduler;
 };
-}
+}  // namespace terrain
 using TerrainRenderer = terrain::TerrainRenderer;
-}  // namespace game::view::terrain
+}  // namespace game::view

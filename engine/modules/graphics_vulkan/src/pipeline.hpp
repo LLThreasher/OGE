@@ -13,4 +13,4 @@ struct VulkanPipeline
     VkPipelineBindPoint bindingPoint;
 };
 
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

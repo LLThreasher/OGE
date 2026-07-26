@@ -29,7 +29,8 @@ DrawContext::DrawContext(float dt, InitDrawContext& ctx)
     values.depthClear = 0.0f;
     values.stencilClear = 0.f;
 
-    cmd.BeginRenderPass(backend.GetCurrentRenderPass(), backend.GetCurrentFrameBuffer(), values);
+    cmd.BeginRenderPass(backend.GetCurrentRenderPass(),
+                        backend.GetCurrentFrameBuffer(), values);
 }
 
 DrawContext::~DrawContext()
@@ -41,4 +42,4 @@ DrawContext::~DrawContext()
     uniformArena.Flush(backend);
     uniformArena.AdvanceFrame();
 }
-}  // namespace oge::runtime::renderer
+}  // namespace oge::runtime::gfx

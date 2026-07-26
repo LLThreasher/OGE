@@ -1,8 +1,9 @@
 #pragma once
 
 #include <string_view>
-#include "oge/rect.hpp"
+
 #include "oge/input/mouse.hpp"
+#include "oge/rect.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/gfx/commands.hpp"
 #include "oge/submission_group.hpp"
@@ -85,13 +86,13 @@ struct UIParent
 {
     entt::entity parent;
 };
-}  // namespace OneGame::Engine::ECS
+}  // namespace oge::runtime::ui
 
 namespace oge::runtime
 {
 struct AssetContext;
 class SubmissionQueue;
-}
+}  // namespace oge::runtime
 namespace oge::runtime::ui
 {
 
@@ -99,17 +100,22 @@ class IFont
 {
    public:
     virtual ~IFont() = default;
-    virtual void CreateTextSprites(SubmissionView<gfx::CmdDrawSprite> squeue, UITextData text, ScreenRect rect) = 0;
+    virtual void CreateTextSprites(SubmissionView<gfx::CmdDrawSprite> squeue,
+                                   UITextData text, ScreenRect rect) = 0;
 };
-std::unique_ptr<IFont> LoadASCIIBitmapFontMxN(int m, int n, AssetContext& ctx, std::string_view textureId);
+std::unique_ptr<IFont> LoadASCIIBitmapFontMxN(int m, int n, AssetContext& ctx,
+                                              std::string_view textureId);
 
 math::vec2 ScreenSpaceToRelSpace(const ScreenRect rect, math::vec2 screenPos);
-math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, entt::entity rectEntity, math::vec2 screenPos);
-math::vec2 ScreenSpaceToRelSpace(const entt::registry& world, math::vec2 screenPos);
+math::vec2 ScreenSpaceToRelSpace(const entt::registry& world,
+                                 entt::entity rectEntity, math::vec2 screenPos);
+math::vec2 ScreenSpaceToRelSpace(const entt::registry& world,
+                                 math::vec2 screenPos);
 Point2 RelSpaceToScreenSpace(const entt::registry& world, math::vec2 relPos);
 ScreenRect UIRectToScreenRect(const entt::registry& world, entt::entity rect);
 
 entt::entity CastRayRelSpace(const entt::registry& gameWorld, math::vec2 pos);
-entt::entity CastRayScreenSpace(const entt::registry& gameWorld, math::vec2 pos);
+entt::entity CastRayScreenSpace(const entt::registry& gameWorld,
+                                math::vec2 pos);
 
-}  // namespace OneGame::Engine
+}  // namespace oge::runtime::ui

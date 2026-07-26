@@ -16,4 +16,4 @@ struct TouchPoint
     float x;
     float y;
 };
-}  // namespace OneGame::Engine
+}  // namespace oge::input

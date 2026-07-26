@@ -17,12 +17,18 @@ GPUTextureHandle VulkanBackend::CreateTexture(const TextureDesc& desc)
     assert(desc.mipLevels == 1);
 
     VkImageUsageFlags usage = 0;
-    if (HasFlag(desc.usage, TextureUsage::Sampled)) usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
-    if (HasFlag(desc.usage, TextureUsage::Storage)) usage |= VK_IMAGE_USAGE_STORAGE_BIT;
-    if (HasFlag(desc.usage, TextureUsage::ColorAttachment)) usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    if (HasFlag(desc.usage, TextureUsage::DepthAttachment)) usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-    if (HasFlag(desc.usage, TextureUsage::TransferSrc)) usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-    if (HasFlag(desc.usage, TextureUsage::TransferDst)) usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    if (HasFlag(desc.usage, TextureUsage::Sampled))
+        usage |= VK_IMAGE_USAGE_SAMPLED_BIT;
+    if (HasFlag(desc.usage, TextureUsage::Storage))
+        usage |= VK_IMAGE_USAGE_STORAGE_BIT;
+    if (HasFlag(desc.usage, TextureUsage::ColorAttachment))
+        usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    if (HasFlag(desc.usage, TextureUsage::DepthAttachment))
+        usage |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    if (HasFlag(desc.usage, TextureUsage::TransferSrc))
+        usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+    if (HasFlag(desc.usage, TextureUsage::TransferDst))
+        usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
     VkFormat vkFormat;
     VkImageAspectFlags aspectMask;
@@ -30,15 +36,16 @@ GPUTextureHandle VulkanBackend::CreateTexture(const TextureDesc& desc)
     GetVkFormatAndAspect(desc.format, vkFormat, aspectMask);
 
     VulkanTexture texture;
-    CreateTextureInternal(desc.width, desc.height, desc.depth, desc.layers, desc.mipLevels, usage, vkFormat, aspectMask,
-                          texture);
+    CreateTextureInternal(desc.width, desc.height, desc.depth, desc.layers,
+                          desc.mipLevels, usage, vkFormat, aspectMask, texture);
 
     return m_textures.Create(texture);
 }
 
-void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint32_t depth, uint32_t layers,
-                                          uint32_t mipLevels, VkImageUsageFlags vkUsage, VkFormat vkFormat,
-                                          VkImageAspectFlags aspectMask, VulkanTexture& result)
+void VulkanBackend::CreateTextureInternal(
+    uint32_t width, uint32_t height, uint32_t depth, uint32_t layers,
+    uint32_t mipLevels, VkImageUsageFlags vkUsage, VkFormat vkFormat,
+    VkImageAspectFlags aspectMask, VulkanTexture& result)
 {
     result.width = width;
     result.height = height;
@@ -65,13 +72,15 @@ void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint3
     VmaAllocationCreateInfo allocInfo{};
     allocInfo.usage = VMA_MEMORY_USAGE_AUTO;
 
-    VK_CHECK_RESULT(vmaCreateImage(m_device.m_allocator, &ici, &allocInfo, &result.image, &result.allocation, nullptr));
+    VK_CHECK_RESULT(vmaCreateImage(m_device.m_allocator, &ici, &allocInfo,
+                                   &result.image, &result.allocation, nullptr));
 
     // --- Image View ---
     VkImageViewCreateInfo ivci{};
     ivci.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     ivci.image = result.image;
-    ivci.viewType = layers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
+    ivci.viewType =
+        layers == 1 ? VK_IMAGE_VIEW_TYPE_2D : VK_IMAGE_VIEW_TYPE_2D_ARRAY;
     ivci.format = vkFormat;
     ivci.subresourceRange.aspectMask = aspectMask;
     ivci.subresourceRange.baseMipLevel = 0;
@@ -79,7 +88,8 @@ void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint3
     ivci.subresourceRange.baseArrayLayer = 0;
     ivci.subresourceRange.layerCount = layers;
 
-    VK_CHECK_RESULT(vkCreateImageView(m_device.device, &ivci, nullptr, &result.view));
+    VK_CHECK_RESULT(
+        vkCreateImageView(m_device.device, &ivci, nullptr, &result.view));
 
     // sampler
     VkSamplerCreateInfo samplerInfo{};
@@ -106,7 +116,8 @@ void VulkanBackend::CreateTextureInternal(uint32_t width, uint32_t height, uint3
     samplerInfo.maxLod = static_cast<float>(mipLevels);
     samplerInfo.mipLodBias = 0.0f;
 
-    if (vkCreateSampler(m_device.device, &samplerInfo, nullptr, &result.sampler) != VK_SUCCESS)
+    if (vkCreateSampler(m_device.device, &samplerInfo, nullptr,
+                        &result.sampler) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create sampler");
     }
@@ -126,7 +137,8 @@ void VulkanBackend::DestroyTextureInternal(VulkanTexture& texture)
     }
     if (texture.image != VK_NULL_HANDLE)
     {
-        vmaDestroyImage(m_device.m_allocator, texture.image, texture.allocation);
+        vmaDestroyImage(m_device.m_allocator, texture.image,
+                        texture.allocation);
         texture.image = VK_NULL_HANDLE;
     }
 }
@@ -137,4 +149,4 @@ void VulkanBackend::DestroyTexture(GPUTextureHandle handle)
     DestroyTextureInternal(*texture);
     m_textures.Destroy(handle);
 }
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

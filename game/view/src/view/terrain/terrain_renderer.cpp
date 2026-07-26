@@ -17,24 +17,28 @@ void TerrainRenderer::onAttach(RendererState& ctx)
     auto desc = ctx.world.ctx().find<TerrainRendererDesc>();
     if (desc == nullptr) desc = &ctx.world.ctx().emplace<TerrainRendererDesc>();
     m_terrainMeshBuilder.SetVertexBudget(desc->meshingQuadBudget);
-    m_terrainUploader.SetMaxNumChunks((tdesc->chunkViewDistance + 1) * (tdesc->chunkViewDistance + 1) * 6);
+    m_terrainUploader.SetMaxNumChunks((tdesc->chunkViewDistance + 1) *
+                                      (tdesc->chunkViewDistance + 1) * 6);
 }
 
-void TerrainRenderer::onDetach(RendererState& ctx)
-{
-}
+void TerrainRenderer::onDetach(RendererState& ctx) {}
 
 void TerrainRenderer::onUpdate(FRendererState& ctx)
 {
     auto& terrainData = ctx.world.ctx().get<TerrainView>().m_terrainData;
-    m_terrainMeshScheduler.QueueChunksForMeshing(terrainData, m_terrainPData, ctx.events);
-    m_terrainMeshBuilder.BuildChunkMeshes(terrainData, ctx.world.ctx().get<BlockRegistry>(), m_terrainPData, ctx.memory.frameBuffer.Resource());
+    m_terrainMeshScheduler.QueueChunksForMeshing(terrainData, m_terrainPData,
+                                                 ctx.events);
+    m_terrainMeshBuilder.BuildChunkMeshes(
+        terrainData, ctx.world.ctx().get<BlockRegistry>(), m_terrainPData,
+        ctx.memory.frameBuffer.Resource());
     m_terrainUploader.UploadTerrain(m_terrainPData, ctx.assets);
-    m_terrainMeshScheduler.SubmitVisibleChunks(terrainData, m_terrainPData, ctx.world,
-                                               ctx.submissionQueue.View<CmdDrawTerrainMeshOpaque>());
+    m_terrainMeshScheduler.SubmitVisibleChunks(
+        terrainData, m_terrainPData, ctx.world,
+        ctx.submissionQueue.View<CmdDrawTerrainMeshOpaque>());
 }
 
-void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain, TerrainPresentationData& pdata,
+void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain,
+                                                 TerrainPresentationData& pdata,
                                                  entt::dispatcher& events)
 {
     toRemove.clear();
@@ -78,7 +82,10 @@ struct FrustumPlane
     glm::vec3 normal;
     float distance;
 
-    float DistanceToPoint(const glm::vec3& p) const { return glm::dot(normal, p) + distance; }
+    float DistanceToPoint(const glm::vec3& p) const
+    {
+        return glm::dot(normal, p) + distance;
+    }
 };
 
 struct Frustum
@@ -86,7 +93,8 @@ struct Frustum
     FrustumPlane planes[5];  // left, right, bottom, top, near
 };
 
-static Frustum BuildFrustumGeometric(const ComponentCamera& cam, const ComponentPerspectiveCamera& pcam)
+static Frustum BuildFrustumGeometric(const ComponentCamera& cam,
+                                     const ComponentPerspectiveCamera& pcam)
 {
     constexpr float nearPlane = 0.1f;
 
@@ -113,7 +121,8 @@ static Frustum BuildFrustumGeometric(const ComponentCamera& cam, const Component
     glm::vec3 nbl = nearCenter - nearUp - nearRight;
     glm::vec3 nbr = nearCenter - nearUp + nearRight;
 
-    auto MakePlane = [](const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+    auto MakePlane =
+        [](const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
     {
         FrustumPlane p;
         p.normal = glm::normalize(glm::cross(b - a, c - a));
@@ -142,7 +151,8 @@ static Frustum BuildFrustumGeometric(const ComponentCamera& cam, const Component
     return f;
 }
 
-static bool IsAABBVisible(const Frustum& frustum, const glm::vec3& min, const glm::vec3& max)
+static bool IsAABBVisible(const Frustum& frustum, const glm::vec3& min,
+                          const glm::vec3& max)
 {
     for (int i = 0; i < 5; i++)
     {
@@ -162,15 +172,19 @@ static bool IsAABBVisible(const Frustum& frustum, const glm::vec3& min, const gl
 static bool IsVisibleToPlayer(Point3 chunkCoord, const Frustum& frustum)
 {
     glm::vec3 chunkMin =
-        glm::vec3(chunkCoord.x * CHUNK_SIZE_X, chunkCoord.y * CHUNK_SIZE_Y, chunkCoord.z * CHUNK_SIZE_Z);
+        glm::vec3(chunkCoord.x * CHUNK_SIZE_X, chunkCoord.y * CHUNK_SIZE_Y,
+                  chunkCoord.z * CHUNK_SIZE_Z);
 
-    glm::vec3 chunkMax = chunkMin + math::vec3(CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z);
+    glm::vec3 chunkMax =
+        chunkMin + math::vec3(CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z);
 
     return IsAABBVisible(frustum, chunkMin, chunkMax);
 }
 
-void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data, TerrainPresentationData& pdata,
-                                               const entt::registry& tctx, ViewSubmissionGroup<View> fd)
+void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data,
+                                               TerrainPresentationData& pdata,
+                                               const entt::registry& tctx,
+                                               ViewSubmissionGroup<View> fd)
 {
     using namespace oge::graphics;
     using namespace ui;
@@ -185,7 +199,8 @@ void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data, TerrainP
         }
         else
         {
-            playerToView.emplace(view.activeCamera, static_cast<uint32_t>(view.activeSlot));
+            playerToView.emplace(view.activeCamera,
+                                 static_cast<uint32_t>(view.activeSlot));
         }
     }
 
@@ -193,7 +208,8 @@ void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data, TerrainP
     {
         auto chunk = data.chunks.Get(handle);
 
-        fd.Add<CmdDrawTerrainMeshOpaque>(GameViewType{baseView}, slot, chunk->Coords);
+        fd.Add<CmdDrawTerrainMeshOpaque>(GameViewType{baseView}, slot,
+                                         chunk->Coords);
     }
 
     for (auto player : tctx.view<ComponentPlayer>())
@@ -209,7 +225,8 @@ void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data, TerrainP
         {
             auto chunk = data.chunks.Get(handle);
             if (!IsVisibleToPlayer(chunk->Coords, frustum)) continue;
-            fd.Add<CmdDrawTerrainMeshOpaque>(GameViewType{it->second}, slot, chunk->Coords);
+            fd.Add<CmdDrawTerrainMeshOpaque>(GameViewType{it->second}, slot,
+                                             chunk->Coords);
         }
     }
 }

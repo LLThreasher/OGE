@@ -1,8 +1,10 @@
 #include "game/components.hpp"
 
-namespace game {
+namespace game
+{
 
-math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamera, math::vec2 pos)
+math::vec3 ScreenToRay(ComponentCamera camera,
+                       ComponentPerspectiveCamera pcamera, math::vec2 pos)
 {
     float ndcX = -pos.x * 2.0f + 1.0f;
     float ndcY = 1.0f - pos.y * 2.0f;
@@ -33,6 +35,9 @@ void ComponentCamera::ApplyDelta(float dsx, float dsy)
     forward = math::normalize(forward);
 }
 
-math::mat4 ComponentCamera::view() const { return math::lookAt(position, position + forward, glm::vec3(0, 1, 0)); }
-
+math::mat4 ComponentCamera::view() const
+{
+    return math::lookAt(position, position + forward, glm::vec3(0, 1, 0));
 }
+
+}  // namespace game

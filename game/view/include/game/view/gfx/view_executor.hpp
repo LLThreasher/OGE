@@ -3,10 +3,10 @@
 #include <optional>
 
 #include "game/view/submission_queue.hpp"
+#include "oge/graphics/command_list.hpp"
 #include "oge/runtime/gfx/commands.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
 #include "oge/runtime/typed_registry.hpp"
-#include "oge/graphics/command_list.hpp"
 
 namespace game::view::gfx
 {
@@ -17,24 +17,28 @@ class ViewExecutor
 {
    public:
     ViewExecutor() {}
-    
+
     void Attach(OGEContextReadOnly& ctx)
     {
         m_ctx.emplace(ctx);
-        std::apply([&](Passes&... args) { ((args.onAttach(m_ctx.value())), ...); }, m_passes);
+        std::apply([&](Passes&... args)
+                   { ((args.onAttach(m_ctx.value())), ...); }, m_passes);
     }
 
     void Detach()
     {
-        std::apply([&](Passes&... args) { ((args.onDetach(m_ctx.value())), ...); }, m_passes);
+        std::apply([&](Passes&... args)
+                   { ((args.onDetach(m_ctx.value())), ...); }, m_passes);
         m_ctx.reset();
     }
 
-    template<typename TQueue>
+    template <typename TQueue>
     void Update(float dt, TQueue& s_queue)
     {
         DrawContext ctx(dt, m_ctx.value());
-        s_queue.template Add<CmdAddView>(GameViewType::Overlay, IRect16{{0, 0}, ctx.backend.SwapchainExtent()});
+        s_queue.template Add<CmdAddView>(
+            GameViewType::Overlay,
+            IRect16{{0, 0}, ctx.backend.SwapchainExtent()});
         for (auto view : ALL_GAME_VIEWS)
         {
             DrawView(ctx, s_queue.GetSingle(view));
@@ -60,11 +64,15 @@ class ViewExecutor
         math::mat4 proj =
             math::get_perspective_rot(ctx.backend.SwapchainPretransform()) *
             (math::perspective_rev_z(cmdview.fov,
-                                     cmdview.aspect == 0.f ? ctx.backend.SwapchainAspect() : cmdview.aspect, 0.1f));
+                                     cmdview.aspect == 0.f
+                                         ? ctx.backend.SwapchainAspect()
+                                         : cmdview.aspect,
+                                     0.1f));
         auto pvTransform = proj * cmdview.view;
 
         auto& rect = cmdview.rect;
-        ctx.drawCmd.SetViewRect(rect.pos.x, rect.pos.y, rect.extent.x, rect.extent.y);
+        ctx.drawCmd.SetViewRect(rect.pos.x, rect.pos.y, rect.extent.x,
+                                rect.extent.y);
 
         std::apply(
             [&](Passes&... args)
@@ -74,8 +82,10 @@ class ViewExecutor
                      {
                          using T = std::decay_t<decltype(value)>;
 
-                         if constexpr (std::derived_from<T, RequiresVPTransform>)
-                             value.onUpdate(ctx, value.ExtractView(queue), pvTransform);
+                         if constexpr (std::derived_from<T,
+                                                         RequiresVPTransform>)
+                             value.onUpdate(ctx, value.ExtractView(queue),
+                                            pvTransform);
                          else
                              value.onUpdate(ctx, value.ExtractView(queue));
                      }(args)),

@@ -2,10 +2,10 @@
 
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/forward.hpp"
-#include "oge/runtime/staged_scheduler.hpp"
+#include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/gfx/skyline_allocator.hpp"
 #include "oge/runtime/gfx/uniform_arena.hpp"
-#include "oge/runtime/asset_ctx.hpp"
+#include "oge/runtime/staged_scheduler.hpp"
 
 namespace oge::runtime
 {
@@ -17,8 +17,8 @@ namespace dca
 class DynamicChunkAllocator;
 }
 class DynamicSkylineAllocator;
-} // namespace gfx
-}
+}  // namespace gfx
+}  // namespace oge::runtime
 
 namespace oge::runtime
 {
@@ -53,4 +53,4 @@ struct DrawContext
     NO_COPY(DrawContext);
 };
 }  // namespace gfx
-}  // namespace game::view
+}  // namespace oge::runtime

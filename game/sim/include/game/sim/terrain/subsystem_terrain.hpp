@@ -36,7 +36,10 @@ class TerrainGenerator
 {
    public:
     void GenerateTerrain(TerrainData& terrain, BlockRegistry& blocks);
-    void SetTerrainGenChunkBudget(int32_t chunkBudget) { terrainGenChunkBudget = chunkBudget; }
+    void SetTerrainGenChunkBudget(int32_t chunkBudget)
+    {
+        terrainGenChunkBudget = chunkBudget;
+    }
 
    private:
     int terrainGenChunkBudget = 8;
@@ -53,7 +56,8 @@ class SubsystemTerrain : public Subsystem
     void onAttach(GameState& ctx) override;
     void onDetach(GameState& ctx) override;
     void onUpdate(FGameState& ctx) override;
-    // void Present(const TerrainContext& ctx, PresentationContext pctx, FrameOutputData& fd) override;
+    // void Present(const TerrainContext& ctx, PresentationContext pctx,
+    // FrameOutputData& fd) override;
 
    private:
     void onPlayerCreated(entt::registry& world, entt::entity entity);

@@ -1,8 +1,9 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
+
 #include <cstdint>
 #include <span>
-#include <vulkan/vulkan.h>
 
 #include "oge/graphics/command_list.hpp"
 
@@ -13,8 +14,14 @@ class VulkanBackend;
 class VulkanCommandBuffer final : public ICommandList
 {
    public:
-    explicit VulkanCommandBuffer(QueueType queueType, VkDevice device, VkCommandBuffer cmd, VulkanBackend* backend, bool useEnd = true)
-        : m_queueType(queueType), m_device(device), m_cmd(cmd), m_backend(backend), m_useEnd(useEnd)
+    explicit VulkanCommandBuffer(QueueType queueType, VkDevice device,
+                                 VkCommandBuffer cmd, VulkanBackend* backend,
+                                 bool useEnd = true)
+        : m_queueType(queueType),
+          m_device(device),
+          m_cmd(cmd),
+          m_backend(backend),
+          m_useEnd(useEnd)
     {
     }
     virtual ~VulkanCommandBuffer() = default;
@@ -22,10 +29,12 @@ class VulkanCommandBuffer final : public ICommandList
     void InternalBegin();
     void InternalEnd();
 
-    void SetViewRect(int32_t x, int32_t y, uint32_t extentX, uint32_t extentY) override;
+    void SetViewRect(int32_t x, int32_t y, uint32_t extentX,
+                     uint32_t extentY) override;
 
     // ----- Render pass -----
-    void BeginRenderPass(const GPURenderPassHandle renderPass, const GPUFrameBufferHandle frameBuffer,
+    void BeginRenderPass(const GPURenderPassHandle renderPass,
+                         const GPUFrameBufferHandle frameBuffer,
                          const ClearValues& clearValues) override;
     void EndRenderPass() override;
 
@@ -34,44 +43,57 @@ class VulkanCommandBuffer final : public ICommandList
     void BindComputePipeline(GPUPipelineHandle) override;
 
     void BindVertexBuffer(GPUBufferHandle, uint64_t offset = 0) override;
-    void BindIndexBuffer(GPUBufferHandle, uint64_t offset = 0, IndexFormat indexFormat = IndexFormat::Uint32) override;
+    void BindIndexBuffer(
+        GPUBufferHandle, uint64_t offset = 0,
+        IndexFormat indexFormat = IndexFormat::Uint32) override;
 
-    void BindBindingGroup(GPUBindingGroupHandle, uint32_t setIndex,
-                          std::span<const uint32_t> dynamicOffsets = {}) override;
+    void BindBindingGroup(
+        GPUBindingGroupHandle, uint32_t setIndex,
+        std::span<const uint32_t> dynamicOffsets = {}) override;
 
-    void PushConstants(ShaderStage stage, const void* data, uint32_t size) override;
+    void PushConstants(ShaderStage stage, const void* data,
+                       uint32_t size) override;
 
     // ----- Buffer updates -----
-    void UpdateBuffer(GPUBufferHandle, uint64_t offset, uint64_t size, const void* data) override;
+    void UpdateBuffer(GPUBufferHandle, uint64_t offset, uint64_t size,
+                      const void* data) override;
 
-    void CopyBuffer(GPUBufferHandle src, GPUBufferHandle dst, uint64_t size, uint64_t srcOffset = 0,
-                    uint64_t dstOffset = 0) override;
+    void CopyBuffer(GPUBufferHandle src, GPUBufferHandle dst, uint64_t size,
+                    uint64_t srcOffset = 0, uint64_t dstOffset = 0) override;
 
-    void CopyBufferToTexture(GPUBufferHandle src, GPUTextureHandle dst, uint32_t width, uint32_t height,
-                             uint32_t bufferOffset, CopyTextureTarget target) override;
+    void CopyBufferToTexture(GPUBufferHandle src, GPUTextureHandle dst,
+                             uint32_t width, uint32_t height,
+                             uint32_t bufferOffset,
+                             CopyTextureTarget target) override;
 
     // ----- Drawing -----
-    void Draw(uint32_t vertexCount, uint32_t instanceCount = 1, uint32_t firstVertex = 0,
-              uint32_t firstInstance = 0) override;
+    void Draw(uint32_t vertexCount, uint32_t instanceCount = 1,
+              uint32_t firstVertex = 0, uint32_t firstInstance = 0) override;
 
-    void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1, uint32_t firstIndex = 0, int32_t vertexOffset = 0,
+    void DrawIndexed(uint32_t indexCount, uint32_t instanceCount = 1,
+                     uint32_t firstIndex = 0, int32_t vertexOffset = 0,
                      uint32_t firstInstance = 0) override;
 
-    void DrawIndirect(GPUBufferHandle indirectBuffer, uint64_t offset, uint32_t drawCount, uint32_t stride) override;
+    void DrawIndirect(GPUBufferHandle indirectBuffer, uint64_t offset,
+                      uint32_t drawCount, uint32_t stride) override;
 
-    void DrawIndexedIndirect(GPUBufferHandle indirectBuffer, uint64_t offset, uint32_t drawCount,
-                             uint32_t stride) override;
+    void DrawIndexedIndirect(GPUBufferHandle indirectBuffer, uint64_t offset,
+                             uint32_t drawCount, uint32_t stride) override;
 
     // ----- Compute -----
     void Dispatch(uint32_t groupX, uint32_t groupY, uint32_t groupZ) override;
 
-    void DispatchIndirect(GPUBufferHandle indirectBuffer, uint64_t offset) override;
+    void DispatchIndirect(GPUBufferHandle indirectBuffer,
+                          uint64_t offset) override;
 
     // ----- Barriers -----
-    void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after, uint64_t offset) override;
-    void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after, uint64_t offset, uint64_t size) override;
+    void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after,
+                       uint64_t offset) override;
+    void BufferBarrier(GPUBufferHandle, BufferUsage before, BufferUsage after,
+                       uint64_t offset, uint64_t size) override;
 
-    void TextureBarrier(GPUTextureHandle, TextureState, uint32_t baseLayer = 0, uint32_t layerCount = 1) override;
+    void TextureBarrier(GPUTextureHandle, TextureState, uint32_t baseLayer = 0,
+                        uint32_t layerCount = 1) override;
 
     VkCommandBuffer GetVulkanCommandBuffer() const { return m_cmd; }
     QueueType GetQueueType() const { return m_queueType; }
@@ -97,4 +119,4 @@ class VulkanCommandBuffer final : public ICommandList
     bool m_useEnd = false;
 };
 
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

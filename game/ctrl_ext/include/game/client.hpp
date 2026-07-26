@@ -1,13 +1,13 @@
 #pragma once
 
 #include "game/scene_ext.hpp"
+#include "game/scene_runner.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/platform/window_app.hpp"
 #include "oge/runtime/asset_manager.hpp"
 #include "oge/runtime/asset_pool.hpp"
 #include "oge/runtime/streaming_manager.hpp"
 #include "oge/runtime/typed_registry.hpp"
-#include "game/scene_runner.hpp"
 
 namespace game
 {

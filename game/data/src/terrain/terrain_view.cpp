@@ -4,7 +4,8 @@
 
 namespace game::terrain
 {
-void TerrainView::HandleResolveDirtyChunk(entt::registry& world, ResolveDirtyChunkEvent e)
+void TerrainView::HandleResolveDirtyChunk(entt::registry& world,
+                                          ResolveDirtyChunkEvent e)
 {
     world.ctx().get<TerrainView>().m_terrainData.dirtyChunks.erase(e.chunk);
 }
@@ -40,39 +41,40 @@ void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
         m_terrainData.dirtyChunks.insert(handle);
         if ((x & 0xF) == 0)
         {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x - 1, chunkCoord.y, chunkCoord.z}));
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
+                {chunkCoord.x - 1, chunkCoord.y, chunkCoord.z}));
         }
         else if ((x & 0xF) == 15)
         {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x + 1, chunkCoord.y, chunkCoord.z}));
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
+                {chunkCoord.x + 1, chunkCoord.y, chunkCoord.z}));
         }
         if ((y & 0xF) == 0)
         {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y - 1, chunkCoord.z}));
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
+                {chunkCoord.x, chunkCoord.y - 1, chunkCoord.z}));
         }
         else if ((y & 0xF) == 15)
         {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y + 1, chunkCoord.z}));
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
+                {chunkCoord.x, chunkCoord.y + 1, chunkCoord.z}));
         }
         if ((z & 0xF) == 0)
         {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z - 1}));
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
+                {chunkCoord.x, chunkCoord.y, chunkCoord.z - 1}));
         }
         else if ((z & 0xF) == 15)
         {
-            m_terrainData.dirtyChunks.insert(
-                m_terrainData.chunks.GetHandle({chunkCoord.x, chunkCoord.y, chunkCoord.z + 1}));
+            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
+                {chunkCoord.x, chunkCoord.y, chunkCoord.z + 1}));
         }
         return chunk->SetBlock(x & 0xF, y & 0xF, z & 0xF, value);
     }
 }
 
-std::tuple<ChunkHandle, const ChunkData*> TerrainView::GetChunk(Point3 chunkCoord) const
+std::tuple<ChunkHandle, const ChunkData*> TerrainView::GetChunk(
+    Point3 chunkCoord) const
 {
     return m_terrainData.chunks.Get(chunkCoord);
 }
@@ -82,15 +84,28 @@ std::tuple<ChunkHandle, ChunkData*> TerrainView::GetChunk(Point3 chunkCoord)
     return m_terrainData.chunks.Get(chunkCoord);
 }
 
-const ChunkData* TerrainView::GetChunk(ChunkHandle handle) const { return m_terrainData.chunks.Get(handle); }
-ChunkData* TerrainView::GetChunk(ChunkHandle handle) { return m_terrainData.chunks.Get(handle); }
-
-void TerrainView::SubmitChunk(ChunkHandle handle) { m_terrainData.dirtyChunks.insert(handle); }
-
-std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos, math::vec3 ray, float maxDist)
+const ChunkData* TerrainView::GetChunk(ChunkHandle handle) const
 {
-    constexpr float MAX_INT = static_cast<float>(std::numeric_limits<int>::max());
-    math::vec3 delta(ray.x == 0 ? MAX_INT : math::abs(1 / ray.x), ray.y == 0 ? MAX_INT : math::abs(1 / ray.y),
+    return m_terrainData.chunks.Get(handle);
+}
+ChunkData* TerrainView::GetChunk(ChunkHandle handle)
+{
+    return m_terrainData.chunks.Get(handle);
+}
+
+void TerrainView::SubmitChunk(ChunkHandle handle)
+{
+    m_terrainData.dirtyChunks.insert(handle);
+}
+
+std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos,
+                                                         math::vec3 ray,
+                                                         float maxDist)
+{
+    constexpr float MAX_INT =
+        static_cast<float>(std::numeric_limits<int>::max());
+    math::vec3 delta(ray.x == 0 ? MAX_INT : math::abs(1 / ray.x),
+                     ray.y == 0 ? MAX_INT : math::abs(1 / ray.y),
                      ray.z == 0 ? MAX_INT : math::abs(1 / ray.z));
     Point3 map = {math::floor(pos.x), math::floor(pos.y), math::floor(pos.z)};
     Point3 step;
@@ -182,4 +197,4 @@ std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos, math::v
     return {};
 }
 
-}
+}  // namespace game::terrain

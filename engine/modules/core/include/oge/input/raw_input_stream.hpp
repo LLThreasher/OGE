@@ -32,7 +32,8 @@ struct PackedMouseInfo
 
     PackedMouseInfo() : val(0) {}
     PackedMouseInfo(size_t id, MouseButton button)
-        : val((static_cast<uint8_t>(id & 0x7) << 4) | (static_cast<uint8_t>(button) & 0x7))
+        : val((static_cast<uint8_t>(id & 0x7) << 4) |
+              (static_cast<uint8_t>(button) & 0x7))
     {
     }
 
@@ -64,9 +65,12 @@ class RawInputStream
    public:
     static constexpr size_t MaxMousePtrCount = 4;
     static constexpr size_t MaxTouchPtrCount = 10;
-    static constexpr std::array<size_t, MaxMousePtrCount> MousePtrInputIndices = {0, 1, 2, 3};
-    static constexpr std::array<size_t, MaxTouchPtrCount> TouchPtrInputIndices = {4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
-    static constexpr size_t PtrInputCount = MousePtrInputIndices.size() + TouchPtrInputIndices.size();
+    static constexpr std::array<size_t, MaxMousePtrCount> MousePtrInputIndices =
+        {0, 1, 2, 3};
+    static constexpr std::array<size_t, MaxTouchPtrCount> TouchPtrInputIndices =
+        {4, 5, 6, 7, 8, 9, 10, 11, 12, 13};
+    static constexpr size_t PtrInputCount =
+        MousePtrInputIndices.size() + TouchPtrInputIndices.size();
     struct Cursor
     {
         EventInputStream::Cursor eventCursor = {};

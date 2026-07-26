@@ -19,16 +19,26 @@ template <UpdateType utype>
 void SubsystemCreature<utype>::onUpdate(FrameCtx& ctx)
 {
     auto& blocks = ctx.world.ctx().get<terrain::BlockRegistry>();
-    for (auto [e, creature, body] : ctx.world.view<UpdateTag<utype>, ComponentCreature, ComponentPhysicBody>().each())
+    for (auto [e, creature, body] :
+         ctx.world
+             .view<UpdateTag<utype>, ComponentCreature, ComponentPhysicBody>()
+             .each())
     {
-        float friction = blocks.GetBlockFriction(blocks.GetBlockId(body.onTopOfBlkValue));
+        float friction =
+            blocks.GetBlockFriction(blocks.GetBlockId(body.onTopOfBlkValue));
 
         if (!body.enableGravity)
         {
-            body.velocity.y = math::lerp(body.velocity.y, creature.maxSpeed * creature.moveOrder.y, friction);
+            body.velocity.y =
+                math::lerp(body.velocity.y,
+                           creature.maxSpeed * creature.moveOrder.y, friction);
         }
-        body.velocity.x = math::lerp(body.velocity.x, creature.maxSpeed * creature.moveOrder.x, friction);
-        body.velocity.z = math::lerp(body.velocity.z, creature.maxSpeed * creature.moveOrder.z, friction);
+        body.velocity.x =
+            math::lerp(body.velocity.x,
+                       creature.maxSpeed * creature.moveOrder.x, friction);
+        body.velocity.z =
+            math::lerp(body.velocity.z,
+                       creature.maxSpeed * creature.moveOrder.z, friction);
 
         if (body.isGrounded && creature.jumpOrder)
         {

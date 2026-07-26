@@ -5,9 +5,9 @@
 #include <sstream>
 
 #include "internals.hpp"
+#include "oge/fmt.hpp"
 #include "oge/log.hpp"
 #include "stb_easy_font.h"
-#include "oge/fmt.hpp"
 
 namespace game::view::gfx
 {
@@ -78,7 +78,8 @@ void DebugInfoPass::onUpdate(DrawContext& ctx, View view)
     if (ctx.backend.SwapchainRecreated())
     {
         auto extent = ctx.backend.SwapchainExtent();
-        math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
+        math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x,
+                                extent.y, pushConstant.transform,
                                 pushConstant.offset);
         LOG_INFO("debug pass swapchain recreate {}", extent);
     }
@@ -110,8 +111,9 @@ void DebugInfoPass::onUpdate(DrawContext& ctx, View view)
         vertices[3] = {{5.f, 65.f + height, 0.f}, {0, 0, 0, 128}};
 
         numQuads = 1;
-        numQuads += stb_easy_font_print(10.f, 60.f, const_cast<char*>(cs), NULL, &vertices[4],
-                                        (NUM_DEBUG_VERTICES - 4) * sizeof(Vertex));
+        numQuads += stb_easy_font_print(
+            10.f, 60.f, const_cast<char*>(cs), NULL, &vertices[4],
+            (NUM_DEBUG_VERTICES - 4) * sizeof(Vertex));
 
         for (size_t i = 0; i < numQuads; i++)
         {
@@ -140,12 +142,16 @@ void DebugInfoPass::onUpdate(DrawContext& ctx, View view)
 
         vertices[i + 4] = {{r.pos.x + r.extent.x - m, r.pos.y, 0.f}, color};
         vertices[i + 5] = {{r.pos.x + r.extent.x, r.pos.y, 0.f}, color};
-        vertices[i + 6] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y, 0.f}, color};
-        vertices[i + 7] = {{r.pos.x + r.extent.x - m, r.pos.y + r.extent.y, 0.f}, color};
+        vertices[i + 6] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y, 0.f},
+                           color};
+        vertices[i + 7] = {
+            {r.pos.x + r.extent.x - m, r.pos.y + r.extent.y, 0.f}, color};
 
         vertices[i + 8] = {{r.pos.x, r.pos.y + r.extent.y - m, 0.f}, color};
-        vertices[i + 9] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y - m, 0.f}, color};
-        vertices[i + 10] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y, 0.f}, color};
+        vertices[i + 9] = {
+            {r.pos.x + r.extent.x, r.pos.y + r.extent.y - m, 0.f}, color};
+        vertices[i + 10] = {{r.pos.x + r.extent.x, r.pos.y + r.extent.y, 0.f},
+                            color};
         vertices[i + 11] = {{r.pos.x, r.pos.y + r.extent.y, 0.f}, color};
 
         vertices[i + 12] = {{r.pos.x, r.pos.y, 0.f}, color};
@@ -163,7 +169,8 @@ void DebugInfoPass::onUpdate(DrawContext& ctx, View view)
     cmd.BindGraphicsPipeline(pipeline);
     cmd.PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
     cmd.BindVertexBuffer(vertexArena.GetBuffer(), vAlloc.offset);
-    cmd.BindIndexBuffer(indexArena.GetBuffer(), iAlloc.offset, IndexFormat::Uint16);
+    cmd.BindIndexBuffer(indexArena.GetBuffer(), iAlloc.offset,
+                        IndexFormat::Uint16);
     cmd.DrawIndexed(numQuads * 6, 1, 0, 0, 0);
 }
-}  // namespace oge::runtime::renderer
+}  // namespace game::view::gfx

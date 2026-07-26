@@ -28,8 +28,10 @@ void SubsystemPhysics<utype>::onDetach(Ctx& ctx)
 }
 
 template <size_t idx>
-inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, const TerrainView& terrain,
-                                          const BlockRegistry& blocks, CollisionResult2& collisionResult,
+inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB,
+                                          const TerrainView& terrain,
+                                          const BlockRegistry& blocks,
+                                          CollisionResult2& collisionResult,
                                           uint32_t& outBlkVal)
 {
     float min_z = realAABB.min.z;
@@ -89,9 +91,11 @@ inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, co
     collisionResult.type = -1;
     outBlkVal = 0;
 
-    assert(math::abs(collisionResult.effectiveOffset[idx]) <= math::abs(beginOffset));
+    assert(math::abs(collisionResult.effectiveOffset[idx]) <=
+           math::abs(beginOffset));
 
-    if (math::abs(collisionResult.effectiveOffset[idx]) < oge::COLLISION_EPSILON)
+    if (math::abs(collisionResult.effectiveOffset[idx]) <
+        oge::COLLISION_EPSILON)
         collisionResult.effectiveOffset[idx] = 0.f;
     for (int z = math::floor(min_z); z <= math::floor(max_z); ++z)
     {
@@ -107,19 +111,23 @@ inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, co
                 }
                 else
                 {
-                    blkAABBs = blocks.GetBlockAABBList(blocks.GetBlockId(blkVal));
+                    blkAABBs =
+                        blocks.GetBlockAABBList(blocks.GetBlockId(blkVal));
                 }
                 for (auto blkAABB : blkAABBs)
                 {
                     auto before = collisionResult.effectiveOffset[idx];
                     if (collisionResult.effectiveOffset[idx] != 0.f &&
-                        CheckCollision<idx>(realAABB, blkAABB + math::vec3{x, y, z},
-                                            collisionResult.effectiveOffset[idx], collisionResult.type))
+                        CheckCollision<idx>(
+                            realAABB, blkAABB + math::vec3{x, y, z},
+                            collisionResult.effectiveOffset[idx],
+                            collisionResult.type))
                     {
                         outBlkVal = blkVal;
                         hasCollision = true;
                     }
-                    if (math::abs(collisionResult.effectiveOffset[idx]) < oge::COLLISION_EPSILON)
+                    if (math::abs(collisionResult.effectiveOffset[idx]) <
+                        oge::COLLISION_EPSILON)
                         collisionResult.effectiveOffset[idx] = 0.f;
                     if (before < 0.f)
                         assert(collisionResult.effectiveOffset[idx] <= 0.f);
@@ -127,14 +135,17 @@ inline bool CheckAABBAgainstTerrainSingle(float offset, const AABB& realAABB, co
                         assert(collisionResult.effectiveOffset[idx] >= 0.f);
                     else
                         assert(collisionResult.effectiveOffset[idx] == 0.f);
-                    assert(math::abs(collisionResult.effectiveOffset[idx]) <= math::abs(before));
+                    assert(math::abs(collisionResult.effectiveOffset[idx]) <=
+                           math::abs(before));
                 }
             }
         }
     }
-    // collisionResult.effectiveOffset[idx] = collisionResult.effectiveOffset[idx] < COLLISION_EPSILON ? 0.f :
+    // collisionResult.effectiveOffset[idx] =
+    // collisionResult.effectiveOffset[idx] < COLLISION_EPSILON ? 0.f :
     // collisionResult.effectiveOffset[idx];
-    assert(math::abs(collisionResult.effectiveOffset[idx]) <= math::abs(beginOffset));
+    assert(math::abs(collisionResult.effectiveOffset[idx]) <=
+           math::abs(beginOffset));
     return hasCollision;
 }
 
@@ -145,7 +156,8 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     auto& game = ctx.world;
     auto& blocks = game.ctx().get<BlockRegistry>();
     auto& terrain = game.ctx().get<TerrainView>();
-    for (auto [e, body] : game.view<UpdateTag<utype>, ComponentPhysicBody>().each())
+    for (auto [e, body] :
+         game.view<UpdateTag<utype>, ComponentPhysicBody>().each())
     {
         if (body.enableGravity) body.acceleration.y -= 9.8f;
         body.velocity += body.acceleration * ctx.dt;
@@ -154,12 +166,15 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
 
     // collision between physical body and terrain Y
     for (auto [e, collider, body] :
-         game.view<UpdateTag<utype>, const ComponentAABBCollider, const ComponentPhysicBody>().each())
+         game.view<UpdateTag<utype>, const ComponentAABBCollider,
+                   const ComponentPhysicBody>()
+             .each())
     {
         auto& [collisions, blkVals] = cachedCollisions[e];
         auto realAABB = collider.aabb + body.pos;
         auto yOffset = body.velocity.y * ctx.dt;
-        CheckAABBAgainstTerrainSingle<1>(yOffset, realAABB, terrain, blocks, collisions, blkVals);
+        CheckAABBAgainstTerrainSingle<1>(yOffset, realAABB, terrain, blocks,
+                                         collisions, blkVals);
         assert(math::abs(yOffset) >= math::abs(collisions.effectiveOffset.y));
     }
 
@@ -175,8 +190,10 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
         auto realAABB = collider.aabb + body.pos;
         // assert(!CheckAABBAgainstTerrainOverlap(realAABB, terrain, blocks));
 
-        if (res.type == oge::COLLISION_TYPE_POS_Y && body.velocity.y < 0.f) body.velocity.y = 0;
-        if (res.type == oge::COLLISION_TYPE_NEG_Y && body.velocity.y > 0.f) body.velocity.y = 0;
+        if (res.type == oge::COLLISION_TYPE_POS_Y && body.velocity.y < 0.f)
+            body.velocity.y = 0;
+        if (res.type == oge::COLLISION_TYPE_NEG_Y && body.velocity.y > 0.f)
+            body.velocity.y = 0;
 
         if (body.isGrounded)
             body.onTopOfBlkValue = blkVals;
@@ -188,28 +205,38 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
 
     // collision between physical body and terrain X
     for (auto [e, collider, body] :
-         game.view<UpdateTag<utype>, const ComponentAABBCollider, const ComponentPhysicBody>().each())
+         game.view<UpdateTag<utype>, const ComponentAABBCollider,
+                   const ComponentPhysicBody>()
+             .each())
     {
         auto& [collisions, blkVals] = cachedCollisions[e];
         auto realAABB = collider.aabb + body.pos;
         auto xOffset = body.velocity.x * ctx.dt;
-        if (CheckAABBAgainstTerrainSingle<0>(xOffset, realAABB, terrain, blocks, collisions, blkVals))
+        if (CheckAABBAgainstTerrainSingle<0>(xOffset, realAABB, terrain, blocks,
+                                             collisions, blkVals))
         {
             if (body.isGrounded && collisions.type != -1)
             {
                 uint32_t stepBlkVal;
                 CollisionResult2 stepRes;
-                CheckAABBAgainstTerrainSingle<1>(-body.stepAssist, realAABB + math::vec3{xOffset, body.stepAssist, 0},
-                                                 terrain, blocks, stepRes, stepBlkVal);
+                CheckAABBAgainstTerrainSingle<1>(
+                    -body.stepAssist,
+                    realAABB + math::vec3{xOffset, body.stepAssist, 0}, terrain,
+                    blocks, stepRes, stepBlkVal);
                 float stepHeight = body.stepAssist + stepRes.effectiveOffset.y;
                 if (stepHeight < body.stepAssist)
                 {
-                    if (!CheckAABBAgainstTerrainSingle<1>(stepHeight, realAABB, terrain, blocks, stepRes, stepBlkVal))
+                    if (!CheckAABBAgainstTerrainSingle<1>(stepHeight, realAABB,
+                                                          terrain, blocks,
+                                                          stepRes, stepBlkVal))
                     {
-                        if (!CheckAABBAgainstTerrainSingle<0>(xOffset, realAABB + math::vec3{0, stepHeight, 0}, terrain,
-                                                              blocks, stepRes, stepBlkVal))
+                        if (!CheckAABBAgainstTerrainSingle<0>(
+                                xOffset,
+                                realAABB + math::vec3{0, stepHeight, 0},
+                                terrain, blocks, stepRes, stepBlkVal))
                         {
-                            collisions.effectiveOffset = {xOffset, stepHeight, 0};
+                            collisions.effectiveOffset = {xOffset, stepHeight,
+                                                          0};
                             collisions.type = oge::COLLISION_TYPE_POS_Y;
                         }
                     }
@@ -225,36 +252,48 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
         auto& body = game.get<ComponentPhysicBody>(e);
         body.pos += res.effectiveOffset;
 
-        if (res.type == oge::COLLISION_TYPE_POS_X && body.velocity.x < 0.f) body.velocity.x = 0;
-        if (res.type == oge::COLLISION_TYPE_NEG_X && body.velocity.x > 0.f) body.velocity.x = 0;
+        if (res.type == oge::COLLISION_TYPE_POS_X && body.velocity.x < 0.f)
+            body.velocity.x = 0;
+        if (res.type == oge::COLLISION_TYPE_NEG_X && body.velocity.x > 0.f)
+            body.velocity.x = 0;
     }
 
     cachedCollisions.clear();
 
     // collision between physical body and terrain Z
     for (auto [e, collider, body] :
-         game.view<UpdateTag<utype>, const ComponentAABBCollider, const ComponentPhysicBody>().each())
+         game.view<UpdateTag<utype>, const ComponentAABBCollider,
+                   const ComponentPhysicBody>()
+             .each())
     {
         auto& [collisions, blkVals] = cachedCollisions[e];
         auto realAABB = collider.aabb + body.pos;
         auto zOffset = body.velocity.z * ctx.dt;
-        if (CheckAABBAgainstTerrainSingle<2>(zOffset, realAABB, terrain, blocks, collisions, blkVals))
+        if (CheckAABBAgainstTerrainSingle<2>(zOffset, realAABB, terrain, blocks,
+                                             collisions, blkVals))
         {
             if (body.isGrounded && collisions.type != -1)
             {
                 uint32_t stepBlkVal;
                 CollisionResult2 stepRes;
-                CheckAABBAgainstTerrainSingle<1>(-body.stepAssist, realAABB + math::vec3{0, body.stepAssist, zOffset},
-                                                 terrain, blocks, stepRes, stepBlkVal);
+                CheckAABBAgainstTerrainSingle<1>(
+                    -body.stepAssist,
+                    realAABB + math::vec3{0, body.stepAssist, zOffset}, terrain,
+                    blocks, stepRes, stepBlkVal);
                 float stepHeight = body.stepAssist + stepRes.effectiveOffset.y;
                 if (stepHeight < body.stepAssist)
                 {
-                    if (!CheckAABBAgainstTerrainSingle<1>(stepHeight, realAABB, terrain, blocks, stepRes, stepBlkVal))
+                    if (!CheckAABBAgainstTerrainSingle<1>(stepHeight, realAABB,
+                                                          terrain, blocks,
+                                                          stepRes, stepBlkVal))
                     {
-                        if (!CheckAABBAgainstTerrainSingle<2>(zOffset, realAABB + math::vec3{0, stepHeight, 0}, terrain,
-                                                              blocks, stepRes, stepBlkVal))
+                        if (!CheckAABBAgainstTerrainSingle<2>(
+                                zOffset,
+                                realAABB + math::vec3{0, stepHeight, 0},
+                                terrain, blocks, stepRes, stepBlkVal))
                         {
-                            collisions.effectiveOffset = {0, stepHeight, zOffset};
+                            collisions.effectiveOffset = {0, stepHeight,
+                                                          zOffset};
                             collisions.type = oge::COLLISION_TYPE_POS_Y;
                         }
                     }
@@ -270,8 +309,10 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
         auto& body = game.get<ComponentPhysicBody>(e);
         body.pos += res.effectiveOffset;
 
-        if (res.type == oge::COLLISION_TYPE_POS_Z && body.velocity.z < 0.f) body.velocity.z = 0;
-        if (res.type == oge::COLLISION_TYPE_NEG_Z && body.velocity.z > 0.f) body.velocity.z = 0;
+        if (res.type == oge::COLLISION_TYPE_POS_Z && body.velocity.z < 0.f)
+            body.velocity.z = 0;
+        if (res.type == oge::COLLISION_TYPE_NEG_Z && body.velocity.z > 0.f)
+            body.velocity.z = 0;
     }
 }
 

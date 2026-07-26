@@ -11,4 +11,4 @@ void RegisterRenderers(AnythingFactory& af)
     af.RegisterDrived<Renderer, CameraRenderer>();
     af.RegisterDrived<Renderer, UIRenderer>();
 }
-} // namespace game::view
+}  // namespace game::view

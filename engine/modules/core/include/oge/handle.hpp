@@ -30,4 +30,4 @@ struct HandleHash
     }
 };
 
-}  // namespace OGE
+}  // namespace oge

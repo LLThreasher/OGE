@@ -29,12 +29,17 @@ class UIPass : public Pass<CmdDrawSprite>
     void onUpdate(DrawContext& ctx, View view);
 
    private:
-    GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend, GPUTextureHandle texture);
+    GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend,
+                                                  GPUTextureHandle texture);
 
-    std::unordered_map<GPUTextureHandle, std::vector<Vertex>, HandleHash<GPUTextureHandle>> classedVertices;
+    std::unordered_map<GPUTextureHandle, std::vector<Vertex>,
+                       HandleHash<GPUTextureHandle>>
+        classedVertices;
     std::vector<uint16_t> indices;
 
-    std::unordered_map<GPUTextureHandle, GPUBindingGroupHandle, HandleHash<GPUTextureHandle>> cachedBindingGroups;
+    std::unordered_map<GPUTextureHandle, GPUBindingGroupHandle,
+                       HandleHash<GPUTextureHandle>>
+        cachedBindingGroups;
 
     PushConstant pushConstant;
 
@@ -43,4 +48,4 @@ class UIPass : public Pass<CmdDrawSprite>
     GPUPipelineHandle pipelineHandle;
     GPUBindingGroupLayoutHandle bindingGroupLayout;
 };
-}  // namespace oge::runtime::renderer
+}  // namespace oge::runtime::gfx

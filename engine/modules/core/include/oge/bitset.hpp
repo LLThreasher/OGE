@@ -1,8 +1,9 @@
+#include <array>
+#include <bit>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <iterator>
-#include <bit>
 
 namespace oge
 {
@@ -57,7 +58,7 @@ class BitSet32
 
         iterator(uint32_t mask) : remaining(mask) {}
 
-        int operator*() const
+        uint8_t operator*() const
         {
             return std::countr_zero(remaining);  // index of lowest set bit
         }
@@ -68,7 +69,10 @@ class BitSet32
             return *this;
         }
 
-        bool operator!=(const iterator& other) const { return remaining != other.remaining; }
+        bool operator!=(const iterator& other) const
+        {
+            return remaining != other.remaining;
+        }
     };
 
     iterator begin() const { return iterator(mask); }
@@ -78,7 +82,7 @@ class BitSet32
 template <typename T>
 class AnyBitSet32 : public BitSet32
 {
-public:
+   public:
     // Add element
     void add(T x) { BitSet32::add(static_cast<unsigned int>(x)); }
 
@@ -89,11 +93,15 @@ public:
     void toggle(T x) { BitSet32::toggle(static_cast<unsigned int>(x)); }
 
     // Check if element exists
-    bool contains(T x) const { BitSet32::contains(static_cast<unsigned int>(x)); }
+    bool contains(T x) const
+    {
+        BitSet32::contains(static_cast<unsigned int>(x));
+    }
 };
 
 class BitSet256
 {
+    // 32 bytes
     std::array<uint32_t, 8> sets{};
 
    public:
@@ -136,12 +144,64 @@ class BitSet256
     }
 
     void clear() { sets.fill(0); }
+
+    class iterator
+    {
+       private:
+        std::array<const uint32_t, 8>::iterator currentIt;
+        std::array<const uint32_t, 8>::iterator itEnd;
+        uint32_t currentRemaining = 0;
+        uint32_t base = 0;
+
+       public:
+        using iterator_category = std::forward_iterator_tag;
+        using value_type = int;
+        using difference_type = std::ptrdiff_t;
+        using pointer = void;
+        using reference = int;
+
+        iterator(std::array<const uint32_t, 8>::iterator itBegin,
+                 std::array<const uint32_t, 8>::iterator itEnd)
+            : currentIt(itBegin), itEnd(itEnd)
+        {
+        }
+
+        uint8_t operator*() const
+        {
+            return base + std::countr_zero(
+                              currentRemaining);  // index of lowest set bit
+        }
+
+        iterator& operator++()
+        {
+            while (currentRemaining == 0)
+            {
+                if (currentIt == itEnd)
+                {
+                    return *this;
+                }
+                currentRemaining = *currentIt;
+                base += 32;
+            }
+            currentRemaining &= (currentRemaining - 1);  // clear lowest set bit
+            return *this;
+        }
+
+        bool operator!=(const iterator& other) const
+        {
+            return currentRemaining != other.currentRemaining &&
+                   currentIt != other.currentIt;
+        }
+    };
+
+    iterator begin() const { return iterator(sets.begin(), sets.end()); }
+    iterator end() const { return iterator(sets.end(), sets.end()); }
 };
 
 template <typename T>
 class AnyBitSet256 : public BitSet256
 {
-public:
+   public:
     void set(T ky, bool down)
     {
         BitSet256::set(static_cast<unsigned int>(ky), down);
@@ -152,15 +212,9 @@ public:
         return BitSet256::get(static_cast<unsigned int>(ky));
     }
 
-    void add(T ky)
-    {
-        BitSet256::add(static_cast<unsigned int>(ky));
-    }
+    void add(T ky) { BitSet256::add(static_cast<unsigned int>(ky)); }
 
-    void remove(T ky)
-    {
-        BitSet256::remove(static_cast<unsigned int>(ky));
-    }
+    void remove(T ky) { BitSet256::remove(static_cast<unsigned int>(ky)); }
 
     bool contains(T ky) const
     {

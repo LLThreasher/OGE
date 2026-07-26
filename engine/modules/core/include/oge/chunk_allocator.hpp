@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstdint>
 #include <vector>
+
 #include "oge/macros.hpp"
 
 namespace oge
@@ -43,4 +44,4 @@ class ChunkAllocator
 
     void RemoveFromFreeList(uint32_t index, uint32_t order);
 };
-}  // namespace OneGame::Engine::Graphics
+}  // namespace oge

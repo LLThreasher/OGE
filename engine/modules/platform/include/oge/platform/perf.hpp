@@ -12,4 +12,4 @@ struct RAMInfo
 RAMInfo GetRAMUsage();
 double GetCPUUsage();
 double GetGPUUsage();
-} // namespace OGE::Platform
+}  // namespace oge::platform

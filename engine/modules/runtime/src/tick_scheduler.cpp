@@ -30,7 +30,8 @@ float TickScheduler::ConsumeTick()
 float TickScheduler::GetAlpha() const { return m_accumulator / m_fixedDelta; }
 
 BlockingTickScheduler::BlockingTickScheduler(float interval)
-    : m_tickInterval(std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(interval)))
+    : m_tickInterval(std::chrono::duration_cast<clock::duration>(
+          std::chrono::duration<double>(interval)))
 {
     m_nextTick = clock::now();
 }
@@ -47,4 +48,4 @@ double BlockingTickScheduler::WaitForNextTick()
 
     return std::chrono::duration<double>(m_tickInterval).count();
 }
-}
+}  // namespace oge::runtime

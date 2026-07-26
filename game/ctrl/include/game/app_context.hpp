@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string_view>
+
 #include "game/memory_context.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/typed_registry.hpp"
@@ -17,14 +18,13 @@ struct AppContext
 
 class AppRuntime
 {
-protected:
+   protected:
     AppContext m_ctx;
-public:
-    AppRuntime(AppContext ctx) : m_ctx(ctx)
-    {
-    }
 
-    template<typename T>
+   public:
+    AppRuntime(AppContext ctx) : m_ctx(ctx) {}
+
+    template <typename T>
     oge::runtime::oge_id_type Id()
     {
         return m_ctx.any_factory.Id<T>();
@@ -35,9 +35,6 @@ public:
         return m_ctx.any_factory.Id(name);
     }
 
-    AnythingFactory& AF()
-    {
-        return m_ctx.any_factory;
-    }
+    AnythingFactory& AF() { return m_ctx.any_factory; }
 };
 }  // namespace game

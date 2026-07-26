@@ -22,10 +22,7 @@ NET_OBJ(TerrainRendererDesc)
 {
     net::UInt32 meshingQuadBudget = 4096 * 4;
 
-    NET_OBJ_FN
-    {
-        visit(meshingQuadBudget);
-    }
+    NET_OBJ_FN { visit(meshingQuadBudget); }
 };
 
 NET_OBJ(TerrainDesc)
@@ -40,4 +37,4 @@ NET_OBJ(TerrainDesc)
     }
 };
 
-}  // namespace OneGame::Engine::Terrain
+}  // namespace game::terrain

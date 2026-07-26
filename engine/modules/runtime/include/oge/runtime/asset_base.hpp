@@ -15,4 +15,4 @@ struct AssetBase
     AssetBase(OGEContextReadOnly& ctx);
     bool LoadBlob(const std::string_view& id, std::vector<char>& data);
 };
-} // namespace oge::runtime
+}  // namespace oge::runtime

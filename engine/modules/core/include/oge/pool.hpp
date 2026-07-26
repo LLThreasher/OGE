@@ -25,9 +25,15 @@ class Pool
         uint16_t generation = 1;
         alignas(Resource) std::byte storage[sizeof(Resource)];
 
-        Resource* Get() { return std::launder(reinterpret_cast<Resource*>(storage)); }
+        Resource* Get()
+        {
+            return std::launder(reinterpret_cast<Resource*>(storage));
+        }
 
-        const Resource* Get() const { return std::launder(reinterpret_cast<const Resource*>(storage)); }
+        const Resource* Get() const
+        {
+            return std::launder(reinterpret_cast<const Resource*>(storage));
+        }
     };
 
     std::vector<Entry> m_entries;
@@ -119,7 +125,10 @@ class Pool
     // ----------------------------
     // Debug helpers
     // ----------------------------
-    size_t Size() const noexcept { return m_entries.size() - m_freeList.size(); }
+    size_t Size() const noexcept
+    {
+        return m_entries.size() - m_freeList.size();
+    }
 
     size_t Capacity() const noexcept { return m_entries.size(); }
 

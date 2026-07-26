@@ -16,16 +16,19 @@ namespace oge::runtime
 struct OnServerReceiveConnect
 {
     ENetPeer* peer;
+    uint32_t peerId;
 };
 
 struct OnServerReceiveDisconnect
 {
     ENetPeer* peer;
+    uint32_t peerId;
 };
 
 struct OnServerReceivePacket
 {
     ENetPeer* peer;
+    uint32_t peerId;
     net::Buffer data;
 };
 

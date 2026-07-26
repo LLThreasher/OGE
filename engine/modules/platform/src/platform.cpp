@@ -1,6 +1,6 @@
+#include "oge/log.hpp"
 #include "oge/platform/perf.hpp"
 #include "oge/platform/stacktrace.hpp"
-#include "oge/log.hpp"
 
 #ifdef PLATFORM_WINDOWS
 // clang-format off
@@ -34,21 +34,20 @@ void PrintStackTrace()
 unsigned long long GetRAMUsage() { return 0; }
 double GetCPUUsage() { return -1.0; }
 double GetGPUUsage() { return -1.0; }
-}
+}  // namespace oge::platform
 #elif defined(PLATFORM_ANDROID)
 #include <dlfcn.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <unwind.h>
 
+#include <chrono>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
-
-#include <fstream>
 #include <string>
 #include <thread>
-#include <chrono>
 
 namespace
 {
@@ -59,7 +58,8 @@ struct BacktraceState
     void** end;
 };
 
-static _Unwind_Reason_Code unwindCallback(struct _Unwind_Context* context, void* arg)
+static _Unwind_Reason_Code unwindCallback(struct _Unwind_Context* context,
+                                          void* arg)
 {
     BacktraceState* state = static_cast<BacktraceState*>(arg);
     uintptr_t pc = _Unwind_GetIP(context);
@@ -100,7 +100,8 @@ void dumpBacktrace(std::ostream& os, void** buffer, size_t count)
             symbol = info.dli_sname;
         }
 
-        os << "  #" << std::setw(2) << idx << ": " << addr << "  " << symbol << "\n";
+        os << "  #" << std::setw(2) << idx << ": " << addr << "  " << symbol
+           << "\n";
     }
 }
 
@@ -133,7 +134,8 @@ RAMInfo GetRAMUsage()
     fclose(fp);
 
     struct mallinfo2 info = mallinfo2();
-    return {static_cast<unsigned long long>(pages * sysconf(_SC_PAGESIZE)), info.uordblks, info.arena};  // Convert pages to bytes
+    return {static_cast<unsigned long long>(pages * sysconf(_SC_PAGESIZE)),
+            info.uordblks, info.arena};  // Convert pages to bytes
 }
 
 long long GetProcessCPUTime()
@@ -142,7 +144,8 @@ long long GetProcessCPUTime()
     if (!fp) return -1;
 
     char line[1024];
-    if (!fgets(line, sizeof(line), fp)) {
+    if (!fgets(line, sizeof(line), fp))
+    {
         fclose(fp);
         return -2;
     }
@@ -164,11 +167,11 @@ long long GetProcessCPUTime()
     unsigned long long utime = 0, stime = 0;
 
     sscanf(after_paren,
-        "%*c "        // state
-        "%*d %*d %*d %*d %*d "
-        "%*u %*u %*u %*u %*u "
-        "%llu %llu",
-        &utime, &stime);
+           "%*c "  // state
+           "%*d %*d %*d %*d %*d "
+           "%*u %*u %*u %*u %*u "
+           "%llu %llu",
+           &utime, &stime);
 
     return utime + stime;
 }
@@ -202,16 +205,16 @@ double GetCPUUsage()
 }
 
 double GetGPUUsage() { return -1.0; }
-}
+}  // namespace oge::platform
 
 #elif defined(PLATFORM_DARWIN)
 #include <execinfo.h>
 #include <mach/mach.h>
+#include <malloc/malloc.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <chrono>
-#include <malloc/malloc.h>
 
 namespace oge::platform
 {
@@ -237,7 +240,8 @@ RAMInfo GetRAMUsage()
     task_basic_info_data_t info;
     mach_msg_type_number_t size = TASK_BASIC_INFO_COUNT;
 
-    if (task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&info, &size) == KERN_SUCCESS)
+    if (task_info(mach_task_self(), TASK_BASIC_INFO, (task_info_t)&info,
+                  &size) == KERN_SUCCESS)
     {
         malloc_statistics_t stats;
         malloc_zone_statistics(NULL, &stats);
@@ -247,14 +251,16 @@ RAMInfo GetRAMUsage()
     return {0};
 }
 
-// Returns the CPU usage percentage of the current process (100.0 means 1 core is fully utilized)
+// Returns the CPU usage percentage of the current process (100.0 means 1 core
+// is fully utilized)
 double GetCPUUsage()
 {
     task_thread_times_info_data_t thread_times;
     mach_msg_type_number_t thread_times_count = TASK_THREAD_TIMES_INFO_COUNT;
 
-    if (task_info(mach_task_self(), TASK_THREAD_TIMES_INFO, (task_info_t)&thread_times, &thread_times_count) !=
-        KERN_SUCCESS)
+    if (task_info(mach_task_self(), TASK_THREAD_TIMES_INFO,
+                  (task_info_t)&thread_times,
+                  &thread_times_count) != KERN_SUCCESS)
     {
         return -1.0;
     }
@@ -262,7 +268,8 @@ double GetCPUUsage()
     // Step 1: Query all individual threads belonging to this task
     thread_array_t thread_list;
     mach_msg_type_number_t thread_count;
-    if (task_threads(mach_task_self(), &thread_list, &thread_count) != KERN_SUCCESS)
+    if (task_threads(mach_task_self(), &thread_list, &thread_count) !=
+        KERN_SUCCESS)
     {
         return -1.0;
     }
@@ -276,8 +283,9 @@ double GetCPUUsage()
         thread_basic_info_data_t thread_info_data;
         mach_msg_type_number_t thread_info_count = THREAD_BASIC_INFO_COUNT;
 
-        if (thread_info(thread_list[i], THREAD_BASIC_INFO, (thread_info_t)&thread_info_data, &thread_info_count) ==
-            KERN_SUCCESS)
+        if (thread_info(thread_list[i], THREAD_BASIC_INFO,
+                        (thread_info_t)&thread_info_data,
+                        &thread_info_count) == KERN_SUCCESS)
         {
             // Check if thread is not currently idling out
             if (!(thread_info_data.flags & TH_FLAGS_IDLE))
@@ -290,17 +298,20 @@ double GetCPUUsage()
         }
         mach_port_deallocate(mach_task_self(), thread_list[i]);
     }
-    vm_deallocate(mach_task_self(), (vm_address_t)thread_list, thread_count * sizeof(thread_t));
+    vm_deallocate(mach_task_self(), (vm_address_t)thread_list,
+                  thread_count * sizeof(thread_t));
 
     // Combine seconds and microseconds
-    double total_time = total_user_sec + total_system_sec + (total_user_usec + total_system_usec) / 1000000.0;
+    double total_time = total_user_sec + total_system_sec +
+                        (total_user_usec + total_system_usec) / 1000000.0;
 
     // Step 3: Differentiate time over a known interval to get percentage
     static double last_time = 0.0;
     static auto last_clock = std::chrono::steady_clock::now();
 
     auto now = std::chrono::steady_clock::now();
-    double elapsed_wall_time = std::chrono::duration<double>(now - last_clock).count();
+    double elapsed_wall_time =
+        std::chrono::duration<double>(now - last_clock).count();
 
     if (elapsed_wall_time == 0) return 0.0;
 

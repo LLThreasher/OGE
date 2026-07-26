@@ -7,12 +7,11 @@
 #include <string>
 #include <vector>
 
+#include "oge/graphics/configs.hpp"
+#include "oge/graphics/objects.hpp"
 #include "oge/macros.hpp"
 #include "oge/math.hpp"
-#include "oge/graphics/objects.hpp"
 #include "oge/point2.hpp"
-#include "oge/graphics/configs.hpp"
-
 
 #ifndef MAX_FRAMES_IN_FLIGHT
 #define MAX_FRAMES_IN_FLIGHT 1
@@ -24,7 +23,7 @@
 
 namespace oge::platform
 {
-    struct WindowHandle;
+struct WindowHandle;
 }
 
 namespace oge::graphics
@@ -141,9 +140,15 @@ struct BindingGroupBufferDesc
     GPUBufferHandle gpuBuffer;
     uint32_t stride = 0;
 
-    BindingGroupBufferDesc(GPUBufferHandle gpuBuffer) : gpuBuffer(gpuBuffer), stride(0) {}
+    BindingGroupBufferDesc(GPUBufferHandle gpuBuffer)
+        : gpuBuffer(gpuBuffer), stride(0)
+    {
+    }
 
-    BindingGroupBufferDesc(GPUBufferHandle gpuBuffer, uint32_t stride) : gpuBuffer(gpuBuffer), stride(stride) {}
+    BindingGroupBufferDesc(GPUBufferHandle gpuBuffer, uint32_t stride)
+        : gpuBuffer(gpuBuffer), stride(stride)
+    {
+    }
 };
 
 struct BindingGroupDesc
@@ -221,9 +226,11 @@ class IGraphicsBackend
     virtual ICommandList& CreateCommandList(QueueType) = 0;
 
     // ----- Buffers -----
-    virtual GPUBufferHandle CreateBuffer(const BufferDesc&, void** = nullptr) = 0;
+    virtual GPUBufferHandle CreateBuffer(const BufferDesc&,
+                                         void** = nullptr) = 0;
     virtual void DestroyBuffer(GPUBufferHandle) = 0;
-    virtual void FlushStagingBufferRanges(const std::span<GPUBufferSpan> ranges) = 0;
+    virtual void FlushStagingBufferRanges(
+        const std::span<GPUBufferSpan> ranges) = 0;
 
     template <BufferUsage usage>
     GPUBufferHandle AllocateGPUBuffer(const size_t size)
@@ -240,7 +247,8 @@ class IGraphicsBackend
     virtual void DestroyTexture(GPUTextureHandle) = 0;
 
     template <TextureFormat format = TextureFormat::RGBA8Unorm>
-    GPUTextureHandle AllocateGPUTexture(uint32_t width, uint32_t height, uint32_t layers = 1)
+    GPUTextureHandle AllocateGPUTexture(uint32_t width, uint32_t height,
+                                        uint32_t layers = 1)
     {
         TextureDesc texDesc{};
         texDesc.width = width;
@@ -252,15 +260,19 @@ class IGraphicsBackend
     }
 
     // ----- Pipelines -----
-    virtual GPUPipelineHandle CreateGraphicsPipeline(const GraphicsPipelineDesc&) = 0;
-    virtual GPUPipelineHandle CreateComputePipeline(const ComputePipelineDesc&) = 0;
+    virtual GPUPipelineHandle CreateGraphicsPipeline(
+        const GraphicsPipelineDesc&) = 0;
+    virtual GPUPipelineHandle CreateComputePipeline(
+        const ComputePipelineDesc&) = 0;
     virtual void DestroyPipeline(GPUPipelineHandle) = 0;
 
     // ----- Binding groups -----
-    virtual GPUBindingGroupLayoutHandle CreateBindingGroupLayout(const BindingGroupLayoutDesc&) = 0;
+    virtual GPUBindingGroupLayoutHandle CreateBindingGroupLayout(
+        const BindingGroupLayoutDesc&) = 0;
     virtual void DestroyBindingGroupLayout(GPUBindingGroupLayoutHandle) = 0;
 
-    virtual GPUBindingGroupHandle CreateBindingGroup(const BindingGroupDesc&) = 0;
+    virtual GPUBindingGroupHandle CreateBindingGroup(
+        const BindingGroupDesc&) = 0;
     virtual void DestroyBindingGroup(GPUBindingGroupHandle) = 0;
 
     // ----- Sync -----
@@ -272,8 +284,9 @@ class IGraphicsBackend
     virtual GPURenderPassHandle CreateRenderPass(const RenderPassDesc&) = 0;
     virtual void DestroyRenderPass(GPURenderPassHandle) = 0;
 
-    virtual GPUFrameBufferHandle CreateFrameBuffer(GPURenderPassHandle passHandle, const FrameBufferDesc&) = 0;
+    virtual GPUFrameBufferHandle CreateFrameBuffer(
+        GPURenderPassHandle passHandle, const FrameBufferDesc&) = 0;
     virtual void DestroyFrameBuffer(GPUFrameBufferHandle) = 0;
 };
 
-}  // namespace OneGame::Engine::Graphics
+}  // namespace oge::graphics

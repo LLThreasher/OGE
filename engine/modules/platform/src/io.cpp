@@ -3,6 +3,7 @@
 #if defined(IO_USE_NATIVE)
 
 #include <fmt/format.h>
+
 #include <fstream>
 #include <vector>
 
@@ -11,6 +12,7 @@
 
 #ifdef PLATFORM_DARWIN
 #include <mach-o/dyld.h>  // Required for _NSGetExecutablePath
+
 #include <filesystem>
 
 static std::string GetBinaryLocation()
@@ -18,7 +20,8 @@ static std::string GetBinaryLocation()
     namespace fs = std::filesystem;
     uint32_t size = 0;
 
-    // First call with a 0 size to find out how large the path buffer needs to be
+    // First call with a 0 size to find out how large the path buffer needs to
+    // be
     _NSGetExecutablePath(nullptr, &size);
 
     // Allocate the vector with the exact size required
@@ -63,16 +66,19 @@ bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
 #endif
 
 #include <vector>
+
 #include "stb_image.h"
 
 namespace oge::platform
 {
-static bool TryLoadPNG(std::vector<char> data, int& width, int& height, void* result)
+static bool TryLoadPNG(std::vector<char> data, int& width, int& height,
+                       void* result)
 {
     int texChannels;
     if (result == nullptr)
     {
-        if (!stbi_info_from_memory((unsigned char*)(data.data()), data.size(), &width, &height, &texChannels))
+        if (!stbi_info_from_memory((unsigned char*)(data.data()), data.size(),
+                                   &width, &height, &texChannels))
         {
             // LOG_ERROR("Failed to read image info! {}", filePath);
             return false;
@@ -80,8 +86,9 @@ static bool TryLoadPNG(std::vector<char> data, int& width, int& height, void* re
         return true;
     }
 
-    stbi_uc* pixels = stbi_load_from_memory((unsigned char*)(data.data()), data.size(), &width, &height, &texChannels,
-                                            STBI_rgb_alpha);
+    stbi_uc* pixels =
+        stbi_load_from_memory((unsigned char*)(data.data()), data.size(),
+                              &width, &height, &texChannels, STBI_rgb_alpha);
 
     if (!pixels)
     {

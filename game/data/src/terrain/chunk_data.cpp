@@ -11,9 +11,13 @@ uint32_t ChunkData::GetBlock(uint8_t x, uint8_t y, uint8_t z) const
     return data[GetBlockIndex(x, y, z)];
 }
 
-void ChunkData::SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value) { data[GetBlockIndex(x, y, z)] = value; }
+void ChunkData::SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value)
+{
+    data[GetBlockIndex(x, y, z)] = value;
+}
 
-std::tuple<ChunkHandle, const ChunkData*> ChunkDataCollection::Get(Point3 coord) const
+std::tuple<ChunkHandle, const ChunkData*> ChunkDataCollection::Get(
+    Point3 coord) const
 {
     auto it = coordToChunks.find(coord);
     if (it != coordToChunks.end())
@@ -93,4 +97,12 @@ PaletteCompressedChunk PaletteCompressedChunk::FromChunkData(const ChunkData& c)
     assert(result.palette.size() <= 255);
     return result;
 }
-}  // namespace OneGame::Engine::Terrain
+
+void PaletteCompressedChunk::ToChunkData(ChunkData& c)
+{
+    for (size_t i = 0; i < CHUNK_SIZE_TOTAL; ++i)
+    {
+        c.data[i] = palette[data[i]];
+    }
+}
+}  // namespace game::terrain

@@ -44,13 +44,16 @@ struct PSprite
 
     PSprite(GPUTextureHandle texture) : texture(texture) {}
 
-    PSprite(GPUTextureRegion region, uint32_t total_width, uint32_t total_height)
+    PSprite(GPUTextureRegion region, uint32_t total_width,
+            uint32_t total_height)
     {
         float fwidth = total_width;
         float fheight = total_height;
-        uv = {{(float)region.region.pos.x / fwidth, (float)region.region.pos.y / fheight},
-              {(float)region.region.extent.x / fwidth, (float)region.region.extent.y / fheight}};
+        uv = {{(float)region.region.pos.x / fwidth,
+               (float)region.region.pos.y / fheight},
+              {(float)region.region.extent.x / fwidth,
+               (float)region.region.extent.y / fheight}};
         texture = region.texture;
     }
 };
-}
+}  // namespace oge::runtime

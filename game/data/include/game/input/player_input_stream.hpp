@@ -33,7 +33,10 @@ struct PlayerInputEvent
 
     PlayerInputEvent() {}
     PlayerInputEvent(math::vec2 pos) : actionPos(pos), actionMask(0) {}
-    PlayerInputEvent(math::vec2 pos, PlayerAction a) : actionPos(pos), actionMask(1 << static_cast<uint32_t>(a)) {}
+    PlayerInputEvent(math::vec2 pos, PlayerAction a)
+        : actionPos(pos), actionMask(1 << static_cast<uint32_t>(a))
+    {
+    }
 
     template <PlayerAction... actions>
     inline bool get() const
@@ -57,53 +60,66 @@ struct PlayerInputEvent
 };
 
 using PlayerActionStream = DiscreteEventStream<PlayerInputEvent, 16>;
+using PlayerDeltaStream = DiscreteEventStream<math::vec2, 16>;
 
 class PlayerInputStream
 {
+   public:
+    struct Cursor
+    {
+        PlayerActionStream::Cursor actionCursor = {};
+        PlayerDeltaStream::Cursor moveCursor = {};
+        PlayerDeltaStream::Cursor panCursor = {};
+    };
+
+   private:
     PlayerActionStream actions;
+    PlayerDeltaStream moves;
+    PlayerDeltaStream pans;
     math::vec2 move = {};
     math::vec2 pan = {};
     bool moveDirty = false;
     bool panDirty = false;
-    PlayerActionStream::Cursor actionCursor = {};
 
    public:
-    int LatestAction() const { return actions.Head().actionMask; }
-
-    bool HasAction() const
-    {
-        DiscreteEventStream<PlayerInputEvent>::Cursor _c;
-        actions.AdvanceCursor(_c);
-        return _c != actionCursor;
-    }
-
-    bool PollAction(PlayerInputEvent& event)
-    {
-        return actions.PollOne(actionCursor, event);
-    }
-
-    bool PollMoveDelta(math::vec2& out)
+    void AdvanceTick()
     {
         if (moveDirty)
         {
-            out = move;
+            moves.Push(move);
             move = {};
             moveDirty = false;
-            return true;
         }
-        return false;
-    }
-
-    bool PollPanDelta(math::vec2& out)
-    {
         if (panDirty)
         {
-            out = pan;
+            pans.Push(pan);
             pan = {};
             panDirty = false;
-            return true;
         }
-        return false;
+    }
+
+    int LatestAction() const { return actions.Head().actionMask; }
+
+    bool HasAction(Cursor& cursor) const
+    {
+        DiscreteEventStream<PlayerInputEvent>::Cursor _c;
+        actions.AdvanceCursor(_c);
+        return _c != cursor.actionCursor;
+    }
+
+    bool PollAction(Cursor& cursor, PlayerInputEvent& event) const
+    {
+        return actions.PollOne(cursor.actionCursor, event);
+    }
+
+    bool PollMoveDelta(Cursor& cursor, math::vec2& out) const
+    {
+        return moves.PollOne(cursor.moveCursor, out);
+    }
+
+    bool PollPanDelta(Cursor& cursor, math::vec2& out) const
+    {
+        return pans.PollOne(cursor.panCursor, out);
     }
 
     void InsertAction(PlayerInputEvent event) { actions.Push(event); }

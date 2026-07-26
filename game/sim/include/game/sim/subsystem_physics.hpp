@@ -4,10 +4,12 @@
 
 namespace game::sim
 {
-template<UpdateType utype>
+template <UpdateType utype>
 class SubsystemPhysics : public Subsystem
 {
-    std::unordered_map<entt::entity, std::tuple<oge::CollisionResult2, uint32_t>> cachedCollisions;
+    std::unordered_map<entt::entity,
+                       std::tuple<oge::CollisionResult2, uint32_t>>
+        cachedCollisions;
 
    public:
     DECL_ID(SubsystemPhysics<utype>)
@@ -15,4 +17,4 @@ class SubsystemPhysics : public Subsystem
     void onDetach(GameState& ctx) override;
     void onUpdate(FGameState& ctx) override;
 };
-}
+}  // namespace game::sim

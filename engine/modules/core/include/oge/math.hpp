@@ -25,8 +25,8 @@
 #define GLM_ENABLE_EXPERIMENTAL
 
 #include <glm/ext/matrix_clip_space.hpp>  // glm::perspective
-#include <glm/ext/matrix_transform.hpp>   // glm::translate, glm::rotate, glm::scale
-#include <glm/ext/scalar_constants.hpp>   // glm::pi
+#include <glm/ext/matrix_transform.hpp>  // glm::translate, glm::rotate, glm::scale
+#include <glm/ext/scalar_constants.hpp>  // glm::pi
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -99,7 +99,10 @@ inline T lerp(T a, T b, float v)
     return (b - a) * v + a;
 }
 
-inline float clamp(float val, float low, float high) { return glm::clamp(val, low, high); }
+inline float clamp(float val, float low, float high)
+{
+    return glm::clamp(val, low, high);
+}
 
 inline vec3 normalize(vec3 val) { return glm::normalize(val); }
 
@@ -115,9 +118,15 @@ inline mat4 identity() { return glm::identity<mat4>(); }
 
 inline quat identity_quat() { return glm::identity<quat>(); }
 
-inline mat4 translate(const mat4& m, const vec3& v) { return glm::translate(m, v); }
+inline mat4 translate(const mat4& m, const vec3& v)
+{
+    return glm::translate(m, v);
+}
 
-inline mat4 rotate(const mat4& m, float angleRadians, const vec3& axis) { return glm::rotate(m, angleRadians, axis); }
+inline mat4 rotate(const mat4& m, float angleRadians, const vec3& axis)
+{
+    return glm::rotate(m, angleRadians, axis);
+}
 
 inline mat4 rotate(const quat& q) { return glm::mat4_cast(q); }
 
@@ -127,13 +136,20 @@ inline mat4 scale(const mat4& m, const vec3& v) { return glm::scale(m, v); }
 
 inline mat4 translate(const vec3& v) { return translate(identity(), v); }
 
-inline mat4 rotate(float angleRadians, const vec3& axis) { return rotate(identity(), angleRadians, axis); }
+inline mat4 rotate(float angleRadians, const vec3& axis)
+{
+    return rotate(identity(), angleRadians, axis);
+}
 
 inline mat4 scale(const vec3& v) { return scale(identity(), v); }
 
-inline mat4 lookAt(const vec3& eye, const vec3& center, const vec3& up) { return glm::lookAt(eye, center, up); }
+inline mat4 lookAt(const vec3& eye, const vec3& center, const vec3& up)
+{
+    return glm::lookAt(eye, center, up);
+}
 
-inline mat4 perspective(float fovRadians, float aspect, float nearPlane, float farPlane)
+inline mat4 perspective(float fovRadians, float aspect, float nearPlane,
+                        float farPlane)
 {
     return glm::perspective(fovRadians, aspect, nearPlane, farPlane);
 }
@@ -177,7 +193,8 @@ enum class Orientation : uint32_t
     ROTATE_180 = 3,
 };
 
-inline void get_screen_affine(Orientation ori, float width, float height, mat2& outTransform, vec2& outOffset)
+inline void get_screen_affine(Orientation ori, float width, float height,
+                              mat2& outTransform, vec2& outOffset)
 {
     switch (ori)
     {
@@ -220,4 +237,4 @@ inline float cos(float val) { return glm::cos(val); }
 inline float sin(float val) { return glm::sin(val); }
 inline float atan(float val) { return glm::atan(val); }
 inline float tan(float val) { return glm::tan(val); }
-}  // namespace OneGame::Engine::math
+}  // namespace oge::math

@@ -28,7 +28,8 @@ enum class ClientState
 class ClientScene : public SceneExt
 {
     oge_id_type nextSene;
-public:
+
+   public:
     ClientScene(const Def& def) : SceneExt(def)
     {
         auto it = def.args.find("next_scene");
@@ -36,6 +37,9 @@ public:
         nextSene = std::get<int64_t>(it->second);
     }
 
-    
+    void Update(Frame f, SceneContext sctx) override
+    {
+        SceneExt::Update(f, sctx);
+    }
 };
-} // namespace OneGame
+}  // namespace game

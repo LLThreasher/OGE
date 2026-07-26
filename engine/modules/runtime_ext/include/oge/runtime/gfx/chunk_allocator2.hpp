@@ -1,9 +1,9 @@
 #pragma once
 
+#include "oge/chunk_allocator.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/objects.hpp"
 #include "oge/runtime/objects_ext.hpp"
-#include "oge/chunk_allocator.hpp"
 
 namespace oge::runtime::gfx
 {
@@ -47,18 +47,24 @@ class DynamicChunkAllocator
             {
                 if (allocatorPerChunk[i].empty())
                 {
-                    allocatorPerChunk[i].emplace_back(BLOCK_SIZES[allocatorPerChunk[i].size()] / CHUNK_SIZES[i]);
+                    allocatorPerChunk[i].emplace_back(
+                        BLOCK_SIZES[allocatorPerChunk[i].size()] /
+                        CHUNK_SIZES[i]);
                     activeMemBlocks[i].push_back(
-                        backend.AllocateGPUBuffer<BufferUsage::Storage>(BLOCK_SIZES[activeMemBlocks[i].size()]));
+                        backend.AllocateGPUBuffer<BufferUsage::Storage>(
+                            BLOCK_SIZES[activeMemBlocks[i].size()]));
                 }
 
                 int allocatedSlot = allocatorPerChunk[i].back().Allocate(1);
                 if (allocatedSlot == -1)
                 {
-                    allocatorPerChunk[i].emplace_back(BLOCK_SIZES[allocatorPerChunk[i].size()] / CHUNK_SIZES[i]);
+                    allocatorPerChunk[i].emplace_back(
+                        BLOCK_SIZES[allocatorPerChunk[i].size()] /
+                        CHUNK_SIZES[i]);
                     allocatedSlot = allocatorPerChunk[i].back().Allocate(1);
                     activeMemBlocks[i].push_back(
-                        backend.AllocateGPUBuffer<BufferUsage::Storage>(BLOCK_SIZES[activeMemBlocks[i].size()]));
+                        backend.AllocateGPUBuffer<BufferUsage::Storage>(
+                            BLOCK_SIZES[activeMemBlocks[i].size()]));
                 }
                 uint16_t blockSlot = allocatorPerChunk[i].size() - 1;
                 return {
@@ -76,7 +82,8 @@ class DynamicChunkAllocator
     {
         assert(alloc.chunkSizeIdx < CHUNK_SIZE_COUNT);
         assert(alloc.blockIdx < allocatorPerChunk[alloc.chunkSizeIdx].size());
-        allocatorPerChunk[alloc.chunkSizeIdx][alloc.blockIdx].Free(alloc.slotOffset, 1);
+        allocatorPerChunk[alloc.chunkSizeIdx][alloc.blockIdx].Free(
+            alloc.slotOffset, 1);
     }
 
     GPUBufferSpan Resolve(GPUChunkedAllocation alloc)
@@ -95,4 +102,4 @@ class DynamicChunkAllocator
 };
 }  // namespace dca
 using DynamicChunkAllocator = dca::DynamicChunkAllocator;
-}  // namespace oge::runtime::renderer
+}  // namespace oge::runtime::gfx

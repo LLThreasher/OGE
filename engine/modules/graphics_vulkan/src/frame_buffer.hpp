@@ -39,4 +39,4 @@ struct VulkanFrameBuffer
     uint32_t height = 0;
 };
 
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

@@ -14,9 +14,15 @@
 namespace game::input
 {
 
-void KeyMouseInput::onAttach(InputContext& ctx) { ctx.windowCtx.SetMouseVisible(false); }
+void KeyMouseInput::onAttach(InputContext& ctx)
+{
+    ctx.windowCtx.SetMouseVisible(false);
+}
 
-void KeyMouseInput::onDetach(InputContext& ctx) { ctx.windowCtx.SetMouseVisible(true); }
+void KeyMouseInput::onDetach(InputContext& ctx)
+{
+    ctx.windowCtx.SetMouseVisible(true);
+}
 
 void KeyMouseInput::onUpdate(FInputContext& ctx)
 {
@@ -25,11 +31,14 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
     auto& keys = raw.ActiveKeys();
 
     math::vec2 moveDelta{
-        (keys.get(KeyCode::KY_A) ? 1.f : 0.f) - (keys.get(KeyCode::KY_D) ? 1.f : 0.f),
-        (keys.get(KeyCode::KY_W) ? 1.f : 0.f) - (keys.get(KeyCode::KY_S) ? 1.f : 0.f),
+        (keys.get(KeyCode::KY_A) ? 1.f : 0.f) -
+            (keys.get(KeyCode::KY_D) ? 1.f : 0.f),
+        (keys.get(KeyCode::KY_W) ? 1.f : 0.f) -
+            (keys.get(KeyCode::KY_S) ? 1.f : 0.f),
     };
     out.InsertMoveDelta(moveDelta);
-    math::vec2 panDelta = raw.PollPtrDelta(mouseIdx, raw_idx) * math::vec2{hfov, vfov};
+    math::vec2 panDelta =
+        raw.PollPtrDelta(mouseIdx, raw_idx) * math::vec2{hfov, vfov};
     out.InsertPanDelta(panDelta);
 
     PlayerInputEvent pEvent{{0.5f, 0.5f}};
@@ -53,11 +62,13 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
         }
         else if (event.type == InputEventType::KeyDown)
         {
-            if (event.key == KeyCode::KY_SPACE) pEvent.set<PlayerAction::Jump>();
+            if (event.key == KeyCode::KY_SPACE)
+                pEvent.set<PlayerAction::Jump>();
         }
         else if (event.type == InputEventType::KeyUp)
         {
-            if (event.key == KeyCode::KY_SPACE) pEvent.unset<PlayerAction::Jump>();
+            if (event.key == KeyCode::KY_SPACE)
+                pEvent.unset<PlayerAction::Jump>();
         }
     }
     out.InsertAction(pEvent);
@@ -71,7 +82,8 @@ void WidgetInput::onUpdate(FInputContext& ctx)
 {
     using namespace ::game::ui;
     PlayerInputEvent pEvent{};
-    pEvent.actionMask = out.LatestAction() & (1 << static_cast<uint32_t>(PlayerAction::Digging));
+    pEvent.actionMask = out.LatestAction() &
+                        (1 << static_cast<uint32_t>(PlayerAction::Digging));
 
     auto& game = ctx.uiWorld;
     // handle move
@@ -80,7 +92,8 @@ void WidgetInput::onUpdate(FInputContext& ctx)
         {
             math::vec2 moveDelta = drag->dragLastPos - drag->dragStartPos;
             moveDelta = -moveDelta;
-            if (math::len_sq(moveDelta) > 0.f) moveDelta = math::normalize(moveDelta);
+            if (math::len_sq(moveDelta) > 0.f)
+                moveDelta = math::normalize(moveDelta);
             out.InsertMoveDelta(moveDelta);
         }
     }
@@ -106,7 +119,9 @@ void WidgetInput::onUpdate(FInputContext& ctx)
                 }
                 else
                 {
-                    out.InsertPanDelta(math::vec2{drag->dragDelta * math::vec2{hfov, vfov}} * 2.f);
+                    out.InsertPanDelta(
+                        math::vec2{drag->dragDelta * math::vec2{hfov, vfov}} *
+                        2.f);
                 }
             }
         }

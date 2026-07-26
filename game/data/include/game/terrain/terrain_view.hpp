@@ -11,7 +11,7 @@
 
 namespace game::math
 {
-    using namespace oge::math;
+using namespace oge::math;
 }
 
 namespace game
@@ -19,25 +19,25 @@ namespace game
 namespace sim::terrain
 {
 class SubsystemTerrain;
-}  // namespace sim
+}  // namespace sim::terrain
 
 namespace view::terrain
 {
 class TerrainRenderer;
-}  // namespace view
+}  // namespace view::terrain
 
 namespace game::math
 {
-    using namespace oge::math;
+using namespace oge::math;
 }
 
 namespace terrain
 {
 using oge::Handle;
 using oge::HandleHash;
+using oge::LocalPoint3;
 using oge::Point3;
 using oge::Pool;
-using oge::LocalPoint3;
 
 enum class TerrainObject
 {
@@ -66,7 +66,8 @@ enum class ChunkState
 
 inline size_t GetBlockIndex(uint8_t x, uint8_t y, uint8_t z)
 {
-    return ((size_t)x << CHUNK_SHIFT_X) + ((size_t)y << CHUNK_SHIFT_Y) + ((size_t)z << CHUNK_SHIFT_Z);
+    return ((size_t)x << CHUNK_SHIFT_X) + ((size_t)y << CHUNK_SHIFT_Y) +
+           ((size_t)z << CHUNK_SHIFT_Z);
 }
 
 struct ChunkData
@@ -85,7 +86,10 @@ struct ChunkData
 class ChunkDataCollection
 {
    public:
-    const ChunkData* Get(ChunkHandle chunk) const { return chunkData.Get(chunk); }
+    const ChunkData* Get(ChunkHandle chunk) const
+    {
+        return chunkData.Get(chunk);
+    }
     ChunkData* Get(ChunkHandle chunk) { return chunkData.Get(chunk); }
 
     std::tuple<ChunkHandle, const ChunkData*> Get(Point3 coord) const;
@@ -108,7 +112,11 @@ struct PaletteCompressedChunk
     uint8_t data[CHUNK_SIZE_TOTAL];
 
     static PaletteCompressedChunk FromChunkData(const ChunkData& c);
-    uint32_t Get(int x, int y, int z) const { return palette[data[GetBlockIndex(x, y, z)]]; }
+    void ToChunkData(ChunkData& c);
+    uint32_t Get(int x, int y, int z) const
+    {
+        return palette[data[GetBlockIndex(x, y, z)]];
+    }
 };
 
 // allocate chunk -> generate terrain queue -> build mesh queue -> built chunk
@@ -119,7 +127,9 @@ struct TerrainData
     ChunkDataCollection chunks;
     std::queue<ChunkHandle> generateTerrainQueue;
     std::unordered_set<Point3> chunksToDestroy;
-    std::unordered_map<ChunkHandle, std::vector<LocalUpdateBlockCmd>, HandleHash<ChunkHandle>> blockModificationQueue;
+    std::unordered_map<ChunkHandle, std::vector<LocalUpdateBlockCmd>,
+                       HandleHash<ChunkHandle>>
+        blockModificationQueue;
     std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> dirtyChunks;
 
     TerrainData() {}
@@ -144,9 +154,18 @@ class TerrainView
     friend class ::game::view::terrain::TerrainRenderer;
 
    public:
-    uint32_t GetBlock(Point3 pos) const { return GetBlock(pos.x, pos.y, pos.z); }
-    bool TryGetBlock(Point3 pos, uint32_t& value) const { return TryGetBlock(pos.x, pos.y, pos.z, value); }
-    void SetBlock(Point3 pos, uint32_t value) { SetBlock(pos.x, pos.y, pos.z, value); }
+    uint32_t GetBlock(Point3 pos) const
+    {
+        return GetBlock(pos.x, pos.y, pos.z);
+    }
+    bool TryGetBlock(Point3 pos, uint32_t& value) const
+    {
+        return TryGetBlock(pos.x, pos.y, pos.z, value);
+    }
+    void SetBlock(Point3 pos, uint32_t value)
+    {
+        SetBlock(pos.x, pos.y, pos.z, value);
+    }
     uint32_t GetBlock(int x, int y, int z) const;
     bool TryGetBlock(int x, int y, int z, uint32_t& value) const;
     void SetBlock(int x, int y, int z, uint32_t value);
@@ -155,13 +174,15 @@ class TerrainView
     const ChunkData* GetChunk(ChunkHandle handle) const;
     ChunkData* GetChunk(ChunkHandle handle);
     void SubmitChunk(ChunkHandle handle);
-    std::optional<TerrainRaycastResult> CastRay(math::vec3 pos, math::vec3 ray, float maxDist = 20.f);
+    std::optional<TerrainRaycastResult> CastRay(math::vec3 pos, math::vec3 ray,
+                                                float maxDist = 20.f);
 
    protected:
     TerrainData m_terrainData;
 
    private:
-    static void HandleResolveDirtyChunk(entt::registry& world, ResolveDirtyChunkEvent e);
+    static void HandleResolveDirtyChunk(entt::registry& world,
+                                        ResolveDirtyChunkEvent e);
 };
 
 }  // namespace terrain

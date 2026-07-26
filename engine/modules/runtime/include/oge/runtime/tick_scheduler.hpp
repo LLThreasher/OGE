@@ -43,4 +43,4 @@ class BlockingTickScheduler
     clock::duration m_tickInterval;
     clock::time_point m_nextTick;
 };
-} // namespace oge::runtime
+}  // namespace oge::runtime

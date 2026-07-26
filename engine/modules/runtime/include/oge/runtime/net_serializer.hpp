@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "oge/macros.hpp"
+#include "oge/math.hpp"
 
 namespace oge::runtime::net
 {
@@ -37,12 +38,24 @@ class Buffer
     template <typename T>
     T Read()
     {
-        assert(readPos + sizeof(T) <= writePos);
-
         T value;
-        std::memcpy(&value, &data[0] + readPos, sizeof(T));
-        readPos += sizeof(T);
+        ReadRaw(&value, sizeof(T));
         return value;
+    }
+
+    void ReadRaw(void* dst, size_t size)
+    {
+        assert(readPos + size <= writePos);
+        std::memcpy(dst, &data[0] + readPos, size);
+        readPos += size;
+    }
+
+    template <typename T>
+    T ReadAndDeserialize()
+    {
+        T value;
+        value.Deserialize(*this);
+        return std::move(value);
     }
 
     void Reset()
@@ -69,7 +82,7 @@ struct SimpleNetValue
 {
     T value;
 
-    SimpleNetValue(T val) : value(val) {}
+    SimpleNetValue(T val = {}) : value(val) {}
 
     constexpr uint64_t Size() { return sizeof(T); }
 
@@ -82,9 +95,12 @@ struct SimpleNetValue
 };
 
 using Int32 = SimpleNetValue<int32_t>;
+using UInt8 = SimpleNetValue<uint8_t>;
 using UInt32 = SimpleNetValue<uint32_t>;
 using Single = SimpleNetValue<float>;
 using Bool = SimpleNetValue<bool>;
+using Vec2 = SimpleNetValue<math::vec2>;
+using Vec3 = SimpleNetValue<math::vec3>;
 
 template <typename Derived>
 class Object
@@ -114,48 +130,36 @@ class Object
 template <typename T>
 struct List : Object<List<T>>
 {
-    std::vector<T> data;
+    std::pmr::vector<T> data;
 
     void Serialize(Buffer& buffer)
     {
+        buffer.Write(data.size());
         for (const auto& val : data)
         {
-            val.VisitFields([&](auto& field) { field.Serialize(buffer); });
+            val.Serialize(buffer);
         }
     }
 
     void Deserialize(Buffer& buffer)
     {
+        size_t size = buffer.Read<size_t>();
+        data.resize(size);
         for (auto& val : data)
         {
             val.Deserialize(buffer);
         }
     }
 
-    auto begin()
-    {
-        return data.begin();
-    }
+    auto begin() { return data.begin(); }
 
-    auto end()
-    {
-        return data.end();
-    }
+    auto end() { return data.end(); }
 
-    auto begin() const
-    {
-        return data.begin();
-    }
+    auto begin() const { return data.begin(); }
 
-    auto end() const
-    {
-        return data.end();
-    }
+    auto end() const { return data.end(); }
 
-    void Add(T&& item)
-    {
-        data.push_back(item);
-    }
+    void Add(T&& item) { data.push_back(item); }
 };
 
 #define NET_OBJ(Name) struct Name : public ::oge::runtime::net::Object<Name>

@@ -5,13 +5,14 @@
 #endif
 #include <vulkan/vulkan.h>
 
-#include "vulkan.hpp"
 #include "oge/platform/window_handle.hpp"
+#include "vulkan.hpp"
 
 namespace oge::graphics::vulkan
 {
 #ifdef PLATFORM_LINUX
-static VkResult CreateX11Surface(void* display, unsigned long window, VkInstance instance, VkSurfaceKHR* surface)
+static VkResult CreateX11Surface(void* display, unsigned long window,
+                                 VkInstance instance, VkSurfaceKHR* surface)
 {
     VkXlibSurfaceCreateInfoKHR createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
@@ -23,7 +24,8 @@ static VkResult CreateX11Surface(void* display, unsigned long window, VkInstance
 }
 #endif
 
-VkResult CreateSurface(WindowHandle* handle, VkInstance instance, VkSurfaceKHR& surface)
+VkResult CreateSurface(WindowHandle* handle, VkInstance instance,
+                       VkSurfaceKHR& surface)
 {
     VkResult res;
 #ifdef PLATFORM_WINDOWS
@@ -39,7 +41,8 @@ VkResult CreateSurface(WindowHandle* handle, VkInstance instance, VkSurfaceKHR& 
         VkAndroidSurfaceCreateInfoKHR createInfo{};
         createInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
         createInfo.window = static_cast<ANativeWindow*>(handle->nativeWindow);
-        res = vkCreateAndroidSurfaceKHR(instance, &createInfo, nullptr, &surface);
+        res =
+            vkCreateAndroidSurfaceKHR(instance, &createInfo, nullptr, &surface);
     }
 #elif defined(PLATFORM_DARWIN)
     {
@@ -56,14 +59,19 @@ VkResult CreateSurface(WindowHandle* handle, VkInstance instance, VkSurfaceKHR& 
         {
             VkWaylandSurfaceCreateInfoKHR createInfo{};
 
-            createInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
-            createInfo.display = static_cast<struct wl_display*>(handle->wayland.display);
-            createInfo.surface = static_cast<struct wl_surface*>(handle->wayland.surface);
-            res = vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr, &surface);
+            createInfo.sType =
+                VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+            createInfo.display =
+                static_cast<struct wl_display*>(handle->wayland.display);
+            createInfo.surface =
+                static_cast<struct wl_surface*>(handle->wayland.surface);
+            res = vkCreateWaylandSurfaceKHR(instance, &createInfo, nullptr,
+                                            &surface);
         }
         else
         {
-            res = CreateX11Surface(handle->x11.display, handle->x11.window, instance, &surface);
+            res = CreateX11Surface(handle->x11.display, handle->x11.window,
+                                   instance, &surface);
         }
     }
 #else
@@ -71,4 +79,4 @@ VkResult CreateSurface(WindowHandle* handle, VkInstance instance, VkSurfaceKHR& 
 #endif
     return res;
 }
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

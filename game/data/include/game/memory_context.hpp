@@ -11,7 +11,9 @@ class CpuFrameArena
 {
    public:
     CpuFrameArena(size_t bufferSize = 64 * 1024)
-        : buffer_(bufferSize), resource_(buffer_.data(), buffer_.size(), std::pmr::null_memory_resource())
+        : buffer_(bufferSize),
+          resource_(buffer_.data(), buffer_.size(),
+                    std::pmr::null_memory_resource())
     {
     }
 
@@ -76,7 +78,8 @@ class CpuDurationFrameArena
 //         assert(framesInFlight <= 3);
 //     }
 
-//     std::pmr::memory_resource* Resource() { return currentFrameIdx == 0 ? &slot0 : (currentFrameIdx == 1 ? &slot1 : &slot2); }
+//     std::pmr::memory_resource* Resource() { return currentFrameIdx == 0 ?
+//     &slot0 : (currentFrameIdx == 1 ? &slot1 : &slot2); }
 
 //     void Update(float dt)
 //     {
@@ -92,15 +95,18 @@ class CpuDurationFrameArena
 // };
 class CpuSwapFrameArena
 {
-public:
-    CpuSwapFrameArena(size_t framesInFlight,
-                      size_t bufferSize = 64 * 1024)
+   public:
+    CpuSwapFrameArena(size_t framesInFlight, size_t bufferSize = 64 * 1024)
         : framesInFlight(framesInFlight),
-          arenas{
-              std::pmr::monotonic_buffer_resource(framesInFlight >= 1 ? bufferSize : 0, std::pmr::null_memory_resource()),
-              std::pmr::monotonic_buffer_resource(framesInFlight >= 2 ? bufferSize : 0, std::pmr::null_memory_resource()),
-              std::pmr::monotonic_buffer_resource(framesInFlight == 3 ? bufferSize : 0, std::pmr::null_memory_resource())
-          }
+          arenas{std::pmr::monotonic_buffer_resource(
+                     framesInFlight >= 1 ? bufferSize : 0,
+                     std::pmr::null_memory_resource()),
+                 std::pmr::monotonic_buffer_resource(
+                     framesInFlight >= 2 ? bufferSize : 0,
+                     std::pmr::null_memory_resource()),
+                 std::pmr::monotonic_buffer_resource(
+                     framesInFlight == 3 ? bufferSize : 0,
+                     std::pmr::null_memory_resource())}
     {
         assert(framesInFlight > 0 && framesInFlight <= 3);
     }
@@ -117,17 +123,11 @@ public:
         arenas[currentFrameIdx].release();
     }
 
-    std::pmr::memory_resource* Get(size_t idx)
-    {
-        return &arenas[idx];
-    }
+    std::pmr::memory_resource* Get(size_t idx) { return &arenas[idx]; }
 
-    size_t Idx()
-    {
-        return currentFrameIdx;
-    }
+    size_t Idx() { return currentFrameIdx; }
 
-private:
+   private:
     std::array<std::pmr::monotonic_buffer_resource, 3> arenas;
     size_t currentFrameIdx = 0;
     size_t framesInFlight;

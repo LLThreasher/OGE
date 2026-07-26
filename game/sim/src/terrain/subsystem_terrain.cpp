@@ -10,14 +10,17 @@ namespace game::sim::terrain
 {
 void SubsystemTerrain::onAttach(GameState& ctx)
 {
-    if (!ctx.world.ctx().contains<TerrainDesc>()) ctx.world.ctx().emplace<TerrainDesc>();
+    if (!ctx.world.ctx().contains<TerrainDesc>())
+        ctx.world.ctx().emplace<TerrainDesc>();
     auto desc = ctx.world.ctx().get<TerrainDesc>();
     m_terrainGenerator.SetTerrainGenChunkBudget(desc.terrainGenChunkBudget);
     m_terrainUpdateScheduler.SetChunkViewDistance(desc.chunkViewDistance);
     m_resolveDirtyChunkConnection =
-        ctx.events.sink<ResolveDirtyChunkEvent>().connect<&TerrainView::HandleResolveDirtyChunk>(ctx.world);
+        ctx.events.sink<ResolveDirtyChunkEvent>()
+            .connect<&TerrainView::HandleResolveDirtyChunk>(ctx.world);
     m_createPlayerConnection =
-        ctx.world.on_construct<ComponentPlayer>().connect<&SubsystemTerrain::onPlayerCreated>(this);
+        ctx.world.on_construct<ComponentPlayer>()
+            .connect<&SubsystemTerrain::onPlayerCreated>(this);
 }
 
 void SubsystemTerrain::onDetach(GameState& ctx)
@@ -26,21 +29,26 @@ void SubsystemTerrain::onDetach(GameState& ctx)
     m_createPlayerConnection.release();
 }
 
-void SubsystemTerrain::onPlayerCreated(entt::registry& world, entt::entity entity)
+void SubsystemTerrain::onPlayerCreated(entt::registry& world,
+                                       entt::entity entity)
 {
     auto pos = world.get<ComponentCamera>(entity).position;
-    Point3 ipos = {math::floor(pos.x) / CHUNK_SIZE_X, math::floor(pos.y) / CHUNK_SIZE_Y,
+    Point3 ipos = {math::floor(pos.x) / CHUNK_SIZE_X,
+                   math::floor(pos.y) / CHUNK_SIZE_Y,
                    math::floor(pos.z) / CHUNK_SIZE_Z};
-    m_terrainUpdateScheduler.InitialUpdate(world.ctx().get<TerrainView>().m_terrainData, ipos);
+    m_terrainUpdateScheduler.InitialUpdate(
+        world.ctx().get<TerrainView>().m_terrainData, ipos);
 }
 
 void SubsystemTerrain::onUpdate(FGameState& ctx)
 {
-    m_terrainGenerator.GenerateTerrain(ctx.world.ctx().get<TerrainView>().m_terrainData,
-                                       ctx.world.ctx().get<BlockRegistry>());
+    m_terrainGenerator.GenerateTerrain(
+        ctx.world.ctx().get<TerrainView>().m_terrainData,
+        ctx.world.ctx().get<BlockRegistry>());
 }
 
-void TerrainUpdateScheduler::InitialUpdate(TerrainData& terrain, Point3 chunkOrigin)
+void TerrainUpdateScheduler::InitialUpdate(TerrainData& terrain,
+                                           Point3 chunkOrigin)
 {
     int radius = m_chunkViewDistance + 1;
 

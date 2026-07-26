@@ -1,6 +1,7 @@
 #include "oge/runtime/net_server.hpp"
 
 #include <enet/enet.h>
+
 #include <memory_resource>
 
 #include "enet_interface.hpp"
@@ -9,7 +10,8 @@
 namespace oge::runtime
 {
 bool NetServer::Initialize(uint16_t port, size_t maxClients,
-                           size_t channelCount, std::pmr::memory_resource* memory)
+                           size_t channelCount,
+                           std::pmr::memory_resource* memory)
 {
     if (oge_enet_initialize(memory) != 0)
     {
@@ -46,14 +48,15 @@ void NetServer::Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs)
         {
             case ENET_EVENT_TYPE_CONNECT:
                 OnClientConnected(event.peer);
-                dispatcher.trigger<OnServerReceiveConnect>({event.peer});
+                dispatcher.trigger<OnServerReceiveConnect>(
+                    {event.peer, event.peer->connectID});
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
                 OnPacketReceived(event.peer, event.packet->data,
                                  event.packet->dataLength);
                 dispatcher.trigger<OnServerReceivePacket>(
-                    {event.peer,
+                    {event.peer, event.peer->connectID,
                      net::Buffer{event.packet->data, event.packet->dataLength}
                          .ToReadOnly()});
                 enet_packet_destroy(event.packet);
@@ -61,7 +64,8 @@ void NetServer::Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs)
 
             case ENET_EVENT_TYPE_DISCONNECT:
                 OnClientDisconnected(event.peer);
-                dispatcher.trigger<OnServerReceiveDisconnect>({event.peer});
+                dispatcher.trigger<OnServerReceiveDisconnect>(
+                    {event.peer, event.peer->connectID});
                 break;
 
             default:

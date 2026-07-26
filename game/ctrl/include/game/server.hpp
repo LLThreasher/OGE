@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/debug_server_scene.hpp"
 #include "game/scene.hpp"
 #include "game/scene_runner.hpp"
 #include "game/sim/registry.hpp"
@@ -11,7 +12,7 @@ namespace game
 {
 using oge::runtime::AssetManager;
 
-class Server : public SceneRunner<Scene>
+class Server : public SceneRunner<DebugServerScene>
 {
     oge::runtime::BlockingTickScheduler m_tick;
     entt::registry m_metaWorld;

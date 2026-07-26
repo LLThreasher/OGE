@@ -7,10 +7,10 @@
 #include <stdexcept>
 #include <string>
 
+#include "command_buffer.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/math.hpp"
 #include "oge/pool.hpp"
-#include "command_buffer.hpp"
 
 #define VK_CHECK_RESULT(expr)                                                 \
     do                                                                        \
@@ -115,7 +115,8 @@ inline VkFrontFace ToVkFrontFace(FrontFace face)
     return VK_FRONT_FACE_COUNTER_CLOCKWISE;
 }
 
-inline void GetVkFormatAndAspect(TextureFormat format, VkFormat& outFormat, VkImageAspectFlags& outAspect)
+inline void GetVkFormatAndAspect(TextureFormat format, VkFormat& outFormat,
+                                 VkImageAspectFlags& outAspect)
 {
     switch (format)
     {
@@ -209,12 +210,15 @@ inline VkPipelineStageFlags ToVkPipelineStage(TextureState state)
         case TextureState::ColorAttachment:
             return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
         case TextureState::DepthAttachment:
-            return VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+            return VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+                   VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
         case TextureState::ShaderRead:
-            return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
         case TextureState::Storage:
-            return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+            return VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                   VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
                    VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
         case TextureState::TransferDst:
             return VK_PIPELINE_STAGE_TRANSFER_BIT;
@@ -338,9 +342,12 @@ inline VkShaderStageFlags ToVkShaderStage(ShaderStage stage)
 {
     VkShaderStageFlags flags = 0;
 
-    if (HasFlag(stage, ShaderStage::Vertex)) flags |= VK_SHADER_STAGE_VERTEX_BIT;
-    if (HasFlag(stage, ShaderStage::Fragment)) flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
-    if (HasFlag(stage, ShaderStage::Compute)) flags |= VK_SHADER_STAGE_COMPUTE_BIT;
+    if (HasFlag(stage, ShaderStage::Vertex))
+        flags |= VK_SHADER_STAGE_VERTEX_BIT;
+    if (HasFlag(stage, ShaderStage::Fragment))
+        flags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+    if (HasFlag(stage, ShaderStage::Compute))
+        flags |= VK_SHADER_STAGE_COMPUTE_BIT;
 
     return flags;
 }
@@ -349,19 +356,25 @@ inline VkAccessFlags ConvertAccessMask(BufferUsage usage)
 {
     VkAccessFlags flags = 0;
 
-    if (HasFlag(usage, BufferUsage::Vertex)) flags |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
+    if (HasFlag(usage, BufferUsage::Vertex))
+        flags |= VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT;
 
     if (HasFlag(usage, BufferUsage::Index)) flags |= VK_ACCESS_INDEX_READ_BIT;
 
-    if (HasFlag(usage, BufferUsage::Uniform)) flags |= VK_ACCESS_UNIFORM_READ_BIT;
+    if (HasFlag(usage, BufferUsage::Uniform))
+        flags |= VK_ACCESS_UNIFORM_READ_BIT;
 
-    if (HasFlag(usage, BufferUsage::Storage)) flags |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    if (HasFlag(usage, BufferUsage::Storage))
+        flags |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
 
-    if (HasFlag(usage, BufferUsage::Indirect)) flags |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
+    if (HasFlag(usage, BufferUsage::Indirect))
+        flags |= VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
 
-    if (HasFlag(usage, BufferUsage::TransferSrc)) flags |= VK_ACCESS_TRANSFER_READ_BIT;
+    if (HasFlag(usage, BufferUsage::TransferSrc))
+        flags |= VK_ACCESS_TRANSFER_READ_BIT;
 
-    if (HasFlag(usage, BufferUsage::TransferDst)) flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
+    if (HasFlag(usage, BufferUsage::TransferDst))
+        flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
 
     return flags;
 }
@@ -369,14 +382,20 @@ inline VkAccessFlags ConvertAccessMask(BufferUsage usage)
 inline VkAccessFlags ConvertAccessMask(TextureUsage usage)
 {
     VkAccessFlags flags = 0;
-    if (HasFlag(usage, TextureUsage::Sampled)) flags |= VK_ACCESS_SHADER_READ_BIT;
-    if (HasFlag(usage, TextureUsage::Storage)) flags |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    if (HasFlag(usage, TextureUsage::Sampled))
+        flags |= VK_ACCESS_SHADER_READ_BIT;
+    if (HasFlag(usage, TextureUsage::Storage))
+        flags |= VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
     if (HasFlag(usage, TextureUsage::ColorAttachment))
-        flags |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        flags |= VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                 VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     if (HasFlag(usage, TextureUsage::DepthAttachment))
-        flags |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    if (HasFlag(usage, TextureUsage::TransferSrc)) flags |= VK_ACCESS_TRANSFER_READ_BIT;
-    if (HasFlag(usage, TextureUsage::TransferDst)) flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
+        flags |= VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT |
+                 VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    if (HasFlag(usage, TextureUsage::TransferSrc))
+        flags |= VK_ACCESS_TRANSFER_READ_BIT;
+    if (HasFlag(usage, TextureUsage::TransferDst))
+        flags |= VK_ACCESS_TRANSFER_WRITE_BIT;
     return flags;
 }
 
@@ -384,14 +403,17 @@ inline VkPipelineStageFlags ConvertPipelineStage(BufferUsage usage)
 {
     VkPipelineStageFlags flags = 0;
 
-    if (HasFlag(usage, BufferUsage::Vertex) || HasFlag(usage, BufferUsage::Index))
+    if (HasFlag(usage, BufferUsage::Vertex) ||
+        HasFlag(usage, BufferUsage::Index))
     {
         flags |= VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
     }
 
-    if (HasFlag(usage, BufferUsage::Uniform) || HasFlag(usage, BufferUsage::Storage))
+    if (HasFlag(usage, BufferUsage::Uniform) ||
+        HasFlag(usage, BufferUsage::Storage))
     {
-        flags |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+        flags |= VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+                 VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
                  VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
     }
 
@@ -400,7 +422,8 @@ inline VkPipelineStageFlags ConvertPipelineStage(BufferUsage usage)
         flags |= VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
     }
 
-    if (HasFlag(usage, BufferUsage::TransferSrc) || HasFlag(usage, BufferUsage::TransferDst))
+    if (HasFlag(usage, BufferUsage::TransferSrc) ||
+        HasFlag(usage, BufferUsage::TransferDst))
     {
         flags |= VK_PIPELINE_STAGE_TRANSFER_BIT;
     }
@@ -474,21 +497,26 @@ class VulkanBackend final : public IGraphicsBackend
     ICommandList& CreateCommandList(QueueType) override;
 
     // ----- Buffers -----
-    GPUBufferHandle CreateBuffer(const BufferDesc&, void** stagingMemory = nullptr) override;
+    GPUBufferHandle CreateBuffer(const BufferDesc&,
+                                 void** stagingMemory = nullptr) override;
     void DestroyBuffer(GPUBufferHandle) override;
-    void FlushStagingBufferRanges(const std::span<GPUBufferSpan> ranges) override;
+    void FlushStagingBufferRanges(
+        const std::span<GPUBufferSpan> ranges) override;
 
     // ----- Textures -----
     GPUTextureHandle CreateTexture(const TextureDesc&) override;
     void DestroyTexture(GPUTextureHandle) override;
 
     // ----- Pipelines -----
-    GPUPipelineHandle CreateGraphicsPipeline(const GraphicsPipelineDesc&) override;
-    GPUPipelineHandle CreateComputePipeline(const ComputePipelineDesc&) override;
+    GPUPipelineHandle CreateGraphicsPipeline(
+        const GraphicsPipelineDesc&) override;
+    GPUPipelineHandle CreateComputePipeline(
+        const ComputePipelineDesc&) override;
     void DestroyPipeline(GPUPipelineHandle) override;
 
     // ----- Binding groups -----
-    GPUBindingGroupLayoutHandle CreateBindingGroupLayout(const BindingGroupLayoutDesc&) override;
+    GPUBindingGroupLayoutHandle CreateBindingGroupLayout(
+        const BindingGroupLayoutDesc&) override;
     void DestroyBindingGroupLayout(GPUBindingGroupLayoutHandle) override;
 
     GPUBindingGroupHandle CreateBindingGroup(const BindingGroupDesc&) override;
@@ -503,7 +531,8 @@ class VulkanBackend final : public IGraphicsBackend
     GPURenderPassHandle CreateRenderPass(const RenderPassDesc&) override;
     void DestroyRenderPass(GPURenderPassHandle) override;
 
-    GPUFrameBufferHandle CreateFrameBuffer(GPURenderPassHandle passHandle, const FrameBufferDesc&) override;
+    GPUFrameBufferHandle CreateFrameBuffer(GPURenderPassHandle passHandle,
+                                           const FrameBufferDesc&) override;
     void DestroyFrameBuffer(GPUFrameBufferHandle) override;
 
     GPURenderPassHandle GetCurrentRenderPass() const override;
@@ -529,7 +558,8 @@ class VulkanBackend final : public IGraphicsBackend
     Pool<GPUObjectType::Buffer, VulkanBuffer> m_buffers;
     Pool<GPUObjectType::Texture, VulkanTexture> m_textures;
     Pool<GPUObjectType::Pipeline, VulkanPipeline> m_pipelines;
-    Pool<GPUObjectType::BindingGroupLayout, VulkanBindingGroupLayout> m_bindingGroupLayouts;
+    Pool<GPUObjectType::BindingGroupLayout, VulkanBindingGroupLayout>
+        m_bindingGroupLayouts;
     Pool<GPUObjectType::BindingGroup, VulkanBindingGroup> m_bindingGroups;
     Pool<GPUObjectType::Fence, VulkanFence> m_fences;
     Pool<GPUObjectType::RenderPass, VulkanRenderPass> m_renderPasses;
@@ -541,14 +571,17 @@ class VulkanBackend final : public IGraphicsBackend
     void DestroySwapchain(VkSwapchainKHR&);
     void DestroySurface();
     VkShaderModule CreateShaderModule(const std::vector<char>& code);
-    void CreateTextureInternal(uint32_t width, uint32_t height, uint32_t depth, uint32_t layers, uint32_t mipLevels,
-                               VkImageUsageFlags vkUsage, VkFormat vkFormat, VkImageAspectFlags aspectMask,
+    void CreateTextureInternal(uint32_t width, uint32_t height, uint32_t depth,
+                               uint32_t layers, uint32_t mipLevels,
+                               VkImageUsageFlags vkUsage, VkFormat vkFormat,
+                               VkImageAspectFlags aspectMask,
                                VulkanTexture& result);
     void DestroyTextureInternal(VulkanTexture& texture);
     void CreateSwapchainRenderPass();
     void CreateSwapchainFrameBuffers();
 };
 
-VkResult CreateSurface(WindowHandle* handle, VkInstance instance, VkSurfaceKHR& surface);
+VkResult CreateSurface(WindowHandle* handle, VkInstance instance,
+                       VkSurfaceKHR& surface);
 
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

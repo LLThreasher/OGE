@@ -1,8 +1,8 @@
 #if defined(IO_USE_SDL3)
 #include <SDL3/SDL.h>
 
-#include "oge/platform/io.hpp"
 #include "oge/log.hpp"
+#include "oge/platform/io.hpp"
 
 namespace oge::platform
 {
@@ -31,5 +31,5 @@ bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
 
     return true;
 }
-}  // namespace OneGame::Engine
+}  // namespace oge::platform
 #endif

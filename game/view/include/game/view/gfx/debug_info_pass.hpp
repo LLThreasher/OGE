@@ -1,10 +1,10 @@
 #pragma once
 
-#include "oge/graphics/configs.hpp"
-#include "oge/runtime/gfx/draw_context.hpp"
-#include "oge/color.hpp"
-#include "oge/log.hpp"
 #include "game/view/submission_queue.hpp"
+#include "oge/color.hpp"
+#include "oge/graphics/configs.hpp"
+#include "oge/log.hpp"
+#include "oge/runtime/gfx/draw_context.hpp"
 #include "oge/runtime/gfx/uniform_arena.hpp"
 
 namespace game::view::gfx
@@ -40,7 +40,7 @@ class DebugInfoPass : public Pass<CmdDrawDebugText, CmdDrawDebugRect>
     GPUPipelineHandle pipeline;
     GPUBindingGroupLayoutHandle bindingGroupLayout;
     GPUBindingGroupHandle bindingGroup;
-    
+
     FrameArena vertexArena = {BufferUsage::Vertex};
     FrameArena indexArena = {BufferUsage::Index};
 };

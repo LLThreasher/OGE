@@ -4,4 +4,4 @@ namespace oge::graphics
 {
 class IGraphicsBackend;
 class ICommandList;
-}
+}  // namespace oge::graphics

@@ -1,18 +1,25 @@
 #pragma once
 
 #include <string_view>
+
 #include "oge/aabb.hpp"
+#include "oge/input/raw_input_stream.hpp"
 #include "oge/math.hpp"
 #include "oge/runtime/entt.hpp"
 
 namespace game::math
 {
-    using namespace oge::math;
+using namespace oge::math;
 }
 
 namespace game
 {
 using oge::AABB;
+
+struct DirtyTag
+{
+    oge::BitSet256 dirtyComponents;
+};
 
 enum class UpdateType
 {
@@ -51,7 +58,8 @@ struct ComponentPerspectiveCamera
     float aspect = 1.f;
 };
 
-math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamera, math::vec2 pos);
+math::vec3 ScreenToRay(ComponentCamera camera,
+                       ComponentPerspectiveCamera pcamera, math::vec2 pos);
 
 struct InputSourceWidget
 {
@@ -79,7 +87,10 @@ struct ComponentCreature
     math::vec2 lookOrder = {};
     bool jumpOrder = false;
 
-    void SetMaxJumpHeight(float height) { initJumpSpeed = math::sqrt(2.f * height * 9.8f); }
+    void SetMaxJumpHeight(float height)
+    {
+        initJumpSpeed = math::sqrt(2.f * height * 9.8f);
+    }
 };
 
 struct ComponentCreatureInfo

@@ -40,21 +40,19 @@ class BasePipeline
 
    public:
     BasePipeline(TCtx& ctx) : m_ctx(ctx) {}
-    ~BasePipeline()
-    {
-        Clear();
-    }
+    ~BasePipeline() { Clear(); }
 
-    template<typename TDerived>
+    template <typename TDerived>
     TDerived* AddStage(AnythingFactory& af)
     {
         return reinterpret_cast<TDerived*>(AddStage(af, af.Id<TDerived>()));
     }
 
-    template<typename TDerived>
+    template <typename TDerived>
     TDerived* AddStage(AnythingFactory& af, typename TDerived::Def data)
     {
-        return reinterpret_cast<TDerived*>(AddStage(af, af.Id<TDerived>(), data));
+        return reinterpret_cast<TDerived*>(
+            AddStage(af, af.Id<TDerived>(), data));
     }
 
     TStage* AddStage(AnythingFactory& af, oge_id_type id, entt::any data = {})
@@ -71,7 +69,8 @@ class BasePipeline
         return m_stages.back().get();
     }
 
-    std::unique_ptr<TStage> SwapOutStage(std::unique_ptr<TStage> newStage, TStage* oldStage)
+    std::unique_ptr<TStage> SwapOutStage(std::unique_ptr<TStage> newStage,
+                                         TStage* oldStage)
     {
         auto it = FindStage(oldStage);
         if (it == m_stages.end()) return nullptr;
@@ -118,8 +117,9 @@ class BasePipeline
    protected:
     auto FindStage(TStage* handle)
     {
-        auto it =
-            std::find_if(m_stages.begin(), m_stages.end(), [handle](const auto& ptr) { return ptr.get() == handle; });
+        auto it = std::find_if(m_stages.begin(), m_stages.end(),
+                               [handle](const auto& ptr)
+                               { return ptr.get() == handle; });
         return it;
     }
 
@@ -131,10 +131,12 @@ template <typename TControl, typename TStage, typename TFrameData = float>
 using Pipeline = BasePipeline<TControl, TStage, TFrameData>;
 
 template <typename TStage, typename TFrameData = float>
-class FramePipeline : public Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>
+class FramePipeline
+    : public Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>
 {
    public:
-    using TPipeline = Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>;
+    using TPipeline =
+        Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>;
     FramePipeline(TStage::Ctx& ctx) : TPipeline(ctx) {}
     template <typename Fn>
     void onUpdate(TFrameData dt, typename TStage::Ctx& ctx, Fn&& update)
@@ -144,10 +146,12 @@ class FramePipeline : public Pipeline<FramePipeline<TStage, TFrameData>, TStage,
 };
 
 template <typename TStage, typename FrameData = float>
-class FixedStepPipeline : public Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>
+class FixedStepPipeline
+    : public Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>
 {
    public:
-    using TPipeline = Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>;
+    using TPipeline =
+        Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>;
     FixedStepPipeline(TStage::Ctx& ctx, float updateInterval = 1.f / 60.f)
         : TPipeline(ctx), m_tickScheduler(updateInterval)
     {

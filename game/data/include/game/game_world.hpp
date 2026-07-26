@@ -1,12 +1,14 @@
 #pragma once
 
 #include <vector>
-#include "oge/runtime/net_serializer.hpp"
-#include "game/terrain/defs.hpp"
-#include "oge/runtime/typed_registry.hpp"
-#include "oge/runtime/entt.hpp"
 
-namespace game {
+#include "game/terrain/defs.hpp"
+#include "oge/runtime/entt.hpp"
+#include "oge/runtime/net_serializer.hpp"
+#include "oge/runtime/typed_registry.hpp"
+
+namespace game
+{
 using oge::runtime::oge_id_type;
 namespace net = oge::runtime::net;
 
@@ -22,4 +24,4 @@ NET_OBJ(SceneConfig)
     }
 };
 
-}
+}  // namespace game

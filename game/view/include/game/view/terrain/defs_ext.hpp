@@ -1,8 +1,8 @@
 #pragma once
 
-#include <cinttypes>
-#include <cassert>
 #include <array>
+#include <cassert>
+#include <cinttypes>
 
 #include "oge/color.hpp"
 
@@ -56,7 +56,8 @@ struct Vertex
     uint8_t PackedLightAndAO;  // 2 extra bit here
     uint8_t PackedUV;
 
-    Vertex(int x, int y, int z, uint8_t color, uint8_t light, uint8_t ao, uint8_t u, uint8_t v)
+    Vertex(int x, int y, int z, uint8_t color, uint8_t light, uint8_t ao,
+           uint8_t u, uint8_t v)
     {
         // if (!(x < 32 && y < 32 && z < 32 && x >= 0 && y >= 0 && z >= 0))
         //{
@@ -68,7 +69,8 @@ struct Vertex
         assert(light < 16 && ao < 4);
         assert(u < 16 && v < 16);
 
-        PackedXYZ = (uint16_t)((x & 0x1F) | ((y & 0x1F) << 5) | ((z & 0x1F) << 10));
+        PackedXYZ =
+            (uint16_t)((x & 0x1F) | ((y & 0x1F) << 5) | ((z & 0x1F) << 10));
 
         PackedLightAndAO = (uint8_t)((light & 0xF) | ((ao & 0x3) << 4));
 
@@ -76,8 +78,10 @@ struct Vertex
     }
 };
 
-static constexpr uint32_t MAXIMUM_VERTEX_BYTE_SIZE = 16 * 16 * 16 / 2 * 4 * 6 * sizeof(Vertex);   // 192 kb
-static constexpr uint32_t MAXIMUM_INDEX_BYTE_SIZE = 16 * 16 * 16 / 2 * 6 * 6 * sizeof(uint16_t);  // 144 kb
+static constexpr uint32_t MAXIMUM_VERTEX_BYTE_SIZE =
+    16 * 16 * 16 / 2 * 4 * 6 * sizeof(Vertex);  // 192 kb
+static constexpr uint32_t MAXIMUM_INDEX_BYTE_SIZE =
+    16 * 16 * 16 / 2 * 6 * 6 * sizeof(uint16_t);  // 144 kb
 
 struct TexturedQuad
 {
@@ -90,24 +94,34 @@ struct TexturedQuad
     uint32_t fst = 0u;
     uint32_t sec = 0u;
 
-    TexturedQuad(uint8_t x, uint8_t y, uint8_t z, uint8_t face, uint8_t textureSlot, ColorRGBA8 color,
+    TexturedQuad(uint8_t x, uint8_t y, uint8_t z, uint8_t face,
+                 uint8_t textureSlot, ColorRGBA8 color,
                  std::array<uint8_t, 4> lights, std::array<uint8_t, 4> AOs)
-        : fst(x & 0xF | (((uint64_t)y & 0xF) << 4) | (((uint64_t)z & 0xF) << 8) | (((uint64_t)face & 0x7) << 12) |
-              (((uint64_t)lights[0] & 0xF) << 16) | (((uint64_t)lights[1] & 0xF) << 20) |
-              (((uint64_t)lights[2] & 0xF) << 24) | (((uint64_t)lights[3] & 0xF) << 28)),
-          sec((((uint64_t)(color.r >> 3) & 0x1F) << 0) | (((uint64_t)(color.g >> 3) & 0x1F) << 5) |
-              (((uint64_t)(color.b >> 3) & 0x1F) << 10) | (((uint64_t)textureSlot) << 16) |
-              (((uint64_t)AOs[0] & 0x3) << 24) | (((uint64_t)AOs[1] & 0x3) << 26) | (((uint64_t)AOs[2] & 0x3) << 28) |
+        : fst(x & 0xF | (((uint64_t)y & 0xF) << 4) |
+              (((uint64_t)z & 0xF) << 8) | (((uint64_t)face & 0x7) << 12) |
+              (((uint64_t)lights[0] & 0xF) << 16) |
+              (((uint64_t)lights[1] & 0xF) << 20) |
+              (((uint64_t)lights[2] & 0xF) << 24) |
+              (((uint64_t)lights[3] & 0xF) << 28)),
+          sec((((uint64_t)(color.r >> 3) & 0x1F) << 0) |
+              (((uint64_t)(color.g >> 3) & 0x1F) << 5) |
+              (((uint64_t)(color.b >> 3) & 0x1F) << 10) |
+              (((uint64_t)textureSlot) << 16) |
+              (((uint64_t)AOs[0] & 0x3) << 24) |
+              (((uint64_t)AOs[1] & 0x3) << 26) |
+              (((uint64_t)AOs[2] & 0x3) << 28) |
               (((uint64_t)AOs[3] & 0x3) << 30))
     {
         assert(x < 16 && y < 16 && z < 16);
         assert(face < 6);
-        assert(lights[0] < 16 && lights[1] < 16 && lights[2] < 16 && lights[3] < 16);
+        assert(lights[0] < 16 && lights[1] < 16 && lights[2] < 16 &&
+               lights[3] < 16);
         assert(AOs[0] < 4 && AOs[1] < 4 && AOs[2] < 4 && AOs[3] < 4);
     }
 };
 
-static constexpr uint32_t MAXIMUM_QUAD_BYTE_SIZE = 16 * 16 * 16 * 6 * sizeof(TexturedQuad);  // 98 kb
+static constexpr uint32_t MAXIMUM_QUAD_BYTE_SIZE =
+    16 * 16 * 16 * 6 * sizeof(TexturedQuad);  // 98 kb
 
 // V3
 // x,y,z 12 bit -> array 1
@@ -123,4 +137,4 @@ static constexpr uint32_t MAXIMUM_QUAD_BYTE_SIZE = 16 * 16 * 16 * 6 * sizeof(Tex
 // x,y,z   12 bit
 // face		3 bit
 // texSlot  9 bit
-}
+}  // namespace game::view::terrain

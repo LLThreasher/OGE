@@ -4,13 +4,7 @@ namespace oge
 {
 ILogger* g_logger;
 
-void SetLogger(ILogger* logger)
-{
-    g_logger = logger;
-}
+void SetLogger(ILogger* logger) { g_logger = logger; }
 
-ILogger* GetLogger()
-{
-    return g_logger;
-}
-}
+ILogger* GetLogger() { return g_logger; }
+}  // namespace oge
