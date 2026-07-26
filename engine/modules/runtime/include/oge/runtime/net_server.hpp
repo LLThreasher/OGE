@@ -36,8 +36,13 @@ struct OnServerReceivePacket
 class NetServer : public NetPacketSender
 {
    public:
-    NetServer() {}
-    ~NetServer() { Shutdown(); }
+    NetServer()
+    {
+    }
+    ~NetServer()
+    {
+        Shutdown();
+    }
 
     bool Initialize(
         uint16_t port, size_t maxClients, size_t channelCount = 2,
@@ -50,7 +55,10 @@ class NetServer : public NetPacketSender
     net::Buffer StartPacket(size_t size);
 
    private:
-    void OnClientConnected(ENetPeer* peer) { LOG_INFO("Client connected"); }
+    void OnClientConnected(ENetPeer* peer)
+    {
+        LOG_INFO("Client connected");
+    }
 
     void OnClientDisconnected(ENetPeer* peer)
     {

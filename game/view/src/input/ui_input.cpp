@@ -99,7 +99,9 @@ void UIDragInput::onAttach(InputContext& ctx)
     }
 }
 
-void UIDragInput::onDetach(InputContext& ctx) {}
+void UIDragInput::onDetach(InputContext& ctx)
+{
+}
 
 void UIDragInput::onUpdate(FInputContext& ctx)
 {

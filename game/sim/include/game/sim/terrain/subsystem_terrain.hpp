@@ -26,7 +26,10 @@ class TerrainUpdateScheduler
 {
    public:
     void InitialUpdate(TerrainData& terrain, Point3 chunkOrigin);
-    void SetChunkViewDistance(int val) { m_chunkViewDistance = val; }
+    void SetChunkViewDistance(int val)
+    {
+        m_chunkViewDistance = val;
+    }
 
    private:
     int m_chunkViewDistance = 4;
@@ -48,7 +51,9 @@ class TerrainGenerator
 class SubsystemTerrain : public Subsystem
 {
    public:
-    SubsystemTerrain() {}
+    SubsystemTerrain()
+    {
+    }
     DECL_ID(SubsystemTerrain);
     NO_COPY(SubsystemTerrain);
     ~SubsystemTerrain() = default;

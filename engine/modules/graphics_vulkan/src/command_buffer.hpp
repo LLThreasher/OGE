@@ -95,8 +95,14 @@ class VulkanCommandBuffer final : public ICommandList
     void TextureBarrier(GPUTextureHandle, TextureState, uint32_t baseLayer = 0,
                         uint32_t layerCount = 1) override;
 
-    VkCommandBuffer GetVulkanCommandBuffer() const { return m_cmd; }
-    QueueType GetQueueType() const { return m_queueType; }
+    VkCommandBuffer GetVulkanCommandBuffer() const
+    {
+        return m_cmd;
+    }
+    QueueType GetQueueType() const
+    {
+        return m_queueType;
+    }
 
     void Clear()
     {

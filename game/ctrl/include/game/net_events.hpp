@@ -319,7 +319,8 @@ class OutgoingDeltaEventRegistry
     uint8_t m_nextGlobalId = m_gloablBase;
 
    public:
-    OutgoingDeltaEventRegistry(uint8_t entityStart = 2, uint8_t globalStart = 128)
+    OutgoingDeltaEventRegistry(uint8_t entityStart = 2,
+                               uint8_t globalStart = 128)
         : m_entityBase(entityStart), m_gloablBase(globalStart)
     {
     }

@@ -16,14 +16,16 @@ Scene::Scene(const Def& def)
             m_sceneConfig.subsystems.Add(std::get<int64_t>(val));
         }
         for (auto val :
-                std::get<json::Array>(jsonConfig["realtime_subsystems"]))
+             std::get<json::Array>(jsonConfig["realtime_subsystems"]))
         {
             m_sceneConfig.realtimeSubsystems.Add(std::get<int64_t>(val));
         }
     }
 }
 
-Scene::~Scene() {}
+Scene::~Scene()
+{
+}
 
 void Scene::Update(Frame f, SceneContext sctx)
 {

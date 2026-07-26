@@ -47,7 +47,10 @@ struct IntTriple
         }
     }
 
-    operator math::vec3() const { return {x, y, z}; }
+    operator math::vec3() const
+    {
+        return {x, y, z};
+    }
 
     operator IntTriple<int32_t>() const
     {

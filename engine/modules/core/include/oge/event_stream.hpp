@@ -39,7 +39,10 @@ class DiscreteEventStream : public RingBuffer<T, Capacity>
         return true;
     }
 
-    void AdvanceCursor(Cursor& cursor) const { cursor = Base::HeadIndex(); }
+    void AdvanceCursor(Cursor& cursor) const
+    {
+        cursor = Base::HeadIndex();
+    }
 };
 
 template <typename T>

@@ -78,7 +78,10 @@ struct ChunkData
     ChunkState state = ChunkState::GeneratingTerrain;
 
    public:
-    ChunkData(Point3 coords) { Coords = coords; }
+    ChunkData(Point3 coords)
+    {
+        Coords = coords;
+    }
     uint32_t GetBlock(uint8_t x, uint8_t y, uint8_t z) const;
     void SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value);
 };
@@ -90,7 +93,10 @@ class ChunkDataCollection
     {
         return chunkData.Get(chunk);
     }
-    ChunkData* Get(ChunkHandle chunk) { return chunkData.Get(chunk); }
+    ChunkData* Get(ChunkHandle chunk)
+    {
+        return chunkData.Get(chunk);
+    }
 
     std::tuple<ChunkHandle, const ChunkData*> Get(Point3 coord) const;
     std::tuple<ChunkHandle, ChunkData*> Get(Point3 coord);
@@ -132,7 +138,9 @@ struct TerrainData
         blockModificationQueue;
     std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> dirtyChunks;
 
-    TerrainData() {}
+    TerrainData()
+    {
+    }
     NO_COPY(TerrainData)
 };
 

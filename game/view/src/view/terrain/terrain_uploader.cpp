@@ -43,6 +43,8 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain,
     }
 }
 
-void TerrainUploader::SetMaxNumChunks(uint32_t maxNumChunks) {}
+void TerrainUploader::SetMaxNumChunks(uint32_t maxNumChunks)
+{
+}
 
 }  // namespace game::view::terrain

@@ -74,9 +74,13 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
     out.InsertAction(pEvent);
 }
 
-void WidgetInput::onAttach(InputContext& ctx) {}
+void WidgetInput::onAttach(InputContext& ctx)
+{
+}
 
-void WidgetInput::onDetach(InputContext& ctx) {}
+void WidgetInput::onDetach(InputContext& ctx)
+{
+}
 
 void WidgetInput::onUpdate(FInputContext& ctx)
 {

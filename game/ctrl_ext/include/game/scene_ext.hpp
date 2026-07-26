@@ -32,8 +32,7 @@ class SceneExt : public Scene
     {
         AssetContext assets;
 
-        Ctx(AppContext actx)
-            : AppContext(actx), assets(actx.any_ctx)
+        Ctx(AppContext actx) : AppContext(actx), assets(actx.any_ctx)
         {
         }
     };

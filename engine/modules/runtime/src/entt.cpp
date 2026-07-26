@@ -6,7 +6,7 @@
 #include "oge/platform/stacktrace.hpp"
 
 void handle_entt_assert_fail(const char* condition, const char* message,
-                                    const char* file, int line)
+                             const char* file, int line)
 {
     LOG_ERROR("[EnTT assert failure]");
     LOG_ERROR("Condition: {}", condition);

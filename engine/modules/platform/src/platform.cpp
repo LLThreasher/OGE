@@ -31,9 +31,18 @@ void PrintStackTrace()
 
     free(symbol);
 }
-unsigned long long GetRAMUsage() { return 0; }
-double GetCPUUsage() { return -1.0; }
-double GetGPUUsage() { return -1.0; }
+unsigned long long GetRAMUsage()
+{
+    return 0;
+}
+double GetCPUUsage()
+{
+    return -1.0;
+}
+double GetGPUUsage()
+{
+    return -1.0;
+}
 }  // namespace oge::platform
 #elif defined(PLATFORM_ANDROID)
 #include <dlfcn.h>
@@ -204,7 +213,10 @@ double GetCPUUsage()
     return cpu_percent;
 }
 
-double GetGPUUsage() { return -1.0; }
+double GetGPUUsage()
+{
+    return -1.0;
+}
 }  // namespace oge::platform
 
 #elif defined(PLATFORM_DARWIN)
@@ -232,7 +244,10 @@ void PrintStackTrace()
     free(symbols);
 }
 
-double GetGPUUsage() { return -1.0; }
+double GetGPUUsage()
+{
+    return -1.0;
+}
 
 // Returns the resident memory (RAM) used by the current process in bytes
 RAMInfo GetRAMUsage()
@@ -327,8 +342,19 @@ double GetCPUUsage()
 }  // namespace oge::platform
 
 #else
-void oge::platform::PrintStackTrace() {}
-RAMInfo GetRAMUsage() { return {}; }
-double GetCPUUsage() { return -1.0; }
-double GetGPUUsage() { return -1.0; }
+void oge::platform::PrintStackTrace()
+{
+}
+RAMInfo GetRAMUsage()
+{
+    return {};
+}
+double GetCPUUsage()
+{
+    return -1.0;
+}
+double GetGPUUsage()
+{
+    return -1.0;
+}
 #endif

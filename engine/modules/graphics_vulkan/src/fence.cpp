@@ -9,9 +9,16 @@ GPUFenceHandle VulkanBackend::CreateFence(bool signaled)
     return GPUFenceHandle{};
 }
 
-void VulkanBackend::WaitForFence(GPUFenceHandle) {}
+void VulkanBackend::WaitForFence(GPUFenceHandle)
+{
+}
 
-bool VulkanBackend::IsFenceSignaled(GPUFenceHandle) { return false; }
+bool VulkanBackend::IsFenceSignaled(GPUFenceHandle)
+{
+    return false;
+}
 
-void VulkanBackend::ResetFence(GPUFenceHandle) {}
+void VulkanBackend::ResetFence(GPUFenceHandle)
+{
+}
 }  // namespace oge::graphics::vulkan

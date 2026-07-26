@@ -168,8 +168,14 @@ class DynamicSkylineAllocator
     {
     }
 
-    uint32_t GetWidth() { return m_atlasWidth; }
-    uint32_t GetHeight() { return m_atlasHeight; }
+    uint32_t GetWidth()
+    {
+        return m_atlasWidth;
+    }
+    uint32_t GetHeight()
+    {
+        return m_atlasHeight;
+    }
 
     GPUTextureRegion Allocate(graphics::IGraphicsBackend& backend,
                               uint32_t width, uint32_t height)

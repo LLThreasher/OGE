@@ -22,6 +22,9 @@ struct WindowCtx
             (val ? AppFrameAction::UnwrapMouse : AppFrameAction::WrapMouse);
     }
 
-    void Clear() { frameAction = AppFrameAction::None; }
+    void Clear()
+    {
+        frameAction = AppFrameAction::None;
+    }
 };
 }  // namespace game

@@ -130,7 +130,10 @@ class Pool
         return m_entries.size() - m_freeList.size();
     }
 
-    size_t Capacity() const noexcept { return m_entries.size(); }
+    size_t Capacity() const noexcept
+    {
+        return m_entries.size();
+    }
 
     void Clear()
     {

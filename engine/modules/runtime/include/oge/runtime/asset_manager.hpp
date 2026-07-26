@@ -13,7 +13,9 @@ namespace oge::runtime
 class AssetManager
 {
    public:
-    AssetManager() {}
+    AssetManager()
+    {
+    }
     NO_COPY(AssetManager)
     TextureInfo* GetTextureInfo(const std::string_view& id);
     TextureData* LoadTexture(const std::string_view& id);

@@ -16,7 +16,9 @@ template <typename... Passes>
 class ViewExecutor
 {
    public:
-    ViewExecutor() {}
+    ViewExecutor()
+    {
+    }
 
     void Attach(OGEContextReadOnly& ctx)
     {

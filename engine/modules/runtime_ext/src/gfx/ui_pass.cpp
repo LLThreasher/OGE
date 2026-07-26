@@ -95,7 +95,9 @@ void UIPass::onAttach(InitDrawContext& ctx)
     indexArena.Flush(backend);
 }
 
-void UIPass::onDetach(InitDrawContext& ctx) {}
+void UIPass::onDetach(InitDrawContext& ctx)
+{
+}
 
 void UIPass::onUpdate(DrawContext& ctx, View view)
 {

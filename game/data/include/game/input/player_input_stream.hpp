@@ -31,8 +31,12 @@ struct PlayerInputEvent
     math::vec2 actionPos = {};
     uint8_t actionMask = 0;
 
-    PlayerInputEvent() {}
-    PlayerInputEvent(math::vec2 pos) : actionPos(pos), actionMask(0) {}
+    PlayerInputEvent()
+    {
+    }
+    PlayerInputEvent(math::vec2 pos) : actionPos(pos), actionMask(0)
+    {
+    }
     PlayerInputEvent(math::vec2 pos, PlayerAction a)
         : actionPos(pos), actionMask(1 << static_cast<uint32_t>(a))
     {
@@ -50,7 +54,10 @@ struct PlayerInputEvent
         actionMask |= (1 << static_cast<uint32_t>(action));
     }
 
-    inline bool empty() const { return actionMask == 0; }
+    inline bool empty() const
+    {
+        return actionMask == 0;
+    }
 
     template <PlayerAction action>
     inline void unset()
@@ -98,7 +105,10 @@ class PlayerInputStream
         }
     }
 
-    int LatestAction() const { return actions.Head().actionMask; }
+    int LatestAction() const
+    {
+        return actions.Head().actionMask;
+    }
 
     bool HasAction(Cursor& cursor) const
     {
@@ -122,7 +132,10 @@ class PlayerInputStream
         return pans.PollOne(cursor.panCursor, out);
     }
 
-    void InsertAction(PlayerInputEvent event) { actions.Push(event); }
+    void InsertAction(PlayerInputEvent event)
+    {
+        actions.Push(event);
+    }
 
     void InsertMoveDelta(math::vec2 delta)
     {

@@ -16,9 +16,15 @@ namespace oge::runtime::net
 class Buffer
 {
    public:
-    Buffer(void* ptr, size_t len) : data({static_cast<std::byte*>(ptr), len}) {}
-    Buffer(std::byte* ptr, size_t len) : data({ptr, len}) {}
-    Buffer(std::span<std::byte> data) : data(data) {}
+    Buffer(void* ptr, size_t len) : data({static_cast<std::byte*>(ptr), len})
+    {
+    }
+    Buffer(std::byte* ptr, size_t len) : data({ptr, len})
+    {
+    }
+    Buffer(std::span<std::byte> data) : data(data)
+    {
+    }
 
     Buffer& ToReadOnly()
     {
@@ -64,7 +70,10 @@ class Buffer
         readPos = 0;
     }
 
-    std::span<std::byte>& RawData() { return data; }
+    std::span<std::byte>& RawData()
+    {
+        return data;
+    }
 
     const std::span<std::byte> Data() const
     {
@@ -82,16 +91,33 @@ struct SimpleNetValue
 {
     T value;
 
-    SimpleNetValue(T val = {}) : value(val) {}
+    SimpleNetValue(T val = {}) : value(val)
+    {
+    }
 
-    constexpr uint64_t Size() { return sizeof(T); }
+    constexpr uint64_t Size()
+    {
+        return sizeof(T);
+    }
 
-    void Serialize(Buffer& buffer) { buffer.Write<T>(value); }
+    void Serialize(Buffer& buffer)
+    {
+        buffer.Write<T>(value);
+    }
 
-    void Deserialize(Buffer& buffer) { value = buffer.Read<T>(); }
+    void Deserialize(Buffer& buffer)
+    {
+        value = buffer.Read<T>();
+    }
 
-    operator T&() { return value; }
-    operator const T&() const { return value; }
+    operator T&()
+    {
+        return value;
+    }
+    operator const T&() const
+    {
+        return value;
+    }
 };
 
 using Int32 = SimpleNetValue<int32_t>;
@@ -151,15 +177,30 @@ struct List : Object<List<T>>
         }
     }
 
-    auto begin() { return data.begin(); }
+    auto begin()
+    {
+        return data.begin();
+    }
 
-    auto end() { return data.end(); }
+    auto end()
+    {
+        return data.end();
+    }
 
-    auto begin() const { return data.begin(); }
+    auto begin() const
+    {
+        return data.begin();
+    }
 
-    auto end() const { return data.end(); }
+    auto end() const
+    {
+        return data.end();
+    }
 
-    void Add(T&& item) { data.push_back(item); }
+    void Add(T&& item)
+    {
+        data.push_back(item);
+    }
 
     template <typename... Args>
     void EmplaceBack(Args&&... args)
@@ -167,7 +208,10 @@ struct List : Object<List<T>>
         data.emplace_back(args...);
     }
 
-    auto empty() { return data.empty(); }
+    auto empty()
+    {
+        return data.empty();
+    }
 };
 
 #define NET_OBJ(Name) struct Name : public ::oge::runtime::net::Object<Name>

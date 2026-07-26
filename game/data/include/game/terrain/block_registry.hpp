@@ -56,7 +56,7 @@ class BlockRegistry
    public:
     BlockRegistry();
     void RegisterBlock(std::string blockIdName, BlockConfig config);
-    
+
     static uint16_t GetBlockId(uint32_t blockValue);
     static AABBList GetDefaultBlockAABBList();
 

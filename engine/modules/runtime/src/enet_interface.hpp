@@ -30,5 +30,8 @@ extern "C"
         return enet_initialize_with_callbacks(ENET_VERSION, &oge_enet_callback);
     }
 
-    inline void oge_enet_shutdown() { enet_deinitialize(); }
+    inline void oge_enet_shutdown()
+    {
+        enet_deinitialize();
+    }
 }

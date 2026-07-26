@@ -39,8 +39,13 @@ class BasePipeline
     using TFrameCtx = typename TStage::FrameCtx;
 
    public:
-    BasePipeline(TCtx& ctx) : m_ctx(ctx) {}
-    ~BasePipeline() { Clear(); }
+    BasePipeline(TCtx& ctx) : m_ctx(ctx)
+    {
+    }
+    ~BasePipeline()
+    {
+        Clear();
+    }
 
     template <typename TDerived>
     TDerived* AddStage(AnythingFactory& af)
@@ -137,7 +142,9 @@ class FramePipeline
    public:
     using TPipeline =
         Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>;
-    FramePipeline(TStage::Ctx& ctx) : TPipeline(ctx) {}
+    FramePipeline(TStage::Ctx& ctx) : TPipeline(ctx)
+    {
+    }
     template <typename Fn>
     void onUpdate(TFrameData dt, typename TStage::Ctx& ctx, Fn&& update)
     {
@@ -178,7 +185,10 @@ class FixedStepPipeline
         }
     }
 
-    float GetAlpha() { return m_tickScheduler.GetAlpha(); }
+    float GetAlpha()
+    {
+        return m_tickScheduler.GetAlpha();
+    }
 
    private:
     TickScheduler m_tickScheduler;

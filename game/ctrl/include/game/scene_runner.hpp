@@ -67,7 +67,10 @@ class SceneRunner
     }
 
    protected:
-    TSceneBase* CurrentScene() { return m_currentScene.get(); }
+    TSceneBase* CurrentScene()
+    {
+        return m_currentScene.get();
+    }
 
     void UpdateScene(TSceneBase::Frame f)
     {

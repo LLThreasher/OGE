@@ -52,7 +52,10 @@ struct IntPair
                 static_cast<unsigned_t<T>>(math::max(static_cast<T>(0), y))};
     }
 
-    operator math::vec2() const { return {x, y}; }
+    operator math::vec2() const
+    {
+        return {x, y};
+    }
 
     operator IntPair<int32_t>() const
     {
@@ -86,8 +89,12 @@ struct U16Norm
     }
 
     uint16_t val;
-    U16Norm() : val(0) {}
-    U16Norm(float value) : val(Encode(value)) {}
+    U16Norm() : val(0)
+    {
+    }
+    U16Norm(float value) : val(Encode(value))
+    {
+    }
     U16Norm operator+(const U16Norm& other) const
     {
         U16Norm n;
@@ -101,13 +108,17 @@ struct U16Norm2
     U16Norm x;
     U16Norm y;
 
-    U16Norm2() : x(0), y(0) {}
+    U16Norm2() : x(0), y(0)
+    {
+    }
 
     U16Norm2(math::vec2 in) : x(U16Norm::Encode(in.x)), y(U16Norm::Encode(in.y))
     {
     }
 
-    U16Norm2(U16Norm x, U16Norm y) : x(x), y(y) {}
+    U16Norm2(U16Norm x, U16Norm y) : x(x), y(y)
+    {
+    }
 
     U16Norm2 operator+(const U16Norm2& other) const
     {

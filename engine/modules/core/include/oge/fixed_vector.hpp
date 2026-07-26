@@ -11,7 +11,9 @@ class FixedVector
     using value_type = T;
     using size_type = std::size_t;
 
-    FixedVector() : m_size(0) {}
+    FixedVector() : m_size(0)
+    {
+    }
 
     bool push_back(const T& aabb)
     {
@@ -21,19 +23,46 @@ class FixedVector
         return true;
     }
 
-    void clear() { m_size = 0; }
+    void clear()
+    {
+        m_size = 0;
+    }
 
-    size_type size() const { return m_size; }
-    static constexpr size_type capacity() { return Max; }
+    size_type size() const
+    {
+        return m_size;
+    }
+    static constexpr size_type capacity()
+    {
+        return Max;
+    }
 
-    T& operator[](size_type i) { return m_data[i]; }
-    const T& operator[](size_type i) const { return m_data[i]; }
+    T& operator[](size_type i)
+    {
+        return m_data[i];
+    }
+    const T& operator[](size_type i) const
+    {
+        return m_data[i];
+    }
 
-    T* begin() { return m_data; }
-    T* end() { return m_data + m_size; }
+    T* begin()
+    {
+        return m_data;
+    }
+    T* end()
+    {
+        return m_data + m_size;
+    }
 
-    const T* begin() const { return m_data; }
-    const T* end() const { return m_data + m_size; }
+    const T* begin() const
+    {
+        return m_data;
+    }
+    const T* end() const
+    {
+        return m_data + m_size;
+    }
 
    private:
     T m_data[Max];

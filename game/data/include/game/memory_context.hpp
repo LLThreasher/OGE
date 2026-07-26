@@ -17,7 +17,10 @@ class CpuFrameArena
     {
     }
 
-    std::pmr::memory_resource* Resource() { return &resource_; }
+    std::pmr::memory_resource* Resource()
+    {
+        return &resource_;
+    }
 
     void Update()
     {
@@ -37,7 +40,10 @@ class CpuDurationFrameArena
     {
     }
 
-    std::pmr::memory_resource* Resource() { return active ? &arenaA : &arenaB; }
+    std::pmr::memory_resource* Resource()
+    {
+        return active ? &arenaA : &arenaB;
+    }
 
     void Update(float dt)
     {
@@ -123,9 +129,15 @@ class CpuSwapFrameArena
         arenas[currentFrameIdx].release();
     }
 
-    std::pmr::memory_resource* Get(size_t idx) { return &arenas[idx]; }
+    std::pmr::memory_resource* Get(size_t idx)
+    {
+        return &arenas[idx];
+    }
 
-    size_t Idx() { return currentFrameIdx; }
+    size_t Idx()
+    {
+        return currentFrameIdx;
+    }
 
    private:
     std::array<std::pmr::monotonic_buffer_resource, 3> arenas;

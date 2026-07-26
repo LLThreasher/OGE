@@ -30,16 +30,24 @@ struct PackedMouseInfo
 {
     uint8_t val;
 
-    PackedMouseInfo() : val(0) {}
+    PackedMouseInfo() : val(0)
+    {
+    }
     PackedMouseInfo(size_t id, MouseButton button)
         : val((static_cast<uint8_t>(id & 0x7) << 4) |
               (static_cast<uint8_t>(button) & 0x7))
     {
     }
 
-    MouseButton button() const { return static_cast<MouseButton>(val & 0x7); }
+    MouseButton button() const
+    {
+        return static_cast<MouseButton>(val & 0x7);
+    }
 
-    size_t ptrIdx() const { return (val >> 4) & 0x7; }
+    size_t ptrIdx() const
+    {
+        return (val >> 4) & 0x7;
+    }
 };
 
 struct InputEvent
@@ -77,17 +85,31 @@ class RawInputStream
         std::array<PointerInputStream::Cursor, PtrInputCount> ptrCursors = {};
     };
 
-    RawInputStream() {}
+    RawInputStream()
+    {
+    }
     NO_COPY(RawInputStream)
     void AdvanceCursor(Cursor& cursor) const;
     bool PollEvent(Cursor& cursor, InputEvent& eventOut) const;
     bool PollPtr(size_t ptrIdx, Cursor& cursor, math::vec2& posOut) const;
     math::vec2 PollPtrLatest(size_t ptrIdx, Cursor& cursor) const;
     math::vec2 PollPtrDelta(size_t ptrIdx, Cursor& cursor) const;
-    const BitSet32& ActivePtrs() const { return frameFrontier.activePtrs; }
-    const BitSet32& DirtyPtrs() const { return frameFrontier.dirtyPtrs; }
-    const KeySet& ActiveKeys() const { return frameFrontier.activeKeys; }
-    static bool IsMouse(size_t ptrIdx) { return ptrIdx < MaxMousePtrCount; }
+    const BitSet32& ActivePtrs() const
+    {
+        return frameFrontier.activePtrs;
+    }
+    const BitSet32& DirtyPtrs() const
+    {
+        return frameFrontier.dirtyPtrs;
+    }
+    const KeySet& ActiveKeys() const
+    {
+        return frameFrontier.activeKeys;
+    }
+    static bool IsMouse(size_t ptrIdx)
+    {
+        return ptrIdx < MaxMousePtrCount;
+    }
 
     void NewFrame();
 

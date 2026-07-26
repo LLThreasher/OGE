@@ -2,7 +2,10 @@
 
 namespace oge
 {
-Stopwatch Stopwatch::Start() { return Stopwatch(clock::now()); }
+Stopwatch Stopwatch::Start()
+{
+    return Stopwatch(clock::now());
+}
 
 float Stopwatch::Restart()
 {
@@ -13,5 +16,7 @@ float Stopwatch::Restart()
     return elapsed;
 }
 
-Stopwatch::Stopwatch(clock::time_point start) : m_start(start) {}
+Stopwatch::Stopwatch(clock::time_point start) : m_start(start)
+{
+}
 }  // namespace oge

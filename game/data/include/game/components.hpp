@@ -40,7 +40,10 @@ struct ComponentCamera
     math::vec3 forward;
     entt::entity targetPanel;
 
-    math::vec3 up() const { return glm::cross(right(), forward); }
+    math::vec3 up() const
+    {
+        return glm::cross(right(), forward);
+    }
 
     math::vec3 right() const
     {

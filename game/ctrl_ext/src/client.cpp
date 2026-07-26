@@ -38,7 +38,8 @@ void Client::Initialize(WindowHandle* handle)
 {
     auto backend_ptr = oge::graphics::vulkan::CreateVulkanBackend();
     m_backend =
-        m_ctx.Emplace<std::unique_ptr<IGraphicsBackend>>(backend_ptr.release()).get();
+        m_ctx.Emplace<std::unique_ptr<IGraphicsBackend>>(backend_ptr.release())
+            .get();
     auto& backend = *m_backend;
     backend.Initialize(BackendDesc{handle, FrameTimePreference::VSync});
     m_sm.Initialize(backend);

@@ -83,8 +83,8 @@ class DebugScene3 final : public SceneExt
             pcam.fov = math::radians(45.f);
         }
 
-        auto vpe =
-            ui::CreateGameView(m_world, {math::vec2{0, 0}, math::vec2{1, 1}}, m_player);
+        auto vpe = ui::CreateGameView(
+            m_world, {math::vec2{0, 0}, math::vec2{1, 1}}, m_player);
         m_world.patch<view::ViewPanel>(vpe);
 
         // m_terminalButton = ui::CreateButton(world, context,

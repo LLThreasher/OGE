@@ -193,7 +193,9 @@ enum class EndFrameAction : uint32_t
 class IGraphicsBackend
 {
    public:
-    IGraphicsBackend() {}
+    IGraphicsBackend()
+    {
+    }
     NO_COPY(IGraphicsBackend)
     virtual ~IGraphicsBackend() = default;
 

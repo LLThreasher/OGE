@@ -7,13 +7,17 @@ SceneExt::SceneExt(const Def& def)
       m_ctx(def.ctx),
       m_inputs(input::InputContext{m_windowCtx, m_world}),
       m_renderers(view::RendererState{m_world, m_renderWorld, m_ctx.events,
-                                      m_ctx.memory, AssetContext(def.ctx.any_ctx)}),
+                                      m_ctx.memory,
+                                      AssetContext(def.ctx.any_ctx)}),
       m_squeue(m_ctx.memory.frameBuffer.Resource())
 {
     m_viewExecutor.Attach(def.ctx.any_ctx);
 }
 
-SceneExt::~SceneExt() { m_viewExecutor.Detach(); }
+SceneExt::~SceneExt()
+{
+    m_viewExecutor.Detach();
+}
 
 void SceneExt::Update(Frame f, SceneContext sctx)
 {
@@ -34,6 +38,12 @@ void SceneExt::Update(Frame f, SceneContext sctx)
     m_windowCtx.Clear();
 }
 
-SceneExt::ViewExecutor& SceneExt::GetPasses() { return m_viewExecutor; }
+SceneExt::ViewExecutor& SceneExt::GetPasses()
+{
+    return m_viewExecutor;
+}
 
-void SceneExt::Render(float dt) { m_viewExecutor.Update(dt, m_squeue); }
+void SceneExt::Render(float dt)
+{
+    m_viewExecutor.Update(dt, m_squeue);
+}

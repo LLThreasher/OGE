@@ -1,8 +1,8 @@
 #pragma once
 
-#include "game/server_scene.hpp"
 #include "game/scene.hpp"
 #include "game/scene_runner.hpp"
+#include "game/server_scene.hpp"
 #include "game/sim/registry.hpp"
 #include "oge/runtime/asset_manager.hpp"
 #include "oge/runtime/tick_scheduler.hpp"

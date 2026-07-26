@@ -14,7 +14,9 @@ class BitSet32
     uint32_t mask;
 
    public:
-    BitSet32() : mask(0) {}
+    BitSet32() : mask(0)
+    {
+    }
 
     void set(unsigned x, bool value)
     {
@@ -30,19 +32,34 @@ class BitSet32
     }
 
     // Add element
-    void add(int x) { mask |= (1ULL << x); }
+    void add(int x)
+    {
+        mask |= (1ULL << x);
+    }
 
     // Remove element
-    void remove(int x) { mask &= ~(1ULL << x); }
+    void remove(int x)
+    {
+        mask &= ~(1ULL << x);
+    }
 
     // Toggle element
-    void toggle(int x) { mask ^= (1ULL << x); }
+    void toggle(int x)
+    {
+        mask ^= (1ULL << x);
+    }
 
     // Check if element exists
-    bool contains(int x) const { return (mask & (1ULL << x)) != 0; }
+    bool contains(int x) const
+    {
+        return (mask & (1ULL << x)) != 0;
+    }
 
     // Clear all elements
-    void clear() { mask = 0; }
+    void clear()
+    {
+        mask = 0;
+    }
 
     class iterator
     {
@@ -56,7 +73,9 @@ class BitSet32
         using pointer = void;
         using reference = int;
 
-        iterator(uint32_t mask) : remaining(mask) {}
+        iterator(uint32_t mask) : remaining(mask)
+        {
+        }
 
         uint8_t operator*() const
         {
@@ -75,8 +94,14 @@ class BitSet32
         }
     };
 
-    iterator begin() const { return iterator(mask); }
-    iterator end() const { return iterator(0); }
+    iterator begin() const
+    {
+        return iterator(mask);
+    }
+    iterator end() const
+    {
+        return iterator(0);
+    }
 };
 
 template <typename T>
@@ -84,13 +109,22 @@ class AnyBitSet32 : public BitSet32
 {
    public:
     // Add element
-    void add(T x) { BitSet32::add(static_cast<unsigned int>(x)); }
+    void add(T x)
+    {
+        BitSet32::add(static_cast<unsigned int>(x));
+    }
 
     // Remove element
-    void remove(T x) { BitSet32::remove(static_cast<unsigned int>(x)); }
+    void remove(T x)
+    {
+        BitSet32::remove(static_cast<unsigned int>(x));
+    }
 
     // Toggle element
-    void toggle(T x) { BitSet32::toggle(static_cast<unsigned int>(x)); }
+    void toggle(T x)
+    {
+        BitSet32::toggle(static_cast<unsigned int>(x));
+    }
 
     // Check if element exists
     bool contains(T x) const
@@ -143,7 +177,10 @@ class BitSet256
         sets[x >> 5] ^= (1u << (x & 31));
     }
 
-    void clear() { sets.fill(0); }
+    void clear()
+    {
+        sets.fill(0);
+    }
 
     class iterator
     {
@@ -194,8 +231,14 @@ class BitSet256
         }
     };
 
-    iterator begin() const { return iterator(sets.begin(), sets.end()); }
-    iterator end() const { return iterator(sets.end(), sets.end()); }
+    iterator begin() const
+    {
+        return iterator(sets.begin(), sets.end());
+    }
+    iterator end() const
+    {
+        return iterator(sets.end(), sets.end());
+    }
 };
 
 template <typename T>
@@ -212,9 +255,15 @@ class AnyBitSet256 : public BitSet256
         return BitSet256::get(static_cast<unsigned int>(ky));
     }
 
-    void add(T ky) { BitSet256::add(static_cast<unsigned int>(ky)); }
+    void add(T ky)
+    {
+        BitSet256::add(static_cast<unsigned int>(ky));
+    }
 
-    void remove(T ky) { BitSet256::remove(static_cast<unsigned int>(ky)); }
+    void remove(T ky)
+    {
+        BitSet256::remove(static_cast<unsigned int>(ky));
+    }
 
     bool contains(T ky) const
     {

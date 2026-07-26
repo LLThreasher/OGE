@@ -27,7 +27,10 @@ float TickScheduler::ConsumeTick()
     return 0.0f;
 }
 
-float TickScheduler::GetAlpha() const { return m_accumulator / m_fixedDelta; }
+float TickScheduler::GetAlpha() const
+{
+    return m_accumulator / m_fixedDelta;
+}
 
 BlockingTickScheduler::BlockingTickScheduler(float interval)
     : m_tickInterval(std::chrono::duration_cast<clock::duration>(

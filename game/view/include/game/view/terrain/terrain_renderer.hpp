@@ -48,7 +48,9 @@ struct BuiltChunkMesh2
 {
     std::pmr::vector<TexturedQuad> quads;
 
-    BuiltChunkMesh2() {}
+    BuiltChunkMesh2()
+    {
+    }
     NO_COPY(BuiltChunkMesh2)
 };
 
@@ -82,7 +84,9 @@ struct TerrainPresentationData
     std::unordered_map<ChunkHandle, PTerrainMesh, HandleHash<ChunkHandle>>
         residentChunks;
 
-    TerrainPresentationData() {}
+    TerrainPresentationData()
+    {
+    }
     NO_COPY(TerrainPresentationData)
 };
 
@@ -93,7 +97,10 @@ class TerrainMeshBuilder
         const TerrainData& terrain, const BlockRegistry& blocks,
         TerrainPresentationData& terrainPData,
         std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
-    void SetVertexBudget(uint32_t val) { m_vertexBudget = val; }
+    void SetVertexBudget(uint32_t val)
+    {
+        m_vertexBudget = val;
+    }
 
    private:
     void ExecuteBuildChunkMesh(TerrainPresentationData& pData,
@@ -133,7 +140,9 @@ class TerrainUploader
 class TerrainRenderer : public Renderer
 {
    public:
-    TerrainRenderer() {}
+    TerrainRenderer()
+    {
+    }
     DECL_ID(TerrainRenderer);
     NO_COPY(TerrainRenderer);
     ~TerrainRenderer() = default;

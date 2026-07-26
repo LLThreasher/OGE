@@ -44,7 +44,10 @@ uint32_t ChunkAllocator::SizeToOrder(uint32_t size)
     }
 }
 
-uint32_t ChunkAllocator::OrderToSize(uint32_t order) { return 1u << order; }
+uint32_t ChunkAllocator::OrderToSize(uint32_t order)
+{
+    return 1u << order;
+}
 
 uint32_t ChunkAllocator::BuddyIndex(uint32_t index, uint32_t order) const
 {

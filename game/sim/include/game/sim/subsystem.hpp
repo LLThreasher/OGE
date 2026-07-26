@@ -31,7 +31,9 @@ using GameFrame = float;
 struct FGameState : GameState
 {
     float dt;
-    FGameState(GameFrame f, GameState& state) : dt(f), GameState(state) {}
+    FGameState(GameFrame f, GameState& state) : dt(f), GameState(state)
+    {
+    }
 };
 
 struct ShowDebugTextEvent

@@ -43,8 +43,13 @@ struct OnClientReceivePacket
 class NetClient : protected NetPacketSender
 {
    public:
-    NetClient() {}
-    ~NetClient() { Shutdown(); }
+    NetClient()
+    {
+    }
+    ~NetClient()
+    {
+        Shutdown();
+    }
 
     bool Initialize(
         size_t channelCount = 2,
@@ -52,7 +57,10 @@ class NetClient : protected NetPacketSender
 
     bool Connect(const char* ip, uint16_t port, uint32_t timeoutMs = 5000);
 
-    ClientStatus Status() { return status; }
+    ClientStatus Status()
+    {
+        return status;
+    }
 
     void Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs = 0);
 

@@ -78,5 +78,7 @@ void CameraRenderer::onUpdate(FRendererState& ctx)
     }
 }
 
-void CameraRenderer::onDetach(RendererState& ctx) {}
+void CameraRenderer::onDetach(RendererState& ctx)
+{
+}
 }  // namespace game::view

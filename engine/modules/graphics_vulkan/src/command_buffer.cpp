@@ -89,7 +89,10 @@ void VulkanCommandBuffer::BeginRenderPass(
     vkCmdBeginRenderPass(m_cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
 }
 
-void VulkanCommandBuffer::EndRenderPass() { vkCmdEndRenderPass(m_cmd); }
+void VulkanCommandBuffer::EndRenderPass()
+{
+    vkCmdEndRenderPass(m_cmd);
+}
 
 void VulkanCommandBuffer::BindGraphicsPipeline(GPUPipelineHandle handle)
 {

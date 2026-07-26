@@ -26,7 +26,9 @@ class TerrainPass2 : public RequiresVPTransform,
     };
 
    public:
-    TerrainPass2() {}
+    TerrainPass2()
+    {
+    }
 
     void UpdateBlockTexture(AssetContext& assets, const std::string& id,
                             uint32_t slot);

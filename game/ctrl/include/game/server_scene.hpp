@@ -32,7 +32,10 @@ class DebugServerScene final : public Scene
         m_netServer.Initialize(port, maxClients);
     }
 
-    ~DebugServerScene() { m_netServer.Shutdown(); }
+    ~DebugServerScene()
+    {
+        m_netServer.Shutdown();
+    }
 
     void Update(Frame f, SceneContext sctx) override
     {

@@ -8,7 +8,9 @@ using timestamp = std::chrono::steady_clock::time_point;
 class Timer
 {
    public:
-    Timer() : m_last(std::chrono::steady_clock::now()) {}
+    Timer() : m_last(std::chrono::steady_clock::now())
+    {
+    }
 
     float Tick()
     {

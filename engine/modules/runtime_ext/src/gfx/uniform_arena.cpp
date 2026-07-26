@@ -10,7 +10,9 @@ namespace oge::runtime::gfx
 {
 using namespace graphics;
 
-FrameArena::FrameArena(BufferUsage usage) : m_usage(usage) {}
+FrameArena::FrameArena(BufferUsage usage) : m_usage(usage)
+{
+}
 
 void FrameArena::Initialize(IGraphicsBackend& backend, uint32_t capacity)
 {
@@ -35,7 +37,10 @@ void FrameArena::Shutdown(IGraphicsBackend& backend)
     m_cpuBuffer = nullptr;
 }
 
-GPUBufferHandle FrameArena::GetBuffer() { return m_gpuBuffer; }
+GPUBufferHandle FrameArena::GetBuffer()
+{
+    return m_gpuBuffer;
+}
 
 void FrameArena::AdvanceFrame()
 {

@@ -104,9 +104,13 @@ static void DestroyDebugUtilsMessengerEXT(
     if (func != nullptr) func(instance, messenger, allocator);
 }
 
-VulkanBackend::VulkanBackend() {}
+VulkanBackend::VulkanBackend()
+{
+}
 
-VulkanBackend::~VulkanBackend() {}
+VulkanBackend::~VulkanBackend()
+{
+}
 
 uint32_t VulkanBackend::MaxUniformBufferSize() const
 {
@@ -124,9 +128,15 @@ uint32_t VulkanBackend::UniformBufferAlignment() const
     return static_cast<uint32_t>(props.limits.minUniformBufferOffsetAlignment);
 }
 
-uint32_t VulkanBackend::FramesInFlight() const { return m_frames.size(); }
+uint32_t VulkanBackend::FramesInFlight() const
+{
+    return m_frames.size();
+}
 
-uint32_t VulkanBackend::CurrentFrameIndex() const { return m_frameIndex; }
+uint32_t VulkanBackend::CurrentFrameIndex() const
+{
+    return m_frameIndex;
+}
 
 float VulkanBackend::SwapchainAspect() const
 {
@@ -145,7 +155,10 @@ math::Orientation VulkanBackend::SwapchainPretransform() const
     return m_swapchain.currentTransform;
 }
 
-bool VulkanBackend::SwapchainRecreated() const { return m_swapchain.isDirty; }
+bool VulkanBackend::SwapchainRecreated() const
+{
+    return m_swapchain.isDirty;
+}
 
 struct QueueIndices
 {
@@ -446,7 +459,10 @@ struct SelectedDevice
     SwapchainSupport swapchainSupport;
     QueueIndices queueIndices;
 
-    bool IsValid() const { return physicalDevice != VK_NULL_HANDLE; }
+    bool IsValid() const
+    {
+        return physicalDevice != VK_NULL_HANDLE;
+    }
 };
 
 static SelectedDevice SelectPhysicalDevice(
@@ -1110,7 +1126,10 @@ void VulkanBackend::Resize(uint32_t windowWidth, uint32_t windowHeight)
     m_swapchain.nextExtent = {windowWidth, windowHeight};
 }
 
-void VulkanBackend::WaitDeviceIdle() { vkDeviceWaitIdle(m_device.device); }
+void VulkanBackend::WaitDeviceIdle()
+{
+    vkDeviceWaitIdle(m_device.device);
+}
 
 void VulkanBackend::Shutdown()
 {

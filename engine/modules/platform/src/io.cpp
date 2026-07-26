@@ -37,7 +37,10 @@ static std::string GetBinaryLocation()
     return ".";
 }
 #else
-static std::string GetBinaryLocation() { return "."; }
+static std::string GetBinaryLocation()
+{
+    return ".";
+}
 #endif
 
 namespace oge::platform

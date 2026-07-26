@@ -23,7 +23,9 @@ class AppRuntime
     AppContext m_ctx;
 
    public:
-    AppRuntime(AppContext ctx) : m_ctx(ctx) {}
+    AppRuntime(AppContext ctx) : m_ctx(ctx)
+    {
+    }
 
     template <typename T>
     oge::runtime::oge_id_type Id()
@@ -36,6 +38,9 @@ class AppRuntime
         return m_ctx.any_factory.Id(name);
     }
 
-    AnythingFactory& AF() { return m_ctx.any_factory; }
+    AnythingFactory& AF()
+    {
+        return m_ctx.any_factory;
+    }
 };
 }  // namespace game

@@ -21,7 +21,9 @@ void TerrainRenderer::onAttach(RendererState& ctx)
                                       (tdesc->chunkViewDistance + 1) * 6);
 }
 
-void TerrainRenderer::onDetach(RendererState& ctx) {}
+void TerrainRenderer::onDetach(RendererState& ctx)
+{
+}
 
 void TerrainRenderer::onUpdate(FRendererState& ctx)
 {

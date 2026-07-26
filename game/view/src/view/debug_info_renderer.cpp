@@ -17,7 +17,9 @@ void DebugInfoRenderer::onAttach(RendererState& ctx)
     debugFont = ctx.assets.LoadASCIIBitmapFont16x6("om_tall_plain_idx.png");
 }
 
-void DebugInfoRenderer::onDetach(RendererState& ctx) {}
+void DebugInfoRenderer::onDetach(RendererState& ctx)
+{
+}
 
 void DebugInfoRenderer::onUpdate(FRendererState& ctx)
 {

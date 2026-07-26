@@ -126,7 +126,9 @@ class OGEContextReadOnly
     entt::registry& m_registry;
 
    public:
-    OGEContextReadOnly(entt::registry& registry) : m_registry(registry) {}
+    OGEContextReadOnly(entt::registry& registry) : m_registry(registry)
+    {
+    }
 
     template <typename T>
     T* Get()
@@ -167,7 +169,9 @@ class AnythingFactory
     std::unordered_map<std::string_view, oge_id_type> idLookup;
 
    public:
-    AnythingFactory(OGEContext& ctx) : registry(ctx) {}
+    AnythingFactory(OGEContext& ctx) : registry(ctx)
+    {
+    }
 
     template <typename T>
     oge_id_type Id()
@@ -175,7 +179,10 @@ class AnythingFactory
         return entt::type_hash<T>::value();
     }
 
-    oge_id_type Id(std::string_view name) { return idLookup[name]; }
+    oge_id_type Id(std::string_view name)
+    {
+        return idLookup[name];
+    }
 
     template <typename T>
     void RegisterId()

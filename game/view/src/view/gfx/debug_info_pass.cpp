@@ -71,7 +71,9 @@ void DebugInfoPass::onAttach(InitDrawContext& ctx)
     indexArena.Flush(backend);
 }
 
-void DebugInfoPass::onDetach(InitDrawContext& ctx) {}
+void DebugInfoPass::onDetach(InitDrawContext& ctx)
+{
+}
 
 void DebugInfoPass::onUpdate(DrawContext& ctx, View view)
 {
