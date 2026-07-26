@@ -89,27 +89,4 @@ net::Buffer NetServer::StartPacket(size_t size)
 {
     return net::Buffer(oge_enet_memory->allocate(size), size);
 }
-
-void NetServer::SendReliable(ENetPeer* peer, net::Buffer data, uint8_t channel)
-{
-    ENetPacket* packet = enet_packet_create(
-        data.Data().data(), data.Data().size(), ENET_PACKET_FLAG_RELIABLE);
-
-    if (enet_peer_send(peer, channel, packet) < 0)
-    {
-        enet_packet_destroy(packet);
-    }
-}
-
-void NetServer::SendUnreliable(ENetPeer* peer, net::Buffer data,
-                               uint8_t channel)
-{
-    ENetPacket* packet =
-        enet_packet_create(data.Data().data(), data.Data().size(), 0);
-
-    if (enet_peer_send(peer, channel, packet) < 0)
-    {
-        enet_packet_destroy(packet);
-    }
-}
 }  // namespace oge::runtime

@@ -20,7 +20,7 @@ namespace game
 Server::Server(float tickInterval)
     : m_tick(tickInterval),
       m_ctx(m_metaWorld),
-      m_am(*m_ctx.Emplace<AssetManager>())
+      m_am(m_ctx.Emplace<AssetManager>())
 {
     SetLogger(new oge::platform::SpdLogger());
     using namespace sim;

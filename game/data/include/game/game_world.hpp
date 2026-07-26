@@ -22,6 +22,11 @@ NET_OBJ(SceneConfig)
         visit(subsystems);
         visit(realtimeSubsystems);
     }
+
+    bool empty()
+    {
+        return subsystems.empty() && realtimeSubsystems.empty();
+    }
 };
 
 }  // namespace game

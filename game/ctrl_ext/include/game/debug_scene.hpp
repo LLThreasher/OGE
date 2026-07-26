@@ -1,13 +1,9 @@
-#include <algorithm>
-#include <memory>
 #include <string>
 
-#include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/game_world.hpp"
 #include "game/input/input_source.hpp"
 #include "game/input/player_input_stream.hpp"
-#include "game/json.hpp"
 #include "game/scene.hpp"
 #include "game/scene_ext.hpp"
 #include "game/scene_runner.hpp"
@@ -25,32 +21,19 @@
 
 namespace game
 {
-class DebugScene3 : public SceneExt
+class DebugScene3 final : public SceneExt
 {
     entt::entity m_cross;
     entt::entity m_player;
     bool usingKeyMouse = false;
 
    public:
+    DECL_ID(DebugScene3)
     DebugScene3(const Def& def) : SceneExt(def)
     {
-        auto it = def.args.find("scene_config");
-        SceneConfig config{};
-        if (it != def.args.end())
+        if (m_sceneConfig.empty())
         {
-            auto jsonConfig = std::get<json::Object>(it->second);
-            for (auto val : std::get<json::Array>(jsonConfig["subsystems"]))
-            {
-                config.subsystems.Add(std::get<int64_t>(val));
-            }
-            for (auto val :
-                 std::get<json::Array>(jsonConfig["realtime_subsystems"]))
-            {
-                config.realtimeSubsystems.Add(std::get<int64_t>(val));
-            }
-        }
-        else
-        {
+            auto& config = m_sceneConfig;
             config.subsystems.Add(Id<sim::SubsystemDebugText>());
             config.subsystems.Add(Id<sim::SubsystemTerrain>());
             config.subsystems.Add(
@@ -68,24 +51,22 @@ class DebugScene3 : public SceneExt
                 Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
         }
 
-        Load(config);
+        Load();
 
         m_renderers.AddStage<view::TerrainRenderer>(AF());
         m_renderers.AddStage<view::DebugInfoRenderer>(AF());
         m_renderers.AddStage<view::UIRenderer>(AF());
         m_renderers.AddStage<view::CameraRenderer>(AF());
 
-        auto assets = AssetContext(def.rctx);
+        auto assets = AssetContext(m_ctx.any_ctx);
         auto& blks =
-            m_world.ctx().get<terrain::BlockRegistry>().GetBlockTextureArray();
+            m_world.ctx().get<terrain::BlockRegistry>().GetBlockTextures();
         for (size_t i = 0; i < blks.size(); ++i)
         {
             GetPasses().GetPass<TerrainPass2>().UpdateBlockTexture(assets,
                                                                    blks[i], i);
         }
 
-        auto vpe =
-            ui::CreateGameView(m_world, {math::vec2{0, 0}, math::vec2{1, 1}});
         m_player = ComponentPlayer::CreatePlayer(m_world, {20.f, 20.f, 20.f});
         {
             ComponentCamera& cam = m_world.get<ComponentCamera>(m_player);
@@ -101,7 +82,9 @@ class DebugScene3 : public SceneExt
                 m_world.get<ComponentPerspectiveCamera>(m_player);
             pcam.fov = math::radians(45.f);
         }
-        m_world.get<view::ViewPanel>(vpe).activeCamera = m_player;
+
+        auto vpe =
+            ui::CreateGameView(m_world, {math::vec2{0, 0}, math::vec2{1, 1}}, m_player);
         m_world.patch<view::ViewPanel>(vpe);
 
         // m_terminalButton = ui::CreateButton(world, context,
@@ -224,7 +207,7 @@ class DebugScene3 : public SceneExt
         SceneExt::Update(std::move(f), sctx);
     }
 
-    void Load(const SceneConfig& _config) override
+    void Load() override
     {
         auto& blocks = m_world.ctx().emplace<terrain::BlockRegistry>();
         blocks.RegisterBlock("dirt", {
@@ -240,7 +223,7 @@ class DebugScene3 : public SceneExt
         auto desc = m_world.ctx().emplace<terrain::TerrainDesc>();
         desc.chunkViewDistance = 1;
 
-        SceneExt::Load(_config);
+        SceneExt::Load();
     }
 };
 }  // namespace game

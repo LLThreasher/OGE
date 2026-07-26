@@ -5,6 +5,7 @@
 
 #include "oge/log.hpp"
 #include "oge/runtime/entt.hpp"
+#include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 struct _ENetPeer;
@@ -39,7 +40,7 @@ struct OnClientReceivePacket
     net::Buffer data;
 };
 
-class NetClient
+class NetClient : protected NetPacketSender
 {
    public:
     NetClient() {}
@@ -61,9 +62,7 @@ class NetClient
 
     net::Buffer StartPacket(size_t size);
 
-    void SendReliable(net::Buffer data, uint8_t channel = 0);
-
-    void SendUnreliable(net::Buffer data, uint8_t channel = 1);
+    void Send(net::Buffer data, SendType sendType, uint8_t channel = 0);
 
    private:
     void OnPacketReceived(uint8_t* data, size_t length)
@@ -74,7 +73,6 @@ class NetClient
    private:
     float connectWaitTime;
     ClientStatus status = ClientStatus::Disconnected;
-    ENetHost* host = nullptr;
     ENetPeer* peer = nullptr;
 
     std::pmr::memory_resource* m_memory;

@@ -41,7 +41,8 @@ entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset,
     return res;
 }
 
-entt::entity CreateGameView(entt::registry& game, const UIRect rect)
+entt::entity CreateGameView(entt::registry& game, const UIRect rect,
+                            entt::entity camera)
 {
     std::unordered_set freeSlots{
         view::GameViewType::Slot0,
@@ -53,12 +54,11 @@ entt::entity CreateGameView(entt::registry& game, const UIRect rect)
     {
         freeSlots.erase(view.activeSlot);
     }
-    if (freeSlots.empty())
-    {
-        assert(false && "too many view panels");
-    }
+    assert(!freeSlots.empty() && "too many view panels");
     auto res = game.create();
-    game.emplace<view::ViewPanel>(res).activeSlot = *freeSlots.begin();
+    game.emplace<view::ViewPanel>(
+        res, view::ViewPanel{.activeSlot = *freeSlots.begin(),
+                             .activeCamera = camera});
     game.emplace<UIRect>(res, rect);
     LOG_INFO("game view created at slot {}",
              static_cast<int>(game.get<view::ViewPanel>(res).activeSlot));

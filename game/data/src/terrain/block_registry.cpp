@@ -46,9 +46,9 @@ void BlockRegistry::RegisterBlock(std::string blockIdName, BlockConfig config)
         if (it == m_blockTextureIds.end())
         {
             auto [newIt, succ] = m_blockTextureIds.insert_or_assign(
-                id, m_blockTextureArray.size());
+                id, m_blockTextures.size());
             it = newIt;
-            m_blockTextureArray.push_back(id);
+            m_blockTextures.push_back(id);
         }
         m_textureSlots[m_nextIdx][i] = it->second;
     }
@@ -75,6 +75,12 @@ void BlockRegistry::RegisterBlock(std::string blockIdName, BlockConfig config)
     }
 
     m_nextIdx += 1;
+}
+
+
+const std::vector<std::string>& BlockRegistry::GetBlockTextures() const
+{
+    return m_blockTextures;
 }
 
 uint16_t BlockRegistry::GetBlockId(const std::string blockIdName) const

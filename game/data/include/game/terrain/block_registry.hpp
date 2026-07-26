@@ -56,22 +56,21 @@ class BlockRegistry
    public:
     BlockRegistry();
     void RegisterBlock(std::string blockIdName, BlockConfig config);
-    const std::vector<std::string>& GetBlockTextureArray()
-    {
-        return m_blockTextureArray;
-    }
+    
     static uint16_t GetBlockId(uint32_t blockValue);
+    static AABBList GetDefaultBlockAABBList();
+
+    const std::vector<std::string>& GetBlockTextures() const;
     uint16_t GetBlockId(const std::string blockIdName) const;
     const std::string& GetBlockDisplayName(uint16_t blockIdx) const;
     bool IsOpaque(uint16_t blockIdx) const;
     const std::array<uint8_t, 6>& GetTextureSlot(uint16_t blockIdx) const;
     AABBList GetBlockAABBList(uint16_t blockIdx) const;
-    static AABBList GetDefaultBlockAABBList();
     float GetBlockFriction(uint16_t blockIdx) const;
 
    private:
     std::unordered_map<std::string, uint32_t> m_blockTextureIds;
-    std::vector<std::string> m_blockTextureArray;
+    std::vector<std::string> m_blockTextures;
     std::unordered_map<std::string, uint16_t> m_idNameToBlockId;
     std::vector<std::string> m_blockDisplayNames;
     std::vector<uint32_t> m_blockFlags;

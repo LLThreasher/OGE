@@ -15,7 +15,8 @@ using namespace oge::runtime::ui;
 
 using oge::runtime::AssetContext;
 
-entt::entity CreateGameView(entt::registry& game, UIRect rect);
+entt::entity CreateGameView(entt::registry& game, UIRect rect,
+                            entt::entity camera = entt::null);
 entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset,
                                  UIRect rect);
 entt::entity CreateButton(entt::registry& game, AssetContext& asset,

@@ -6,6 +6,7 @@
 #include <memory_resource>
 
 #include "enet_interface.hpp"
+#include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 using namespace oge::runtime;
@@ -132,26 +133,7 @@ net::Buffer NetClient::StartPacket(size_t size)
     return net::Buffer(data, size);
 }
 
-void NetClient::SendReliable(net::Buffer data, uint8_t channel)
+void NetClient::Send(net::Buffer data, SendType sendType, uint8_t channel)
 {
-    if (!peer) return;
-
-    ENetPacket* packet = enet_packet_create(
-        data.Data().data(), data.Data().size(), ENET_PACKET_FLAG_RELIABLE);
-    if (enet_peer_send(peer, channel, packet) < 0)
-    {
-        enet_packet_destroy(packet);
-    }
-}
-
-void NetClient::SendUnreliable(net::Buffer data, uint8_t channel)
-{
-    if (!peer) return;
-
-    ENetPacket* packet =
-        enet_packet_create(data.Data().data(), data.Data().size(), 0);
-    if (enet_peer_send(peer, channel, packet) < 0)
-    {
-        enet_packet_destroy(packet);
-    }
+    NetPacketSender::Send(peer, data, sendType, channel);
 }

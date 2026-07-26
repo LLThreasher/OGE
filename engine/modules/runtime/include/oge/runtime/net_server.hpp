@@ -4,6 +4,7 @@
 
 #include "oge/log.hpp"
 #include "oge/runtime/entt.hpp"
+#include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 struct _ENetPeer;
@@ -32,7 +33,7 @@ struct OnServerReceivePacket
     net::Buffer data;
 };
 
-class NetServer
+class NetServer : public NetPacketSender
 {
    public:
     NetServer() {}
@@ -48,10 +49,6 @@ class NetServer
 
     net::Buffer StartPacket(size_t size);
 
-    void SendReliable(ENetPeer* peer, net::Buffer data, uint8_t channel = 0);
-
-    void SendUnreliable(ENetPeer* peer, net::Buffer data, uint8_t channel = 1);
-
    private:
     void OnClientConnected(ENetPeer* peer) { LOG_INFO("Client connected"); }
 
@@ -64,8 +61,5 @@ class NetServer
     {
         LOG_INFO("Server received {} bytes", length);
     }
-
-   private:
-    ENetHost* host = nullptr;
 };
 }  // namespace oge::runtime

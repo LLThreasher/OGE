@@ -2,11 +2,8 @@
 
 #include "game/app_context.hpp"
 #include "game/input/input_source.hpp"
-#include "game/json.hpp"
-#include "game/memory_context.hpp"
 #include "game/scene.hpp"
 #include "game/scene_runner.hpp"
-#include "game/sim/subsystem.hpp"
 #include "game/view/gfx/debug_info_pass.hpp"
 #include "game/view/gfx/terrain_pass2.hpp"
 #include "game/view/gfx/view_executor.hpp"
@@ -30,13 +27,13 @@ class SceneExt : public Scene
 {
     using ViewExecutor =
         view::ViewExecutor<TerrainPass2, UIPass, DebugInfoPass>;
+
     struct Ctx : AppContext
     {
-        OGEContext& ctx;
         AssetContext assets;
 
-        Ctx(AppContext actx, OGEContext& ctx)
-            : AppContext(actx), ctx(ctx), assets(ctx)
+        Ctx(AppContext actx)
+            : AppContext(actx), assets(actx.any_ctx)
         {
         }
     };
@@ -50,9 +47,9 @@ class SceneExt : public Scene
     };
 
     Ctx m_ctx;
+    WindowCtx m_windowCtx;
 
     input::InputPipeline m_inputs;
-    WindowCtx m_windowCtx;
 
     entt::registry m_renderWorld;
     view::RenderPipeline m_renderers;
@@ -60,41 +57,11 @@ class SceneExt : public Scene
     view::SubmissionQueue m_squeue;
     ViewExecutor m_viewExecutor;
 
-    SceneExt(const Def& def)
-        : Scene(def),
-          m_ctx(def.ctx, def.rctx),
-          m_inputs(input::InputContext{m_windowCtx, m_world}),
-          m_renderers(view::RendererState{m_world, m_renderWorld, m_ctx.events,
-                                          m_ctx.memory,
-                                          AssetContext(def.rctx)}),
-          m_squeue(m_ctx.memory.frameBuffer.Resource())
-    {
-        m_viewExecutor.Attach(def.rctx);
-    }
+    SceneExt(const Def& def);
+    virtual ~SceneExt();
+    virtual void Update(Frame f, SceneContext sctx);
 
-    virtual ~SceneExt() { m_viewExecutor.Detach(); }
-
-    virtual void Update(Frame f, SceneContext sctx)
-    {
-        // input processing
-        m_inputs.Update({f.dt, f.is});
-        m_world.ctx().insert_or_assign(f.perfStats);
-
-        // simulation
-        Scene::Update(f, sctx);
-
-        // presentation
-        m_squeue.Clear();
-        m_renderers.Update(view::RendererFrameData{f.dt, m_ctx.assets, m_squeue,
-                                                   m_subsystems.GetAlpha()});
-
-        // window action
-        f.frameAction |= m_windowCtx.frameAction;
-        m_windowCtx.Clear();
-    }
-
-    ViewExecutor& GetPasses() { return m_viewExecutor; }
-
-    void Render(float dt) { m_viewExecutor.Update(dt, m_squeue); }
+    ViewExecutor& GetPasses();
+    void Render(float dt);
 };
 }  // namespace game

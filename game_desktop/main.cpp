@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
 	auto app = game::Client();
 	app.RegisterScene<game::DebugScene3>();
 	app.SwitchToScene<game::DebugScene3>();
-	app.RegisterScene<game::ClientScene>();
+	app.RegisterScene<game::ClientConnScene>();
 	// app.SwitchToScene<game::ClientScene>({{"next_scene", app.Id<game::DebugScene3>()}});
 	window->Run(app);
 	// app.RegisterScene<DebugScene3>();

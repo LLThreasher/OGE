@@ -39,7 +39,7 @@ class SceneRunner
     SceneRunner()
         : m_ctx(m_metaWorld),
           m_anyFactory(m_ctx),
-          m_appCtx(m_anyFactory, m_events, m_memory)
+          m_appCtx(m_ctx, m_anyFactory, m_events, m_memory)
     {
         m_anyFactory.RegisterABC<TSceneBase>();
         RegisterScene<TSceneBase>();
@@ -79,7 +79,7 @@ class SceneRunner
             }
             m_currentScene = m_anyFactory.BuildABC<TSceneBase>(
                 m_nextScene.value(),
-                typename TSceneBase::Def{m_appCtx, m_nextSceneArgs, m_ctx});
+                typename TSceneBase::Def{m_appCtx, m_nextSceneArgs});
             m_nextScene.reset();
         }
         m_currentScene->Update(std::forward<typename TSceneBase::Frame>(f),

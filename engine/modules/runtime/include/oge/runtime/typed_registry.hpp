@@ -145,9 +145,19 @@ class OGEContext : public OGEContextReadOnly
 {
    public:
     template <typename T, typename... Args>
-    T* Emplace(Args... args)
+    T& Emplace(Args... args)
     {
-        return &m_registry.ctx().emplace<T>(args...);
+        return m_registry.ctx().emplace<T>(args...);
+    }
+
+    template <typename T, typename... Args>
+    T& GetOrEmplace(Args... args)
+    {
+        if (m_registry.ctx().contains<T>())
+        {
+            return m_registry.ctx().get<T>();
+        }
+        return m_registry.ctx().emplace<T>(args...);
     }
 };
 

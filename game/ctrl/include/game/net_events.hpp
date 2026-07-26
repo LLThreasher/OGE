@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <span>
@@ -15,6 +16,7 @@
 #include "oge/math.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/net_client.hpp"
+#include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/net_server.hpp"
 #include "oge/runtime/typed_registry.hpp"
@@ -27,11 +29,20 @@ struct ClientNetEvent
     uint8_t id;
     std::span<std::byte> data;
 
-    bool IsChunkStreaming() const { return id == 1; }
+    bool IsChunkStreaming() const
+    {
+        return id == 1;
+    }
 
-    bool IsDelta() const { return id > 1 && ((id & 128) == 0); }
+    bool IsDelta() const
+    {
+        return id > 1 && ((id & 128) == 0);
+    }
 
-    bool IsRPC() const { return (id & 128) != 0; }
+    bool IsRPC() const
+    {
+        return (id & 128) != 0;
+    }
 };
 
 struct ServerNetEvent
@@ -67,7 +78,10 @@ NET_OBJ(PlayerMoveEvent)
     static constexpr uint8_t Id = 2;
     net::Vec2 move;
 
-    NET_OBJ_FN { visit(move); }
+    NET_OBJ_FN
+    {
+        visit(move);
+    }
 };
 
 NET_OBJ(PlayerPanEvent)
@@ -75,7 +89,10 @@ NET_OBJ(PlayerPanEvent)
     static constexpr uint8_t Id = 3;
     net::Vec2 pan;
 
-    NET_OBJ_FN { visit(pan); }
+    NET_OBJ_FN
+    {
+        visit(pan);
+    }
 };
 
 using oge::runtime::OnServerReceiveConnect;
@@ -85,8 +102,6 @@ using oge::runtime::OnServerReceivePacket;
 
 namespace client
 {
-constexpr uint8_t DELTA_BASE = 2;
-constexpr uint8_t RPC_BASE = 128;
 
 struct SendChunkEvent
 {
@@ -108,78 +123,112 @@ struct SendChunkEvent
         buffer.ReadRaw(chunk.data, terrain::CHUNK_SIZE_TOTAL);
     }
 
-    void Apply(entt::dispatcher& dispatcher) { dispatcher.trigger(*this); }
+    void Apply(entt::dispatcher& dispatcher)
+    {
+        dispatcher.trigger(*this);
+    }
 };
 
-NET_OBJ(AddPlayerEvent)
+inline bool IsChunkStreaming(uint8_t id)
 {
-    static constexpr uint8_t Id = RPC_BASE;
-    net::Vec3 pos;
+    return id == SendChunkEvent::Id;
+}
+}  // namespace client
 
-    NET_OBJ_FN { visit(pos); }
-
-    void Apply(entt::dispatcher & dispatcher) { dispatcher.trigger(*this); }
-};
-
-inline bool IsChunkStreaming(uint8_t id) { return id == SendChunkEvent::Id; }
-
-inline bool IsDelta(uint8_t id) { return id >= DELTA_BASE && id < RPC_BASE; }
-
-inline bool IsRPC(uint8_t id) { return id >= RPC_BASE; }
-
-template <typename TComponent>
-struct DeltaPacketHandler
+template <typename T>
+struct EntityStorageTraits
 {
     static void Deserialize(entt::registry& world, net::Buffer& buffer)
     {
         auto entity = buffer.Read<entt::entity>();
-        world.get<TComponent>(entity).Deserialize(buffer);
+        world.get<T>(entity).Deserialize(buffer);
     }
 
     static void Serialize(entt::entity entity, entt::registry& world,
                           net::Buffer& buffer)
     {
         buffer.Write(entity);
-        world.get<TComponent>(entity).Serialize(buffer);
+        world.get<T>(entity).Serialize(buffer);
     }
 
-    static size_t GetSize() { return sizeof(TComponent); }
+    static size_t GetSize(entt::entity entity, entt::registry& world)
+    {
+        return world.get<T>(entity).NetSize();
+    }
 };
 
-using oge::runtime::oge_id_type;
-
-class ServerNetTransportationLayer
+template <typename T>
+struct GlobalStorageTraits
 {
-   public:
-};
-}  // namespace client
+    static void Deserialize(entt::registry& world, net::Buffer& buffer)
+    {
+        world.ctx().get<T>().Deserialize(buffer);
+    }
 
-class IncomingDeltaEventRegistry
+    static void Serialize(entt::registry& world, net::Buffer& buffer)
+    {
+        world.ctx().get<T>().Serialize(buffer);
+    }
+
+    static size_t GetSize(entt::registry& world)
+    {
+        return world.ctx().get<T>().NetSize();
+    }
+};
+
+template <typename TComponent, typename TStorageTraits>
+struct DeltaPacketHandler : private TStorageTraits
+{
+    using TStorageTraits::Deserialize;
+    using TStorageTraits::GetSize;
+    using TStorageTraits::Serialize;
+};
+
+template <typename T>
+using EntityDeltaPacketHandler = DeltaPacketHandler<T, EntityStorageTraits<T>>;
+
+template <typename T>
+using GlobalDeltaPacketHandler = DeltaPacketHandler<T, GlobalStorageTraits<T>>;
+
+class IncomingEventRegistry
 {
     std::vector<void (*)(entt::registry&, net::Buffer&)>
         m_componentHandlersIncoming;
+    uint8_t m_nextEntityComponentId;
+    uint8_t m_nextGlobalComponentId;
 
    public:
+    IncomingEventRegistry(uint8_t entityStart = 2, uint8_t globalStart = 128)
+    {
+        m_componentHandlersIncoming.resize(256);
+    }
+
     template <typename TComponent>
     void RegisterNetComponent()
     {
-        m_componentHandlersIncoming.push_back(
-            client::DeltaPacketHandler<TComponent>::Deserialize);
+        m_componentHandlersIncoming[m_nextEntityComponentId++] =
+            EntityStorageTraits<TComponent>::Deserialize;
+    }
+
+    template <typename TComponent>
+    void RegisterGlobalComponent()
+    {
+        m_componentHandlersIncoming[m_nextGlobalComponentId++] =
+            GlobalStorageTraits<TComponent>::Deserialize;
     }
 
     void HandleIncomingPacket(uint8_t packetId, entt::registry& world,
                               net::Buffer& buffer)
     {
-        assert(packetId - client::DELTA_BASE <
-               m_componentHandlersIncoming.size());
-        m_componentHandlersIncoming[packetId - client::DELTA_BASE](world,
-                                                                   buffer);
+        auto& handler = m_componentHandlersIncoming[packetId];
+        assert(handler);
+        handler(world, buffer);
     }
 };
 
-class ClientNetTransportLayer
+class ClientNetObjectTransportLayer
 {
-    events::IncomingDeltaEventRegistry m_incomingDeltaEventRegistry;
+    events::IncomingEventRegistry m_incomingDeltaEventRegistry;
     entt::registry& m_world;
     entt::dispatcher& m_clientDispatcher;
     entt::dispatcher& m_worldEventDispatcher;
@@ -188,49 +237,47 @@ class ClientNetTransportLayer
     void onClientReceivePacket(oge::runtime::OnClientReceivePacket ctx)
     {
         uint8_t packetId = ctx.data.Read<uint8_t>();
-        if (client::IsChunkStreaming(packetId))
-        {
-            m_worldEventDispatcher.trigger(
-                ctx.data.ReadAndDeserialize<client::SendChunkEvent>());
-        }
-        else if (client::IsDelta(packetId))
-        {
-            m_incomingDeltaEventRegistry.HandleIncomingPacket(packetId, m_world,
-                                                              ctx.data);
-        }
-        else  // if (client::IsRPC(packetId))
-        {
-            switch (packetId) {}
-        }
+        m_incomingDeltaEventRegistry.HandleIncomingPacket(packetId, m_world,
+                                                          ctx.data);
     }
 
-    void onClientConnected(oge::runtime::OnClientConnected ctx) {}
+    void onClientConnected(oge::runtime::OnClientConnected ctx)
+    {
+    }
 
     void onClientConnectionTimeout(oge::runtime::OnClientConnectionTimeout ctx)
     {
     }
 
-    void onClientDisconnected(oge::runtime::OnClientDisconnected ctx) {}
+    void onClientDisconnected(oge::runtime::OnClientDisconnected ctx)
+    {
+    }
 
    public:
-    ClientNetTransportLayer(entt::registry& world,
-                            entt::dispatcher& clientDispatcher,
-                            entt::dispatcher& worldDispatcher)
+    ClientNetObjectTransportLayer(entt::registry& world,
+                                  entt::dispatcher& clientDispatcher,
+                                  entt::dispatcher& worldDispatcher)
         : m_world(world),
           m_clientDispatcher(clientDispatcher),
           m_worldEventDispatcher(worldDispatcher)
     {
         m_clientDispatcher.sink<oge::runtime::OnClientReceivePacket>()
-            .connect<&ClientNetTransportLayer::onClientReceivePacket>(this);
+            .connect<&ClientNetObjectTransportLayer::onClientReceivePacket>(
+                this);
         m_clientDispatcher.sink<oge::runtime::OnClientConnected>()
-            .connect<&ClientNetTransportLayer::onClientConnected>(this);
+            .connect<&ClientNetObjectTransportLayer::onClientConnected>(this);
         m_clientDispatcher.sink<oge::runtime::OnClientConnectionTimeout>()
-            .connect<&ClientNetTransportLayer::onClientConnectionTimeout>(this);
+            .connect<&ClientNetObjectTransportLayer::onClientConnectionTimeout>(
+                this);
         m_clientDispatcher.sink<oge::runtime::OnClientDisconnected>()
-            .connect<&ClientNetTransportLayer::onClientDisconnected>(this);
+            .connect<&ClientNetObjectTransportLayer::onClientDisconnected>(
+                this);
     }
 
-    ~ClientNetTransportLayer() { m_clientDispatcher.disconnect(this); }
+    ~ClientNetObjectTransportLayer()
+    {
+        m_clientDispatcher.disconnect(this);
+    }
 
     template <typename TComponent>
     void RegisterNetComponent()
@@ -238,7 +285,10 @@ class ClientNetTransportLayer
         m_incomingDeltaEventRegistry.RegisterNetComponent<TComponent>();
     }
 
-    void SetPlayerInput(input::PlayerInputStream* in) { m_playerInput = in; }
+    void SetPlayerInput(input::PlayerInputStream* in)
+    {
+        m_playerInput = in;
+    }
 
     void PostUpdate()
     {
@@ -248,44 +298,117 @@ class ClientNetTransportLayer
     }
 };
 
+using oge::runtime::SendType;
+
 class OutgoingDeltaEventRegistry
 {
     struct Entry
     {
-        void (*packetBuilder)(entt::entity, entt::registry&, net::Buffer&);
-        size_t size;
+        void (*packetBuilder)(entt::registry&, entt::entity, net::Buffer&);
+        size_t (*sizeGetter)(entt::registry&, entt::entity);
+        uint8_t channel;
+        SendType sendType;
+        bool isGlobal;
     };
 
     std::vector<Entry> m_componentHandlersOutgoing;
-    uint8_t nextComponentId = 0;
+    std::array<uint8_t, 4> channelToNextComponentId = {};
+    uint8_t m_entityBase;
+    uint8_t m_gloablBase;
+    uint8_t m_nextEntityId = m_entityBase;
+    uint8_t m_nextGlobalId = m_gloablBase;
 
    public:
+    OutgoingDeltaEventRegistry(uint8_t entityStart = 2, uint8_t globalStart = 128)
+        : m_entityBase(entityStart), m_gloablBase(globalStart)
+    {
+    }
+
     template <typename TComponent>
-    void RegisterNetComponent()
+    void RegisterNetComponent(SendType sendType = SendType::Reliable,
+                              size_t channel = 0)
     {
         m_componentHandlersOutgoing.push_back(
-            {client::DeltaPacketHandler<TComponent>::Serialize,
-             client::DeltaPacketHandler<TComponent>::GetSize()},
-            nextComponentId++);
+            {.packetBuilder =
+                 [](entt::registry& world, entt::entity entity,
+                    net::Buffer& buffer)
+             {
+                 EntityStorageTraits<TComponent>::Serialize(entity, world,
+                                                            buffer);
+             },
+             .sizeGetter =
+                 [](entt::registry& world, entt::entity entity)
+             {
+                 return EntityStorageTraits<TComponent>::GetSize(entity, world);
+             },
+             .channel = channel,
+             .sendType = sendType,
+             .isGlobal = false});
+
+        channelToNextComponentId[channel]++;
+    }
+
+    template <typename TComponent>
+    void RegisterGlobalComponent(SendType sendType = SendType::Reliable,
+                                 size_t channel = 0)
+    {
+        m_componentHandlersOutgoing.push_back(
+            {.packetBuilder =
+                 [](entt::registry& world, entt::entity, net::Buffer& buffer)
+             { GlobalStorageTraits<TComponent>::Serialize(world, buffer); },
+             .sizeGetter = [](entt::registry& world, entt::entity)
+             { return GlobalStorageTraits<TComponent>::GetSize(world); },
+             .channel = channel,
+             .sendType = sendType,
+             .isGlobal = true});
+
+        channelToNextComponentId[channel]++;
     }
 
     void ProducePackets(oge::runtime::NetServer& server, ENetPeer* peer,
                         entt::registry& world)
     {
-        for (auto [entity, dirty] : world.view<const DirtyTag>()->each())
+        // ===== Entity components =====
+        for (auto [entity, dirty] : world.view<const DirtyTag>().each())
         {
             for (uint8_t id : dirty.dirtyComponents)
             {
-                auto handler = m_componentHandlersOutgoing[id];
-                auto packet = server.StartPacket(handler.size);
-                handler.packetBuilder(entity, world, packet);
-                server.SendUnreliable(peer, packet);
+                auto& handler = m_componentHandlersOutgoing[id];
+
+                if (handler.isGlobal) continue;
+
+                auto size = handler.sizeGetter(world, entity);
+                auto packet = server.StartPacket(size);
+
+                handler.packetBuilder(world, entity, packet);
+                server.Send(peer, packet, handler.sendType, handler.channel);
+            }
+        }
+
+        // ===== Global components =====
+        if (auto globalDirty = world.ctx().find<const DirtyTag>())
+        {
+            for (uint8_t id : globalDirty->dirtyComponents)
+            {
+                auto& handler = m_componentHandlersOutgoing[id];
+
+                if (!handler.isGlobal) continue;
+
+                // You probably want a global dirty flag check here
+                // Example:
+                // if (!IsGlobalDirty(id)) continue;
+
+                auto size = handler.sizeGetter(world, entt::null);
+                auto packet = server.StartPacket(size);
+                packet.Write(id + m_gloablBase);
+                handler.packetBuilder(world, entt::null, packet);
+                server.Send(peer, packet, handler.sendType, handler.channel);
             }
         }
     }
 };
 
-class ServerNetTransportationLayer
+class ServerNetObjectTransportationLayer
 {
     enum class ClientState : uint32_t
     {
@@ -342,21 +465,27 @@ class ServerNetTransportationLayer
     }
 
    public:
-    ServerNetTransportationLayer(entt::registry& world,
-                                 entt::dispatcher& serverDispatcher)
+    ServerNetObjectTransportationLayer(entt::registry& world,
+                                       entt::dispatcher& serverDispatcher)
         : m_world(world), m_dispatcher(serverDispatcher)
     {
         m_dispatcher.sink<server::OnServerReceiveConnect>()
-            .connect<&ServerNetTransportationLayer::onServerReciveConnect>(
+            .connect<
+                &ServerNetObjectTransportationLayer::onServerReciveConnect>(
                 this);
         m_dispatcher.sink<server::OnServerReceiveDisconnect>()
-            .connect<&ServerNetTransportationLayer::onServerReciveDisconnect>(
+            .connect<
+                &ServerNetObjectTransportationLayer::onServerReciveDisconnect>(
                 this);
         m_dispatcher.sink<server::OnServerReceivePacket>()
-            .connect<&ServerNetTransportationLayer::onServerRecivePacket>(this);
+            .connect<&ServerNetObjectTransportationLayer::onServerRecivePacket>(
+                this);
     }
 
-    ~ServerNetTransportationLayer() { m_dispatcher.disconnect(this); }
+    ~ServerNetObjectTransportationLayer()
+    {
+        m_dispatcher.disconnect(this);
+    }
 
     template <typename TComponent>
     void RegisterNetComponent()

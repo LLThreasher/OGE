@@ -27,14 +27,24 @@ enum class ClientState
 
 class ClientScene : public SceneExt
 {
-    oge_id_type nextSene;
+};
+
+class ClientConnScene : public SceneExt
+{
+    oge_id_type m_nextSene;
 
    public:
-    ClientScene(const Def& def) : SceneExt(def)
+    ClientConnScene(const Def& def) : SceneExt(def)
     {
         auto it = def.args.find("next_scene");
-        assert(it != def.args.end());
-        nextSene = std::get<int64_t>(it->second);
+        if (it == def.args.end())
+        {
+            m_nextSene = Id<ClientScene>();
+        }
+        else
+        {
+            m_nextSene = std::get<int64_t>(it->second);
+        }
     }
 
     void Update(Frame f, SceneContext sctx) override

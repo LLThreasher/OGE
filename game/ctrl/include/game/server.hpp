@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/debug_server_scene.hpp"
+#include "game/server_scene.hpp"
 #include "game/scene.hpp"
 #include "game/scene_runner.hpp"
 #include "game/sim/registry.hpp"
@@ -21,7 +21,7 @@ class Server : public SceneRunner<DebugServerScene>
     AssetManager& m_am;
 
    public:
-    Server(float tickInterval = 1.f / 20.f);
+    Server(float tickInterval = 1.f / 60.f);
     int Run();
 };
 }  // namespace game

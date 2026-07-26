@@ -160,6 +160,14 @@ struct List : Object<List<T>>
     auto end() const { return data.end(); }
 
     void Add(T&& item) { data.push_back(item); }
+
+    template <typename... Args>
+    void EmplaceBack(Args&&... args)
+    {
+        data.emplace_back(args...);
+    }
+
+    auto empty() { return data.empty(); }
 };
 
 #define NET_OBJ(Name) struct Name : public ::oge::runtime::net::Object<Name>

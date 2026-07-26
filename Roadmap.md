@@ -12,6 +12,9 @@
 ## Implementation Checklist
 
 - [ ] Server-Client Protocol
-    - [ ] ClientScene -> wraps SceneExt
-    - [ ] ServerScene -> is Scene
-    - [ ] StandaloneScene -> wraps Scene and SceneExt
+    - [*] ClientScene -> wraps SceneExt
+    - [*] ServerScene -> is Scene
+    - [*] StandaloneScene -> wraps Scene and SceneExt
+    - [*] NetObject synchronization (Component, owned by entity)
+    - [ ] NetEventStream synchronization (Latest & In order)
+    - [ ] Chunk streaming

@@ -23,6 +23,8 @@ class Scene : protected AppRuntime
     sim::SubsystemPipeline m_subsystems;
     sim::RealtimeSubsystemPipeline m_realtimeSubsystems;
 
+    SceneConfig m_sceneConfig = {};
+
    public:
     struct Frame
     {
@@ -33,43 +35,15 @@ class Scene : protected AppRuntime
     {
         AppContext ctx;
         const json::Object& args;
-        OGEContext& rctx;
     };
 
     DECL_ID(Scene)
-    Scene(const Def& def)
-        : AppRuntime(def.ctx),
-          m_subsystems({m_world, def.ctx.events, def.ctx.memory}, 1.f / 30.f),
-          m_realtimeSubsystems({m_world, def.ctx.events, def.ctx.memory})
-    {
-    }
+    Scene(const Def& def);
 
-    virtual ~Scene() {}
-
-    virtual void Update(Frame f, SceneContext sctx)
-    {
-        m_ctx.memory.Update(f.dt);
-        m_subsystems.Update(f.dt);
-        m_realtimeSubsystems.Update(f.dt);
-    }
-
-    virtual void Load(const SceneConfig& config)
-    {
-        for (auto stage : config.subsystems)
-        {
-            m_subsystems.AddStage(m_ctx.any_factory, stage);
-        }
-        for (auto stage : config.realtimeSubsystems)
-        {
-            m_realtimeSubsystems.AddStage(m_ctx.any_factory, stage);
-        }
-    }
-
-    virtual void Unload()
-    {
-        m_subsystems.Clear();
-        m_realtimeSubsystems.Clear();
-    }
+    virtual ~Scene();
+    virtual void Update(Frame f, SceneContext sctx);
+    virtual void Load();
+    virtual void Unload();
 };
 
 }  // namespace game

@@ -11,6 +11,7 @@ namespace game
 using oge::runtime::AnythingFactory;
 struct AppContext
 {
+    oge::runtime::OGEContext& any_ctx;
     AnythingFactory& any_factory;
     entt::dispatcher& events;
     MemoryContext& memory;

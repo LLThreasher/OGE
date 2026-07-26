@@ -19,11 +19,11 @@
 namespace game
 {
 Client::Client()
-    : m_am(*m_ctx.Emplace<AssetManager>()),
-      m_sm(*m_ctx.Emplace<StreamingManager>()),
-      m_ap(*m_ctx.Emplace<AssetPool>()),
-      m_ca(*m_ctx.Emplace<DynamicChunkAllocator>()),
-      m_sa(*m_ctx.Emplace<DynamicSkylineAllocator>()),
+    : m_am(m_ctx.Emplace<AssetManager>()),
+      m_sm(m_ctx.Emplace<StreamingManager>()),
+      m_ap(m_ctx.Emplace<AssetPool>()),
+      m_ca(m_ctx.Emplace<DynamicChunkAllocator>()),
+      m_sa(m_ctx.Emplace<DynamicSkylineAllocator>()),
       SceneRunner()
 {
     using namespace sim;
@@ -38,8 +38,7 @@ void Client::Initialize(WindowHandle* handle)
 {
     auto backend_ptr = oge::graphics::vulkan::CreateVulkanBackend();
     m_backend =
-        m_ctx.Emplace<std::unique_ptr<IGraphicsBackend>>(backend_ptr.release())
-            ->get();
+        m_ctx.Emplace<std::unique_ptr<IGraphicsBackend>>(backend_ptr.release()).get();
     auto& backend = *m_backend;
     backend.Initialize(BackendDesc{handle, FrameTimePreference::VSync});
     m_sm.Initialize(backend);
