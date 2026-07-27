@@ -127,12 +127,6 @@ void NetClient::Shutdown()
     }
 }
 
-net::Buffer NetClient::StartPacket(size_t size)
-{
-    void* data = m_memory->allocate(size);
-    return net::Buffer(data, size);
-}
-
 void NetClient::Send(net::Buffer data, SendType sendType, uint8_t channel)
 {
     NetPacketSender::Send(peer, data, sendType, channel);

@@ -52,8 +52,6 @@ class NetServer : public NetPacketSender
 
     void Shutdown();
 
-    net::Buffer StartPacket(size_t size);
-
    private:
     void OnClientConnected(ENetPeer* peer)
     {

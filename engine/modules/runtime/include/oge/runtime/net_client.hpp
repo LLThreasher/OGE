@@ -68,8 +68,6 @@ class NetClient : protected NetPacketSender
 
     void Shutdown();
 
-    net::Buffer StartPacket(size_t size);
-
     void Send(net::Buffer data, SendType sendType, uint8_t channel = 0);
 
    private:

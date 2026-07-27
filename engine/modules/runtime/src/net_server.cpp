@@ -84,9 +84,4 @@ void NetServer::Shutdown()
         LOG_INFO("Server shutdown");
     }
 }
-
-net::Buffer NetServer::StartPacket(size_t size)
-{
-    return net::Buffer(oge_enet_memory->allocate(size), size);
-}
 }  // namespace oge::runtime

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory_resource>
 #include "oge/runtime/net_serializer.hpp"
 
 struct _ENetPeer;
@@ -18,6 +19,8 @@ enum class SendType
 class NetPacketSender
 {
    public:
+    net::Buffer StartPacket(size_t size);
+
     void Send(ENetPeer* peer, net::Buffer data,
               SendType sendType = SendType::Reliable, uint8_t channel = 0);
 

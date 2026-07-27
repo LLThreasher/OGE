@@ -1,9 +1,16 @@
 #include "oge/runtime/net_packet_sender.hpp"
 
 #include <enet/enet.h>
+#include "enet_interface.hpp"
 
 namespace oge::runtime
 {
+
+net::Buffer NetPacketSender::StartPacket(size_t size)
+{
+    return net::Buffer(oge_enet_memory->allocate(size), size);
+}
+
 void NetPacketSender::Send(ENetPeer* peer, net::Buffer data, SendType sendType,
                            uint8_t channel)
 {
