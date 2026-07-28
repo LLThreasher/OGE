@@ -6,9 +6,9 @@ namespace game::view
 void RegisterRenderers(AnythingFactory& af)
 {
     af.RegisterABC<Renderer>();
-    af.RegisterDrived<Renderer, DebugInfoRenderer>();
-    af.RegisterDrived<Renderer, TerrainRenderer>();
-    af.RegisterDrived<Renderer, CameraRenderer>();
-    af.RegisterDrived<Renderer, UIRenderer>();
+    af.RegisterDerived<Renderer, DebugInfoRenderer>();
+    af.RegisterDerived<Renderer, TerrainRenderer>();
+    af.RegisterDerived<Renderer, CameraRenderer>();
+    af.RegisterDerived<Renderer, UIRenderer>();
 }
 }  // namespace game::view

@@ -53,3 +53,23 @@ class ClientConnScene : public SceneExt
     }
 };
 }  // namespace game
+
+namespace oge::runtime {
+template<>
+struct TypeName<game::ClientScene>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::ClientScene";
+    }
+};
+
+template<>
+struct TypeName<game::ClientConnScene>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::ClientConnScene";
+    }
+};
+}

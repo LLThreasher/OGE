@@ -18,3 +18,14 @@ class SubsystemPhysics : public Subsystem
     void onUpdate(FGameState& ctx) override;
 };
 }  // namespace game::sim
+
+template <game::UpdateType utype>
+struct oge::runtime::TypeName<game::sim::SubsystemPhysics<utype>>
+{
+    static consteval std::string_view Get()
+    {
+        return utype == UpdateType::FixedStep
+                   ? "core::SubsystemPhysics<FixedStep>"
+                   : "core::SubsystemPhysics<Realtime>";
+    }
+};

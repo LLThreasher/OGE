@@ -117,3 +117,44 @@ class UIRenderer : public Renderer
     void onUpdate(FRendererState&) override;
 };
 }  // namespace game::view
+
+namespace oge::runtime
+{
+    using namespace game::view;
+
+template <>
+struct TypeName<Renderer>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::Renderer";
+    }
+};
+
+template <>
+struct TypeName<DebugInfoRenderer>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::DebugInfoRenderer";
+    }
+};
+
+template <>
+struct TypeName<CameraRenderer>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::CameraRenderer";
+    }
+};
+
+template <>
+struct TypeName<UIRenderer>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::UIRenderer";
+    }
+};
+}

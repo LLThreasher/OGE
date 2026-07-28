@@ -74,3 +74,12 @@ class SubsystemTerrain : public Subsystem
 }  // namespace terrain
 using SubsystemTerrain = terrain::SubsystemTerrain;
 }  // namespace game::sim
+
+template <>
+struct oge::runtime::TypeName<game::sim::SubsystemTerrain>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::SubsystemTerrain";
+    }
+};

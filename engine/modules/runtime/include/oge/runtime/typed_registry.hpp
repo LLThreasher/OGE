@@ -15,109 +15,16 @@
 #include "oge/log.hpp"
 #include "oge/runtime/entt.hpp"
 
-#define DECL_ID(Name)                        \
-    static const std::string_view name()     \
-    {                                        \
-        return entt::type_id<Name>().name(); \
-    }
+#define DECL_ID(Name)
 
 namespace oge::runtime
 {
 using oge_id_type = entt::id_type;
 
-class AnythingFactory;
-
 template <typename T>
-concept IsABC = requires { typename T::Def; };
-
-template <typename T, typename ABC>
-concept BuildableToABC = requires() {
-    std::derived_from<T, ABC>;
-    typename T::Def;
-    std::constructible_from<T, typename T::Def&&, AnythingFactory>;
-};
-
-template <typename T, typename ABC>
-concept DefaultBuildableToABC = requires() {
-    std::derived_from<T, ABC>;
-    std::is_default_constructible_v<T>;
-};
-
-template <typename T>
-concept Buildable =
-    requires(const typename T::Def& def, AnythingFactory& factory) {
-        typename T::Def;
-        std::constructible_from<T, typename T::Def&&, AnythingFactory>;
-    };
-
-template <typename T>
-class DefaultABCFactory
+struct TypeName
 {
-    using id_type = oge_id_type;
-
-   public:
-    template <typename Derived>
-        requires DefaultBuildableToABC<Derived, T> || BuildableToABC<Derived, T>
-    void Register(oge_id_type id)
-    {
-        if constexpr (std::derived_from<Derived, T> &&
-                      std::is_default_constructible_v<Derived>)
-        {
-            static_assert(std::is_default_constructible_v<Derived>);
-            default_builders.emplace(id, []() -> std::unique_ptr<T>
-                                     { return std::make_unique<Derived>(); });
-        }
-        else if constexpr (std::constructible_from<Derived,
-                                                   typename Derived::Def&&>)
-        {
-            def_builders.emplace(
-                id,
-                [](entt::any& data) -> std::unique_ptr<T>
-                {
-                    assert(data);
-                    return std::make_unique<Derived>(
-                        std::move(entt::any_cast<typename Derived::Def>(data)));
-                });
-        }
-        else
-        {
-            static_assert(BuildableToABC<Derived, T>);
-            builders.emplace(
-                id,
-                [](entt::any& data, AnythingFactory& af) -> std::unique_ptr<T>
-                {
-                    return std::make_unique<Derived>(
-                        std::move(entt::any_cast<typename Derived::Def>(data)),
-                        af);
-                });
-        }
-    }
-
-    std::unique_ptr<T> Build(id_type id, entt::any data, AnythingFactory& af)
-    {
-        {
-            auto it = default_builders.find(id);
-            if (it != default_builders.end()) return it->second();
-        }
-        {
-            auto it = def_builders.find(id);
-            if (it != def_builders.end()) return it->second(data);
-        }
-        {
-            auto it = builders.find(id);
-            if (it != builders.end()) return it->second(data, af);
-        }
-        return nullptr;
-    }
-
-   private:
-    std::unordered_map<id_type, std::function<std::unique_ptr<T>()>>
-        default_builders;
-    std::unordered_map<id_type, std::function<std::unique_ptr<T>(entt::any&)>>
-        def_builders;
-    std::unordered_map<
-        id_type, std::function<std::unique_ptr<T>(entt::any&, AnythingFactory)>>
-        builders;
+    static constexpr std::string_view Get();
 };
 
 class OGEContextReadOnly
@@ -163,90 +70,213 @@ class OGEContext : public OGEContextReadOnly
     }
 };
 
-class AnythingFactory
+struct ICapability
 {
-    OGEContext& registry;
-    std::unordered_map<std::string_view, oge_id_type> idLookup;
+    virtual ~ICapability() = default;
+};
+
+class CapabilitySet
+{
+    std::unordered_map<std::type_index, std::unique_ptr<ICapability>> caps;
 
    public:
-    AnythingFactory(OGEContext& ctx) : registry(ctx)
+    template <typename T, typename... Args>
+    T& Add(Args&&... args)
     {
+        static_assert(std::is_base_of_v<ICapability, T>);
+        auto ptr = std::make_unique<T>(std::forward<Args>(args)...);
+        T& ref = *ptr;
+        caps[typeid(T)] = std::move(ptr);
+        return ref;
     }
 
     template <typename T>
-    oge_id_type Id()
+    T* Get()
+    {
+        auto it = caps.find(typeid(T));
+        if (it == caps.end()) return nullptr;
+        return static_cast<T*>(it->second.get());
+    }
+};
+
+using FamilyId = oge_id_type;
+
+class TypeRegistry;
+struct FactoryCapability : ICapability
+{
+    using BuildFn = entt::any (*)(entt::any, TypeRegistry&);
+
+    FamilyId family;
+    BuildFn build = nullptr;
+
+    FactoryCapability(FamilyId f, BuildFn b)
+        : family(f), build(b) {}
+};
+
+struct TypeDescriptor
+{
+    std::string name;
+    oge_id_type localId;
+
+    CapabilitySet capabilities;
+};
+
+class TypeRegistry
+{
+    OGEContext& ctx;
+
+    std::unordered_map<std::string, TypeDescriptor> byName;
+    std::unordered_map<oge_id_type, TypeDescriptor*> byId;
+
+    std::unordered_map<std::string, FamilyId> familyLookup;
+
+   public:
+    TypeRegistry(OGEContext& c) : ctx(c)
+    {
+    }
+
+    // ----------------------------
+    // Family registration
+    // ----------------------------
+
+    FamilyId RegisterFamily(std::string_view name)
+    {
+        oge_id_type id = entt::hashed_string{name.data()}.value();
+        familyLookup[std::string(name)] = id;
+        return id;
+    }
+
+    FamilyId GetFamily(std::string_view name) const
+    {
+        return familyLookup.at(std::string(name));
+    }
+
+    // ----------------------------
+    // Type identity
+    // ----------------------------
+
+    template <typename T>
+    oge_id_type Id() const
     {
         return entt::type_hash<T>::value();
     }
 
-    oge_id_type Id(std::string_view name)
+    oge_id_type Id(std::string_view name) const
     {
-        return idLookup[name];
+        return byName.at(std::string(name)).localId;
     }
 
-    template <typename T>
-    void RegisterId()
-    {
-        LOG_INFO("[AF] registering {} as {}", T::name(), Id<T>());
-        idLookup[T::name()] = Id<T>();
-    }
+    // ----------------------------
+    // Type registration
+    // ----------------------------
 
     template <typename T>
+    TypeDescriptor& RegisterType()
+    {
+        std::string name = std::string(TypeName<T>::Get());
+        oge_id_type id = Id<T>();
+
+        TypeDescriptor desc;
+        desc.name = name;
+        desc.localId = id;
+
+        auto [it, inserted] = byName.emplace(name, std::move(desc));
+        byId[id] = &it->second;
+
+        LOG_INFO("[TR] Registered type {} as {}", name, id);
+
+        return it->second;
+    }
+
+    // ----------------------------
+    // ABC Base registration
+    // ----------------------------
+
+    template <typename TBase>
     void RegisterABC()
     {
-        LOG_INFO("[AF] registering ABC {} as {}", T::name(), Id<T>());
-        registry.Emplace<DefaultABCFactory<T>>();
-        RegisterId<T>();
+        RegisterFamily(TypeName<TBase>::Get());
+        RegisterType<TBase>();  // optional
     }
 
-    template <typename TBase, typename TDrived>
-        requires IsABC<TBase> && BuildableToABC<TDrived, TBase> ||
-                     DefaultBuildableToABC<TDrived, TBase>
-                 void RegisterDrived()
-    {
-        oge_id_type id = Id<TDrived>();
-        LOG_INFO("[AF] registering Derived {} as {}", TDrived::name(), id);
-        registry.Get<DefaultABCFactory<TBase>>()->template Register<TDrived>(
-            id);
-        RegisterId<TDrived>();
-    }
+    // ----------------------------
+    // Derived registration
+    // ----------------------------
 
-    template <typename T>
-    std::unique_ptr<T> BuildABC(oge_id_type name, entt::any def = {})
+    template <typename TBase, typename TDerived>
+    static entt::any BuildImpl(entt::any def, TypeRegistry& af)
     {
-        LOG_DEBUG("adding ABC with id {}", name);
-        auto factory = registry.Get<DefaultABCFactory<T>>();
-        assert(factory);
-        return factory->Build(name, def, *this);
-    }
-
-    template <typename T>
-        requires IsABC<T>
-    std::vector<std::unique_ptr<T>> BuildABCVec(
-        const std::vector<oge_id_type>& defs)
-    {
-        std::vector<std::unique_ptr<T>> res;
-        typename T::Def def{};
-        res.reserve(defs.size());
-        for (const auto& id : defs)
+        std::unique_ptr<TBase> ptr;
+        if constexpr (std::is_default_constructible_v<TDerived>)
         {
-            res.push_back(this->BuildABC<T>(id, def));
+            ptr = std::make_unique<TDerived>();
         }
-        return res;
+        else if constexpr (std::is_constructible_v<TDerived, typename TDerived::Def>) {
+            ptr = std::make_unique<TDerived>(entt::any_cast<typename TDerived::Def>(def));
+        }
+        else
+        {
+            ptr = std::make_unique<TDerived>(entt::any_cast<typename TDerived::Def>(def), af);
+        }
+        return ptr;
     }
 
-    template <typename T>
-        requires IsABC<T>
-    std::vector<std::unique_ptr<T>> BuildABCVec(
-        const std::vector<std::tuple<oge_id_type, const typename T::Def>>& defs)
+    template <typename TBase, typename TDerived>
+    void RegisterDerived()
     {
-        std::vector<std::unique_ptr<T>> res;
-        res.reserve(defs.size());
-        for (const auto& [id, def] : defs)
-        {
-            res.push_back(BuildABC<T>(id, def));
-        }
-        return res;
+        auto& desc = RegisterType<TDerived>();
+
+        FamilyId family = GetFamily(TypeName<TBase>::Get());
+
+        desc.capabilities.template Add<FactoryCapability>(
+            FactoryCapability{family, &BuildImpl<TBase, TDerived>});
+
+        LOG_INFO("[TR] Registered derived {} for family {}",
+                 TypeName<TDerived>::Get(), TypeName<TBase>::Get());
+    }
+
+    // ----------------------------
+    // Runtime build (non-template)
+    // ----------------------------
+
+    entt::any Build(FamilyId family, oge_id_type typeId, entt::any def = {})
+    {
+        auto it = byId.find(typeId);
+        if (it == byId.end()) return nullptr;
+
+        auto* factory = it->second->capabilities.Get<FactoryCapability>();
+
+        if (!factory || factory->family != family) return nullptr;
+
+        return factory->build(def, *this);
+    }
+
+    // ----------------------------
+    // Typed wrapper (safe usage)
+    // ----------------------------
+
+    template <typename TBase>
+    std::unique_ptr<TBase> BuildABC(oge_id_type typeId, entt::any def = {})
+    {
+        FamilyId family = GetFamily(TypeName<TBase>::Get());
+
+        auto raw = Build(family, typeId, def);
+        if (!raw) return nullptr;
+
+        return entt::any_cast<std::unique_ptr<TBase>>(std::move(raw));
+    }
+
+    // ----------------------------
+    // Descriptor access
+    // ----------------------------
+
+    TypeDescriptor* GetDescriptor(oge_id_type id)
+    {
+        auto it = byId.find(id);
+        if (it == byId.end()) return nullptr;
+        return it->second;
     }
 };
+
+using AnythingFactory = TypeRegistry;
 }  // namespace oge::runtime

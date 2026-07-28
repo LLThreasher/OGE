@@ -46,3 +46,14 @@ class DebugServerScene final : public Scene
     }
 };
 }  // namespace game
+
+namespace oge::runtime {
+template<>
+struct TypeName<game::DebugServerScene>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::DebugServerScene";
+    }
+};
+}

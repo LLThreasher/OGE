@@ -136,3 +136,44 @@ class InputPipeline : public FramePipeline<InputSource, InputFrame>
     }
 };
 };  // namespace game::input
+
+namespace oge::runtime
+{
+    using namespace game::input;
+
+template <>
+struct TypeName<InputSource>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::InputSource";
+    }
+};
+
+template <>
+struct TypeName<UIDragInput>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::UIDragInput";
+    }
+};
+
+template <>
+struct TypeName<WidgetInput>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::WidgetInput";
+    }
+};
+
+template <>
+struct TypeName<KeyMouseInput>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::KeyMouseInput";
+    }
+};
+}

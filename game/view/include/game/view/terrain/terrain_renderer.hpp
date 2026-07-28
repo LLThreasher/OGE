@@ -160,3 +160,12 @@ class TerrainRenderer : public Renderer
 }  // namespace terrain
 using TerrainRenderer = terrain::TerrainRenderer;
 }  // namespace game::view
+
+template <>
+struct oge::runtime::TypeName<::game::view::TerrainRenderer>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::TerrainRenderer";
+    }
+};

@@ -60,7 +60,7 @@ class DebugScene3 final : public SceneExt
 
         auto assets = AssetContext(m_ctx.any_ctx);
         auto& blks =
-            m_world.ctx().get<terrain::BlockRegistry>().GetBlockTextures();
+            m_world.ctx().get<::game::terrain::BlockRegistry>().GetBlockTextures();
         for (size_t i = 0; i < blks.size(); ++i)
         {
             GetPasses().GetPass<TerrainPass2>().UpdateBlockTexture(assets,
@@ -209,7 +209,7 @@ class DebugScene3 final : public SceneExt
 
     void Load() override
     {
-        auto& blocks = m_world.ctx().emplace<terrain::BlockRegistry>();
+        auto& blocks = m_world.ctx().emplace<::game::terrain::BlockRegistry>();
         blocks.RegisterBlock("dirt", {
                                          "Dirt",
                                          "dirt.png",
@@ -218,12 +218,23 @@ class DebugScene3 final : public SceneExt
         blocks.RegisterBlock("wood", {"Wood", "wood_plank.png", 1});
         blocks.RegisterBlock("stone", {"Stone", "green_stone.png", 1});
 
-        m_world.ctx().emplace<terrain::TerrainView>();
+        m_world.ctx().emplace<::game::terrain::TerrainView>();
 
-        auto desc = m_world.ctx().emplace<terrain::TerrainDesc>();
+        auto desc = m_world.ctx().emplace<::game::terrain::TerrainDesc>();
         desc.chunkViewDistance = 1;
 
         SceneExt::Load();
     }
 };
 }  // namespace game
+
+namespace oge::runtime {
+template<>
+struct TypeName<game::DebugScene3>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::DebugScene3";
+    }
+};
+}

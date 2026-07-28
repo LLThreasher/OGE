@@ -64,3 +64,14 @@ class SceneExt : public Scene
     void Render(float dt);
 };
 }  // namespace game
+
+namespace oge::runtime {
+template<>
+struct TypeName<game::SceneExt>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::SceneExt";
+    }
+};
+}

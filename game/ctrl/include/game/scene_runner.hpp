@@ -50,7 +50,7 @@ class SceneRunner
         requires std::derived_from<TScene, TSceneBase>
     void RegisterScene()
     {
-        m_anyFactory.RegisterDrived<TSceneBase, TScene>();
+        m_anyFactory.RegisterDerived<TSceneBase, TScene>();
     }
 
     template <typename TScene>

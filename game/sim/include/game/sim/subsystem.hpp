@@ -136,3 +136,49 @@ class SubsystemPlayer : public Subsystem
     template class SysName<UpdateType::Realtime>;
 
 }  // namespace game::sim
+
+namespace oge::runtime
+{
+using ::game::UpdateType;
+using namespace ::game::sim;
+
+template <>
+struct TypeName<Subsystem>
+{
+    static constexpr std::string_view Get()
+    {
+        return "core::Subsystem";
+    }
+};
+
+template <>
+struct TypeName<SubsystemDebugText>
+{
+    static constexpr std::string_view Get()
+    {
+        return "core::SubsystemDebugText";
+    }
+};
+
+template <UpdateType utype>
+struct TypeName<SubsystemCreature<utype>>
+{
+    static constexpr std::string_view Get()
+    {
+        return utype == UpdateType::FixedStep
+                   ? "core::SubsystemTerrain<FixedStep>"
+                   : "core::SubsystemTerrain<Realtime>";
+    }
+};
+
+template <UpdateType utype>
+struct TypeName<SubsystemPlayer<utype>>
+{
+    static constexpr std::string_view Get()
+    {
+        return utype == UpdateType::FixedStep
+                   ? "core::SubsystemPlayer<FixedStep>"
+                   : "core::SubsystemPlayer<Realtime>";
+    }
+};
+}  // namespace oge::runtime

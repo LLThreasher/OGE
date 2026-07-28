@@ -47,3 +47,14 @@ class Scene : protected AppRuntime
 };
 
 }  // namespace game
+
+namespace oge::runtime {
+template<>
+struct TypeName<game::Scene>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::Scene";
+    }
+};
+}
