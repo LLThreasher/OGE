@@ -1,16 +1,11 @@
 #pragma once
 #include <algorithm>
-#include <concepts>
-#include <functional>
 #include <memory>
 #include <type_traits>
-#include <unordered_map>
 #include <vector>
 
-#include "oge/log.hpp"
 #include "oge/runtime/tick_scheduler.hpp"
 #include "oge/runtime/typed_registry.hpp"
-#include "oge/texture_data.hpp"
 
 namespace oge::runtime
 {

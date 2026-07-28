@@ -14,6 +14,8 @@ template <typename T, size_t Capacity = 256>
 class DiscreteEventStream : public RingBuffer<T, Capacity>
 {
    public:
+    static constexpr size_t MCapacity = Capacity;
+    using TEvent = T;
     using Base = RingBuffer<T, Capacity>;
     using Cursor = typename Base::Index;
 

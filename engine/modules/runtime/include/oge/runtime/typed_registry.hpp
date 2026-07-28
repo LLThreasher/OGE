@@ -1,9 +1,7 @@
 #pragma once
 
 #include <cassert>
-#include <concepts>
 #include <cstddef>
-#include <functional>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -125,6 +123,7 @@ class TypeRegistry
 {
     OGEContext& ctx;
 
+    std::vector<TypeDescriptor> descs;
     std::unordered_map<std::string, TypeDescriptor> byName;
     std::unordered_map<oge_id_type, TypeDescriptor*> byId;
 
@@ -133,6 +132,11 @@ class TypeRegistry
    public:
     TypeRegistry(OGEContext& c) : ctx(c)
     {
+    }
+
+    std::vector<TypeDescriptor>& GetAll()
+    {
+        return descs;
     }
 
     // ----------------------------
