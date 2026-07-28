@@ -7,13 +7,9 @@
 #include "oge/math.hpp"
 #include "oge/runtime/entt.hpp"
 
-namespace game::math
-{
-using namespace oge::math;
-}
-
 namespace game
 {
+namespace math = ::oge::math;
 using oge::AABB;
 
 struct DirtyTag

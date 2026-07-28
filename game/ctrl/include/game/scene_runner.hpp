@@ -5,7 +5,6 @@
 #include <optional>
 #include <utility>
 
-#include "entt/core/type_info.hpp"
 #include "game/app_context.hpp"
 #include "game/frame_perf.hpp"
 #include "game/json.hpp"

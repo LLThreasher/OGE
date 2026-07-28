@@ -4,13 +4,10 @@
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/ui/objects.hpp"
 
-namespace game::math
-{
-using namespace oge::math;
-}
 
 namespace game::ui
 {
+namespace math = ::oge::math;
 using namespace oge::runtime::ui;
 
 using oge::runtime::AssetContext;

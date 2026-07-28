@@ -3,19 +3,13 @@
 #include <cstdint>
 
 #include "oge/event_stream.hpp"
-#include "oge/input/raw_input_stream.hpp"
 #include "oge/math.hpp"
-
-namespace game
-{
-namespace math
-{
-using namespace oge::math;
-}
-}  // namespace game
+#include "oge/runtime/net_serializer.hpp"
 
 namespace game::input
 {
+namespace math = ::oge::math;
+namespace net = ::oge::runtime::net;
 using oge::AccumulativeEventStream;
 using oge::DiscreteEventStream;
 
@@ -26,10 +20,10 @@ enum class PlayerAction : uint8_t
     Jump,
 };
 
-struct PlayerInputEvent
+NET_OBJ(PlayerInputEvent)
 {
-    math::vec2 actionPos = {};
-    uint8_t actionMask = 0;
+    net::Vec2 actionPos = {};
+    net::UInt8 actionMask = 0;
 
     PlayerInputEvent()
     {
@@ -63,6 +57,26 @@ struct PlayerInputEvent
     inline void unset()
     {
         actionMask &= ~(1 << static_cast<uint32_t>(action));
+    }
+
+    NET_OBJ_FN
+    {
+        visit(actionPos);
+        visit(actionMask);
+    }
+};
+
+NET_OBJ(PlayerInputFrame)
+{
+    net::List<PlayerInputEvent> inputEvents;
+    net::Vec2 moveDelta;
+    net::Vec2 panDelta;
+
+    NET_OBJ_FN
+    {
+        visit(inputEvents);
+        visit(moveDelta);
+        visit(panDelta);
     }
 };
 

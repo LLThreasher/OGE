@@ -4,14 +4,13 @@
 #include "oge/point3.hpp"
 #include "oge/rect.hpp"
 #include "oge/runtime/gfx/commands.hpp"
+#include "oge/math.hpp"
 
-namespace game::math
+namespace game
 {
-using namespace oge::math;
-}
-
-namespace game::view::gfx
+namespace view::gfx
 {
+namespace math = ::oge::math;
 using oge::Point3;
 using oge::runtime::GPUChunkedAllocation;
 
@@ -93,3 +92,4 @@ class RequiresVPTransform
 };
 
 }  // namespace game::view::gfx
+}

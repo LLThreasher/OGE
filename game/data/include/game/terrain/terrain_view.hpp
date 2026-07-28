@@ -7,15 +7,12 @@
 #include "defs.hpp"
 #include "oge/point3.hpp"
 #include "oge/pool.hpp"
+#include "oge/math.hpp"
 #include "oge/runtime/entt.hpp"
-
-namespace game::math
-{
-using namespace oge::math;
-}
 
 namespace game
 {
+namespace math = ::oge::math;
 namespace sim::terrain
 {
 class SubsystemTerrain;

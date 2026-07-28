@@ -154,9 +154,19 @@ class Object
 };
 
 template <typename T>
-struct List : Object<List<T>>
+struct List
 {
     std::pmr::vector<T> data;
+
+    constexpr uint64_t Size()
+    {
+        uint64_t res = 0;
+        for (const auto& val : data)
+        {
+            res += val.Size();
+        }
+        return res;
+    }
 
     void Serialize(Buffer& buffer)
     {
@@ -208,7 +218,7 @@ struct List : Object<List<T>>
         data.emplace_back(args...);
     }
 
-    auto empty()
+    bool empty()
     {
         return data.empty();
     }

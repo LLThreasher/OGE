@@ -124,14 +124,15 @@ class TypeRegistry
     OGEContext& ctx;
 
     std::vector<TypeDescriptor> descs;
-    std::unordered_map<std::string, TypeDescriptor> byName;
-    std::unordered_map<oge_id_type, TypeDescriptor*> byId;
+    std::unordered_map<std::string, size_t> byName;
+    std::unordered_map<oge_id_type, size_t> byId;
 
     std::unordered_map<std::string, FamilyId> familyLookup;
 
    public:
     TypeRegistry(OGEContext& c) : ctx(c)
     {
+        descs.reserve(1024);
     }
 
     std::vector<TypeDescriptor>& GetAll()
@@ -167,7 +168,7 @@ class TypeRegistry
 
     oge_id_type Id(std::string_view name) const
     {
-        return byName.at(std::string(name)).localId;
+        return descs[byName.at(std::string(name))].localId;
     }
 
     // ----------------------------
@@ -180,16 +181,24 @@ class TypeRegistry
         std::string name = std::string(TypeName<T>::Get());
         oge_id_type id = Id<T>();
 
+        auto _it = byId.find(id);
+        if (_it != byId.end())
+        {
+            return descs[_it->second];
+        }
+
         TypeDescriptor desc;
         desc.name = name;
         desc.localId = id;
 
-        auto [it, inserted] = byName.emplace(name, std::move(desc));
-        byId[id] = &it->second;
+        descs.push_back(std::move(desc));
+
+        auto [it, inserted] = byName.emplace(name, descs.size() - 1);
+        byId.emplace(id, descs.size() - 1);
 
         LOG_INFO("[TR] Registered type {} as {}", name, id);
 
-        return it->second;
+        return descs.back();
     }
 
     // ----------------------------
@@ -248,7 +257,7 @@ class TypeRegistry
         auto it = byId.find(typeId);
         if (it == byId.end()) return nullptr;
 
-        auto* factory = it->second->capabilities.Get<FactoryCapability>();
+        auto* factory = descs[it->second].capabilities.Get<FactoryCapability>();
 
         if (!factory || factory->family != family) return nullptr;
 
@@ -278,7 +287,7 @@ class TypeRegistry
     {
         auto it = byId.find(id);
         if (it == byId.end()) return nullptr;
-        return it->second;
+        return &descs[it->second];
     }
 };
 

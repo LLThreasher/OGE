@@ -3,9 +3,6 @@
 #include <concepts>
 #include <type_traits>
 
-#include "entt/core/any.hpp"
-#include "entt/core/fwd.hpp"
-#include "entt/entity/fwd.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
@@ -28,7 +25,7 @@ struct EntityStorageTraits
     static size_t GetSize(entt::entity entity, entt::registry& world)
     {
         auto& comp = world.get<T>(entity);
-        return comp.NetSize();  // explicit contract
+        return comp.Size();
     }
 
     static void Serialize(entt::entity entity, entt::registry& world,
