@@ -121,7 +121,8 @@ class TerrainMeshScheduler
                                entt::dispatcher& events);
     void SubmitVisibleChunks(const TerrainData& data,
                              TerrainPresentationData& pdata,
-                             const entt::registry& tctx,
+                             const entt::registry& uiWorld,
+                             const entt::registry& gameWorld,
                              ViewSubmissionGroup<View> fd);
 
    private:

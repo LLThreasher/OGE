@@ -68,6 +68,12 @@ class OGEContext : public OGEContextReadOnly
         }
         return m_registry.ctx().emplace<T>(args...);
     }
+
+    template <typename T>
+    bool Erase()
+    {
+        return m_registry.ctx().erase<T>();
+    }
 };
 
 struct ICapability

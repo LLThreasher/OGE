@@ -5,11 +5,29 @@
 
 namespace game
 {
+using oge::runtime::OnServerReceiveConnect;
+using oge::runtime::OnServerReceiveDisconnect;
+using oge::runtime::OnServerReceivePacket;
 
 class DebugServerScene final : public Scene
 {
     entt::dispatcher m_serverEventDispatcher;
     oge::runtime::NetServer& m_netServer;
+
+    void onServerRecieveConnect(OnServerReceiveConnect c)
+    {
+
+    }
+
+    void onServerReceiveDisconnect(OnServerReceiveDisconnect c)
+    {
+        
+    }
+
+    void onServerReceivePacket(OnServerReceivePacket p)
+    {
+        
+    }
 
    public:
     DebugServerScene(const Def& def)
@@ -28,11 +46,15 @@ class DebugServerScene final : public Scene
                 maxClients = std::get<int64_t>(it->second);
         }
         m_netServer.Initialize(port, maxClients);
+        m_serverEventDispatcher.sink<OnServerReceiveConnect>().connect<&DebugServerScene::onServerRecieveConnect>(this);
+        m_serverEventDispatcher.sink<OnServerReceiveDisconnect>().connect<&DebugServerScene::onServerReceiveDisconnect>(this);
+        m_serverEventDispatcher.sink<OnServerReceivePacket>().connect<&DebugServerScene::onServerReceivePacket>(this);
     }
 
     ~DebugServerScene()
     {
         m_netServer.Shutdown();
+        m_ctx.any_ctx.Erase<oge::runtime::NetServer>();
     }
 
     void Update(Frame f, SceneContext sctx) override

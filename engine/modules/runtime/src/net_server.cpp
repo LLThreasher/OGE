@@ -55,10 +55,13 @@ void NetServer::Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs)
             case ENET_EVENT_TYPE_RECEIVE:
                 OnPacketReceived(event.peer, event.packet->data,
                                  event.packet->dataLength);
-                dispatcher.trigger<OnServerReceivePacket>(
-                    {event.peer, event.peer->connectID,
-                     net::Buffer{event.packet->data, event.packet->dataLength}
-                         .ToReadOnly()});
+                {
+                    auto buffer = net::Buffer{event.packet->data,
+                                              event.packet->dataLength}.ToReadOnly();
+                    dispatcher.trigger<OnServerReceivePacket>(
+                        {event.peer, event.peer->connectID,
+                         &buffer});
+                }
                 enet_packet_destroy(event.packet);
                 break;
 

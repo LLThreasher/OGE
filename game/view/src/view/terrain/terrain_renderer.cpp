@@ -2,6 +2,7 @@
 
 #include <limits>
 
+#include "entt/entity/fwd.hpp"
 #include "game/components.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "game/view/renderer.hpp"
@@ -35,7 +36,7 @@ void TerrainRenderer::onUpdate(FRendererState& ctx)
         ctx.memory.frameBuffer.Resource());
     m_terrainUploader.UploadTerrain(m_terrainPData, ctx.assets);
     m_terrainMeshScheduler.SubmitVisibleChunks(
-        terrainData, m_terrainPData, ctx.world,
+        terrainData, m_terrainPData, ctx.uiWorld, ctx.world,
         ctx.submissionQueue.View<CmdDrawTerrainMeshOpaque>());
 }
 
@@ -185,7 +186,8 @@ static bool IsVisibleToPlayer(Point3 chunkCoord, const Frustum& frustum)
 
 void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data,
                                                TerrainPresentationData& pdata,
-                                               const entt::registry& tctx,
+                                               const entt::registry& uiWorld,
+                                               const entt::registry& gameWorld,
                                                ViewSubmissionGroup<View> fd)
 {
     using namespace oge::graphics;
@@ -193,9 +195,9 @@ void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data,
 
     playerToView.clear();
     uint32_t baseView = 0;
-    for (auto [entity, view] : tctx.view<ViewPanel>().each())
+    for (auto [entity, view] : uiWorld.view<ViewPanel>().each())
     {
-        if (!tctx.all_of<ComponentPlayer>(view.activeCamera))
+        if (!gameWorld.all_of<ComponentPlayer>(view.activeCamera))
         {
             baseView |= static_cast<uint32_t>(view.activeSlot);
         }
@@ -214,10 +216,10 @@ void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data,
                                          chunk->Coords);
     }
 
-    for (auto player : tctx.view<ComponentPlayer>())
+    for (auto player : gameWorld.view<ComponentPlayer>())
     {
-        auto& cam = tctx.get<ComponentCamera>(player);
-        auto& pcam = tctx.get<ComponentPerspectiveCamera>(player);
+        auto& cam = gameWorld.get<ComponentCamera>(player);
+        auto& pcam = gameWorld.get<ComponentPerspectiveCamera>(player);
         Frustum frustum = BuildFrustumGeometric(cam, pcam);
 
         auto it = playerToView.find(player);

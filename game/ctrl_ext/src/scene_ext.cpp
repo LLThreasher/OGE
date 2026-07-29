@@ -5,9 +5,9 @@ using namespace game;
 SceneExt::SceneExt(const Def& def)
     : Scene(def),
       m_ctx(def.ctx),
-      m_inputs(input::InputContext{m_windowCtx, m_world}),
-      m_renderers(view::RendererState{m_world, m_renderWorld, m_ctx.events,
-                                      m_ctx.memory,
+      m_inputs(input::InputContext{m_windowCtx, m_uiWorld}),
+      m_renderers(view::RendererState{m_world, m_uiWorld, m_renderWorld,
+                                      m_ctx.events, m_ctx.memory,
                                       AssetContext(def.ctx.any_ctx)}),
       m_squeue(m_ctx.memory.frameBuffer.Resource())
 {

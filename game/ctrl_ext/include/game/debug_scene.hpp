@@ -84,8 +84,8 @@ class DebugScene3 final : public SceneExt
         }
 
         auto vpe = ui::CreateGameView(
-            m_world, {math::vec2{0, 0}, math::vec2{1, 1}}, m_player);
-        m_world.patch<view::ViewPanel>(vpe);
+            m_uiWorld, {math::vec2{0, 0}, math::vec2{1, 1}}, m_player);
+        m_uiWorld.patch<view::ViewPanel>(vpe);
 
         // m_terminalButton = ui::CreateButton(world, context,
         // {math::vec2{0.f, 0.f}, math::vec2{0.1f, 0.1f}});
@@ -122,19 +122,19 @@ class DebugScene3 final : public SceneExt
         auto scaledX = 0.3f;
         auto scaledY = scaledX * assets.backend.SwapchainAspect();
 
-        auto lookWidget = m_world.create();
-        m_world.emplace<ui::UIRect>(lookWidget, math::vec2{0.0f, 0.0f},
+        auto lookWidget = m_uiWorld.create();
+        m_uiWorld.emplace<ui::UIRect>(lookWidget, math::vec2{0.0f, 0.0f},
                                     math::vec2{1.0f, 1.0f});
-        m_world.emplace<ui::UIZLevel>(lookWidget, 0);
-        m_world.emplace<ui::UIRaycastTarget>(lookWidget);
+        m_uiWorld.emplace<ui::UIZLevel>(lookWidget, 0);
+        m_uiWorld.emplace<ui::UIRaycastTarget>(lookWidget);
 
-        auto mvWidget = m_world.create();
-        m_world.emplace<ui::UIRect>(mvWidget, math::vec2{0.0f, 1.f - scaledY},
+        auto mvWidget = m_uiWorld.create();
+        m_uiWorld.emplace<ui::UIRect>(mvWidget, math::vec2{0.0f, 1.f - scaledY},
                                     math::vec2{scaledX, scaledY});
-        m_world.emplace<ui::UIZLevel>(mvWidget, 1);
-        m_world.emplace<ui::UIRaycastTarget>(mvWidget);
+        m_uiWorld.emplace<ui::UIZLevel>(mvWidget, 1);
+        m_uiWorld.emplace<ui::UIRaycastTarget>(mvWidget);
 
-        m_world.emplace<InputSourceWidget>(m_player, mvWidget, lookWidget);
+        m_uiWorld.emplace<InputSourceWidget>(m_player, mvWidget, lookWidget);
 
         auto& pcam = m_world.get<const ComponentPerspectiveCamera>(m_player);
         auto m_widgetInputDef = input::WidgetInput::Def{

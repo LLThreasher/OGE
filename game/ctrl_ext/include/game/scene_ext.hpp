@@ -50,6 +50,7 @@ class SceneExt : public Scene
 
     input::InputPipeline m_inputs;
 
+    entt::registry m_uiWorld;
     entt::registry m_renderWorld;
     view::RenderPipeline m_renderers;
 

@@ -31,22 +31,22 @@ static ComponentCamera interpolate_and_replace(ComponentCamera& a,
 
 void CameraRenderer::onAttach(RendererState& ctx)
 {
-    auto& game = ctx.world;
+    auto& game = ctx.uiWorld;
     game.on_construct<ScreenRect>().connect<&CameraRenderer::onViewPanelUpdate>(
-        this);
+        ctx.world);
     game.on_update<ScreenRect>().connect<&CameraRenderer::onViewPanelUpdate>(
-        this);
+        ctx.world);
     game.on_construct<ViewPanel>().connect<&CameraRenderer::onViewPanelUpdate>(
-        this);
+        ctx.world);
     game.on_update<ViewPanel>().connect<&CameraRenderer::onViewPanelUpdate>(
-        this);
+        ctx.world);
     // game.on_construct<ComponentCamera>().connect<&onCameraCreated>(ctx.renderWorld);
 }
 
-void CameraRenderer::onViewPanelUpdate(entt::registry& world,
+void CameraRenderer::onViewPanelUpdate(entt::registry& world, entt::registry& uiWorld,
                                        entt::entity entity)
 {
-    auto [vp, rect] = world.try_get<ViewPanel, ScreenRect>(entity);
+    auto [vp, rect] = uiWorld.try_get<ViewPanel, ScreenRect>(entity);
     if (vp != nullptr && rect != nullptr)
     {
         auto camEntity = vp->activeCamera;
@@ -59,17 +59,16 @@ void CameraRenderer::onViewPanelUpdate(entt::registry& world,
 
 void CameraRenderer::onUpdate(FRendererState& ctx)
 {
-    auto& game = ctx.world;
-    for (auto [entity, view, rect] : game.view<ViewPanel, ScreenRect>().each())
+    for (auto [entity, view, rect] : ctx.uiWorld.view<ViewPanel, ScreenRect>().each())
     {
         CmdAddView cmdview{};
         cmdview.rect = rect;
-        if (auto camera = game.try_get<ComponentCamera>(view.activeCamera))
+        if (auto camera = ctx.world.try_get<ComponentCamera>(view.activeCamera))
         {
             cmdview.view = camera->view();
         }
         if (auto pcamera =
-                game.try_get<ComponentPerspectiveCamera>(view.activeCamera))
+                ctx.world.try_get<ComponentPerspectiveCamera>(view.activeCamera))
         {
             cmdview.fov = pcamera->fov;
             cmdview.aspect = pcamera->aspect;

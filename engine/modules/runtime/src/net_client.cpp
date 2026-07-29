@@ -86,9 +86,9 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
             {
                 OnPacketReceived(event.packet->data, event.packet->dataLength);
                 auto buffer =
-                    net::Buffer(event.packet->data, event.packet->dataLength);
+                    net::Buffer(event.packet->data, event.packet->dataLength).ToReadOnly();
                 dispatcher.trigger<OnClientReceivePacket>(
-                    {buffer.ToReadOnly()});
+                    {&buffer});
                 enet_packet_destroy(event.packet);
                 break;
             }

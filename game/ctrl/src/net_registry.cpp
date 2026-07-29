@@ -2,6 +2,7 @@
 #include "game/input/player_input_stream.hpp"
 #include "game/replication_registry.hpp"
 
+
 void game::RegisterReplications(oge::runtime::AnythingFactory& af,
                                 ReplicationRegistry& rf)
 {
@@ -16,7 +17,7 @@ void game::RegisterReplications(oge::runtime::AnythingFactory& af,
         auto& desc = af.RegisterType<input::EntityEventStream>();
         desc.capabilities.Add<ReplicationCapability>(
             af.Id<input::EntityEventStream>(),
-            &EntityEventStreamReplication<input::EntityEventStream>::Encode,
-            &EntityEventStreamReplication<input::EntityEventStream>::Decode);
+            &EventStreamReplication<input::EntityEventStream>::Encode,
+            &EventStreamReplication<input::EntityEventStream>::Decode);
     }
 }

@@ -23,6 +23,7 @@ namespace game::view
 struct RendererState
 {
     entt::registry& world;
+    entt::registry& uiWorld;
     entt::registry& renderWorld;
     entt::dispatcher& events;
     MemoryContext& memory;
@@ -44,6 +45,7 @@ struct FRendererState
     AssetContext& assets;
     SubmissionQueue& submissionQueue;
     const entt::registry& world;
+    const entt::registry& uiWorld;
     entt::registry& renderWorld;
     entt::dispatcher& events;
     MemoryContext& memory;
@@ -53,6 +55,7 @@ struct FRendererState
           alpha(frame.alpha),
           assets(frame.assets),
           world(state.world),
+          uiWorld(state.uiWorld),
           renderWorld(state.renderWorld),
           submissionQueue(frame.submissionQueue),
           events(state.events),
@@ -99,7 +102,7 @@ class DebugInfoRenderer : public Renderer
 
 class CameraRenderer : public Renderer
 {
-    void onViewPanelUpdate(entt::registry& world, entt::entity entity);
+    static void onViewPanelUpdate(entt::registry& gameWorld, entt::registry& uiWorld, entt::entity entity);
 
    public:
     DECL_ID(CameraRenderer);

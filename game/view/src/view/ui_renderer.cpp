@@ -49,7 +49,7 @@ static void onSurfaceRecreate(entt::registry& world,
 
 void UIRenderer::onAttach(RendererState& ctx)
 {
-    auto& game = ctx.world;
+    auto& game = ctx.uiWorld;
     game.on_construct<UIRect>().connect<&onCreateUIRect>();
     game.on_destroy<UIRect>().connect<&onDestroyUIRect>();
     ctx.events.sink<SurfaceRecreateEvent>().connect<&onSurfaceRecreate>(game);
@@ -62,7 +62,7 @@ void UIRenderer::onAttach(RendererState& ctx)
 
 void UIRenderer::onDetach(RendererState& ctx)
 {
-    auto& game = ctx.world;
+    auto& game = ctx.uiWorld;
     game.on_construct<UIRect>().disconnect<&onCreateUIRect>();
     game.on_destroy<UIRect>().disconnect<&onDestroyUIRect>();
     ctx.events.sink<SurfaceRecreateEvent>().disconnect<&onSurfaceRecreate>(
@@ -71,7 +71,7 @@ void UIRenderer::onDetach(RendererState& ctx)
 
 void UIRenderer::onUpdate(FRendererState& f)
 {
-    auto& game = f.world;
+    auto& game = f.uiWorld;
     for (auto [entity, rect] : game.view<UIRaycastTarget, ScreenRect>().each())
     {
         f.submissionQueue.Add<CmdDrawDebugRect>(

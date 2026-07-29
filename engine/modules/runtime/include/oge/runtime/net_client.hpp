@@ -37,7 +37,7 @@ struct OnClientDisconnected
 
 struct OnClientReceivePacket
 {
-    net::Buffer data;
+    net::Buffer* data;
 };
 
 class NetClient : protected NetPacketSender

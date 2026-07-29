@@ -38,7 +38,7 @@ struct TypeName<game::input::EntityEventStream>
 {
     static consteval std::string_view Get()
     {
-        return "core::PlayerInputStream";
+        return "core::EntityEventStream";
     }
 };
 }

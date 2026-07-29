@@ -1,7 +1,9 @@
 #pragma once
 
+#include <array>
 #include <concepts>
 #include <type_traits>
+#include <vector>
 
 #include "game/input/entity_event_stream.hpp"
 #include "oge/event_stream.hpp"
@@ -18,10 +20,10 @@ using oge::runtime::oge_id_type;
 using oge::runtime::SendType;
 using oge::runtime::TypeRegistry;
 namespace net = oge::runtime::net;
-using oge::DiscreteEventStream;
-using input::EntityEventStream;
 using input::EntityEvent;
+using input::EntityEventStream;
 using input::EntityEventType;
+using oge::DiscreteEventStream;
 
 template <typename T>
 struct EntityStorageTraits
@@ -66,8 +68,8 @@ struct NetEventBatch : net::Object<NetEventBatch<TEvent>>
 struct ReplicationCapability : ICapability
 {
     using EncodeFn = void (*)(entt::registry&, ENetPeer*,
-                              oge::runtime::NetPacketSender&, FamilyId, SendType,
-                              uint8_t, entt::any&);
+                              oge::runtime::NetPacketSender&, FamilyId,
+                              SendType, uint8_t, entt::any&);
 
     using DecodeFn = void (*)(entt::registry&, net::Buffer&);
 
@@ -91,6 +93,88 @@ struct ReplicationCapability : ICapability
           decode(d),
           createState(cs)
     {
+    }
+};
+
+class ReplicationRegistry
+{
+    struct PeerState
+    {
+        std::unordered_map<FamilyId, entt::any> state;
+    };
+
+    std::vector<oge_id_type> m_serializableComponents;
+    std::unordered_map<FamilyId, ReplicationCapability*> m_units;
+    std::unordered_map<ENetPeer*, PeerState> m_peers;
+
+   public:
+    const std::vector<oge_id_type>& SeralizableComponents() const
+    {
+        return m_serializableComponents;
+    }
+
+    template<typename T>
+    void RegisterSerializableComponent()
+    {
+        m_serializableComponents.push_back(entt::type_hash<T>::value());
+    }
+
+    void RegisterFrom(TypeRegistry& types)
+    {
+        for (auto& type : types.GetAll())
+        {
+            if (auto* cap = type.capabilities.Get<ReplicationCapability>())
+            {
+                m_units[cap->family] = cap;
+            }
+        }
+    }
+
+    void ProduceAll(oge::runtime::NetPacketSender& server, ENetPeer* peer,
+                    entt::registry& world)
+    {
+        auto it = m_peers.find(peer);
+        if (it == m_peers.end()) return;
+
+        auto& peerState = it->second;
+
+        for (auto& [family, cap] : m_units)
+        {
+            entt::any& state = peerState.state[family];
+
+            cap->encode(world, peer, server, family, cap->sendType,
+                        cap->channel, state);
+        }
+    }
+
+    void HandleIncoming(entt::registry& world, net::Buffer& buffer)
+    {
+        FamilyId family = buffer.Read<FamilyId>();
+
+        auto it = m_units.find(family);
+        if (it == m_units.end()) return;
+
+        it->second->decode(world, buffer);
+    }
+
+    void AddPeer(ENetPeer* peer)
+    {
+        PeerState peerState;
+
+        for (auto& [family, cap] : m_units)
+        {
+            if (cap->createState)
+            {
+                peerState.state.emplace(family, cap->createState());
+            }
+        }
+
+        m_peers.emplace(peer, std::move(peerState));
+    }
+
+    void RemovePeer(ENetPeer* peer)
+    {
+        m_peers.erase(peer);  // entt::any cleans itself
     }
 };
 
@@ -218,6 +302,96 @@ struct EventStreamReplication
     }
 };
 
+// this modifies world directly
+// template <>
+// struct EventStreamReplication<EntityEventStream>
+// {
+//     using TEvent = EntityEvent;
+//     struct State
+//     {
+//         typename EntityEventStream::Cursor cursor = 0;
+//         bool initialized = false;
+//     };
+
+//     static entt::any CreateState()
+//     {
+//         return State{};
+//     }
+
+//     static void Encode(entt::registry& world, ENetPeer* peer,
+//                        oge::runtime::NetPacketSender& server, FamilyId family,
+//                        SendType sendType, uint8_t channel, entt::any& anyState)
+//     {
+//         auto& state = entt::any_cast<State&>(anyState);
+//         auto& stream = world.ctx().get<EntityEventStream>();
+
+//         if (!state.initialized)
+//         {
+//             state.cursor = stream.HeadIndex();
+//             state.initialized = true;
+//             return;
+//         }
+
+//         auto ss = entt::snapshot(world);
+//         auto& reg = world.ctx().get<ReplicationRegistry>();
+//         TEvent ev;
+//         net::Buffer packet;
+//         packet.Write(family);
+//         while (stream.PollOne(state.cursor, ev))
+//         {
+//             packet.Write(ev.type);
+//             auto arch = oge::runtime::net::BufferOutputArchive(packet);
+//             if (ev.type == EntityEventType::Create)
+//             {
+//                 std::array<entt::entity, 1> entities{ev.entity};
+//                 for (auto id : reg.SeralizableComponents())
+//                 {
+//                     ss.get(arch, entities.begin(), entities.end(), id);
+//                 }
+//             }
+//         }
+
+//         if (batch.events.empty()) return;
+        
+//         auto& loader = world.ctx().get<entt::snapshot>();
+//         auto& registry = world.ctx().get<ReplicationRegistry>();
+//         auto packet = server.StartPacket(sizeof(FamilyId) + batch.Size());
+
+//         packet.Write(family);
+//         std::array<entt::entity, 1> entities{};
+//         loader.get()
+
+//         // wip
+
+//         server.Send(peer, packet, sendType, channel);
+//     }
+
+//     static void Decode(entt::registry& world, net::Buffer& buffer)
+//     {
+//         NetEventBatch<TEvent> batch;
+//         batch.Deserialize(buffer);
+
+//         auto& queue = world.ctx().get<EntityEventStream>();
+
+//         auto& loader = world.ctx().get<entt::continuous_loader>();
+//         for (auto& e : batch.events)
+//         {
+//             if (e.type == EntityEventType::Destroy)
+//             {
+//                 world.destroy(loader.map(e.entity));
+//             }
+//             else
+//             {
+//                 auto arch = oge::runtime::net::BufferOutputArchive(buffer);
+//                 assert(e.type == EntityEventType::Create);
+//                 auto res = world.create(e.entity);
+//                 loader.get<entt::entity>(arch);
+//                 // wip
+//             }
+//         }
+//     }
+// };
+
 template <typename TEventStream>
     requires IsEventStream<TEventStream>
 struct EntityEventStreamReplication
@@ -304,75 +478,6 @@ struct EntityEventStreamReplication
     }
 };
 
-class ReplicationRegistry
-{
-    struct PeerState
-    {
-        std::unordered_map<FamilyId, entt::any> state;
-    };
-
-    std::unordered_map<FamilyId, ReplicationCapability*> m_units;
-    std::unordered_map<ENetPeer*, PeerState> m_peers;
-
-   public:
-    void RegisterFrom(TypeRegistry& types)
-    {
-        for (auto& type : types.GetAll())
-        {
-            if (auto* cap = type.capabilities.Get<ReplicationCapability>())
-            {
-                m_units[cap->family] = cap;
-            }
-        }
-    }
-
-    void ProduceAll(oge::runtime::NetPacketSender& server, ENetPeer* peer,
-                    entt::registry& world)
-    {
-        auto it = m_peers.find(peer);
-        if (it == m_peers.end()) return;
-
-        auto& peerState = it->second;
-
-        for (auto& [family, cap] : m_units)
-        {
-            entt::any& state = peerState.state[family];
-
-            cap->encode(world, peer, server, family, cap->sendType,
-                        cap->channel, state);
-        }
-    }
-
-    void HandleIncoming(entt::registry& world, net::Buffer& buffer)
-    {
-        FamilyId family = buffer.Read<FamilyId>();
-
-        auto it = m_units.find(family);
-        if (it == m_units.end()) return;
-
-        it->second->decode(world, buffer);
-    }
-
-    void AddPeer(ENetPeer* peer)
-    {
-        PeerState peerState;
-
-        for (auto& [family, cap] : m_units)
-        {
-            if (cap->createState)
-            {
-                peerState.state.emplace(family, cap->createState());
-            }
-        }
-
-        m_peers.emplace(peer, std::move(peerState));
-    }
-
-    void RemovePeer(ENetPeer* peer)
-    {
-        m_peers.erase(peer);  // entt::any cleans itself
-    }
-};
-
-void RegisterReplications(oge::runtime::AnythingFactory& af, ReplicationRegistry& rf);
+void RegisterReplications(oge::runtime::AnythingFactory& af,
+                          ReplicationRegistry& rf);
 }  // namespace game

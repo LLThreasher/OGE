@@ -2,6 +2,7 @@
 
 #include <csignal>
 
+#include "game/replication_registry.hpp"
 #include "oge/log.hpp"
 #include "oge/platform/spdlogger.hpp"
 
@@ -22,9 +23,9 @@ Server::Server(float tickInterval)
       m_ctx(m_metaWorld),
       m_am(m_ctx.Emplace<AssetManager>())
 {
-    SetLogger(new oge::platform::SpdLogger());
     using namespace sim;
     RegisterSubsystems(m_anyFactory);
+    RegisterReplications(m_anyFactory, m_replication);
 }
 
 int Server::Run()

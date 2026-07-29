@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/replication_registry.hpp"
 #include "game/scene.hpp"
 #include "game/scene_runner.hpp"
 #include "game/server_scene.hpp"
@@ -17,6 +18,7 @@ class Server : public SceneRunner<DebugServerScene>
     oge::runtime::BlockingTickScheduler m_tick;
     entt::registry m_metaWorld;
     OGEContext m_ctx;
+    ReplicationRegistry m_replication;
 
     AssetManager& m_am;
 
