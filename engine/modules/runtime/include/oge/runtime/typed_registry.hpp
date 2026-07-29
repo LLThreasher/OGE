@@ -1,7 +1,9 @@
 #pragma once
 
 #include <cassert>
+#include <concepts>
 #include <cstddef>
+#include <deque>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -78,14 +80,23 @@ class CapabilitySet
     std::unordered_map<std::type_index, std::unique_ptr<ICapability>> caps;
 
    public:
+    CapabilitySet()
+    {
+    }
+    CapabilitySet(const CapabilitySet&) = delete;
+    CapabilitySet& operator=(const CapabilitySet&) = delete;
+
+    CapabilitySet(CapabilitySet&&) noexcept = default;
+    CapabilitySet& operator=(CapabilitySet&&) noexcept = default;
+
     template <typename T, typename... Args>
+        requires std::constructible_from<T, Args...>
     T& Add(Args&&... args)
     {
         static_assert(std::is_base_of_v<ICapability, T>);
-        auto ptr = std::make_unique<T>(std::forward<Args>(args)...);
-        T& ref = *ptr;
-        caps[typeid(T)] = std::move(ptr);
-        return ref;
+        auto [it, inserted] = caps.try_emplace(
+            typeid(T), std::make_unique<T>(std::forward<Args>(args)...));
+        return *static_cast<T*>(it->second.get());
     }
 
     template <typename T>
@@ -107,8 +118,9 @@ struct FactoryCapability : ICapability
     FamilyId family;
     BuildFn build = nullptr;
 
-    FactoryCapability(FamilyId f, BuildFn b)
-        : family(f), build(b) {}
+    FactoryCapability(FamilyId f, BuildFn b) : family(f), build(b)
+    {
+    }
 };
 
 struct TypeDescriptor
@@ -116,14 +128,14 @@ struct TypeDescriptor
     std::string name;
     oge_id_type localId;
 
-    CapabilitySet capabilities;
+    CapabilitySet capabilities = {};
 };
 
 class TypeRegistry
 {
     OGEContext& ctx;
 
-    std::vector<TypeDescriptor> descs;
+    std::deque<TypeDescriptor> descs;
     std::unordered_map<std::string, size_t> byName;
     std::unordered_map<oge_id_type, size_t> byId;
 
@@ -132,10 +144,9 @@ class TypeRegistry
    public:
     TypeRegistry(OGEContext& c) : ctx(c)
     {
-        descs.reserve(1024);
     }
 
-    std::vector<TypeDescriptor>& GetAll()
+    std::deque<TypeDescriptor>& GetAll()
     {
         return descs;
     }
@@ -187,11 +198,8 @@ class TypeRegistry
             return descs[_it->second];
         }
 
-        TypeDescriptor desc;
-        desc.name = name;
-        desc.localId = id;
-
-        descs.push_back(std::move(desc));
+        descs.emplace_back(name, id);
+        TypeDescriptor& desc = descs.back();
 
         auto [it, inserted] = byName.emplace(name, descs.size() - 1);
         byId.emplace(id, descs.size() - 1);
@@ -224,12 +232,16 @@ class TypeRegistry
         {
             ptr = std::make_unique<TDerived>();
         }
-        else if constexpr (std::is_constructible_v<TDerived, typename TDerived::Def>) {
-            ptr = std::make_unique<TDerived>(entt::any_cast<typename TDerived::Def>(def));
+        else if constexpr (std::is_constructible_v<TDerived,
+                                                   typename TDerived::Def>)
+        {
+            ptr = std::make_unique<TDerived>(
+                entt::any_cast<typename TDerived::Def>(def));
         }
         else
         {
-            ptr = std::make_unique<TDerived>(entt::any_cast<typename TDerived::Def>(def), af);
+            ptr = std::make_unique<TDerived>(
+                entt::any_cast<typename TDerived::Def>(def), af);
         }
         return ptr;
     }

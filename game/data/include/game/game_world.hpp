@@ -19,8 +19,8 @@ NET_OBJ(SceneConfig)
 
     NET_OBJ_FN
     {
-        visit(subsystems);
-        visit(realtimeSubsystems);
+        visit(self.subsystems);
+        visit(self.realtimeSubsystems);
     }
 
     bool empty()

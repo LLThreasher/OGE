@@ -112,7 +112,7 @@ class ChunkDataCollection
 struct PaletteCompressedChunk
 {
     std::pmr::vector<uint32_t> palette;
-    uint8_t data[CHUNK_SIZE_TOTAL];
+    uint8_t data[CHUNK_SIZE_TOTAL]; // 4096 bytes
 
     static PaletteCompressedChunk FromChunkData(const ChunkData& c);
     void ToChunkData(ChunkData& c);

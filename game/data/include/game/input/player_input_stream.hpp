@@ -5,6 +5,7 @@
 #include "oge/event_stream.hpp"
 #include "oge/math.hpp"
 #include "oge/runtime/net_serializer.hpp"
+#include "oge/runtime/typed_registry.hpp"
 
 namespace game::input
 {
@@ -61,8 +62,8 @@ NET_OBJ(PlayerInputEvent)
 
     NET_OBJ_FN
     {
-        visit(actionPos);
-        visit(actionMask);
+        visit(self.actionPos);
+        visit(self.actionMask);
     }
 };
 
@@ -74,9 +75,9 @@ NET_OBJ(PlayerInputFrame)
 
     NET_OBJ_FN
     {
-        visit(inputEvents);
-        visit(moveDelta);
-        visit(panDelta);
+        visit(self.inputEvents);
+        visit(self.moveDelta);
+        visit(self.panDelta);
     }
 };
 
@@ -86,6 +87,7 @@ using PlayerDeltaStream = DiscreteEventStream<math::vec2, 16>;
 class PlayerInputStream
 {
    public:
+    using TEvent = PlayerInputFrame;
     struct Cursor
     {
         PlayerActionStream::Cursor actionCursor = {};
@@ -103,6 +105,45 @@ class PlayerInputStream
     bool panDirty = false;
 
    public:
+    Cursor HeadIndex()
+    {
+        return {actions.HeadIndex(), moves.HeadIndex(), pans.HeadIndex()};
+    }
+
+    bool PollOne(Cursor& cursor, PlayerInputFrame& frame)
+    {
+        bool flag = false;
+        PlayerInputEvent e;
+        while (actions.PollOne(cursor.actionCursor, e))
+        {
+            frame.inputEvents.Add(e);
+            flag = true;
+        }
+        math::vec2 move;
+        while (moves.PollOne(cursor.moveCursor, move))
+        {
+            frame.moveDelta.value += move;
+            flag = true;
+        }
+        math::vec2 pan;
+        while (pans.PollOne(cursor.panCursor, pan))
+        {
+            frame.panDelta.value += pan;
+            flag = true;
+        }
+        return flag;
+    }
+
+    void Push(const PlayerInputFrame& frame)
+    {
+        for (const auto& ie : frame.inputEvents)
+        {
+            actions.Push(ie);
+        }
+        moves.Push(frame.moveDelta);
+        pans.Push(frame.panDelta);
+    }
+
     void AdvanceTick()
     {
         if (moveDirty)
@@ -165,3 +206,14 @@ class PlayerInputStream
 };
 
 }  // namespace game::input
+
+namespace oge::runtime {
+template<>
+struct TypeName<game::input::PlayerInputStream>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::PlayerInputStream";
+    }
+};
+}

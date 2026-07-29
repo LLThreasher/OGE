@@ -24,7 +24,7 @@ NET_OBJ(TerrainRendererDesc)
 
     NET_OBJ_FN
     {
-        visit(meshingQuadBudget);
+        visit(self.meshingQuadBudget);
     }
 };
 
@@ -35,8 +35,8 @@ NET_OBJ(TerrainDesc)
 
     NET_OBJ_FN
     {
-        visit(chunkViewDistance);
-        visit(terrainGenChunkBudget);
+        visit(self.chunkViewDistance);
+        visit(self.terrainGenChunkBudget);
     }
 };
 

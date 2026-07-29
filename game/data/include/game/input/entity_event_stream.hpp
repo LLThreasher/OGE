@@ -1,21 +1,44 @@
 #pragma once
 
-#include "entt/entity/fwd.hpp"
 #include "oge/event_stream.hpp"
+#include "oge/runtime/entt.hpp"
+#include "oge/runtime/net_serializer.hpp"
+#include "oge/runtime/typed_registry.hpp"
 
-namespace game
+namespace game::input
 {
-    enum class EntityEventType : uint32_t
-    {
-        Create,
-        Destroy,
-    };
+using oge::runtime::net::SimpleNetValue;
 
-    struct EntityEvent
-    {
-        EntityEventType type;
-        entt::entity entity;
-    };
+enum class EntityEventType : uint32_t
+{
+    Create,
+    Destroy,
+};
 
-    using EntityEventStream = oge::DiscreteEventStream<EntityEvent, 1024>;
+NET_OBJ(EntityEvent)
+{
+    SimpleNetValue<EntityEventType> type;
+    SimpleNetValue<entt::entity> entity;
+
+    NET_OBJ_FN
+    {
+        visit(self.type);
+        visit(self.entity);
+    }
+};
+
+class EntityEventStream : public oge::DiscreteEventStream<EntityEvent, 1024>
+{
+};
+}  // namespace game::input
+
+namespace oge::runtime {
+template<>
+struct TypeName<game::input::EntityEventStream>
+{
+    static consteval std::string_view Get()
+    {
+        return "core::PlayerInputStream";
+    }
+};
 }

@@ -9,6 +9,7 @@
 #include "game/frame_perf.hpp"
 #include "game/json.hpp"
 #include "game/memory_context.hpp"
+#include "game/replication_registry.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
@@ -38,7 +39,7 @@ class SceneRunner
     SceneRunner()
         : m_ctx(m_metaWorld),
           m_anyFactory(m_ctx),
-          m_appCtx(m_ctx, m_anyFactory, m_events, m_memory)
+          m_appCtx(m_ctx, m_anyFactory, m_events, m_memory, m_replication)
     {
         m_anyFactory.RegisterABC<TSceneBase>();
         RegisterScene<TSceneBase>();
@@ -100,6 +101,7 @@ class SceneRunner
     entt::registry m_metaWorld;
     OGEContext m_ctx;
     AnythingFactory m_anyFactory;
+    ReplicationRegistry m_replication;
     entt::dispatcher m_events;
     MemoryContext m_memory = {
         {1 * 1024 * 1024}, {1 * 1024 * 1024, 10.f}, {1 * 1024 * 1024, 0.2f}};

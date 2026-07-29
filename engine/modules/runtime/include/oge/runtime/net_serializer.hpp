@@ -95,7 +95,7 @@ struct SimpleNetValue
     {
     }
 
-    constexpr uint64_t Size()
+    constexpr uint64_t Size() const
     {
         return sizeof(T);
     }
@@ -132,24 +132,24 @@ template <typename Derived>
 class Object
 {
    public:
-    constexpr uint64_t Size()
+    constexpr uint64_t Size() const
     {
         uint64_t res = 0;
-        static_cast<Derived*>(this)->VisitFields([&](auto& field)
-                                                 { res += field.Size(); });
+        Derived::VisitFields(*static_cast<const Derived*>(this),
+                             [&](auto& field) { res += field.Size(); });
         return res;
     }
 
     void Serialize(Buffer& buffer)
     {
-        static_cast<Derived*>(this)->VisitFields([&](auto& field)
-                                                 { field.Serialize(buffer); });
+        Derived::VisitFields(*static_cast<Derived*>(this),
+                             [&](auto& field) { field.Serialize(buffer); });
     }
 
     void Deserialize(Buffer& buffer)
     {
-        static_cast<Derived*>(this)->VisitFields(
-            [&](auto& field) { field.Deserialize(buffer); });
+        Derived::VisitFields(*static_cast<Derived*>(this),
+                             [&](auto& field) { field.Deserialize(buffer); });
     }
 };
 
@@ -158,7 +158,7 @@ struct List
 {
     std::pmr::vector<T> data;
 
-    constexpr uint64_t Size()
+    constexpr uint64_t Size() const
     {
         uint64_t res = 0;
         for (const auto& val : data)
@@ -171,7 +171,7 @@ struct List
     void Serialize(Buffer& buffer)
     {
         buffer.Write(data.size());
-        for (const auto& val : data)
+        for (auto& val : data)
         {
             val.Serialize(buffer);
         }
@@ -207,7 +207,7 @@ struct List
         return data.end();
     }
 
-    void Add(T&& item)
+    void Add(T item)
     {
         data.push_back(item);
     }
@@ -227,8 +227,8 @@ struct List
 #define NET_OBJ(Name) struct Name : public ::oge::runtime::net::Object<Name>
 #define NET_OBJ_SIMPLE(Name) \
     struct Name : public ::oge::runtime::net::SimpleNetValue<Name>
-#define NET_OBJ_FN        \
-    template <typename F> \
-    void VisitFields(F&& visit)
+#define NET_OBJ_FN                    \
+    template <typename T, typename F> \
+    static void VisitFields(T& self, F&& visit)
 
 }  // namespace oge::runtime::net

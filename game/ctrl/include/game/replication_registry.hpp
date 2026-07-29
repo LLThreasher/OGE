@@ -3,6 +3,7 @@
 #include <concepts>
 #include <type_traits>
 
+#include "game/input/entity_event_stream.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
@@ -18,6 +19,9 @@ using oge::runtime::SendType;
 using oge::runtime::TypeRegistry;
 namespace net = oge::runtime::net;
 using oge::DiscreteEventStream;
+using input::EntityEventStream;
+using input::EntityEvent;
+using input::EntityEventType;
 
 template <typename T>
 struct EntityStorageTraits
@@ -55,14 +59,14 @@ struct NetEventBatch : net::Object<NetEventBatch<TEvent>>
 
     NET_OBJ_FN
     {
-        visit(events);
+        visit(self.events);
     }
 };
 
 struct ReplicationCapability : ICapability
 {
     using EncodeFn = void (*)(entt::registry&, ENetPeer*,
-                              oge::runtime::NetServer&, FamilyId, SendType,
+                              oge::runtime::NetPacketSender&, FamilyId, SendType,
                               uint8_t, entt::any&);
 
     using DecodeFn = void (*)(entt::registry&, net::Buffer&);
@@ -88,15 +92,6 @@ struct ReplicationCapability : ICapability
           createState(cs)
     {
     }
-
-    template <typename Impl>
-    static ReplicationCapability Create(FamilyId family,
-                                        SendType sendType = SendType::Reliable,
-                                        uint8_t channel = 0)
-    {
-        return {family, &Impl::Encode,     &Impl::Decode, SendType::Reliable,
-                0,      &Impl::CreateState};
-    }
 };
 
 template <typename T>
@@ -105,6 +100,7 @@ struct ComponentReplication
     struct State
     {
         std::unordered_map<entt::entity, uint32_t> lastSeen;
+        EntityEventStream::Cursor eCursor;
     };
 
     static entt::any CreateState()
@@ -113,11 +109,21 @@ struct ComponentReplication
     }
 
     static void Encode(entt::registry& world, ENetPeer* peer,
-                       oge::runtime::NetServer& server, FamilyId family,
+                       oge::runtime::NetPacketSender& server, FamilyId family,
                        SendType sendType, uint8_t channel, entt::any& anyState)
     {
         auto& state = entt::any_cast<State&>(anyState);
         auto& storage = world.storage<T>();
+
+        EntityEvent ee;
+        auto eStream = world.ctx().find<EntityEventStream>();
+        while (eStream->PollOne(state.eCursor, ee))
+        {
+            if (ee.type == EntityEventType::Destroy)
+            {
+                state.lastSeen.erase(ee.entity);
+            }
+        }
 
         for (auto entity : storage)
         {
@@ -147,12 +153,12 @@ struct ComponentReplication
 };
 
 template <typename T>
-concept IsEventStream = requires(T s, T::Cursor c, T::Event e) {
+concept IsEventStream = requires(T s, T::Cursor c, T::TEvent e) {
     typename T::TEvent;
     typename T::Cursor;
     { s.HeadIndex() } -> std::same_as<typename T::Cursor>;
     { s.PollOne(c, e) } -> std::same_as<bool>;
-    { s.Push(c, e) } -> std::same_as<void>;
+    { s.Push(e) } -> std::same_as<void>;
 };
 
 template <typename TEventStream>
@@ -172,7 +178,7 @@ struct EventStreamReplication
     }
 
     static void Encode(entt::registry& world, ENetPeer* peer,
-                       oge::runtime::NetServer& server, FamilyId family,
+                       oge::runtime::NetPacketSender& server, FamilyId family,
                        SendType sendType, uint8_t channel, entt::any& anyState)
     {
         auto& state = entt::any_cast<State&>(anyState);
@@ -227,6 +233,7 @@ struct EntityEventStreamReplication
     struct State
     {
         std::unordered_map<entt::entity, PerStreamState> perStreamStates;
+        EntityEventStream::Cursor eCursor;
     };
 
     static entt::any CreateState()
@@ -235,10 +242,20 @@ struct EntityEventStreamReplication
     }
 
     static void Encode(entt::registry& world, ENetPeer* peer,
-                       oge::runtime::NetServer& server, FamilyId family,
+                       oge::runtime::NetPacketSender& server, FamilyId family,
                        SendType sendType, uint8_t channel, entt::any& anyState)
     {
         auto& state = entt::any_cast<State&>(anyState);
+
+        EntityEvent ee;
+        auto eStream = world.ctx().find<EntityEventStream>();
+        while (eStream->PollOne(state.eCursor, ee))
+        {
+            if (ee.type == EntityEventType::Destroy)
+            {
+                state.perStreamStates.erase(ee.entity);
+            }
+        }
 
         auto view = world.view<TEventStream>();
 
@@ -309,7 +326,7 @@ class ReplicationRegistry
         }
     }
 
-    void ProduceAll(oge::runtime::NetServer& server, ENetPeer* peer,
+    void ProduceAll(oge::runtime::NetPacketSender& server, ENetPeer* peer,
                     entt::registry& world)
     {
         auto it = m_peers.find(peer);
@@ -356,4 +373,6 @@ class ReplicationRegistry
         m_peers.erase(peer);  // entt::any cleans itself
     }
 };
+
+void RegisterReplications(oge::runtime::AnythingFactory& af, ReplicationRegistry& rf);
 }  // namespace game

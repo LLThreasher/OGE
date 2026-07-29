@@ -1,5 +1,5 @@
 #include "game/app_context.hpp"
-#include "game/net_events.hpp"
+#include "game/replication_registry.hpp"
 #include "game/scene.hpp"
 #include "oge/runtime/net_server.hpp"
 
@@ -10,12 +10,10 @@ class DebugServerScene final : public Scene
 {
     entt::dispatcher m_serverEventDispatcher;
     oge::runtime::NetServer& m_netServer;
-    events::ServerNetObjectTransportationLayer m_netTransLayer;
 
    public:
     DebugServerScene(const Def& def)
         : Scene(def),
-          m_netTransLayer(m_world, m_serverEventDispatcher),
           m_netServer(m_ctx.any_ctx.Emplace<oge::runtime::NetServer>())
     {
         uint16_t port = 23400;
@@ -42,13 +40,13 @@ class DebugServerScene final : public Scene
         m_netServer.Poll(m_serverEventDispatcher);
         assert(m_serverEventDispatcher.size() == 0);
         Scene::Update(f, sctx);
-        m_netTransLayer.PostUpdate(m_netServer, m_world);
     }
 };
 }  // namespace game
 
-namespace oge::runtime {
-template<>
+namespace oge::runtime
+{
+template <>
 struct TypeName<game::DebugServerScene>
 {
     static consteval std::string_view Get()
@@ -56,4 +54,4 @@ struct TypeName<game::DebugServerScene>
         return "core::DebugServerScene";
     }
 };
-}
+}  // namespace oge::runtime
