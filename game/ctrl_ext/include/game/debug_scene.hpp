@@ -134,8 +134,6 @@ class DebugScene3 final : public SceneExt
         m_uiWorld.emplace<ui::UIZLevel>(mvWidget, 1);
         m_uiWorld.emplace<ui::UIRaycastTarget>(mvWidget);
 
-        m_uiWorld.emplace<InputSourceWidget>(m_player, mvWidget, lookWidget);
-
         auto& pcam = m_world.get<const ComponentPerspectiveCamera>(m_player);
         auto m_widgetInputDef = input::WidgetInput::Def{
             .target = m_world.get<input::PlayerInputStream>(m_player)};
@@ -170,10 +168,6 @@ class DebugScene3 final : public SceneExt
                 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
 
             m_inputs.Clear();
-            auto widgetIn = m_world.get<InputSourceWidget>(m_player);
-            m_world.destroy(widgetIn.moveWidget);
-            m_world.destroy(widgetIn.viewWidget);
-            m_world.remove<InputSourceWidget>(m_player);
 
             m_inputs.AddStage<input::KeyMouseInput>(
                 AF(),
@@ -186,22 +180,22 @@ class DebugScene3 final : public SceneExt
             // put something in the middle of the screen
             ui::UISprite crossSprite{.sprite =
                                          m_ctx.assets.LoadTexture("cross.png")};
-            m_cross = m_world.create();
-            m_world.emplace<ui::UIRect>(
+            m_cross = m_uiWorld.create();
+            m_uiWorld.emplace<ui::UIRect>(
                 m_cross,
                 math::vec2{
                     0.5f - 0.01f,
                     0.5f - 0.01f * m_ctx.assets.backend.SwapchainAspect()},
                 math::vec2{0.01f,
                            0.01f * m_ctx.assets.backend.SwapchainAspect()});
-            m_world.emplace<ui::UISprite>(m_cross, crossSprite);
-            m_world.emplace<ui::UIZLevel>(m_cross, 1);
+            m_uiWorld.emplace<ui::UISprite>(m_cross, crossSprite);
+            m_uiWorld.emplace<ui::UIZLevel>(m_cross, 1);
         }
         else if (keys.contains(KeyCode::KY_ESCAPE) && usingKeyMouse)
         {
             usingKeyMouse = false;
             m_inputs.Clear();
-            m_world.destroy(m_cross);
+            m_uiWorld.destroy(m_cross);
             AddWidgetInput(m_ctx.assets);
         }
         SceneExt::Update(std::move(f), sctx);
