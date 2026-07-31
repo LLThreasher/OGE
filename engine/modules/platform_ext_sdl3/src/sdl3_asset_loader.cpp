@@ -1,3 +1,5 @@
+#include "SDL3/SDL_iostream.h"
+#include "SDL3/SDL_storage.h"
 #if defined(IO_USE_SDL3)
 #include <SDL3/SDL.h>
 
@@ -30,6 +32,16 @@ bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
     SDL_free(fileBuffer);
 
     return true;
+}
+
+bool TrySaveBlob(const std::string_view& id, std::vector<char>& output)
+{
+#ifdef PLATFORM_ANDROID
+    return SDL_SaveFile(std::string(id).c_str(), output.data(), output.size());
+#else
+    std::string path = fmt::format("{}assets/{}", SDL_GetBasePath(), id);
+    return SDL_SaveFile(path.c_str(), output.data(), output.size());
+#endif
 }
 }  // namespace oge::platform
 #endif

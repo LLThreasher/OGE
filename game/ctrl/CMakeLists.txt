@@ -18,7 +18,7 @@ PRIVATE
     ${SOURCE_FILES_CPP}
  )
 
-target_link_libraries(game_ctrl PUBLIC game_data game_sim)
+target_link_libraries(game_ctrl PUBLIC game_data game_sim stduuid)
 
 target_include_directories(game_ctrl
 PUBLIC

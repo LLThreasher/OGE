@@ -67,7 +67,7 @@ class DebugScene3 final : public SceneExt
                                                                    blks[i], i);
         }
 
-        m_player = ComponentPlayer::CreatePlayer(m_world, {20.f, 20.f, 20.f});
+        m_player = ComponentPlayer::CreatePlayer(m_world, LoadOrCreatePlayer());
         {
             ComponentCamera& cam = m_world.get<ComponentCamera>(m_player);
             cam.position = {20.f, 20.f, 20.f};

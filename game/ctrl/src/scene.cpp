@@ -1,4 +1,5 @@
 #include "game/scene.hpp"
+#include "game/input/entity_event_stream.hpp"
 
 using namespace game;
 
@@ -21,6 +22,7 @@ Scene::Scene(const Def& def)
             m_sceneConfig.realtimeSubsystems.Add(std::get<int64_t>(val));
         }
     }
+    m_world.ctx().emplace<input::EntityEventStream>();
 }
 
 Scene::~Scene()

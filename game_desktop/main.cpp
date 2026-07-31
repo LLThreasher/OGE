@@ -21,8 +21,9 @@ int main(int argc, char* argv[]) {
 	auto window = CreateSDL3Window(app_name, 1280, 720);
 	auto app = game::Client();
 	app.RegisterScene<game::DebugScene3>();
-	app.SwitchToScene<game::DebugScene3>();
 	app.RegisterScene<game::ClientConnScene>();
+	app.RegisterScene<game::ClientScene>();
+	app.SwitchToScene<game::ClientConnScene>();
 	// app.SwitchToScene<game::ClientScene>({{"next_scene", app.Id<game::DebugScene3>()}});
 	window->Run(app);
 	// app.RegisterScene<DebugScene3>();

@@ -65,6 +65,28 @@ bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
     file.read(output.data(), size);
     return true;
 }
+
+bool TrySaveBlob(const std::string_view& id, const std::vector<char>& data)
+{
+    auto filePath = fmt::format("{}/assets/{}", GetBinaryLocation(), id);
+    std::ofstream file(filePath, std::ios::binary | std::ios::trunc);
+
+    if (!file.is_open())
+    {
+        LOG_ERROR("Failed to open file {}", filePath);
+        return false;
+    }
+
+    file.write(data.data(), static_cast<std::streamsize>(data.size()));
+
+    if (!file.good())
+    {
+        LOG_ERROR("Failed to write to file {}", filePath);
+        return false;
+    }
+
+    return true;
+}
 }  // namespace oge::platform
 #endif
 

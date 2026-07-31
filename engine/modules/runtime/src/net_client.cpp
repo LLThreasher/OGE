@@ -67,6 +67,7 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
         peer = nullptr;
         LOG_INFO("Connection timeout");
         status = ClientStatus::Disconnected;
+        dispatcher.trigger<OnClientDisconnected>();
     }
 
     connectWaitTime -= dt * 1000.f;
@@ -80,6 +81,7 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
             case ENET_EVENT_TYPE_CONNECT:
                 LOG_INFO("Connected to server");
                 status = ClientStatus::Connected;
+                dispatcher.trigger<OnClientConnected>();
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:

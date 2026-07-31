@@ -8,11 +8,12 @@ namespace game
 using oge::runtime::OnServerReceiveConnect;
 using oge::runtime::OnServerReceiveDisconnect;
 using oge::runtime::OnServerReceivePacket;
+using oge::runtime::NetServer;
 
 class DebugServerScene final : public Scene
 {
     entt::dispatcher m_serverEventDispatcher;
-    oge::runtime::NetServer& m_netServer;
+    NetServer& m_netServer;
 
     void onServerRecieveConnect(OnServerReceiveConnect c)
     {
@@ -32,7 +33,7 @@ class DebugServerScene final : public Scene
    public:
     DebugServerScene(const Def& def)
         : Scene(def),
-          m_netServer(m_ctx.any_ctx.Emplace<oge::runtime::NetServer>())
+          m_netServer(m_ctx.any_ctx.Emplace<NetServer>())
     {
         uint16_t port = 23400;
         size_t maxClients = 20;
@@ -45,7 +46,7 @@ class DebugServerScene final : public Scene
             if (it != def.args.end())
                 maxClients = std::get<int64_t>(it->second);
         }
-        m_netServer.Initialize(port, maxClients);
+        m_netServer.Initialize(port, maxClients, 3);
         m_serverEventDispatcher.sink<OnServerReceiveConnect>().connect<&DebugServerScene::onServerRecieveConnect>(this);
         m_serverEventDispatcher.sink<OnServerReceiveDisconnect>().connect<&DebugServerScene::onServerReceiveDisconnect>(this);
         m_serverEventDispatcher.sink<OnServerReceivePacket>().connect<&DebugServerScene::onServerReceivePacket>(this);

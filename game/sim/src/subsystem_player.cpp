@@ -13,11 +13,11 @@
 namespace game
 {
 entt::entity ComponentPlayer::CreatePlayer(entt::registry& world,
-                                           math::vec3 pos)
+                                           PlayerInfo info)
 {
     auto res = world.create();
     world.emplace<UpdateTag<UpdateType::Realtime>>(res);
-    auto& b = world.emplace<ComponentPhysicBody>(res, pos);
+    auto& b = world.emplace<ComponentPhysicBody>(res, info.latestPosition);
     b.stepAssist = 1.01f;
     world.emplace<ComponentAABBCollider>(
         res, ComponentAABBCollider{.aabb = {math::vec3{0.f, 0.f, 0.f},

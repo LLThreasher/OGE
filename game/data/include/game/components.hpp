@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
 #include <string_view>
 
 #include "oge/aabb.hpp"
@@ -104,11 +106,17 @@ struct ComponentAABBCollider
     AABB aabb;
 };
 
+struct PlayerInfo
+{
+    std::array<uint8_t, 16> uuid;
+    math::vec3 latestPosition;
+};
+
 struct ComponentPlayer
 {
     float lastActionTime = 0.f;
 
-    static entt::entity CreatePlayer(entt::registry& world, math::vec3 pos);
+    static entt::entity CreatePlayer(entt::registry& world, PlayerInfo info);
 };
 
 struct DebugText

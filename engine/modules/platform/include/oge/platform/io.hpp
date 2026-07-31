@@ -9,4 +9,5 @@ namespace oge::platform
 {
 bool TryLoadPNG(std::vector<char> data, TextureData& outData);
 bool TryLoadBlob(const std::string_view& id, std::vector<char>&);
+bool TrySaveBlob(const std::string_view& id, std::vector<char>&);
 }  // namespace oge::platform
