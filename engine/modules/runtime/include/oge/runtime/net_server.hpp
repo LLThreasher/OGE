@@ -52,20 +52,13 @@ class NetServer : public NetPacketSender
 
     void Shutdown();
 
+    void Disconnect(ENetPeer* peer, uint32_t signal = 0);
+
    private:
-    void OnClientConnected(ENetPeer* peer)
-    {
-        LOG_INFO("Client connected");
-    }
+    void OnClientConnected(ENetPeer* peer);
 
-    void OnClientDisconnected(ENetPeer* peer)
-    {
-        LOG_INFO("Client disconnected");
-    }
+    void OnClientDisconnected(ENetPeer* peer);
 
-    void OnPacketReceived(ENetPeer* peer, uint8_t* data, size_t length)
-    {
-        LOG_INFO("Server received {} bytes", length);
-    }
+    void OnPacketReceived(ENetPeer* peer, uint8_t* data, size_t length);
 };
 }  // namespace oge::runtime

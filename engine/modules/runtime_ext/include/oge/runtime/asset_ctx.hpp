@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cinttypes>
 #include <span>
 
 #include "oge/graphics/objects.hpp"

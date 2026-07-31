@@ -51,7 +51,7 @@ bool NetClient::Connect(const char* ip, uint16_t port, uint32_t timeoutMs)
         return false;
     }
 
-    status = ClientStatus::Connecting;
+    state = State::Connecting;
 
     connectWaitTime = timeoutMs;
     return true;
@@ -61,12 +61,12 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
 {
     if (!host) return;
 
-    if (status == ClientStatus::Connecting && connectWaitTime < 0)
+    if (state == State::Connecting && connectWaitTime < 0)
     {
         enet_peer_reset(peer);
         peer = nullptr;
         LOG_INFO("Connection timeout");
-        status = ClientStatus::Disconnected;
+        state = State::Disconnected;
         dispatcher.trigger<OnClientDisconnected>();
     }
 
@@ -80,7 +80,7 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
         {
             case ENET_EVENT_TYPE_CONNECT:
                 LOG_INFO("Connected to server");
-                status = ClientStatus::Connected;
+                state = State::Connected;
                 dispatcher.trigger<OnClientConnected>();
                 break;
 
@@ -97,7 +97,7 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
             case ENET_EVENT_TYPE_DISCONNECT:
                 LOG_INFO("Disconnected from server");
                 peer = nullptr;
-                status = ClientStatus::Disconnected;
+                state = State::Disconnected;
                 break;
 
             default:
@@ -112,7 +112,7 @@ void NetClient::Disconnect(uint32_t timeoutMs)
 
     enet_peer_disconnect(peer, 0);
 
-    status = ClientStatus::Disconnecting;
+    state = State::Disconnecting;
 
     enet_peer_reset(peer);
     peer = nullptr;

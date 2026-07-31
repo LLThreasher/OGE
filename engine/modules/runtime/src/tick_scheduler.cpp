@@ -1,13 +1,11 @@
 #include "oge/runtime/tick_scheduler.hpp"
 
-#include <algorithm>
-#include <functional>
 #include <thread>
 
 namespace oge::runtime
 {
 TickScheduler::TickScheduler(float fixedDelta)
-    : m_fixedDelta(fixedDelta), m_targetFrameTime(fixedDelta)
+    : m_fixedDelta(fixedDelta)
 {
 }
 

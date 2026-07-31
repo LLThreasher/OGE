@@ -4,7 +4,6 @@
 #include <unordered_map>
 
 #include "oge/macros.hpp"
-#include "oge/math.hpp"
 #include "oge/mesh_data.hpp"
 #include "oge/texture_data.hpp"
 

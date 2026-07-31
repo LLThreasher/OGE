@@ -15,14 +15,6 @@ typedef _ENetHost ENetHost;
 namespace oge::runtime
 {
 
-enum class ClientStatus
-{
-    Connecting,
-    Connected,
-    Disconnecting,
-    Disconnected,
-};
-
 struct OnClientConnectionTimeout
 {
 };
@@ -40,8 +32,16 @@ struct OnClientReceivePacket
     net::Buffer* data;
 };
 
-class NetClient : protected NetPacketSender
+class NetClient : public NetPacketSender
 {
+    enum class State
+    {
+        Connecting,
+        Connected,
+        Disconnecting,
+        Disconnected,
+    };
+
    public:
     NetClient()
     {
@@ -56,11 +56,6 @@ class NetClient : protected NetPacketSender
         std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
 
     bool Connect(const char* ip, uint16_t port, uint32_t timeoutMs = 5000);
-
-    ClientStatus Status()
-    {
-        return status;
-    }
 
     void Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs = 0);
 
@@ -78,7 +73,7 @@ class NetClient : protected NetPacketSender
 
    private:
     float connectWaitTime;
-    ClientStatus status = ClientStatus::Disconnected;
+    State state = State::Disconnected;
     ENetPeer* peer = nullptr;
 
     std::pmr::memory_resource* m_memory;

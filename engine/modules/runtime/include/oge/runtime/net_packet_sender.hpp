@@ -1,6 +1,5 @@
 #pragma once
 
-#include <memory_resource>
 #include "oge/runtime/net_serializer.hpp"
 
 struct _ENetPeer;

@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <string_view>
 
 #include "oge/aabb.hpp"
@@ -115,8 +116,10 @@ struct PlayerInfo
 struct ComponentPlayer
 {
     float lastActionTime = 0.f;
+    std::array<uint8_t, 16> id;
 
     static entt::entity CreatePlayer(entt::registry& world, PlayerInfo info);
+    static void DestroyPlayer(entt::registry& world, PlayerInfo info);
 };
 
 struct DebugText

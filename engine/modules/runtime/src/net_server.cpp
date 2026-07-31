@@ -49,7 +49,7 @@ void NetServer::Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs)
             case ENET_EVENT_TYPE_CONNECT:
                 OnClientConnected(event.peer);
                 dispatcher.trigger<OnServerReceiveConnect>(
-                    {event.peer, event.peer->connectID});
+                    {event.peer, event.peer->incomingPeerID});
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
@@ -57,10 +57,10 @@ void NetServer::Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs)
                                  event.packet->dataLength);
                 {
                     auto buffer = net::Buffer{event.packet->data,
-                                              event.packet->dataLength}.ToReadOnly();
+                                              event.packet->dataLength}
+                                      .ToReadOnly();
                     dispatcher.trigger<OnServerReceivePacket>(
-                        {event.peer, event.peer->connectID,
-                         &buffer});
+                        {event.peer, event.peer->incomingPeerID, &buffer});
                 }
                 enet_packet_destroy(event.packet);
                 break;
@@ -68,7 +68,7 @@ void NetServer::Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs)
             case ENET_EVENT_TYPE_DISCONNECT:
                 OnClientDisconnected(event.peer);
                 dispatcher.trigger<OnServerReceiveDisconnect>(
-                    {event.peer, event.peer->connectID});
+                    {event.peer, event.peer->incomingPeerID});
                 break;
 
             default:
@@ -86,5 +86,25 @@ void NetServer::Shutdown()
         oge_enet_shutdown();
         LOG_INFO("Server shutdown");
     }
+}
+
+void NetServer::Disconnect(ENetPeer* peer, uint32_t signal)
+{
+    enet_peer_disconnect(peer, signal);
+}
+
+void NetServer::OnClientConnected(ENetPeer* peer)
+{
+    LOG_INFO("Client connected in({}), out({})", peer->incomingPeerID, peer->outgoingPeerID);
+}
+
+void NetServer::OnClientDisconnected(ENetPeer* peer)
+{
+    LOG_INFO("Client disconnected in({}), out({})", peer->incomingPeerID, peer->outgoingPeerID);
+}
+
+void NetServer::OnPacketReceived(ENetPeer* peer, uint8_t* data, size_t length)
+{
+    LOG_INFO("Server received {} bytes from {}", length, peer->incomingPeerID);
 }
 }  // namespace oge::runtime

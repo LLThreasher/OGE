@@ -1,5 +1,7 @@
 #pragma once
 
+#include <uuid.h>
+
 #include <array>
 #include <cstddef>
 #include <cstring>
@@ -7,7 +9,6 @@
 #include <span>
 #include <variant>
 #include <vector>
-#include <uuid.h>
 
 #include "game/app_context.hpp"
 #include "game/components.hpp"
@@ -54,6 +55,9 @@ class Scene : protected AppRuntime
     virtual void Update(Frame f, SceneContext sctx);
     virtual void Load();
     virtual void Unload();
+
+   protected:
+    void CreateEntityEventStream();
 };
 
 inline PlayerInfo LoadOrCreatePlayer()
@@ -75,14 +79,16 @@ inline PlayerInfo LoadOrCreatePlayer()
     memcpy(_uuid.data(), data.data(), 16);
     math::vec3 pos;
     memcpy(&pos, &data[16], sizeof(math::vec3));
-    LOG_INFO("player loaded with uuid {}", uuids::to_string(uuids::uuid{_uuid}));
+    LOG_INFO("player loaded with uuid {}",
+             uuids::to_string(uuids::uuid{_uuid}));
     return {std::move(_uuid), pos};
 }
 
 }  // namespace game
 
-namespace oge::runtime {
-template<>
+namespace oge::runtime
+{
+template <>
 struct TypeName<game::Scene>
 {
     static consteval std::string_view Get()
@@ -90,4 +96,4 @@ struct TypeName<game::Scene>
         return "core::Scene";
     }
 };
-}
+}  // namespace oge::runtime

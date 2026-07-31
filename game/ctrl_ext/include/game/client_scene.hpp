@@ -3,7 +3,6 @@
 #include <string>
 #include <string_view>
 
-#include "entt/signal/fwd.hpp"
 #include "game/components.hpp"
 #include "game/game_world.hpp"
 #include "game/json.hpp"
@@ -11,6 +10,7 @@
 #include "game/scene_ext.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_client.hpp"
+#include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 namespace game
@@ -41,11 +41,18 @@ enum class ClientState
 class ClientScene : public SceneExt
 {
     NetClient& m_client;
+
    public:
-    ClientScene(const Def& def) : SceneExt(def), m_client(*m_ctx.any_ctx.Get<NetClient>())
+    ClientScene(const Def& def)
+        : SceneExt(def), m_client(*m_ctx.any_ctx.Get<NetClient>())
     {
         Load();
         LOG_INFO("client scene loaded");
+    }
+
+    ~ClientScene()
+    {
+        m_ctx.any_ctx.Erase<NetClient>();
     }
 };
 
@@ -56,8 +63,9 @@ class ClientConnScene : public SceneExt
         Connecting,
         Connected,
         Timeout,
+        Ready,
     };
-    
+
     oge_id_type m_nextSene;
     PlayerInfo m_playerInfo;
     entt::dispatcher m_clientDispatcher;
@@ -68,12 +76,28 @@ class ClientConnScene : public SceneExt
     {
         LOG_INFO("client connected");
         m_state = State::Connected;
+
+        auto packet = m_client.StartPacket(sizeof(PlayerInfo));
+        packet.Write(m_playerInfo);
+        m_client.Send(packet, SendType::Reliable);
     }
 
     void onConnectionTimeout(OnClientConnectionTimeout ctx)
     {
-        LOG_INFO("client connection timeout");
+        LOG_ERROR("client connection timeout");
         m_state = State::Timeout;
+    }
+
+    void onDisconnected(OnClientDisconnected ctx)
+    {
+        LOG_ERROR("client disconnected");
+        m_state = State::Timeout;
+    }
+
+    void onRecievePacket(OnClientReceivePacket ctx)
+    {
+        LOG_INFO("handshake success");
+        m_state = State::Ready;
     }
 
    public:
@@ -103,15 +127,21 @@ class ClientConnScene : public SceneExt
         }
         m_client.Initialize(3);
         m_client.Connect(std::string(ip).c_str(), port);
-        m_clientDispatcher.sink<OnClientConnected>().connect<&ClientConnScene::onConnected>(this);
-        m_clientDispatcher.sink<OnClientConnectionTimeout>().connect<&ClientConnScene::onConnectionTimeout>(this);
+        m_clientDispatcher.sink<OnClientConnected>()
+            .connect<&ClientConnScene::onConnected>(this);
+        m_clientDispatcher.sink<OnClientConnectionTimeout>()
+            .connect<&ClientConnScene::onConnectionTimeout>(this);
+        m_clientDispatcher.sink<OnClientReceivePacket>()
+            .connect<&ClientConnScene::onRecievePacket>(this);
+        m_clientDispatcher.sink<OnClientDisconnected>()
+            .connect<&ClientConnScene::onDisconnected>(this);
     }
 
     void Update(Frame f, SceneContext sctx) override
     {
         SceneExt::Update(f, sctx);
         m_client.Poll(m_clientDispatcher, f.dt);
-        if (m_state == State::Connected)
+        if (m_state == State::Ready)
         {
             sctx.nextScene = m_nextSene;
         }

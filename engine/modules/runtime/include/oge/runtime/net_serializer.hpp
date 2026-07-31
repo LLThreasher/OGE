@@ -1,10 +1,8 @@
 #pragma once
 #include <cassert>
-#include <concepts>
 #include <cstddef>
 #include <cstring>
 #include <span>
-#include <stdexcept>
 #include <vector>
 
 #include "oge/macros.hpp"

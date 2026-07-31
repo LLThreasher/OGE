@@ -22,11 +22,15 @@ Scene::Scene(const Def& def)
             m_sceneConfig.realtimeSubsystems.Add(std::get<int64_t>(val));
         }
     }
-    m_world.ctx().emplace<input::EntityEventStream>();
 }
 
 Scene::~Scene()
 {
+}
+
+void Scene::CreateEntityEventStream()
+{
+    m_world.ctx().emplace<input::EntityEventStream>();
 }
 
 void Scene::Update(Frame f, SceneContext sctx)

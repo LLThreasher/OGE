@@ -28,8 +28,20 @@ entt::entity ComponentPlayer::CreatePlayer(entt::registry& world,
     auto& c = world.emplace<ComponentCreature>(
         res, ComponentCreature{.maxSpeed = 4.f});
     c.SetMaxJumpHeight(1.65f);
-    world.emplace<ComponentPlayer>(res);
+    auto& p = world.emplace<ComponentPlayer>(res);
+    p.id = info.uuid;
     return res;
+}
+
+void ComponentPlayer::DestroyPlayer(entt::registry& world, PlayerInfo info)
+{
+    for (auto [e, player] : world.view<ComponentPlayer>()->each())
+    {
+        if (player.id == info.uuid)
+        {
+            world.destroy(e);
+        }
+    }
 }
 
 namespace sim

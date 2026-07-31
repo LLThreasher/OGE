@@ -2,7 +2,6 @@
 
 #include <limits>
 
-#include "entt/entity/fwd.hpp"
 #include "game/components.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "game/view/renderer.hpp"
