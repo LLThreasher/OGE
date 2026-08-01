@@ -22,7 +22,7 @@ class SubsystemPhysics : public Subsystem
 template <game::UpdateType utype>
 struct oge::runtime::TypeName<game::sim::SubsystemPhysics<utype>>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return utype == UpdateType::FixedStep
                    ? "core::SubsystemPhysics<FixedStep>"

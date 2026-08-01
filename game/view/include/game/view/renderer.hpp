@@ -98,6 +98,7 @@ class DebugInfoRenderer : public Renderer
     oge::runtime::TickScheduler tickScheduler{1.f};
     std::shared_ptr<ui::IFont> debugFont;
     std::string gpuDebugString;
+    std::string debugString;
 };
 
 class CameraRenderer : public Renderer
@@ -128,7 +129,7 @@ namespace oge::runtime
 template <>
 struct TypeName<Renderer>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::Renderer";
     }
@@ -137,7 +138,7 @@ struct TypeName<Renderer>
 template <>
 struct TypeName<DebugInfoRenderer>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::DebugInfoRenderer";
     }
@@ -146,7 +147,7 @@ struct TypeName<DebugInfoRenderer>
 template <>
 struct TypeName<CameraRenderer>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::CameraRenderer";
     }
@@ -155,7 +156,7 @@ struct TypeName<CameraRenderer>
 template <>
 struct TypeName<UIRenderer>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::UIRenderer";
     }

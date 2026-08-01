@@ -122,6 +122,7 @@ void NetClient::Shutdown()
 {
     if (host)
     {
+        Disconnect(200);
         enet_host_destroy(host);
         host = nullptr;
         oge_enet_shutdown();

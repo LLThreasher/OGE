@@ -18,7 +18,6 @@ class Server : public SceneRunner<DebugServerScene>
     oge::runtime::BlockingTickScheduler m_tick;
     entt::registry m_metaWorld;
     OGEContext m_ctx;
-    ReplicationRegistry m_replication;
 
     AssetManager& m_am;
 

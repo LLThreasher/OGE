@@ -176,7 +176,8 @@ void StreamingManager::RunUploadStep(IGraphicsBackend& backend,
     {
         // LOG_DEBUG("checking to free {} {}", fidx,
         // m_stagingAllocationToFree[fidx].size());
-        auto& [event, buffer] = m_stagingAllocationToFree[fidx].front();
+        auto [event, buffer] =
+            std::move(m_stagingAllocationToFree[fidx].front());
         m_stagingAllocationToFree[fidx].pop();
         if (event.IsValid())
         {
@@ -223,7 +224,7 @@ void StreamingManager::RunUploadStep(IGraphicsBackend& backend,
     while (!m_buffersToUpload.empty() &&
            totalBytesUploaded <= m_uploadByteBudget)
     {
-        auto& desc = m_buffersToUpload.front();
+        auto desc = std::move(m_buffersToUpload.front());
         UploadBuffer(fidx, desc, transferCmd);
         m_buffersToUpload.pop();
         totalBytesUploaded += desc.staging.alloc.size;

@@ -65,6 +65,11 @@ class NetClient : public NetPacketSender
 
     void Send(net::Buffer data, SendType sendType, uint8_t channel = 0);
 
+    auto Host()
+    {
+        return peer;
+    }
+
    private:
     void OnPacketReceived(uint8_t* data, size_t length)
     {

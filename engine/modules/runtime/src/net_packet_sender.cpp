@@ -2,6 +2,7 @@
 
 #include <enet/enet.h>
 #include "enet_interface.hpp"
+#include "oge/log.hpp"
 
 namespace oge::runtime
 {
@@ -32,6 +33,11 @@ void NetPacketSender::Send(ENetPeer* peer, net::Buffer data, SendType sendType,
     if (enet_peer_send(peer, channel, packet) < 0)
     {
         enet_packet_destroy(packet);
+    }
+    else
+    {
+        LOG_INFO("sent packet of size {} to peer {}", data.Data().size(),
+                 peer->incomingPeerID);
     }
 }
 }  // namespace oge::runtime

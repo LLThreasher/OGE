@@ -42,7 +42,13 @@ add_library(oge::platform_ext::sdl3 ALIAS oge_platform_ext_sdl3)
 
 target_link_libraries(oge_platform_ext_sdl3 PUBLIC oge::core oge::platform oge::platform_ext)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+if(CMAKE_SYSTEM_NAME STREQUAL "Android" OR ENABLE_ASAN)
+if(APPLE)
+    target_link_libraries(oge_platform_ext_sdl3 PRIVATE
+        "-framework Cocoa"
+        "-framework QuartzCore"
+    )
+endif()
 target_link_libraries(oge_platform_ext_sdl3 PRIVATE SDL3::SDL3)
 else()
 target_link_libraries(oge_platform_ext_sdl3 PRIVATE SDL3::SDL3-static)

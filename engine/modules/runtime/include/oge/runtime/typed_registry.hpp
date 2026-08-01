@@ -23,7 +23,7 @@ using oge_id_type = entt::id_type;
 template <typename T>
 struct TypeName
 {
-    static constexpr std::string_view Get();
+    static constexpr std::string Get();
 };
 
 class OGEContextReadOnly

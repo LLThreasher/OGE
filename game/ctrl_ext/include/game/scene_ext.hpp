@@ -70,7 +70,7 @@ namespace oge::runtime {
 template<>
 struct TypeName<game::SceneExt>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::SceneExt";
     }

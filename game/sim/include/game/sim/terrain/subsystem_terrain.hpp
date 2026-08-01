@@ -78,7 +78,7 @@ using SubsystemTerrain = terrain::SubsystemTerrain;
 template <>
 struct oge::runtime::TypeName<game::sim::SubsystemTerrain>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::SubsystemTerrain";
     }

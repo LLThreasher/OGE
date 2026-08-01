@@ -43,7 +43,8 @@ void CameraRenderer::onAttach(RendererState& ctx)
     // game.on_construct<ComponentCamera>().connect<&onCameraCreated>(ctx.renderWorld);
 }
 
-void CameraRenderer::onViewPanelUpdate(entt::registry& world, entt::registry& uiWorld,
+void CameraRenderer::onViewPanelUpdate(entt::registry& world,
+                                       entt::registry& uiWorld,
                                        entt::entity entity)
 {
     auto [vp, rect] = uiWorld.try_get<ViewPanel, ScreenRect>(entity);
@@ -59,16 +60,18 @@ void CameraRenderer::onViewPanelUpdate(entt::registry& world, entt::registry& ui
 
 void CameraRenderer::onUpdate(FRendererState& ctx)
 {
-    for (auto [entity, view, rect] : ctx.uiWorld.view<ViewPanel, ScreenRect>().each())
+    for (auto [entity, view, rect] :
+         ctx.uiWorld.view<ViewPanel, ScreenRect>().each())
     {
         CmdAddView cmdview{};
         cmdview.rect = rect;
+        if (!ctx.world.valid(view.activeCamera)) continue;
         if (auto camera = ctx.world.try_get<ComponentCamera>(view.activeCamera))
         {
             cmdview.view = camera->view();
         }
-        if (auto pcamera =
-                ctx.world.try_get<ComponentPerspectiveCamera>(view.activeCamera))
+        if (auto pcamera = ctx.world.try_get<ComponentPerspectiveCamera>(
+                view.activeCamera))
         {
             cmdview.fov = pcamera->fov;
             cmdview.aspect = pcamera->aspect;

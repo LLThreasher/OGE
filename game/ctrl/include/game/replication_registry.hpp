@@ -5,6 +5,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "game/components.hpp"
 #include "game/input/entity_event_stream.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
@@ -83,9 +84,8 @@ struct ReplicationCapability : ICapability
     DecodeFn decode = nullptr;
     CreateStateFn createState = nullptr;
 
-    ReplicationCapability(FamilyId f, EncodeFn e, DecodeFn d,
-                          SendType st = SendType::Reliable, uint8_t ch = 0,
-                          CreateStateFn cs = nullptr)
+    ReplicationCapability(FamilyId f, EncodeFn e, DecodeFn d, CreateStateFn cs,
+                          SendType st = SendType::Reliable, uint8_t ch = 0)
         : family(f),
           sendType(st),
           channel(ch),
@@ -113,7 +113,7 @@ class ReplicationRegistry
         return m_serializableComponents;
     }
 
-    template<typename T>
+    template <typename T>
     void RegisterSerializableComponent()
     {
         m_serializableComponents.push_back(entt::type_hash<T>::value());
@@ -130,20 +130,16 @@ class ReplicationRegistry
         }
     }
 
-    void ProduceAll(oge::runtime::NetPacketSender& server, ENetPeer* peer,
+    void ProduceAll(oge::runtime::NetPacketSender& server,
                     entt::registry& world)
     {
-        auto it = m_peers.find(peer);
-        if (it == m_peers.end()) return;
-
-        auto& peerState = it->second;
-
-        for (auto& [family, cap] : m_units)
+        for (auto& [peer, peerState] : m_peers)
         {
-            entt::any& state = peerState.state[family];
-
-            cap->encode(world, peer, server, family, cap->sendType,
-                        cap->channel, state);
+            for (auto& [family, cap] : m_units)
+            {
+                cap->encode(world, peer, server, family, cap->sendType,
+                            cap->channel, peerState.state.at(family));
+            }
         }
     }
 
@@ -176,15 +172,37 @@ class ReplicationRegistry
     {
         m_peers.erase(peer);  // entt::any cleans itself
     }
+
+    auto Peers() const
+    {
+        return m_peers;
+    }
 };
 
-template <typename T>
-struct ComponentReplication
+inline void InstallEntityReplicationHooks(entt::registry& world)
+{
+    world.ctx().emplace<EntityEventStream>();
+    world.on_construct<ReplicatedTag>()
+        .template connect<
+            +[](entt::registry& world, entt::entity e)
+            {
+                world.ctx().template get<input::EntityEventStream>().Push(
+                    {input::EntityEventType::Create, e});
+            }>();
+    world.on_destroy<ReplicatedTag>()
+        .template connect<
+            +[](entt::registry& world, entt::entity e)
+            {
+                world.ctx().template get<input::EntityEventStream>().Push(
+                    {input::EntityEventType::Destroy, e});
+            }>();
+}
+
+struct EntityReplication
 {
     struct State
     {
-        std::unordered_map<entt::entity, uint32_t> lastSeen;
-        EntityEventStream::Cursor eCursor;
+        typename input::EntityEventStream::Cursor cursor = 0;
     };
 
     static entt::any CreateState()
@@ -197,34 +215,22 @@ struct ComponentReplication
                        SendType sendType, uint8_t channel, entt::any& anyState)
     {
         auto& state = entt::any_cast<State&>(anyState);
-        auto& storage = world.storage<T>();
 
-        EntityEvent ee;
-        auto eStream = world.ctx().find<EntityEventStream>();
-        while (eStream->PollOne(state.eCursor, ee))
+        auto* stream = world.ctx().find<input::EntityEventStream>();
+        if (!stream) return;
+
+        input::EntityEvent delta;
+
+        while (stream->PollOne(state.cursor, delta))
         {
-            if (ee.type == EntityEventType::Destroy)
-            {
-                state.lastSeen.erase(ee.entity);
-            }
-        }
+            size_t size = sizeof(FamilyId) + sizeof(input::ComponentDeltaType) +
+                          sizeof(entt::entity);
 
-        for (auto entity : storage)
-        {
-            uint32_t current = storage.current(entity);
-            uint32_t& last = state.lastSeen[entity];
-
-            if (current <= last) continue;
-
-            last = current;
-
-            size_t size = EntityStorageTraits<T>::GetSize(entity, world);
-
-            auto packet = server.StartPacket(sizeof(FamilyId) + size);
+            auto packet = server.StartPacket(size);
 
             packet.Write(family);
-
-            EntityStorageTraits<T>::Serialize(entity, world, packet);
+            packet.Write(delta.type);
+            packet.Write(delta.entity);
 
             server.Send(peer, packet, sendType, channel);
         }
@@ -232,7 +238,170 @@ struct ComponentReplication
 
     static void Decode(entt::registry& world, net::Buffer& buffer)
     {
-        EntityStorageTraits<T>::Deserialize(world, buffer);
+        input::EntityEventType type;
+        buffer.Read(type);
+
+        entt::entity entity;
+        buffer.Read(entity);
+
+        switch (type)
+        {
+            case input::EntityEventType::Create:
+            {
+                auto e = world.create(entity);
+                assert(e == entity);
+                break;
+            }
+
+            case input::EntityEventType::Destroy:
+            {
+                if (world.valid(entity))
+                    world.destroy(entity);
+                break;
+            }
+        }
+    }
+};
+
+template <typename T>
+void InstallReplicationHooks(entt::registry& world)
+{
+    world.ctx().emplace<input::ComponentDeltaStream<T>>();
+    world.on_construct<T>()
+        .template connect<
+            +[](entt::registry& world, entt::entity e)
+            {
+                world.ctx().template get<input::ComponentDeltaStream<T>>().Push(
+                    {input::ComponentDeltaType::Add, e});
+            }>();
+    world.on_update<T>()
+        .template connect<
+            +[](entt::registry& world, entt::entity e)
+            {
+                world.ctx().template get<input::ComponentDeltaStream<T>>().Push(
+                    {input::ComponentDeltaType::Update, e});
+            }>();
+    world.on_destroy<T>()
+        .template connect<
+            +[](entt::registry& world, entt::entity e)
+            {
+                world.ctx().template get<input::ComponentDeltaStream<T>>().Push(
+                    {input::ComponentDeltaType::Remove, e});
+            }>();
+}
+
+template <typename T>
+struct ComponentReplication
+{
+    struct State
+    {
+        typename input::ComponentDeltaStream<T>::Cursor cursor = 0;
+        bool needsSnapshot = true;
+    };
+
+    static void SendSnapshot(entt::registry& world, ENetPeer* peer,
+                             oge::runtime::NetPacketSender& server,
+                             FamilyId family, SendType sendType,
+                             uint8_t channel, State& state)
+    {
+        auto view = world.view<T>();
+
+        for (auto entity : view)
+        {
+            // size_t size = sizeof(FamilyId) + sizeof(input::ComponentDeltaType) +
+            //               sizeof(entt::entity);
+                          // +
+                          //EntityStorageTraits<T>::GetSize(entity, world);
+
+            auto packet = server.StartPacket(1024);
+
+            packet.Write(family);
+            packet.Write(input::ComponentDeltaType::Add);
+            packet.Write(entity);
+
+            EntityStorageTraits<T>::Serialize(entity, world, packet);
+
+            server.Send(peer, packet, sendType, channel);
+        }
+
+        // After snapshot, start consuming future deltas
+        auto* stream = world.ctx().find<input::ComponentDeltaStream<T>>();
+        if (stream) stream->AdvanceCursor(state.cursor);
+
+        state.needsSnapshot = false;
+    }
+
+    static entt::any CreateState()
+    {
+        return State{};
+    }
+
+    static void Encode(entt::registry& world, ENetPeer* peer,
+                       oge::runtime::NetPacketSender& server, FamilyId family,
+                       SendType sendType, uint8_t channel, entt::any& anyState)
+    {
+        auto& state = entt::any_cast<State&>(anyState);
+
+        if (state.needsSnapshot)
+        {
+            SendSnapshot(world, peer, server, family, sendType, channel, state);
+            return;
+        }
+
+        auto* stream = world.ctx().find<input::ComponentDeltaStream<T>>();
+        if (!stream) return;
+
+        input::ComponentDeltaEvent<T> delta;
+
+        while (stream->PollOne(state.cursor, delta))
+        {
+            size_t size = sizeof(FamilyId) + sizeof(input::ComponentDeltaType) +
+                          sizeof(entt::entity);
+
+            if (delta.type != input::ComponentDeltaType::Remove)
+            {
+                size += EntityStorageTraits<T>::GetSize(delta.entity, world);
+            }
+
+            auto packet = server.StartPacket(size);
+
+            packet.Write(family);
+            packet.Write(delta.type);
+            packet.Write(delta.entity);
+
+            if (delta.type != input::ComponentDeltaType::Remove)
+            {
+                EntityStorageTraits<T>::Serialize(delta.entity, world, packet);
+            }
+
+            server.Send(peer, packet, sendType, channel);
+        }
+    }
+
+    static void Decode(entt::registry& world, net::Buffer& buffer)
+    {
+        input::ComponentDeltaType type;
+        buffer.Read(type);
+
+        entt::entity entity;
+        buffer.Read(entity);
+
+        switch (type)
+        {
+            case input::ComponentDeltaType::Add:
+            case input::ComponentDeltaType::Update:
+            {
+                EntityStorageTraits<T>::Deserialize(world, buffer);
+                break;
+            }
+
+            case input::ComponentDeltaType::Remove:
+            {
+                if (world.valid(entity) && world.all_of<T>(entity))
+                    world.remove<T>(entity);
+                break;
+            }
+        }
     }
 };
 
@@ -240,7 +409,7 @@ template <typename T>
 concept IsEventStream = requires(T s, T::Cursor c, T::TEvent e) {
     typename T::TEvent;
     typename T::Cursor;
-    { s.HeadIndex() } -> std::same_as<typename T::Cursor>;
+    { s.AdvanceCursor(c) };
     { s.PollOne(c, e) } -> std::same_as<bool>;
     { s.Push(e) } -> std::same_as<void>;
 };
@@ -319,8 +488,9 @@ struct EventStreamReplication
 //     }
 
 //     static void Encode(entt::registry& world, ENetPeer* peer,
-//                        oge::runtime::NetPacketSender& server, FamilyId family,
-//                        SendType sendType, uint8_t channel, entt::any& anyState)
+//                        oge::runtime::NetPacketSender& server, FamilyId
+//                        family, SendType sendType, uint8_t channel, entt::any&
+//                        anyState)
 //     {
 //         auto& state = entt::any_cast<State&>(anyState);
 //         auto& stream = world.ctx().get<EntityEventStream>();
@@ -352,7 +522,7 @@ struct EventStreamReplication
 //         }
 
 //         if (batch.events.empty()) return;
-        
+
 //         auto& loader = world.ctx().get<entt::snapshot>();
 //         auto& registry = world.ctx().get<ReplicationRegistry>();
 //         auto packet = server.StartPacket(sizeof(FamilyId) + batch.Size());
@@ -441,7 +611,7 @@ struct EntityEventStreamReplication
 
             if (!pState.initialized)
             {
-                pState.cursor = stream.HeadIndex();
+                stream.AdvanceCursor(pState.cursor);
                 pState.initialized = true;
                 continue;
             }

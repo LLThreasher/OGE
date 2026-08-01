@@ -1,6 +1,7 @@
 #include <iterator>
 
 #include "game/components.hpp"
+#include "game/game_world.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/terrain/block_registry.hpp"
@@ -13,9 +14,13 @@
 namespace game
 {
 entt::entity ComponentPlayer::CreatePlayer(entt::registry& world,
-                                           PlayerInfo info)
+                                           PlayerInfo info, entt::entity hint)
 {
-    auto res = world.create();
+    entt::entity res;
+    if (hint == entt::null)
+        res = world.create();
+    else
+        res = world.create(hint);
     world.emplace<UpdateTag<UpdateType::Realtime>>(res);
     auto& b = world.emplace<ComponentPhysicBody>(res, info.latestPosition);
     b.stepAssist = 1.01f;
@@ -28,8 +33,7 @@ entt::entity ComponentPlayer::CreatePlayer(entt::registry& world,
     auto& c = world.emplace<ComponentCreature>(
         res, ComponentCreature{.maxSpeed = 4.f});
     c.SetMaxJumpHeight(1.65f);
-    auto& p = world.emplace<ComponentPlayer>(res);
-    p.id = info.uuid;
+    world.emplace<ComponentPlayer>(res, info.uuid);
     return res;
 }
 

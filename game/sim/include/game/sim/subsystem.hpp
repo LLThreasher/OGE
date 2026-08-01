@@ -145,7 +145,7 @@ using namespace ::game::sim;
 template <>
 struct TypeName<Subsystem>
 {
-    static constexpr std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::Subsystem";
     }
@@ -154,7 +154,7 @@ struct TypeName<Subsystem>
 template <>
 struct TypeName<SubsystemDebugText>
 {
-    static constexpr std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::SubsystemDebugText";
     }
@@ -163,7 +163,7 @@ struct TypeName<SubsystemDebugText>
 template <UpdateType utype>
 struct TypeName<SubsystemCreature<utype>>
 {
-    static constexpr std::string_view Get()
+    static constexpr std::string Get()
     {
         return utype == UpdateType::FixedStep
                    ? "core::SubsystemTerrain<FixedStep>"
@@ -174,7 +174,7 @@ struct TypeName<SubsystemCreature<utype>>
 template <UpdateType utype>
 struct TypeName<SubsystemPlayer<utype>>
 {
-    static constexpr std::string_view Get()
+    static constexpr std::string Get()
     {
         return utype == UpdateType::FixedStep
                    ? "core::SubsystemPlayer<FixedStep>"

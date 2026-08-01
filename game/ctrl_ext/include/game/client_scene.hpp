@@ -3,11 +3,15 @@
 #include <string>
 #include <string_view>
 
+#include "entt/signal/fwd.hpp"
 #include "game/components.hpp"
 #include "game/game_world.hpp"
 #include "game/json.hpp"
+#include "game/replication_registry.hpp"
 #include "game/scene.hpp"
 #include "game/scene_ext.hpp"
+#include "game/ui/objects.hpp"
+#include "game/view/submission_queue.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_client.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
@@ -41,6 +45,31 @@ enum class ClientState
 class ClientScene : public SceneExt
 {
     NetClient& m_client;
+    PlayerInfo m_playerInfo;
+    entt::dispatcher m_clientDispatcher;
+    ReplicationRegistry m_replicationRegistry;
+
+    bool m_readyToQuit = false;
+
+    void onDisconnected(OnClientDisconnected ctx)
+    {
+        LOG_ERROR("client disconnected");
+        m_readyToQuit = true;
+    }
+
+    void onRecievePacket(OnClientReceivePacket ctx)
+    {
+        m_replicationRegistry.HandleIncoming(m_world, *ctx.data);
+    }
+
+    void onConstructPlayer(entt::registry& world, entt::entity e)
+    {
+        if (world.get<ComponentPlayer>(e).id == m_playerInfo.uuid)
+        {
+            ui::CreateGameView(m_uiWorld, {math::vec2{0, 0}, math::vec2{1, 1}}, e);
+            world.on_construct<ComponentPlayer>().disconnect();
+        }
+    }
 
    public:
     ClientScene(const Def& def)
@@ -48,11 +77,31 @@ class ClientScene : public SceneExt
     {
         Load();
         LOG_INFO("client scene loaded");
+        m_playerInfo = LoadOrCreatePlayer();
+        RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
+        m_clientDispatcher.sink<OnClientReceivePacket>()
+            .connect<&ClientScene::onRecievePacket>(this);
+        m_clientDispatcher.sink<OnClientDisconnected>()
+            .connect<&ClientScene::onDisconnected>(this);
+        m_world.on_construct<ComponentPlayer>().connect<&ClientScene::onConstructPlayer>(this);
+        m_replicationRegistry.AddPeer(m_client.Host());
     }
 
     ~ClientScene()
     {
         m_ctx.any_ctx.Erase<NetClient>();
+    }
+
+    void Update(Frame f, SceneContext sctx) override
+    {
+        m_client.Poll(m_clientDispatcher, f.dt);
+        if (m_readyToQuit)
+        {
+            sctx.nextScene = Id<SceneExt>();
+            sctx.nextSceneArgs = {};
+            return;
+        }
+        m_replicationRegistry.ProduceAll(m_client, m_world);
     }
 };
 
@@ -67,6 +116,7 @@ class ClientConnScene : public SceneExt
     };
 
     oge_id_type m_nextSene;
+    json::Object m_nextSceneArgs;
     PlayerInfo m_playerInfo;
     entt::dispatcher m_clientDispatcher;
     NetClient& m_client;
@@ -98,6 +148,8 @@ class ClientConnScene : public SceneExt
     {
         LOG_INFO("handshake success");
         m_state = State::Ready;
+        m_nextSceneArgs["player_entity"] =
+            static_cast<int64_t>(ctx.data->Read<entt::entity>());
     }
 
    public:
@@ -144,6 +196,10 @@ class ClientConnScene : public SceneExt
         if (m_state == State::Ready)
         {
             sctx.nextScene = m_nextSene;
+            for (auto& [key, val] : m_nextSceneArgs)
+            {
+                sctx.nextSceneArgs[key] = val;
+            }
         }
         else if (m_state == State::Timeout)
         {
@@ -161,7 +217,7 @@ namespace oge::runtime
 template <>
 struct TypeName<game::ClientScene>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::ClientScene";
     }
@@ -170,7 +226,7 @@ struct TypeName<game::ClientScene>
 template <>
 struct TypeName<game::ClientConnScene>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::ClientConnScene";
     }

@@ -105,9 +105,11 @@ class PlayerInputStream
     bool panDirty = false;
 
    public:
-    Cursor HeadIndex()
+    void AdvanceCursor(Cursor& cursor)
     {
-        return {actions.HeadIndex(), moves.HeadIndex(), pans.HeadIndex()};
+        actions.AdvanceCursor(cursor.actionCursor);
+        moves.AdvanceCursor(cursor.moveCursor);
+        pans.AdvanceCursor(cursor.panCursor);
     }
 
     bool PollOne(Cursor& cursor, PlayerInputFrame& frame)
@@ -211,7 +213,7 @@ namespace oge::runtime {
 template<>
 struct TypeName<game::input::PlayerInputStream>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::PlayerInputStream";
     }

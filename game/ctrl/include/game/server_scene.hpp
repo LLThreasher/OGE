@@ -22,6 +22,7 @@ class DebugServerScene final : public Scene
     NetServer& m_netServer;
     ENetPeer* m_pendingConnection = nullptr;
     std::vector<PlayerInfo> m_playerEntries;
+    ReplicationRegistry m_replicationRegistry;
 
     void onServerRecieveConnect(OnServerReceiveConnect c)
     {
@@ -48,8 +49,10 @@ class DebugServerScene final : public Scene
                          uuids::to_string(uuid));
                 ComponentPlayer::DestroyPlayer(m_world,
                                                m_playerEntries[c.peerId]);
+                m_playerEntries[c.peerId] = {};
             }
         }
+        m_replicationRegistry.RemovePeer(c.peer);
     }
 
     void onServerReceivePacket(OnServerReceivePacket p)
@@ -58,12 +61,17 @@ class DebugServerScene final : public Scene
         {
             m_pendingConnection = nullptr;
             auto playerInfo = p.data->Read<PlayerInfo>();
-            ComponentPlayer::CreatePlayer(m_world, playerInfo);
+            auto playerEntity = ComponentPlayer::CreatePlayer(m_world, playerInfo);
+            m_world.emplace<ReplicatedTag>(playerEntity);
             m_playerEntries.resize(
                 math::max(p.peerId + 1, (uint32_t)m_playerEntries.size()));
             m_playerEntries[p.peerId] = playerInfo;
             LOG_INFO("create player enitty: {} for conn({})",
                      uuids::to_string(uuids::uuid{m_playerEntries[p.peerId].uuid}), p.peerId);
+            auto packet = m_netServer.StartPacket(sizeof(entt::entity));
+            packet.Write(playerEntity);
+            m_netServer.Send(p.peer, packet);
+            m_replicationRegistry.AddPeer(p.peer);
         }
     }
 
@@ -89,6 +97,8 @@ class DebugServerScene final : public Scene
             .connect<&DebugServerScene::onServerReceiveDisconnect>(this);
         m_serverEventDispatcher.sink<OnServerReceivePacket>()
             .connect<&DebugServerScene::onServerReceivePacket>(this);
+        RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
+        InstallReplicationHooks<ComponentPlayer>(m_world);
     }
 
     ~DebugServerScene()
@@ -101,6 +111,7 @@ class DebugServerScene final : public Scene
     {
         m_netServer.Poll(m_serverEventDispatcher);
         assert(m_serverEventDispatcher.size() == 0);
+        m_replicationRegistry.ProduceAll(m_netServer, m_world);
         Scene::Update(f, sctx);
     }
 };
@@ -111,7 +122,7 @@ namespace oge::runtime
 template <>
 struct TypeName<game::DebugServerScene>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::DebugServerScene";
     }

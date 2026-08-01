@@ -1,5 +1,6 @@
 #pragma once
 
+#include <string>
 #include "oge/event_stream.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/net_serializer.hpp"
@@ -20,6 +21,11 @@ NET_OBJ(EntityEvent)
     SimpleNetValue<EntityEventType> type;
     SimpleNetValue<entt::entity> entity;
 
+    EntityEvent(EntityEventType ty = {}, entt::entity e = entt::null)
+        : type(ty), entity(e)
+    {
+    }
+
     NET_OBJ_FN
     {
         visit(self.type);
@@ -30,15 +36,45 @@ NET_OBJ(EntityEvent)
 class EntityEventStream : public oge::DiscreteEventStream<EntityEvent, 1024>
 {
 };
+
+enum class ComponentDeltaType : uint8_t
+{
+    Add,
+    Update,
+    Remove
+};
+
+template <typename T>
+struct ComponentDeltaEvent
+{
+    ComponentDeltaType type;
+    entt::entity entity;
+};
+
+template <typename T, size_t Capacity = 1024>
+struct ComponentDeltaStream
+    : public oge::DiscreteEventStream<ComponentDeltaEvent<T>, Capacity>
+{
+};
 }  // namespace game::input
 
-namespace oge::runtime {
-template<>
+namespace oge::runtime
+{
+template <>
 struct TypeName<game::input::EntityEventStream>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::EntityEventStream";
     }
 };
-}
+
+template <typename T, size_t capacity>
+struct TypeName<game::input::ComponentDeltaStream<T, capacity>>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ComponentDeltaStream<" + TypeName<T>::Get() + "," + std::to_string(capacity) + ">";
+    }
+};
+}  // namespace oge::runtime

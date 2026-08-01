@@ -5,10 +5,12 @@
 #include <cstdint>
 #include <string_view>
 
+#include "game/game_world.hpp"
 #include "oge/aabb.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/math.hpp"
 #include "oge/runtime/entt.hpp"
+#include "oge/runtime/net_serializer.hpp"
 
 namespace game
 {
@@ -28,6 +30,10 @@ enum class UpdateType
 
 template <UpdateType>
 struct UpdateTag
+{
+};
+
+struct ReplicatedTag
 {
 };
 
@@ -93,6 +99,18 @@ struct ComponentCreature
     {
         initJumpSpeed = math::sqrt(2.f * height * 9.8f);
     }
+
+    void Serialize(net::Buffer& buffer)
+    {
+        buffer.Write(maxSpeed);
+        buffer.Write(initJumpSpeed);
+    }
+
+    void Deserialize(net::Buffer& buffer)
+    {
+        maxSpeed = buffer.Read<float>();
+        initJumpSpeed = buffer.Read<float>();
+    }
 };
 
 struct ComponentCreatureInfo
@@ -105,6 +123,16 @@ struct ComponentCreatureInfo
 struct ComponentAABBCollider
 {
     AABB aabb;
+
+    void Serialize(net::Buffer& buffer)
+    {
+        buffer.Write(aabb);
+    }
+
+    void Deserialize(net::Buffer& buffer)
+    {
+        aabb =  buffer.Read<AABB>();
+    }
 };
 
 struct PlayerInfo
@@ -115,11 +143,26 @@ struct PlayerInfo
 
 struct ComponentPlayer
 {
-    float lastActionTime = 0.f;
     std::array<uint8_t, 16> id;
+    float lastActionTime = 0.f;
 
-    static entt::entity CreatePlayer(entt::registry& world, PlayerInfo info);
+    static entt::entity CreatePlayer(entt::registry& world, PlayerInfo info, entt::entity hint = entt::null);
     static void DestroyPlayer(entt::registry& world, PlayerInfo info);
+
+    void Serialize(net::Buffer& buffer)
+    {
+        buffer.Write<std::array<uint8_t, 16>>(id);
+    }
+
+    void Deserialize(net::Buffer& buffer)
+    {
+        id = buffer.Read<std::array<uint8_t, 16>>();
+    }
+
+    size_t Size()
+    {
+        return sizeof(uint8_t) * 16;
+    }
 };
 
 struct DebugText
@@ -129,3 +172,24 @@ struct DebugText
 };
 
 }  // namespace game
+
+namespace oge::runtime
+{
+template <>
+struct TypeName<game::ReplicatedTag>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ReplicatedTag";
+    }
+};
+
+template <>
+struct TypeName<game::ComponentPlayer>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ComponentPlayer";
+    }
+};
+}  // namespace oge::runtime

@@ -33,11 +33,11 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
         m_budgetGPUMem = memUsage.heapBudget[0];
     }
 
-    auto& spriteQueue =
-        ctx.submissionQueue.View<oge::runtime::gfx::CmdDrawSprite>().GetSingle(
-            GameViewType::Overlay);
+    auto spriteView =
+        ctx.submissionQueue.View<oge::runtime::gfx::CmdDrawSprite>();
+    auto& spriteQueue = spriteView.GetSingle(GameViewType::Overlay);
 
-    std::pmr::string debugString{ctx.memory.frameBuffer.Resource()};
+    debugString.clear();
     debugString.reserve(1024);
     for (auto [e, txt] : ctx.world.view<const DebugText>().each())
     {

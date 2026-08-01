@@ -165,7 +165,7 @@ using TerrainRenderer = terrain::TerrainRenderer;
 template <>
 struct oge::runtime::TypeName<::game::view::TerrainRenderer>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::TerrainRenderer";
     }

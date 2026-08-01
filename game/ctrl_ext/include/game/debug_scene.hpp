@@ -226,7 +226,7 @@ namespace oge::runtime {
 template<>
 struct TypeName<game::DebugScene3>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::DebugScene3";
     }

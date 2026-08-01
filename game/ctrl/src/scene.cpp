@@ -1,5 +1,9 @@
 #include "game/scene.hpp"
+
+#include "entt/entity/fwd.hpp"
+#include "game/components.hpp"
 #include "game/input/entity_event_stream.hpp"
+#include "oge/input/raw_input_stream.hpp"
 
 using namespace game;
 
@@ -26,11 +30,6 @@ Scene::Scene(const Def& def)
 
 Scene::~Scene()
 {
-}
-
-void Scene::CreateEntityEventStream()
-{
-    m_world.ctx().emplace<input::EntityEventStream>();
 }
 
 void Scene::Update(Frame f, SceneContext sctx)

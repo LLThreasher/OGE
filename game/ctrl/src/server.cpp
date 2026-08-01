@@ -25,7 +25,6 @@ Server::Server(float tickInterval)
 {
     using namespace sim;
     RegisterSubsystems(m_anyFactory);
-    RegisterReplications(m_anyFactory, m_replication);
 }
 
 int Server::Run()

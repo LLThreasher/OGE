@@ -144,7 +144,7 @@ namespace oge::runtime
 template <>
 struct TypeName<InputSource>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::InputSource";
     }
@@ -153,7 +153,7 @@ struct TypeName<InputSource>
 template <>
 struct TypeName<UIDragInput>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::UIDragInput";
     }
@@ -162,7 +162,7 @@ struct TypeName<UIDragInput>
 template <>
 struct TypeName<WidgetInput>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::WidgetInput";
     }
@@ -171,7 +171,7 @@ struct TypeName<WidgetInput>
 template <>
 struct TypeName<KeyMouseInput>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::KeyMouseInput";
     }

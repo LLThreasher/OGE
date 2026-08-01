@@ -19,7 +19,9 @@ public:
     explicit Buffer(size_t initialSize = 1024)
         : owned(initialSize),
           data(owned)
-    {}
+    {
+        assert(false && "not allowed");
+    }
 
     // -----------------------------
     // Non-owning constructors
@@ -65,6 +67,12 @@ public:
         T value;
         ReadRaw(&value, sizeof(T));
         return value;
+    }
+
+    template <typename T>
+    void Read(T& out)
+    {
+        out = Read<T>();
     }
 
     void ReadRaw(void* dst, size_t size)

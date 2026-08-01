@@ -16,7 +16,6 @@ struct AppContext
     AnythingFactory& any_factory;
     entt::dispatcher& events;
     MemoryContext& memory;
-    ReplicationRegistry& replication;
 };
 
 class AppRuntime

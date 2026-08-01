@@ -33,7 +33,6 @@ Client::Client()
     RegisterInputSources(m_anyFactory);
     RegisterSubsystems(m_anyFactory);
     RegisterRenderers(m_anyFactory);
-    RegisterReplications(m_anyFactory, m_replication);
 }
 
 void Client::Initialize(WindowHandle* handle)

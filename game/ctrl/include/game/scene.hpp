@@ -57,7 +57,6 @@ class Scene : protected AppRuntime
     virtual void Unload();
 
    protected:
-    void CreateEntityEventStream();
 };
 
 inline PlayerInfo LoadOrCreatePlayer()
@@ -91,7 +90,7 @@ namespace oge::runtime
 template <>
 struct TypeName<game::Scene>
 {
-    static consteval std::string_view Get()
+    static constexpr std::string Get()
     {
         return "core::Scene";
     }
