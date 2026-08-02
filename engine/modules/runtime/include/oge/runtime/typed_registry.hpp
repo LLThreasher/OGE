@@ -14,8 +14,6 @@
 #include "oge/log.hpp"
 #include "oge/runtime/entt.hpp"
 
-#define DECL_ID(Name)
-
 namespace oge::runtime
 {
 using oge_id_type = entt::id_type;

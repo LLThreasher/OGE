@@ -149,7 +149,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_PERF": "ON",
-        "ENABLE_ASAN": "ON"
+        "ENABLE_ASAN": "OFF"
       }
     },
     {
@@ -220,6 +220,14 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "apple-debug",
+      "description": "Build Apple Debug",
+      "displayName": "Apple Debug",
+      "configurePreset": "apple-debug"
     }
   ]
 }

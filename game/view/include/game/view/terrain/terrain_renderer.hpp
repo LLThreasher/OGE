@@ -144,7 +144,6 @@ class TerrainRenderer : public Renderer
     TerrainRenderer()
     {
     }
-    DECL_ID(TerrainRenderer);
     NO_COPY(TerrainRenderer);
     ~TerrainRenderer() = default;
 

@@ -1,5 +1,6 @@
 #include <string>
 
+#include "entt/entity/fwd.hpp"
 #include "game/components.hpp"
 #include "game/game_world.hpp"
 #include "game/input/input_source.hpp"
@@ -25,10 +26,47 @@ class DebugScene3 final : public SceneExt
 {
     entt::entity m_cross;
     entt::entity m_player;
+    entt::entity m_lookWidget;
+    entt::entity m_moveWidget;
     bool usingKeyMouse = false;
 
+    void AddWidgetInput(oge::runtime::AssetContext assets)
+    {
+        // create move widget
+        auto scaledX = 0.3f;
+        auto scaledY = scaledX * assets.backend.SwapchainAspect();
+
+        auto lookWidget = m_uiWorld.create();
+        m_uiWorld.emplace<ui::UIRect>(lookWidget, math::vec2{0.0f, 0.0f},
+                                    math::vec2{1.0f, 1.0f});
+        m_uiWorld.emplace<ui::UIZLevel>(lookWidget, 0);
+        m_uiWorld.emplace<ui::UIRaycastTarget>(lookWidget);
+
+        auto mvWidget = m_uiWorld.create();
+        m_uiWorld.emplace<ui::UIRect>(mvWidget, math::vec2{0.0f, 1.f - scaledY},
+                                    math::vec2{scaledX, scaledY});
+        m_uiWorld.emplace<ui::UIZLevel>(mvWidget, 1);
+        m_uiWorld.emplace<ui::UIRaycastTarget>(mvWidget);
+
+        auto& pcam = m_world.get<const ComponentPerspectiveCamera>(m_player);
+        auto m_widgetInputDef = input::WidgetInput::Def{
+            .target = m_world.get<input::PlayerInputStream>(m_player)};
+        m_widgetInputDef.vfov = -pcam.fov;
+        m_widgetInputDef.hfov =
+            2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
+        m_widgetInputDef.vfov *= 2.f;
+        m_widgetInputDef.hfov *= 3.f;
+        m_widgetInputDef.viewWidget = lookWidget;
+        m_widgetInputDef.moveWidget = mvWidget;
+
+        m_inputs.AddStage<input::UIDragInput>(AF());
+        m_inputs.AddStage<input::WidgetInput>(AF(), m_widgetInputDef);
+
+        m_lookWidget = lookWidget;
+        m_moveWidget = mvWidget;
+    }
+
    public:
-    DECL_ID(DebugScene3)
     DebugScene3(const Def& def) : SceneExt(def)
     {
         if (m_sceneConfig.empty())
@@ -53,9 +91,9 @@ class DebugScene3 final : public SceneExt
 
         Load();
 
-        m_renderers.AddStage<view::TerrainRenderer>(AF());
-        m_renderers.AddStage<view::DebugInfoRenderer>(AF());
         m_renderers.AddStage<view::UIRenderer>(AF());
+        m_renderers.AddStage<view::DebugInfoRenderer>(AF());
+        m_renderers.AddStage<view::TerrainRenderer>(AF());
         m_renderers.AddStage<view::CameraRenderer>(AF());
 
         auto assets = AssetContext(m_ctx.any_ctx);
@@ -116,39 +154,6 @@ class DebugScene3 final : public SceneExt
         AddWidgetInput(assets);
     }
 
-    void AddWidgetInput(oge::runtime::AssetContext assets)
-    {
-        // create move widget
-        auto scaledX = 0.3f;
-        auto scaledY = scaledX * assets.backend.SwapchainAspect();
-
-        auto lookWidget = m_uiWorld.create();
-        m_uiWorld.emplace<ui::UIRect>(lookWidget, math::vec2{0.0f, 0.0f},
-                                    math::vec2{1.0f, 1.0f});
-        m_uiWorld.emplace<ui::UIZLevel>(lookWidget, 0);
-        m_uiWorld.emplace<ui::UIRaycastTarget>(lookWidget);
-
-        auto mvWidget = m_uiWorld.create();
-        m_uiWorld.emplace<ui::UIRect>(mvWidget, math::vec2{0.0f, 1.f - scaledY},
-                                    math::vec2{scaledX, scaledY});
-        m_uiWorld.emplace<ui::UIZLevel>(mvWidget, 1);
-        m_uiWorld.emplace<ui::UIRaycastTarget>(mvWidget);
-
-        auto& pcam = m_world.get<const ComponentPerspectiveCamera>(m_player);
-        auto m_widgetInputDef = input::WidgetInput::Def{
-            .target = m_world.get<input::PlayerInputStream>(m_player)};
-        m_widgetInputDef.vfov = -pcam.fov;
-        m_widgetInputDef.hfov =
-            2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
-        m_widgetInputDef.vfov *= 2.f;
-        m_widgetInputDef.hfov *= 3.f;
-        m_widgetInputDef.viewWidget = lookWidget;
-        m_widgetInputDef.moveWidget = mvWidget;
-
-        m_inputs.AddStage<input::UIDragInput>(AF());
-        m_inputs.AddStage<input::WidgetInput>(AF(), m_widgetInputDef);
-    }
-
     void Update(Frame f, SceneContext sctx) override
     {
         using oge::input::KeyCode;
@@ -158,6 +163,9 @@ class DebugScene3 final : public SceneExt
         {
             usingKeyMouse = true;
             auto extent = m_ctx.assets.backend.SwapchainExtent();
+
+            m_uiWorld.destroy(m_lookWidget);
+            m_uiWorld.destroy(m_moveWidget);
 
             auto& pcam =
                 m_world.get<const ComponentPerspectiveCamera>(m_player);

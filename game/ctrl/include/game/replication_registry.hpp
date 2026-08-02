@@ -8,6 +8,7 @@
 #include "game/components.hpp"
 #include "game/input/entity_event_stream.hpp"
 #include "oge/event_stream.hpp"
+#include "oge/log.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/net_server.hpp"
@@ -104,6 +105,7 @@ class ReplicationRegistry
     };
 
     std::vector<oge_id_type> m_serializableComponents;
+    std::vector<FamilyId> m_sendUnits;
     std::unordered_map<FamilyId, ReplicationCapability*> m_units;
     std::unordered_map<ENetPeer*, PeerState> m_peers;
 
@@ -117,6 +119,11 @@ class ReplicationRegistry
     void RegisterSerializableComponent()
     {
         m_serializableComponents.push_back(entt::type_hash<T>::value());
+    }
+
+    void AddFamilyToSend(FamilyId id)
+    {
+        m_sendUnits.push_back(id);
     }
 
     void RegisterFrom(TypeRegistry& types)
@@ -135,8 +142,9 @@ class ReplicationRegistry
     {
         for (auto& [peer, peerState] : m_peers)
         {
-            for (auto& [family, cap] : m_units)
+            for (auto family : m_sendUnits)
             {
+                auto cap = m_units.at(family);
                 cap->encode(world, peer, server, family, cap->sendType,
                             cap->channel, peerState.state.at(family));
             }
@@ -183,19 +191,19 @@ inline void InstallEntityReplicationHooks(entt::registry& world)
 {
     world.ctx().emplace<EntityEventStream>();
     world.on_construct<ReplicatedTag>()
-        .template connect<
-            +[](entt::registry& world, entt::entity e)
-            {
-                world.ctx().template get<input::EntityEventStream>().Push(
-                    {input::EntityEventType::Create, e});
-            }>();
+        .template connect<+[](entt::registry& world, entt::entity e)
+                          {
+                              world.ctx()
+                                  .template get<input::EntityEventStream>()
+                                  .Push({input::EntityEventType::Create, e});
+                          }>();
     world.on_destroy<ReplicatedTag>()
-        .template connect<
-            +[](entt::registry& world, entt::entity e)
-            {
-                world.ctx().template get<input::EntityEventStream>().Push(
-                    {input::EntityEventType::Destroy, e});
-            }>();
+        .template connect<+[](entt::registry& world, entt::entity e)
+                          {
+                              world.ctx()
+                                  .template get<input::EntityEventStream>()
+                                  .Push({input::EntityEventType::Destroy, e});
+                          }>();
 }
 
 struct EntityReplication
@@ -203,6 +211,7 @@ struct EntityReplication
     struct State
     {
         typename input::EntityEventStream::Cursor cursor = 0;
+        bool useSnapshot = true;
     };
 
     static entt::any CreateState()
@@ -219,20 +228,43 @@ struct EntityReplication
         auto* stream = world.ctx().find<input::EntityEventStream>();
         if (!stream) return;
 
-        input::EntityEvent delta;
-
-        while (stream->PollOne(state.cursor, delta))
+        if (state.useSnapshot)
         {
-            size_t size = sizeof(FamilyId) + sizeof(input::ComponentDeltaType) +
-                          sizeof(entt::entity);
+            for (auto e : world.view<ReplicatedTag>())
+            {
+                size_t size = sizeof(FamilyId) +
+                              sizeof(input::EntityEventType) +
+                              sizeof(entt::entity);
 
-            auto packet = server.StartPacket(size);
+                LOG_DEBUG("send entity {}", (uint32_t)e);
+                auto packet = server.StartPacket(size);
 
-            packet.Write(family);
-            packet.Write(delta.type);
-            packet.Write(delta.entity);
+                packet.Write(family);
+                packet.Write(EntityEventType::Create);
+                packet.Write(e);
 
-            server.Send(peer, packet, sendType, channel);
+                server.Send(peer, packet);
+            }
+            state.useSnapshot = false;
+        }
+        else
+        {
+            input::EntityEvent delta;
+
+            while (stream->PollOne(state.cursor, delta))
+            {
+                size_t size = sizeof(FamilyId) +
+                              sizeof(input::EntityEventType) +
+                              sizeof(entt::entity);
+
+                auto packet = server.StartPacket(size);
+
+                packet.Write(family);
+                packet.Write(delta.type);
+                packet.Write(delta.entity);
+
+                server.Send(peer, packet, sendType, channel);
+            }
         }
     }
 
@@ -248,15 +280,16 @@ struct EntityReplication
         {
             case input::EntityEventType::Create:
             {
+                LOG_DEBUG("recive entity {}", (uint32_t)entity);
                 auto e = world.create(entity);
+                LOG_DEBUG("created entity {}", (uint32_t)e);
                 assert(e == entity);
                 break;
             }
 
             case input::EntityEventType::Destroy:
             {
-                if (world.valid(entity))
-                    world.destroy(entity);
+                if (world.valid(entity)) world.destroy(entity);
                 break;
             }
         }
@@ -308,10 +341,11 @@ struct ComponentReplication
 
         for (auto entity : view)
         {
-            // size_t size = sizeof(FamilyId) + sizeof(input::ComponentDeltaType) +
+            // size_t size = sizeof(FamilyId) +
+            // sizeof(input::ComponentDeltaType) +
             //               sizeof(entt::entity);
-                          // +
-                          //EntityStorageTraits<T>::GetSize(entity, world);
+            // +
+            // EntityStorageTraits<T>::GetSize(entity, world);
 
             auto packet = server.StartPacket(1024);
 
@@ -593,6 +627,7 @@ struct EntityEventStreamReplication
 
         EntityEvent ee;
         auto eStream = world.ctx().find<EntityEventStream>();
+        if (!eStream) return;
         while (eStream->PollOne(state.eCursor, ee))
         {
             if (ee.type == EntityEventType::Destroy)

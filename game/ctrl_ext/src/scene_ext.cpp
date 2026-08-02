@@ -1,4 +1,6 @@
 #include "game/scene_ext.hpp"
+#include "game/json.hpp"
+#include "game/scene.hpp"
 
 using namespace game;
 

@@ -3,6 +3,7 @@
 #include "entt/entity/fwd.hpp"
 #include "game/components.hpp"
 #include "game/input/entity_event_stream.hpp"
+#include "game/json.hpp"
 #include "oge/input/raw_input_stream.hpp"
 
 using namespace game;

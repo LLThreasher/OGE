@@ -1,5 +1,6 @@
 #pragma once
 
+#include "oge/color.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/forward.hpp"
 #include "oge/runtime/asset_ctx.hpp"
@@ -48,7 +49,7 @@ struct DrawContext
     DynamicSkylineAllocator& spriteAllocator;
     ICommandList& drawCmd;
 
-    explicit DrawContext(float dt, InitDrawContext& ctx);
+    explicit DrawContext(float dt, InitDrawContext& ctx, ColorRGBAF32 clearColor = colors::CORNFLOWER_BLUE);
     ~DrawContext();
     NO_COPY(DrawContext);
 };

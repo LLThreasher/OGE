@@ -51,9 +51,6 @@ class Subsystem : public Stage<GameState, FGameState>
         fmt::format_to(std::back_insert_iterator(msg), fmt, args...);
         f.events.trigger<ShowDebugTextEvent>({msg});
     }
-
-   public:
-    DECL_ID(Subsystem)
 };
 
 class SubsystemPipeline : public FixedStepPipeline<Subsystem, GameFrame>
@@ -80,9 +77,8 @@ class RealtimeSubsystemPipeline : public FramePipeline<Subsystem, GameFrame>
     }
 };
 
-#define DECL_FNS(SysName)                   \
+#define DECL_FNS                            \
    public:                                  \
-    DECL_ID(SysName)                        \
     void onAttach(GameState& ctx) override; \
     void onDetach(GameState& ctx) override; \
     void onUpdate(FGameState& ctx) override;
@@ -90,7 +86,7 @@ class RealtimeSubsystemPipeline : public FramePipeline<Subsystem, GameFrame>
 #define DECL_SYS(SysName)            \
     class SysName : public Subsystem \
     {                                \
-        DECL_FNS(SysName)            \
+        DECL_FNS                     \
     };
 
 class SubsystemDebugText : public Subsystem
@@ -102,30 +98,20 @@ class SubsystemDebugText : public Subsystem
     FramePerfStatus perfStatus = {};
     oge::platform::RAMInfo ramInfo = {};
     double cpuUsage = {};
-    DECL_FNS(SubsystemDebugText)
+    DECL_FNS
 };
 
 template <UpdateType utype>
 class SubsystemCreature : public Subsystem
 {
-   public:
-    DECL_ID(SubsystemCreature<utype>)
-    void onAttach(GameState& ctx) override;
-    void onDetach(GameState& ctx) override;
-    void onUpdate(FGameState& ctx) override;
+    DECL_FNS
 };
 
 template <UpdateType utype>
 class SubsystemPlayer : public Subsystem
 {
     input::PlayerInputStream::Cursor cursor;
-
-   public:
-    DECL_ID(SubsystemPlayer<utype>)
-
-    void onAttach(GameState& ctx) override;
-    void onDetach(GameState& ctx) override;
-    void onUpdate(FGameState& ctx) override;
+    DECL_FNS
 };
 
 #undef DECL_FNS

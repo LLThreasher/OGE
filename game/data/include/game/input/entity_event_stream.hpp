@@ -10,7 +10,7 @@ namespace game::input
 {
 using oge::runtime::net::SimpleNetValue;
 
-enum class EntityEventType : uint32_t
+enum class EntityEventType : uint8_t
 {
     Create,
     Destroy,

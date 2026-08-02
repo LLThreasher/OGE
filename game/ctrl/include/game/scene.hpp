@@ -48,7 +48,6 @@ class Scene : protected AppRuntime
         const json::Object& args;
     };
 
-    DECL_ID(Scene)
     Scene(const Def& def);
 
     virtual ~Scene();

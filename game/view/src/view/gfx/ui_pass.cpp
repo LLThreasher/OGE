@@ -1,7 +1,8 @@
-#include "oge/runtime/gfx/ui_pass.hpp"
+#include "game/view/gfx/ui_pass.hpp"
 
 #include <cstdint>
 
+#include "game/view/gfx/commands.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/command_list.hpp"
 #include "oge/graphics/objects.hpp"
@@ -12,7 +13,7 @@
 
 using namespace oge::graphics;
 
-namespace oge::runtime::gfx
+namespace game::view::gfx
 {
 constexpr uint32_t VERT_COUNT = 65536;
 constexpr uint32_t INDEX_COUNT = VERT_COUNT / 4 * 6;
@@ -99,18 +100,10 @@ void UIPass::onDetach(InitDrawContext& ctx)
 {
 }
 
-void UIPass::onUpdate(DrawContext& ctx, View view)
+void UIPass::onUpdate(DrawContext& ctx, View view, ScreenAffine pushConstant)
 {
-    if (ctx.backend.SwapchainRecreated())
-    {
-        auto extent = ctx.backend.SwapchainExtent();
-        math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x,
-                                extent.y, pushConstant.transform,
-                                pushConstant.offset);
-    }
-
     classedVertices.clear();
-    for (auto quad : view.Get<CmdDrawSprite>())
+    for (auto quad : view.Get<oge::runtime::CmdDrawSprite>())
     {
         auto tl = quad.rect.pos.clampToZero();
         auto br = tl + quad.rect.extent;

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <sstream>
 
+#include "game/view/gfx/commands.hpp"
 #include "internals.hpp"
 #include "oge/fmt.hpp"
 #include "oge/log.hpp"
@@ -75,17 +76,8 @@ void DebugInfoPass::onDetach(InitDrawContext& ctx)
 {
 }
 
-void DebugInfoPass::onUpdate(DrawContext& ctx, View view)
+void DebugInfoPass::onUpdate(DrawContext& ctx, View view, ScreenAffine pushConstant)
 {
-    if (ctx.backend.SwapchainRecreated())
-    {
-        auto extent = ctx.backend.SwapchainExtent();
-        math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x,
-                                extent.y, pushConstant.transform,
-                                pushConstant.offset);
-        LOG_INFO("debug pass swapchain recreate {}", extent);
-    }
-
     std::stringstream ss;
     auto texts = view.Get<CmdDrawDebugText>();
     for (auto& dbgText : texts)

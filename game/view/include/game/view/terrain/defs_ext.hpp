@@ -17,13 +17,13 @@ static constexpr char FACE_DOWN = 3;
 static constexpr char FACE_LEFT = 0;
 static constexpr char FACE_RIGHT = 1;
 
-static constexpr char WHITE = 0;
-static constexpr char RED = 1;
-static constexpr char GREEN = 2;
-static constexpr char BLUE = 3;
-static constexpr char YELLOW = 4;
-static constexpr char CYAN = 5;
-static constexpr char MAGENTA = 6;
+// static constexpr char WHITE = 0;
+// static constexpr char RED = 1;
+// static constexpr char GREEN = 2;
+// static constexpr char BLUE = 3;
+// static constexpr char YELLOW = 4;
+// static constexpr char CYAN = 5;
+// static constexpr char MAGENTA = 6;
 
 static constexpr uint32_t CHUNK_VERTEX_BYTE_SIZE = 64 * 1024;  // 64 kb
 static constexpr uint32_t CHUNK_INDEX_BYTE_SIZE = 48 * 1024;   // 48 kb

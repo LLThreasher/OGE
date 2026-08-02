@@ -18,9 +18,14 @@ using oge::runtime::OnServerReceivePacket;
 
 class DebugServerScene final : public Scene
 {
+    float p_pendingConnTimeoutSec = 10.f;
+
     entt::dispatcher m_serverEventDispatcher;
     NetServer& m_netServer;
     ENetPeer* m_pendingConnection = nullptr;
+    ENetPeer* m_pendingConnection2 = nullptr;
+    float m_pendingConnTimeout = 0.f;
+    float m_pendingConn2Timeout = 0.f;
     std::vector<PlayerInfo> m_playerEntries;
     ReplicationRegistry m_replicationRegistry;
 
@@ -34,6 +39,7 @@ class DebugServerScene final : public Scene
                      (void*)c.peer);
         }
         m_pendingConnection = c.peer;
+        m_pendingConnTimeout = p_pendingConnTimeoutSec;
     }
 
     void onServerReceiveDisconnect(OnServerReceiveDisconnect c)
@@ -45,8 +51,7 @@ class DebugServerScene final : public Scene
             LOG_INFO("found uuid {}", uuids::to_string(uuid));
             if (!uuid.is_nil())
             {
-                LOG_INFO("destroy player enitty: {}",
-                         uuids::to_string(uuid));
+                LOG_INFO("destroy player enitty: {}", uuids::to_string(uuid));
                 ComponentPlayer::DestroyPlayer(m_world,
                                                m_playerEntries[c.peerId]);
                 m_playerEntries[c.peerId] = {};
@@ -60,18 +65,39 @@ class DebugServerScene final : public Scene
         if (p.peer == m_pendingConnection)
         {
             m_pendingConnection = nullptr;
+            m_pendingConnTimeout = 0.f;
+            if (m_pendingConnection2 == nullptr)
+            {
+                m_pendingConnection2 = p.peer;
+                m_pendingConn2Timeout = p_pendingConnTimeoutSec;
+            }
+            else
+            {
+                m_netServer.Disconnect(p.peer);
+                LOG_INFO("drop peer connection due to flow ctrl 2: {}",
+                         (void*)p.peer);
+            }
             auto playerInfo = p.data->Read<PlayerInfo>();
-            auto playerEntity = ComponentPlayer::CreatePlayer(m_world, playerInfo);
+            auto playerEntity =
+                ComponentPlayer::CreatePlayer(m_world, playerInfo);
             m_world.emplace<ReplicatedTag>(playerEntity);
             m_playerEntries.resize(
                 math::max(p.peerId + 1, (uint32_t)m_playerEntries.size()));
             m_playerEntries[p.peerId] = playerInfo;
-            LOG_INFO("create player enitty: {} for conn({})",
-                     uuids::to_string(uuids::uuid{m_playerEntries[p.peerId].uuid}), p.peerId);
+            LOG_INFO(
+                "create player enitty: {} for conn({})",
+                uuids::to_string(uuids::uuid{m_playerEntries[p.peerId].uuid}),
+                p.peerId);
             auto packet = m_netServer.StartPacket(sizeof(entt::entity));
             packet.Write(playerEntity);
             m_netServer.Send(p.peer, packet);
+        }
+        else if (p.peer == m_pendingConnection2)
+        {
+            m_pendingConnection2 = nullptr;
+            m_pendingConn2Timeout = 0.f;
             m_replicationRegistry.AddPeer(p.peer);
+            LOG_INFO("initialize replication peer for conn({})", p.peerId);
         }
     }
 
@@ -99,6 +125,9 @@ class DebugServerScene final : public Scene
             .connect<&DebugServerScene::onServerReceivePacket>(this);
         RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
         InstallReplicationHooks<ComponentPlayer>(m_world);
+        InstallEntityReplicationHooks(m_world);
+        m_replicationRegistry.AddFamilyToSend(Id<ReplicatedTag>());
+        m_replicationRegistry.AddFamilyToSend(Id<ComponentPlayer>());
     }
 
     ~DebugServerScene()
@@ -109,6 +138,33 @@ class DebugServerScene final : public Scene
 
     void Update(Frame f, SceneContext sctx) override
     {
+        if (m_pendingConnection)
+        {
+            if (m_pendingConnTimeout <= 0)
+            {
+                m_netServer.Disconnect(m_pendingConnection);
+                m_pendingConnection = nullptr;
+                m_pendingConnTimeout = 0;
+            }
+            else
+            {
+                m_pendingConnTimeout -= f.dt;
+            }
+        }
+        if (m_pendingConnection2)
+        {
+            if (m_pendingConn2Timeout <= 0)
+            {
+                m_netServer.Disconnect(m_pendingConnection2);
+                m_pendingConnection2 = nullptr;
+                m_pendingConn2Timeout = 0;
+            }
+            else
+            {
+                m_pendingConn2Timeout -= f.dt;
+            }
+        }
+        
         m_netServer.Poll(m_serverEventDispatcher);
         assert(m_serverEventDispatcher.size() == 0);
         m_replicationRegistry.ProduceAll(m_netServer, m_world);

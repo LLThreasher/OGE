@@ -1,5 +1,6 @@
 #pragma once
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <new>
@@ -141,16 +142,45 @@ class Pool
         m_freeList.clear();
     }
 
-    Handle Poll()
+    Handle Poll() const
     {
-        assert(Size() > 0);
-        for (uint16_t i = 0; i < m_entries.size(); ++i)
-        {
-            Entry& entry = m_entries[i];
+        Handle res{};
+        Poll(res);
+        return res;
+    }
 
-            if (entry.alive) return Handle{++i, entry.generation};
+    Resource* Poll(Handle& cursor)
+    {
+        ++cursor.index;
+        size_t size = m_entries.size() + 1;
+        for (; cursor.index < size; ++cursor.index)
+        {
+            Entry& entry = m_entries[cursor.index - 1];
+            cursor.generation = entry.generation;
+
+            if (entry.alive)
+            {
+                return entry.Get();
+            }
         }
-        return Handle::InvalidHandle();
+        return nullptr;
+    }
+
+    const Resource* Poll(Handle& cursor) const
+    {
+        ++cursor.index;
+        size_t size = m_entries.size() + 1;
+        for (; cursor.index < size; ++cursor.index)
+        {
+            const Entry& entry = m_entries[cursor.index - 1];
+            cursor.generation = entry.generation;
+
+            if (entry.alive)
+            {
+                return entry.Get();
+            }
+        }
+        return nullptr;
     }
 };
 }  // namespace oge

@@ -4,13 +4,13 @@
 #include "oge/array_helper.hpp"
 #include "oge/point3.hpp"
 #include "oge/runtime/entt.hpp"
-#include "oge/runtime/gfx/commands.hpp"
+#include "oge/runtime/objects_ext.hpp"
 #include "oge/submission_group.hpp"
 
 namespace game::view
 {
-using namespace oge::runtime;
-using namespace oge::runtime::gfx;
+using namespace ::oge::runtime;
+using oge::runtime::CmdDrawSprite;
 using namespace ::game::view::gfx;
 
 enum class GameViewType : uint32_t

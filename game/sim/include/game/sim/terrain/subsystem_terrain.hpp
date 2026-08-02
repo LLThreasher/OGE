@@ -54,7 +54,6 @@ class SubsystemTerrain : public Subsystem
     SubsystemTerrain()
     {
     }
-    DECL_ID(SubsystemTerrain);
     NO_COPY(SubsystemTerrain);
     ~SubsystemTerrain() = default;
 

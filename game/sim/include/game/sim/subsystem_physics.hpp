@@ -12,7 +12,6 @@ class SubsystemPhysics : public Subsystem
         cachedCollisions;
 
    public:
-    DECL_ID(SubsystemPhysics<utype>)
     void onAttach(GameState& ctx) override;
     void onDetach(GameState& ctx) override;
     void onUpdate(FGameState& ctx) override;

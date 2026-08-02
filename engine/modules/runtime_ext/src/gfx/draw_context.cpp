@@ -1,5 +1,6 @@
 #include "oge/runtime/gfx/draw_context.hpp"
 
+#include "oge/color.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/command_list.hpp"
 #include "oge/runtime/asset_ctx.hpp"
@@ -14,7 +15,7 @@ InitDrawContext::InitDrawContext(OGEContextReadOnly& ctx) : assets(ctx)
     uniformArena.Initialize(assets.backend, 1024 * 1024 * 32);
 }
 
-DrawContext::DrawContext(float dt, InitDrawContext& ctx)
+DrawContext::DrawContext(float dt, InitDrawContext& ctx, ColorRGBAF32 color)
     : backend(ctx.assets.backend),
       uniformArena(ctx.uniformArena),
       drawCmd(backend.CreateCommandList(QueueType::Present)),
@@ -25,7 +26,7 @@ DrawContext::DrawContext(float dt, InitDrawContext& ctx)
     auto& cmd = drawCmd;
 
     ClearValues values{};
-    values.colorClears[0] = {0.1f, 0.2f, 0.4f, 1.0f};
+    values.colorClears[0] = color;
     values.depthClear = 0.0f;
     values.stencilClear = 0.f;
 

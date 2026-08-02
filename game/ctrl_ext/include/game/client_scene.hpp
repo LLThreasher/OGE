@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -10,8 +11,12 @@
 #include "game/replication_registry.hpp"
 #include "game/scene.hpp"
 #include "game/scene_ext.hpp"
+#include "game/sim/subsystem.hpp"
 #include "game/ui/objects.hpp"
+#include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
+#include "game/view/terrain/terrain_renderer.hpp"
+#include "oge/color.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_client.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
@@ -75,7 +80,15 @@ class ClientScene : public SceneExt
     ClientScene(const Def& def)
         : SceneExt(def), m_client(*m_ctx.any_ctx.Get<NetClient>())
     {
+        m_sceneConfig.subsystems.Add(Id<sim::SubsystemDebugText>());
+        
         Load();
+
+        m_renderers.AddStage<view::UIRenderer>(AF());
+        m_renderers.AddStage<view::DebugInfoRenderer>(AF());
+        // m_renderers.AddStage<view::TerrainRenderer>(AF());
+        // m_renderers.AddStage<view::CameraRenderer>(AF());
+
         LOG_INFO("client scene loaded");
         m_playerInfo = LoadOrCreatePlayer();
         RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
@@ -85,6 +98,10 @@ class ClientScene : public SceneExt
             .connect<&ClientScene::onDisconnected>(this);
         m_world.on_construct<ComponentPlayer>().connect<&ClientScene::onConstructPlayer>(this);
         m_replicationRegistry.AddPeer(m_client.Host());
+
+        auto packet = m_client.StartPacket(sizeof(uint32_t));
+        packet.Write<uint32_t>(0);
+        m_client.Send(packet, oge::runtime::SendType::Reliable);
     }
 
     ~ClientScene()
@@ -102,6 +119,7 @@ class ClientScene : public SceneExt
             return;
         }
         m_replicationRegistry.ProduceAll(m_client, m_world);
+        SceneExt::Update(f, sctx);
     }
 };
 
@@ -187,6 +205,8 @@ class ClientConnScene : public SceneExt
             .connect<&ClientConnScene::onRecievePacket>(this);
         m_clientDispatcher.sink<OnClientDisconnected>()
             .connect<&ClientConnScene::onDisconnected>(this);
+
+        GetPasses().SetClearColor(oge::colors::GREY);
     }
 
     void Update(Frame f, SceneContext sctx) override

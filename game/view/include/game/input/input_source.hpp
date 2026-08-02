@@ -43,8 +43,6 @@ struct FInputContext
 
 class InputSource : public Stage<InputContext, FInputContext>
 {
-   public:
-    DECL_ID(InputSource)
 };
 
 void RegisterInputSources(AnythingFactory& af);
@@ -55,7 +53,6 @@ class UIDragInput : public InputSource
     RawInputStream::Cursor raw_idx = {};
 
    public:
-    DECL_ID(UIDragInput);
     void onAttach(InputContext& ctx);
     void onDetach(InputContext& ctx);
     void onUpdate(FInputContext& ctx);
@@ -81,7 +78,6 @@ class WidgetInput : public InputSource
         float hfov;
     };
 
-    DECL_ID(WidgetInput);
     WidgetInput(Def&& def) : out(def.target)
     {
         viewWidget = def.viewWidget;
@@ -112,7 +108,6 @@ class KeyMouseInput : public InputSource
         float vfov;
     };
 
-    DECL_ID(KeyMouseInput);
     KeyMouseInput(Def&& def) : InputSource(), out(def.target)
     {
         mouseIdx = def.mouseIdx;

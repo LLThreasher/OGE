@@ -4,6 +4,7 @@
 #include "game/view/submission_queue.hpp"
 #include "oge/point3.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
+#include "oge/runtime/gfx/pass.hpp"
 
 namespace game::view::gfx
 {
@@ -11,7 +12,7 @@ namespace game::view::gfx
 constexpr uint32_t BLOCK_TEXTURE_SIZE = 16;
 
 class TerrainPass2 : public RequiresVPTransform,
-                     public Pass<CmdDrawTerrainMeshOpaque>
+                     public oge::runtime::gfx::Pass<CmdDrawTerrainMeshOpaque>
 {
     struct TerrainMesh
     {

@@ -6,7 +6,9 @@
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
 #include "oge/graphics/backend.hpp"
+#include "oge/handle.hpp"
 #include "oge/point2.hpp"
+#include "oge/pool.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/entt.hpp"
 
@@ -34,14 +36,15 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
     }
 
     auto spriteView =
-        ctx.submissionQueue.View<oge::runtime::gfx::CmdDrawSprite>();
+        ctx.submissionQueue.View<oge::runtime::CmdDrawSprite>();
     auto& spriteQueue = spriteView.GetSingle(GameViewType::Overlay);
 
     debugString.clear();
     debugString.reserve(1024);
-    for (auto [e, txt] : ctx.world.view<const DebugText>().each())
+    auto& pool = ctx.world.ctx().get<oge::Pool<0, DebugText>>();
+    for (oge::Handle<0> cursor{}; auto txt = pool.Poll(cursor);)
     {
-        debugString.append(txt.text);
+        debugString.append(txt->text);
         debugString.push_back('\n');
     }
 

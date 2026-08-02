@@ -27,7 +27,7 @@ entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset,
     game.emplace<UIRect>(res, rect);
     game.emplace<UISprite>(res,
                            UISprite{.sprite = asset.LoadTexture("invalid.png"),
-                                    .color = COLOR_BLACK});
+                                    .color = BLACK});
     game.emplace<UIZLevel>(res, 2);
     game.emplace<UIRaycastTarget>(res);
 

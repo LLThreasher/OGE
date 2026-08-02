@@ -5,7 +5,6 @@
 #include "oge/graphics/backend.hpp"
 #include "oge/log.hpp"
 #include "oge/point2.hpp"
-#include "oge/runtime/gfx/commands.hpp"
 
 namespace game::view
 {
@@ -76,14 +75,14 @@ void UIRenderer::onUpdate(FRendererState& f)
     {
         f.submissionQueue.Add<CmdDrawDebugRect>(
             GameViewType::Overlay,
-            CmdDrawDebugRect{rect, game.all_of<UIDrag>(entity) ? COLOR_GREEN
+            CmdDrawDebugRect{rect, game.all_of<UIDrag>(entity) ? GREEN
                                    : game.all_of<UIRaycastHit>(entity)
-                                       ? COLOR_RED
-                                       : COLOR_WHITE});
+                                       ? RED
+                                       : WHITE});
     }
 
     auto spQueue = f.submissionQueue.GetSingle(GameViewType::Overlay)
-                       .View<oge::runtime::gfx::CmdDrawSprite>();
+                       .View<oge::runtime::CmdDrawSprite>();
     for (auto [entity, uitext, rect] : game.view<UIText, ScreenRect>().each())
     {
         uitext.font->CreateTextSprites(spQueue, uitext.data, rect);

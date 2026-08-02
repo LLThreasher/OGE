@@ -3,8 +3,8 @@
 #include "oge/color.hpp"
 #include "oge/point3.hpp"
 #include "oge/rect.hpp"
-#include "oge/runtime/gfx/commands.hpp"
 #include "oge/math.hpp"
+#include "oge/runtime/objects_ext.hpp"
 
 namespace game
 {
@@ -13,6 +13,7 @@ namespace view::gfx
 namespace math = ::oge::math;
 using oge::Point3;
 using oge::runtime::GPUChunkedAllocation;
+using oge::runtime::PSprite;
 
 using namespace oge::rects;
 using namespace oge::colors;
@@ -20,7 +21,7 @@ using namespace oge::gpu_objects;
 
 struct PDebugRect : IRect
 {
-    ColorRGBA8 color = COLOR_WHITE;
+    ColorRGBA8 color = WHITE;
 };
 
 struct PViewTransform
@@ -89,6 +90,16 @@ struct CmdAddView
 
 class RequiresVPTransform
 {
+};
+
+class RequiresScreenAffine
+{
+};
+
+struct ScreenAffine
+{
+    math::mat2 transform;
+    math::vec2 offset;
 };
 
 }  // namespace game::view::gfx

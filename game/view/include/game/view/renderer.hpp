@@ -66,8 +66,6 @@ struct FRendererState
 
 class Renderer : public Stage<RendererState, FRendererState>
 {
-   public:
-    DECL_ID(Renderer)
 };
 
 class RenderPipeline : public FramePipeline<Renderer, RendererFrameData>
@@ -86,7 +84,6 @@ void RegisterRenderers(AnythingFactory& af);
 class DebugInfoRenderer : public Renderer
 {
    public:
-    DECL_ID(DebugInfoRenderer);
     void onAttach(RendererState&) override;
     void onDetach(RendererState&) override;
     void onUpdate(FRendererState&) override;
@@ -106,7 +103,6 @@ class CameraRenderer : public Renderer
     static void onViewPanelUpdate(entt::registry& gameWorld, entt::registry& uiWorld, entt::entity entity);
 
    public:
-    DECL_ID(CameraRenderer);
     void onAttach(RendererState&) override;
     void onDetach(RendererState&) override;
     void onUpdate(FRendererState&) override;
@@ -115,7 +111,6 @@ class CameraRenderer : public Renderer
 class UIRenderer : public Renderer
 {
    public:
-    DECL_ID(UIRenderer);
     void onAttach(RendererState&) override;
     void onDetach(RendererState&) override;
     void onUpdate(FRendererState&) override;

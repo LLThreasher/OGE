@@ -1,6 +1,7 @@
 #pragma once
 
 #include "oge/graphics/objects.hpp"
+#include "oge/color.hpp"
 
 namespace oge::runtime
 {
@@ -57,5 +58,12 @@ struct PSprite
                (float)region.region.extent.y / fheight}};
         texture = region.texture;
     }
+};
+
+struct CmdDrawSprite
+{
+    IRect16 rect;
+    ColorRGBA8 color;
+    PSprite sprite;
 };
 }  // namespace oge::runtime

@@ -5,23 +5,23 @@
 #include "game/scene.hpp"
 #include "game/scene_runner.hpp"
 #include "game/view/gfx/debug_info_pass.hpp"
+#include "game/view/gfx/ui_pass.hpp"
 #include "game/view/gfx/terrain_pass2.hpp"
 #include "game/view/gfx/view_executor.hpp"
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
 #include "oge/runtime/asset_ctx.hpp"
-#include "oge/runtime/gfx/ui_pass.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
 namespace game
 {
 using game::view::gfx::DebugInfoPass;
 using game::view::gfx::TerrainPass2;
+using game::view::gfx::UIPass;
 using oge::input::RawInputStream;
 using oge::runtime::AnythingFactory;
 using oge::runtime::AssetContext;
 using oge::runtime::OGEContext;
-using oge::runtime::gfx::UIPass;
 
 class SceneExt : public Scene
 {

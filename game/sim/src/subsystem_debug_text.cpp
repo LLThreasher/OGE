@@ -5,20 +5,20 @@
 #include "build_config.h"
 #include "game/components.hpp"
 #include "game/sim/subsystem.hpp"
+#include "oge/handle.hpp"
 #include "oge/log.hpp"
 #include "oge/platform/perf.hpp"
+#include "oge/pool.hpp"
 
 namespace game::sim
 {
 static void onLog(oge::LogLevel lvl, std::string_view msg, void* user)
 {
     GameState* ctx = reinterpret_cast<GameState*>(user);
-    auto e = ctx->world.create();
-    ctx->world.emplace<DebugText>(
-        e,
-        std::move(
-            std::pmr::string{msg, ctx->memory.multiFrameBuffer.Resource()}),
-        5.f);
+    auto& storage = ctx->world.ctx().get<oge::Pool<0, DebugText>>();
+    storage.Create(std::move(std::pmr::string{
+                       msg, ctx->memory.multiFrameBuffer.Resource()}),
+                   5.f);
 }
 
 void SubsystemDebugText::onAttach(GameState& ctx)
@@ -29,6 +29,7 @@ void SubsystemDebugText::onAttach(GameState& ctx)
     perfStatus = {};
     totalPerfStatus = {};
 
+    ctx.world.ctx().emplace<oge::Pool<0, DebugText>>();
     oge::GetLogger()->SetSink(onLog, &ctx);
 }
 
@@ -40,10 +41,11 @@ void SubsystemDebugText::onDetach(GameState& ctx)
 void SubsystemDebugText::onUpdate(FGameState& ctx)
 {
     using namespace oge::platform;
-    for (auto [e, txt] : ctx.world.view<DebugText>()->each())
+    auto& pool = ctx.world.ctx().get<oge::Pool<0, DebugText>>();
+    for (oge::Handle<0> cursor{}; auto txt = pool.Poll(cursor);)
     {
-        txt.remainingTime -= ctx.dt;
-        if (txt.remainingTime <= 0.f) ctx.world.destroy(e);
+        txt->remainingTime -= ctx.dt;
+        if (txt->remainingTime <= 0.f) pool.Destroy(cursor);
     }
 
     ++frameCount;
@@ -60,11 +62,9 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
         ramInfo = GetRAMUsage();
         cpuUsage = GetCPUUsage();
     }
-    auto entity = ctx.world.create();
-    auto& txt = ctx.world.emplace<DebugText>(
-        entity,
-        std::move(std::pmr::string{ctx.memory.fixedUpdateBuffer.Resource()}));
-    fmt::format_to(std::back_inserter(txt.text),
+    auto handle = pool.Create(std::move(std::pmr::string{ctx.memory.fixedUpdateBuffer.Resource()}));
+    auto txt = pool.Get(handle);
+    fmt::format_to(std::back_inserter(txt->text),
                    "{}\n{:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S "
                    "{:.2f}\nCPU: {:.2f}%\nMEM: {} MB | NB {} MB",
                    BUILD_TAG, perfStatus.actualFrameTime(),

@@ -1,21 +1,30 @@
 #pragma once
 
 #include "oge/graphics/configs.hpp"
-#include "oge/runtime/gfx/commands.hpp"
+#include "oge/runtime/gfx/pass.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
 #include "oge/runtime/gfx/uniform_arena.hpp"
 #include "oge/submission_group.hpp"
+#include "game/view/gfx/commands.hpp"
+#include "oge/runtime/objects_ext.hpp"
+#include "oge/point2.hpp"
+#include "oge/graphics/backend.hpp"
 
-namespace oge::runtime::gfx
+namespace game::view::gfx
 {
-class UIPass : public Pass<CmdDrawSprite>
+using oge::U16Point2;
+using oge::U16Norm2;
+using oge::runtime::gfx::Pass;
+using oge::runtime::InitDrawContext;
+using oge::runtime::DrawContext;
+using oge::graphics::IGraphicsBackend;
+using oge::graphics::BufferUsage;
+using oge::runtime::FrameArena;
+
+class UIPass : public Pass<oge::runtime::CmdDrawSprite>, public RequiresScreenAffine
 {
    public:
-    struct PushConstant
-    {
-        math::mat2 transform;
-        math::vec2 offset;
-    };
+    using PushConstant = ScreenAffine;
 
     struct Vertex
     {
@@ -26,7 +35,7 @@ class UIPass : public Pass<CmdDrawSprite>
 
     void onAttach(InitDrawContext& ctx);
     void onDetach(InitDrawContext& ctx);
-    void onUpdate(DrawContext& ctx, View view);
+    void onUpdate(DrawContext& ctx, View view, ScreenAffine pushConstant);
 
    private:
     GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend,
@@ -40,8 +49,6 @@ class UIPass : public Pass<CmdDrawSprite>
     std::unordered_map<GPUTextureHandle, GPUBindingGroupHandle,
                        HandleHash<GPUTextureHandle>>
         cachedBindingGroups;
-
-    PushConstant pushConstant;
 
     FrameArena vertexArena = {BufferUsage::Vertex};
     FrameArena indexArena = {BufferUsage::Index};

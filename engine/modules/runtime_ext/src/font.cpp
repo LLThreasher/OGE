@@ -14,7 +14,7 @@ class BitmapFont16x6 : public IFont
         : m_texture(texture), m_textAspectRatio(textAspect)
     {
     }
-    void CreateTextSprites(SubmissionView<gfx::CmdDrawSprite> squeue,
+    void CreateTextSprites(SubmissionView<CmdDrawSprite> squeue,
                            UITextData text, ScreenRect rect) override;
 
    private:
@@ -35,7 +35,7 @@ std::unique_ptr<IFont> LoadASCIIBitmapFontMxN(int m, int n,
 }
 
 void BitmapFont16x6::CreateTextSprites(
-    SubmissionView<gfx::CmdDrawSprite> squeue, UITextData text, ScreenRect rect)
+    SubmissionView<CmdDrawSprite> squeue, UITextData text, ScreenRect rect)
 {
     uint16_t ySize = text.size;
     uint16_t xSize = math::ceil((float)text.size * m_textAspectRatio);
@@ -67,7 +67,7 @@ void BitmapFont16x6::CreateTextSprites(
         c -= 0x20;
         currentSprite.uv.pos = {(float)(c % 16) / 16.f, (float)(c / 16) / 6.f};
         currentRect.pos = rect.pos + I16Point2{currentX, currentY};
-        squeue.Add<gfx::CmdDrawSprite>(currentRect, text.color, currentSprite);
+        squeue.Add<CmdDrawSprite>(currentRect, text.color, currentSprite);
         currentX += xSize;
         ++charsInCurrentLine;
     }
