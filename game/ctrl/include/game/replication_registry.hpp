@@ -341,6 +341,7 @@ struct TerrainReplication
     {
         terrain::ChunkHandle snapshotCursor{};
         bool needsSnapshot = true;
+        terrain::ChunkEventStream::Cursor chunkEventCursor{};
     };
 
     static entt::any CreateState();

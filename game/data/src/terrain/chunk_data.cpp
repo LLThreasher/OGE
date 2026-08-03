@@ -1,3 +1,5 @@
+#include <cstdint>
+#include <span>
 #include "game/terrain/terrain_view.hpp"
 
 namespace game::terrain
@@ -106,11 +108,16 @@ void PaletteCompressedChunk::FromChunkData(const ChunkData& c, PaletteCompressed
     assert(result.palette.size() <= 255);
 }
 
-void PaletteCompressedChunk::ToChunkData(ChunkData& c)
+void PaletteCompressedChunk::ToChunkData(ChunkData& c, std::span<uint32_t> palette, std::span<uint8_t, CHUNK_SIZE_TOTAL> data)
 {
     for (size_t i = 0; i < CHUNK_SIZE_TOTAL; ++i)
     {
         c.data[i] = palette[data[i]];
     }
+}
+
+void PaletteCompressedChunk::ToChunkData(ChunkData& c)
+{
+    ToChunkData(c, std::span<uint32_t>(palette), std::span<uint8_t, CHUNK_SIZE_TOTAL>(data));
 }
 }  // namespace game::terrain

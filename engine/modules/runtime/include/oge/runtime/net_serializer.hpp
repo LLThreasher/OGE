@@ -38,6 +38,18 @@ public:
         : data(span)
     {}
 
+    void Align(size_t alignment)
+    {
+        size_t misalignment = writePos % alignment;
+        if (misalignment != 0)
+        {
+            size_t padding = alignment - misalignment;
+            EnsureCapacity(padding);
+            std::memset(data.data() + writePos, 0, padding);
+            writePos += padding;
+        }
+    }
+
     // -----------------------------
     // Writing
     // -----------------------------
@@ -80,6 +92,31 @@ public:
         assert(readPos + size <= writePos);
         std::memcpy(dst, data.data() + readPos, size);
         readPos += size;
+    }
+
+    template <typename T>
+    std::span<T> ReadNoCpy(size_t count)
+    {
+        size_t byteSize = count * sizeof(T);
+        assert(readPos + byteSize <= writePos);
+        auto* ptr = reinterpret_cast<T*>(data.data() + readPos);
+        readPos += byteSize;
+        return std::span<T>(ptr, count);
+    }
+
+    template <typename T, size_t N>
+    std::span<T, N> ReadNoCpy()
+    {
+        constexpr size_t byteSize = N * sizeof(T);
+
+        assert(readPos + byteSize <= writePos);
+        assert(reinterpret_cast<uintptr_t>(data.data() + readPos) % alignof(T) == 0);
+
+        auto* ptr = reinterpret_cast<T*>(data.data() + readPos);
+
+        readPos += byteSize;
+
+        return std::span<T, N>{ptr, N};
     }
 
     // -----------------------------

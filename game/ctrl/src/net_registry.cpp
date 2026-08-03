@@ -1,4 +1,6 @@
+#include <cassert>
 #include <cstddef>
+#include <cstdint>
 
 #include "game/components.hpp"
 #include "game/input/player_input_stream.hpp"
@@ -10,7 +12,6 @@
 #include "oge/point3.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/typed_registry.hpp"
-#include "game/terrain/terrain_view.hpp"
 
 using oge::runtime::AnythingFactory;
 using oge::runtime::SendType;
@@ -170,6 +171,7 @@ void EntityReplication::Decode(entt::registry& world, net::Buffer& buffer)
 enum class ChunkPacketType : uint8_t
 {
     Load,
+    Update,
     Discard,
 };
 
@@ -189,6 +191,10 @@ void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
 
     if (state.needsSnapshot)
     {
+        if (!state.snapshotCursor.IsValid())
+        {
+            terrain.GetEvents().AdvanceCursor(state.chunkEventCursor);
+        }
         size_t counter = 0;
         for (ChunkHandle& cursor = state.snapshotCursor;
              auto chunk = terrain.PollChunk(cursor);)
@@ -213,6 +219,28 @@ void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
         state.needsSnapshot = false;
         return;
     }
+    ChunkStateUpdateEvent e;
+    while (terrain.GetEvents().PollOne(state.chunkEventCursor, e))
+    {
+        auto chunk = terrain.GetChunk(e.chunk);
+        if (!chunk || chunk->state != e.state) continue;
+        if (e.state == ChunkState::Persistent)
+        {
+            PaletteCompressedChunk cChunk;
+            PaletteCompressedChunk::FromChunkData(*chunk, cChunk);
+            LOG_DEBUG("send hash {}, {}", chunk->Coords, DebugHash(cChunk));
+            auto packet =
+                server.StartPacket(CHUNK_SIZE_TOTAL + 512 * sizeof(uint32_t));
+            packet.Write(family);
+            packet.Write(ChunkPacketType::Update);
+            packet.Write(chunk->Coords);
+            packet.Write(cChunk.palette.size());
+            packet.WriteRaw(cChunk.palette.data(),
+                            cChunk.palette.size() * sizeof(uint32_t));
+            packet.WriteRaw(cChunk.data, CHUNK_SIZE_TOTAL);
+            server.Send(peer, packet);
+        }
+    }
 }
 
 void TerrainReplication::Decode(entt::registry& world, net::Buffer& buffer)
@@ -222,7 +250,6 @@ void TerrainReplication::Decode(entt::registry& world, net::Buffer& buffer)
 
     ChunkPacketType ptype;
     buffer.Read(ptype);
-    assert(ptype == ChunkPacketType::Load);
     oge::Point3 coord;
     buffer.Read(coord);
     size_t paletteSize;
@@ -232,8 +259,11 @@ void TerrainReplication::Decode(entt::registry& world, net::Buffer& buffer)
     buffer.ReadRaw(chunk.palette.data(), paletteSize * sizeof(uint32_t));
     buffer.ReadRaw(chunk.data, CHUNK_SIZE_TOTAL);
 
-    LOG_DEBUG("recv hash {}, {}", coord, DebugHash(chunk));
+    // LOG_DEBUG("recv hash {}, {}", coord, DebugHash(chunk));
+    assert(ptype == ChunkPacketType::Load || ptype == ChunkPacketType::Update);
     auto handle = terrain.CreateChunk(coord);
     chunk.ToChunkData(*terrain.GetChunk(handle));
+    if (ptype == ChunkPacketType::Update)
+        terrain.DowngradeChunk(handle, ChunkState::InvalidLighting);
     terrain.UpgradeChunk(handle, ChunkState::Persistent);
 }

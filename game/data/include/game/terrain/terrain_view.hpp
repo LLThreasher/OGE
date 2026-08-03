@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <queue>
+#include <span>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -147,6 +149,7 @@ struct PaletteCompressedChunk
     uint8_t data[CHUNK_SIZE_TOTAL];  // 4096 bytes
 
     static void FromChunkData(const ChunkData& c, PaletteCompressedChunk& cc);
+    static void ToChunkData(ChunkData& c, std::span<uint32_t> palette, std::span<uint8_t, CHUNK_SIZE_TOTAL> data);
     void ToChunkData(ChunkData& c);
     uint32_t Get(int x, int y, int z) const
     {
