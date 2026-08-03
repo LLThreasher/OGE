@@ -64,7 +64,7 @@ void TerrainGenerator::GenerateTerrain(TerrainData& terrain,
             }
         }
 
-        terrainView.UpgradeChunk(handle, ChunkState::Persistent);
+        terrainView.UpgradeChunk(handle, ChunkState::Persistent, true);
         terrainGenChunkCount += 1;
     }
 }

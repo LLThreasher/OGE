@@ -196,10 +196,11 @@ struct TerrainRaycastResult
     uint32_t hitBlockValue;
 };
 
-template <ChunkState state>
 struct ChunkStateUpdateEvent
 {
+    ChunkState state;
     ChunkHandle chunk;
+    bool weak = false;
 };
 
 class TerrainView
@@ -229,7 +230,7 @@ class TerrainView
     const ChunkData* PollChunk(ChunkHandle& handle) const;
     ChunkData* GetChunk(ChunkHandle handle);
     ChunkHandle CreateChunk(Point3 chunkCoord);
-    void UpgradeChunk(ChunkHandle handle, ChunkState newState);
+    void UpgradeChunk(ChunkHandle handle, ChunkState newState, bool updateNeighbors = false);
     std::optional<TerrainRaycastResult> CastRay(math::vec3 pos, math::vec3 ray,
                                                 float maxDist = 20.f);
     entt::dispatcher& GetEvents()

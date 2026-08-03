@@ -133,7 +133,7 @@ class DebugServerScene final : public Scene
 
         Load();
         
-        InstallReplicationHooks<ComponentPlayer>(m_world);
+        InstallComponentReplicationHooks<ComponentPlayer>(m_world);
         InstallEntityReplicationHooks(m_world);
         m_replicationRegistry.AddFamilyToSend(Id<terrain::TerrainView>());
         m_replicationRegistry.AddFamilyToSend(Id<ReplicatedTag>());

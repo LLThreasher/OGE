@@ -30,7 +30,7 @@ NET_OBJ(TerrainRendererDesc)
 
 NET_OBJ(TerrainDesc)
 {
-    net::Int32 chunkViewDistance = 8;
+    net::Int32 chunkViewDistance = 2;
     net::Int32 terrainGenChunkBudget = 8;
 
     NET_OBJ_FN

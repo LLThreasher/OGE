@@ -1,4 +1,5 @@
 #include <cstddef>
+
 #include "game/components.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/replication_registry.hpp"
@@ -67,6 +68,115 @@ void game::RegisterReplications(AnythingFactory& af, ReplicationRegistry& rf)
 
 using namespace game;
 
+void InstallEntityReplicationHooks(entt::registry& world)
+{
+    world.ctx().emplace<EntityEventStream>();
+    world.on_construct<ReplicatedTag>()
+        .template connect<+[](entt::registry& world, entt::entity e)
+                          {
+                              world.ctx()
+                                  .template get<input::EntityEventStream>()
+                                  .Push({input::EntityEventType::Create, e});
+                          }>();
+    world.on_destroy<ReplicatedTag>()
+        .template connect<+[](entt::registry& world, entt::entity e)
+                          {
+                              world.ctx()
+                                  .template get<input::EntityEventStream>()
+                                  .Push({input::EntityEventType::Destroy, e});
+                          }>();
+}
+
+void EntityReplication::Encode(entt::registry& world, ENetPeer* peer,
+                               oge::runtime::NetPacketSender& server,
+                               FamilyId family, SendType sendType,
+                               uint8_t channel, entt::any& anyState)
+{
+    auto& state = entt::any_cast<State&>(anyState);
+
+    auto* stream = world.ctx().find<input::EntityEventStream>();
+    if (!stream) return;
+
+    if (state.useSnapshot)
+    {
+        for (auto e : world.view<ReplicatedTag>())
+        {
+            size_t size = sizeof(FamilyId) + sizeof(input::EntityEventType) +
+                          sizeof(entt::entity);
+
+            LOG_DEBUG("send entity {}", (uint32_t)e);
+            auto packet = server.StartPacket(size);
+
+            packet.Write(family);
+            packet.Write(EntityEventType::Create);
+            packet.Write(e);
+
+            server.Send(peer, packet);
+        }
+        state.useSnapshot = false;
+    }
+    else
+    {
+        input::EntityEvent delta;
+
+        while (stream->PollOne(state.cursor, delta))
+        {
+            size_t size = sizeof(FamilyId) + sizeof(input::EntityEventType) +
+                          sizeof(entt::entity);
+
+            auto packet = server.StartPacket(size);
+
+            packet.Write(family);
+            packet.Write(delta.type);
+            packet.Write(delta.entity);
+
+            server.Send(peer, packet, sendType, channel);
+        }
+    }
+}
+
+void EntityReplication::Decode(entt::registry& world, net::Buffer& buffer)
+{
+    input::EntityEventType type;
+    buffer.Read(type);
+
+    entt::entity entity;
+    buffer.Read(entity);
+
+    switch (type)
+    {
+        case input::EntityEventType::Create:
+        {
+            LOG_DEBUG("recive entity {}", (uint32_t)entity);
+            auto e = world.create(entity);
+            LOG_DEBUG("created entity {}", (uint32_t)e);
+            assert(e == entity);
+            break;
+        }
+
+        case input::EntityEventType::Destroy:
+        {
+            if (world.valid(entity)) world.destroy(entity);
+            break;
+        }
+    }
+}
+
+class ChunkEventStream
+    : public oge::DiscreteEventStream<terrain::ChunkStateUpdateEvent, 128>
+{
+};
+
+void InstallTerrainReplicationHooks(entt::registry& world)
+{
+    world.ctx().emplace<ChunkEventStream>();
+    auto& terrain = world.ctx().get<terrain::TerrainView>();
+    terrain.GetEvents()
+        .sink<terrain::ChunkStateUpdateEvent>()
+        .connect<+[](entt::registry& world, terrain::ChunkStateUpdateEvent e)
+                 { world.ctx().get<ChunkEventStream>().Push(e); }>(world);
+}
+
 enum class ChunkPacketType : uint8_t
 {
     Load,
@@ -90,7 +200,8 @@ void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
     if (state.needsSnapshot)
     {
         size_t counter = 0;
-        for (ChunkHandle& cursor = state.snapshotCursor; auto chunk = terrain.PollChunk(cursor);)
+        for (ChunkHandle& cursor = state.snapshotCursor;
+             auto chunk = terrain.PollChunk(cursor);)
         {
             if (chunk->state != ChunkState::Persistent) continue;
             PaletteCompressedChunk cChunk;
@@ -102,7 +213,8 @@ void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
             packet.Write(ChunkPacketType::Load);
             packet.Write(chunk->Coords);
             packet.Write(cChunk.palette.size());
-            packet.WriteRaw(cChunk.palette.data(), cChunk.palette.size() * sizeof(uint32_t));
+            packet.WriteRaw(cChunk.palette.data(),
+                            cChunk.palette.size() * sizeof(uint32_t));
             packet.WriteRaw(cChunk.data, CHUNK_SIZE_TOTAL);
             server.Send(peer, packet);
 
@@ -111,7 +223,6 @@ void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
         state.needsSnapshot = false;
         return;
     }
-    
 }
 
 void TerrainReplication::Decode(entt::registry& world, net::Buffer& buffer)
@@ -134,5 +245,5 @@ void TerrainReplication::Decode(entt::registry& world, net::Buffer& buffer)
     LOG_DEBUG("recv hash {}, {}", coord, DebugHash(chunk));
     auto handle = terrain.CreateChunk(coord);
     chunk.ToChunkData(*terrain.GetChunk(handle));
-    terrain.UpgradeChunk(handle, ChunkState::Persistent);
+    terrain.UpgradeChunk(handle, ChunkState::Persistent, true);
 }

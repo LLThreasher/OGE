@@ -22,9 +22,16 @@ void TerrainRenderer::onAttach(RendererState& ctx)
     m_terrainMeshBuilder.SetVertexBudget(desc->meshingQuadBudget);
     m_terrainUploader.SetMaxNumChunks((tdesc->chunkViewDistance + 1) *
                                       (tdesc->chunkViewDistance + 1) * 6);
-    ctx.world.ctx().find<TerrainView>()->GetEvents().sink<ChunkStateUpdateEvent<ChunkState::Persistent>>().connect<+[](TerrainRenderer* self, ChunkStateUpdateEvent<ChunkState::Persistent> e){
-        self->m_terrainMeshScheduler.MarkChunkDirty(e.chunk);
-    }>(this);
+    ctx.world.ctx()
+        .find<TerrainView>()
+        ->GetEvents()
+        .sink<ChunkStateUpdateEvent>()
+        .connect<+[](TerrainRenderer* self, ChunkStateUpdateEvent e)
+                 {
+                     if (e.state != ChunkState::Persistent) return;
+                     self->m_terrainMeshScheduler.MarkChunkDirty(e.chunk);
+                 }>(this);
+    LOG_DEBUG("attach terrain renderer");
 }
 
 void TerrainRenderer::onDetach(RendererState& ctx)
@@ -49,16 +56,9 @@ void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain,
                                                  TerrainPresentationData& pdata,
                                                  entt::dispatcher& events)
 {
-    toRemove.clear();
-    toMesh.clear();
     for (auto handle : dirtyChunks)
     {
         auto chunk = terrain.chunks.Get(handle);
-        if (!chunk || chunk->state != ChunkState::Persistent)
-        {
-            toRemove.push_back(handle);
-            continue;
-        }
         bool fullNeighbors = true;
         for (int i = 0; i < 6; ++i)
         {
@@ -72,18 +72,10 @@ void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain,
             }
         }
         if (!fullNeighbors) continue;
-        toMesh.push_back(handle);
-        // LOG_DEBUG("queue {} for meshing", chunk->Coords);
-    }
-    for (auto handle : toRemove)
-    {
-        dirtyChunks.erase(handle);
-    }
-    for (auto handle : toMesh)
-    {
         pdata.buildMeshQueue.push(handle);
-        dirtyChunks.erase(handle);
+        LOG_DEBUG("queue {} for meshing", chunk->Coords);
     }
+    dirtyChunks.clear();
 }
 
 struct FrustumPlane

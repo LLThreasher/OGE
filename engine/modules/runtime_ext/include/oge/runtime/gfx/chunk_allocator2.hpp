@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include "oge/chunk_allocator.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/objects.hpp"
@@ -19,8 +20,9 @@ constexpr uint32_t CHUNK_SIZES[] = {
     4 * _1K, 8 * _1K, 16 * _1K, 32 * _1K, 64 * _1K, 128 * _1K,
 };
 // max 127 MB per chunk size -> 625 MB maximum
+constexpr uint32_t BLOCK_SIZE_COUNT = 7;
 constexpr uint32_t BLOCK_SIZES[] = {
-    2 * _1M, 4 * _1M, 8 * _1M, 16 * _1M, 32 * _1M, 64 * _1M,
+    2 * _1M, 4 * _1M, 8 * _1M, 16 * _1M, 32 * _1M, 64 * _1M, 128 * _1M,
 };
 
 class DynamicChunkAllocator
@@ -58,6 +60,7 @@ class DynamicChunkAllocator
                 int allocatedSlot = allocatorPerChunk[i].back().Allocate(1);
                 if (allocatedSlot == -1)
                 {
+                    assert(allocatorPerChunk[i].size() < BLOCK_SIZE_COUNT);
                     allocatorPerChunk[i].emplace_back(
                         BLOCK_SIZES[allocatorPerChunk[i].size()] /
                         CHUNK_SIZES[i]);

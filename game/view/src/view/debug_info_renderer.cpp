@@ -64,7 +64,7 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
     uint8_t offsetX = 40;
     uint8_t offsetY = 10;
     debugString.append(gpuDebugString);
-    debugFont->CreateTextSprites(spriteQueue, {debugString, 32},
+    debugFont->CreateTextSprites(spriteQueue, {debugString, 16},
                                  {{{offsetX, offsetY},
                                    ctx.assets.backend.SwapchainExtent() -
                                        oge::U16Point2{offsetX, offsetY}}});

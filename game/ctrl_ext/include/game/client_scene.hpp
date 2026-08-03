@@ -21,6 +21,7 @@
 #include "oge/runtime/net_client.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
+#include "uuid.h"
 
 namespace game
 {
@@ -69,9 +70,14 @@ class ClientScene : public SceneExt
 
     void onConstructPlayer(entt::registry& world, entt::entity e)
     {
+        LOG_INFO(
+            "check player id {} against {}",
+            uuids::to_string(uuids::uuid(world.get<ComponentPlayer>(e).id)),
+            uuids::to_string(uuids::uuid(m_playerInfo.uuid)));
         if (world.get<ComponentPlayer>(e).id == m_playerInfo.uuid)
         {
-            ui::CreateGameView(m_uiWorld, {math::vec2{0, 0}, math::vec2{1, 1}}, e);
+            ui::CreateGameView(m_uiWorld, {math::vec2{0, 0}, math::vec2{1, 1}},
+                               e);
             world.on_construct<ComponentPlayer>().disconnect();
         }
     }
@@ -81,7 +87,7 @@ class ClientScene : public SceneExt
         : SceneExt(def), m_client(*m_ctx.any_ctx.Get<NetClient>())
     {
         m_sceneConfig.subsystems.Add(Id<sim::SubsystemDebugText>());
-        
+
         Load();
 
         m_renderers.AddStage<view::UIRenderer>(AF());
@@ -96,7 +102,8 @@ class ClientScene : public SceneExt
             .connect<&ClientScene::onRecievePacket>(this);
         m_clientDispatcher.sink<OnClientDisconnected>()
             .connect<&ClientScene::onDisconnected>(this);
-        m_world.on_construct<ComponentPlayer>().connect<&ClientScene::onConstructPlayer>(this);
+        m_world.on_construct<ComponentPlayer>()
+            .connect<&ClientScene::onConstructPlayer>(this);
         m_replicationRegistry.AddPeer(m_client.Host());
 
         auto packet = m_client.StartPacket(sizeof(uint32_t));

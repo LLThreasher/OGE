@@ -195,17 +195,17 @@ struct ComponentPlayer
 
     void Serialize(net::Buffer& buffer)
     {
-        buffer.Write<std::array<uint8_t, 16>>(id);
+        buffer.WriteRaw(id.data(), id.size());
     }
 
     void Deserialize(net::Buffer& buffer)
     {
-        id = buffer.Read<std::array<uint8_t, 16>>();
+        buffer.ReadRaw(id.data(), id.size());
     }
 
     size_t Size()
     {
-        return sizeof(uint8_t) * 16;
+        return sizeof(uint8_t) * id.size();
     }
 };
 

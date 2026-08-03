@@ -1,6 +1,8 @@
 #include "game/terrain/terrain_view.hpp"
 
+#include <array>
 #include <tuple>
+#include <vector>
 
 #include "entt/signal/fwd.hpp"
 #include "game/terrain/block_registry.hpp"
@@ -109,14 +111,31 @@ ChunkHandle TerrainView::CreateChunk(Point3 chunkCoord)
     return m_terrainData.chunks.AllocateChunk(chunkCoord);
 }
 
-void TerrainView::UpgradeChunk(ChunkHandle handle, ChunkState state)
+void TerrainView::UpgradeChunk(ChunkHandle handle, ChunkState state,
+                               bool updateNeighbors)
 {
     auto chunk = m_terrainData.chunks.Get(handle);
     chunk->state = state;
-    if (state == ChunkState::Persistent)
+    m_dispatcher.trigger(ChunkStateUpdateEvent{state, handle});
+    if (updateNeighbors)
     {
-        m_dispatcher.trigger(
-            ChunkStateUpdateEvent<ChunkState::Persistent>{handle});
+        static std::vector<Point3> faces{
+            {-1, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}};
+        for (Point3 p : faces)
+        {
+            auto handle = m_terrainData.chunks.GetHandle(chunk->Coords + p);
+            if (!handle.IsValid()) continue;
+            m_dispatcher.trigger(
+                ChunkStateUpdateEvent{chunk->state, handle, true});
+        }
+        if (chunk->Coords.y > 0)
+        {
+            auto handle = m_terrainData.chunks.GetHandle(chunk->Coords +
+                                                         Point3{0, -1, 0});
+            if (handle.IsValid())
+                m_dispatcher.trigger(
+                    ChunkStateUpdateEvent{chunk->state, handle, true});
+        }
     }
 }
 

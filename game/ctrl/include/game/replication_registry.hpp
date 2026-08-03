@@ -159,24 +159,7 @@ class ReplicationRegistry
     }
 };
 
-inline void InstallEntityReplicationHooks(entt::registry& world)
-{
-    world.ctx().emplace<EntityEventStream>();
-    world.on_construct<ReplicatedTag>()
-        .template connect<+[](entt::registry& world, entt::entity e)
-                          {
-                              world.ctx()
-                                  .template get<input::EntityEventStream>()
-                                  .Push({input::EntityEventType::Create, e});
-                          }>();
-    world.on_destroy<ReplicatedTag>()
-        .template connect<+[](entt::registry& world, entt::entity e)
-                          {
-                              world.ctx()
-                                  .template get<input::EntityEventStream>()
-                                  .Push({input::EntityEventType::Destroy, e});
-                          }>();
-}
+void InstallEntityReplicationHooks(entt::registry& world);
 
 struct EntityReplication
 {
@@ -193,83 +176,13 @@ struct EntityReplication
 
     static void Encode(entt::registry& world, ENetPeer* peer,
                        oge::runtime::NetPacketSender& server, FamilyId family,
-                       SendType sendType, uint8_t channel, entt::any& anyState)
-    {
-        auto& state = entt::any_cast<State&>(anyState);
+                       SendType sendType, uint8_t channel, entt::any& anyState);
 
-        auto* stream = world.ctx().find<input::EntityEventStream>();
-        if (!stream) return;
-
-        if (state.useSnapshot)
-        {
-            for (auto e : world.view<ReplicatedTag>())
-            {
-                size_t size = sizeof(FamilyId) +
-                              sizeof(input::EntityEventType) +
-                              sizeof(entt::entity);
-
-                LOG_DEBUG("send entity {}", (uint32_t)e);
-                auto packet = server.StartPacket(size);
-
-                packet.Write(family);
-                packet.Write(EntityEventType::Create);
-                packet.Write(e);
-
-                server.Send(peer, packet);
-            }
-            state.useSnapshot = false;
-        }
-        else
-        {
-            input::EntityEvent delta;
-
-            while (stream->PollOne(state.cursor, delta))
-            {
-                size_t size = sizeof(FamilyId) +
-                              sizeof(input::EntityEventType) +
-                              sizeof(entt::entity);
-
-                auto packet = server.StartPacket(size);
-
-                packet.Write(family);
-                packet.Write(delta.type);
-                packet.Write(delta.entity);
-
-                server.Send(peer, packet, sendType, channel);
-            }
-        }
-    }
-
-    static void Decode(entt::registry& world, net::Buffer& buffer)
-    {
-        input::EntityEventType type;
-        buffer.Read(type);
-
-        entt::entity entity;
-        buffer.Read(entity);
-
-        switch (type)
-        {
-            case input::EntityEventType::Create:
-            {
-                LOG_DEBUG("recive entity {}", (uint32_t)entity);
-                auto e = world.create(entity);
-                LOG_DEBUG("created entity {}", (uint32_t)e);
-                assert(e == entity);
-                break;
-            }
-
-            case input::EntityEventType::Destroy:
-            {
-                if (world.valid(entity)) world.destroy(entity);
-                break;
-            }
-        }
-    }
+    static void Decode(entt::registry& world, net::Buffer& buffer);
 };
 
 template <typename T>
-void InstallReplicationHooks(entt::registry& world)
+void InstallComponentReplicationHooks(entt::registry& world)
 {
     world.ctx().emplace<input::ComponentDeltaStream<T>>();
     world.on_construct<T>()
@@ -316,8 +229,6 @@ struct ComponentReplication
             // size_t size = sizeof(FamilyId) +
             // sizeof(input::ComponentDeltaType) +
             //               sizeof(entt::entity);
-            // +
-            // EntityStorageTraits<T>::GetSize(entity, world);
 
             auto packet = server.StartPacket(1024);
 
@@ -397,7 +308,17 @@ struct ComponentReplication
             case input::ComponentDeltaType::Add:
             case input::ComponentDeltaType::Update:
             {
-                world.get_or_emplace<T>(entity).Deserialize(buffer);
+                if (!world.all_of<T>(entity))
+                {
+                    T res{};
+                    res.Deserialize(buffer);
+                    world.emplace<T>(entity, std::move(res));
+                }
+                else
+                {
+                    world.patch<T>(entity,
+                                   [&](auto res) { res.Deserialize(buffer); });
+                }
                 break;
             }
 
@@ -410,6 +331,8 @@ struct ComponentReplication
         }
     }
 };
+
+void InstallTerrainReplicationHooks(entt::registry& world);
 
 struct TerrainReplication
 {
