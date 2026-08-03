@@ -27,7 +27,10 @@ entt::entity ComponentPlayer::CreatePlayer(entt::registry& world,
     world.emplace<ComponentAABBCollider>(
         res, ComponentAABBCollider{.aabb = {math::vec3{0.f, 0.f, 0.f},
                                             math::vec3{0.7f, 1.8f, 0.7f}}});
-    world.emplace<ComponentCamera>(res);
+    world.emplace<ComponentCamera>(
+        res, 0.f, 0.f, math::vec3{20.f, 20.f, 20.f},
+        math::vec3{glm::normalize(math::vec3{0.f, 0.f, 0.f} -
+                                  math::vec3{20.f, 20.f, 20.f})});
     world.emplace<ComponentPerspectiveCamera>(res);
     world.emplace<input::PlayerInputStream>(res);
     auto& c = world.emplace<ComponentCreature>(

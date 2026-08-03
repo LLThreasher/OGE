@@ -86,8 +86,8 @@ class ClientScene : public SceneExt
 
         m_renderers.AddStage<view::UIRenderer>(AF());
         m_renderers.AddStage<view::DebugInfoRenderer>(AF());
-        // m_renderers.AddStage<view::TerrainRenderer>(AF());
-        // m_renderers.AddStage<view::CameraRenderer>(AF());
+        m_renderers.AddStage<view::TerrainRenderer>(AF());
+        m_renderers.AddStage<view::CameraRenderer>(AF());
 
         LOG_INFO("client scene loaded");
         m_playerInfo = LoadOrCreatePlayer();
@@ -120,6 +120,25 @@ class ClientScene : public SceneExt
         }
         m_replicationRegistry.ProduceAll(m_client, m_world);
         SceneExt::Update(f, sctx);
+    }
+
+    void Load() override
+    {
+        auto& blocks = m_world.ctx().emplace<::game::terrain::BlockRegistry>();
+        blocks.RegisterBlock("dirt", {
+                                         "Dirt",
+                                         "dirt.png",
+                                         1,
+                                     });
+        blocks.RegisterBlock("wood", {"Wood", "wood_plank.png", 1});
+        blocks.RegisterBlock("stone", {"Stone", "green_stone.png", 1});
+
+        m_world.ctx().emplace<::game::terrain::TerrainView>();
+
+        auto desc = m_world.ctx().emplace<::game::terrain::TerrainDesc>();
+        desc.chunkViewDistance = 1;
+
+        SceneExt::Load();
     }
 };
 

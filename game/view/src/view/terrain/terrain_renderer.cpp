@@ -4,7 +4,10 @@
 
 #include "game/components.hpp"
 #include "game/terrain/block_registry.hpp"
+#include "game/terrain/terrain_view.hpp"
 #include "game/view/renderer.hpp"
+#include "oge/fmt.hpp"
+#include "oge/log.hpp"
 #include "oge/runtime/ui/objects.hpp"
 
 namespace game::view::terrain
@@ -19,6 +22,9 @@ void TerrainRenderer::onAttach(RendererState& ctx)
     m_terrainMeshBuilder.SetVertexBudget(desc->meshingQuadBudget);
     m_terrainUploader.SetMaxNumChunks((tdesc->chunkViewDistance + 1) *
                                       (tdesc->chunkViewDistance + 1) * 6);
+    ctx.world.ctx().find<TerrainView>()->GetEvents().sink<ChunkStateUpdateEvent<ChunkState::Persistent>>().connect<+[](TerrainRenderer* self, ChunkStateUpdateEvent<ChunkState::Persistent> e){
+        self->m_terrainMeshScheduler.MarkChunkDirty(e.chunk);
+    }>(this);
 }
 
 void TerrainRenderer::onDetach(RendererState& ctx)
@@ -45,7 +51,7 @@ void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain,
 {
     toRemove.clear();
     toMesh.clear();
-    for (auto handle : terrain.dirtyChunks)
+    for (auto handle : dirtyChunks)
     {
         auto chunk = terrain.chunks.Get(handle);
         if (!chunk || chunk->state != ChunkState::Persistent)
@@ -67,15 +73,16 @@ void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain,
         }
         if (!fullNeighbors) continue;
         toMesh.push_back(handle);
+        // LOG_DEBUG("queue {} for meshing", chunk->Coords);
     }
     for (auto handle : toRemove)
     {
-        events.enqueue<ResolveDirtyChunkEvent>(handle);
+        dirtyChunks.erase(handle);
     }
     for (auto handle : toMesh)
     {
         pdata.buildMeshQueue.push(handle);
-        events.enqueue<ResolveDirtyChunkEvent>(handle);
+        dirtyChunks.erase(handle);
     }
 }
 

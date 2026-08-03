@@ -3,6 +3,8 @@
 #include "game/view/renderer.hpp"
 #include "oge/log.hpp"
 #include "oge/math.hpp"
+#include "oge/pool.hpp"
+#include "oge/fmt.hpp"
 
 namespace game::view
 {

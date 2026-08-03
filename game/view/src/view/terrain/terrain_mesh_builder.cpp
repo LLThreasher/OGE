@@ -493,7 +493,7 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain,
             continue;
         }
 
-        context->compressedChunk = PaletteCompressedChunk::FromChunkData(*data);
+        PaletteCompressedChunk::FromChunkData(*data, context->compressedChunk);
 
         context->chunkMeshHandle = pData.builtChunkMeshes.Create();
         context->chunkHandle = handle;

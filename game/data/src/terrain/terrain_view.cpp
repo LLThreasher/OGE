@@ -1,14 +1,13 @@
 #include "game/terrain/terrain_view.hpp"
 
+#include <tuple>
+
+#include "entt/signal/fwd.hpp"
 #include "game/terrain/block_registry.hpp"
+#include "oge/point3.hpp"
 
 namespace game::terrain
 {
-void TerrainView::HandleResolveDirtyChunk(entt::registry& world,
-                                          ResolveDirtyChunkEvent e)
-{
-    world.ctx().get<TerrainView>().m_terrainData.dirtyChunks.erase(e.chunk);
-}
 
 uint32_t TerrainView::GetBlock(int x, int y, int z) const
 {
@@ -38,36 +37,42 @@ void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
     assert(chunk != nullptr);
     if (chunk != nullptr)
     {
-        m_terrainData.dirtyChunks.insert(handle);
+        UpgradeChunk(handle, ChunkState::Persistent);
         if ((x & 0xF) == 0)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
-                {chunkCoord.x - 1, chunkCoord.y, chunkCoord.z}));
+            UpgradeChunk(m_terrainData.chunks.GetHandle(
+                             {chunkCoord.x - 1, chunkCoord.y, chunkCoord.z}),
+                         ChunkState::Persistent);
         }
         else if ((x & 0xF) == 15)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
-                {chunkCoord.x + 1, chunkCoord.y, chunkCoord.z}));
+            UpgradeChunk(m_terrainData.chunks.GetHandle(
+                             {chunkCoord.x + 1, chunkCoord.y, chunkCoord.z}),
+                         ChunkState::Persistent);
         }
         if ((y & 0xF) == 0)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
-                {chunkCoord.x, chunkCoord.y - 1, chunkCoord.z}));
+            UpgradeChunk(m_terrainData.chunks.GetHandle(
+                             {chunkCoord.x, chunkCoord.y - 1, chunkCoord.z}),
+                         ChunkState::Persistent);
         }
         else if ((y & 0xF) == 15)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
-                {chunkCoord.x, chunkCoord.y + 1, chunkCoord.z}));
+            UpgradeChunk(m_terrainData.chunks.GetHandle(
+                             {chunkCoord.x, chunkCoord.y + 1, chunkCoord.z}),
+                         ChunkState::Persistent);
         }
         if ((z & 0xF) == 0)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
-                {chunkCoord.x, chunkCoord.y, chunkCoord.z - 1}));
+            UpgradeChunk(m_terrainData.chunks.GetHandle(
+                             {chunkCoord.x, chunkCoord.y, chunkCoord.z - 1}),
+                         ChunkState::Persistent);
         }
         else if ((z & 0xF) == 15)
         {
-            m_terrainData.dirtyChunks.insert(m_terrainData.chunks.GetHandle(
-                {chunkCoord.x, chunkCoord.y, chunkCoord.z + 1}));
+            UpgradeChunk(m_terrainData.chunks.GetHandle(
+                             {chunkCoord.x, chunkCoord.y, chunkCoord.z + 1}),
+                         ChunkState::Persistent);
         }
         return chunk->SetBlock(x & 0xF, y & 0xF, z & 0xF, value);
     }
@@ -88,14 +93,31 @@ const ChunkData* TerrainView::GetChunk(ChunkHandle handle) const
 {
     return m_terrainData.chunks.Get(handle);
 }
+
+const ChunkData* TerrainView::PollChunk(ChunkHandle& handle) const
+{
+    return m_terrainData.chunks.Poll(handle);
+}
+
 ChunkData* TerrainView::GetChunk(ChunkHandle handle)
 {
     return m_terrainData.chunks.Get(handle);
 }
 
-void TerrainView::SubmitChunk(ChunkHandle handle)
+ChunkHandle TerrainView::CreateChunk(Point3 chunkCoord)
 {
-    m_terrainData.dirtyChunks.insert(handle);
+    return m_terrainData.chunks.AllocateChunk(chunkCoord);
+}
+
+void TerrainView::UpgradeChunk(ChunkHandle handle, ChunkState state)
+{
+    auto chunk = m_terrainData.chunks.Get(handle);
+    chunk->state = state;
+    if (state == ChunkState::Persistent)
+    {
+        m_dispatcher.trigger(
+            ChunkStateUpdateEvent<ChunkState::Persistent>{handle});
+    }
 }
 
 std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos,

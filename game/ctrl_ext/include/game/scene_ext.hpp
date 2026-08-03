@@ -15,9 +15,9 @@
 
 namespace game
 {
-using game::view::gfx::DebugInfoPass;
-using game::view::gfx::TerrainPass2;
-using game::view::gfx::UIPass;
+using ::game::view::gfx::DebugInfoPass;
+using ::game::view::gfx::TerrainPass2;
+using ::game::view::gfx::UIPass;
 using oge::input::RawInputStream;
 using oge::runtime::AnythingFactory;
 using oge::runtime::AssetContext;

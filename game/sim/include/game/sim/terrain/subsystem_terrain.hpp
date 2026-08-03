@@ -38,7 +38,7 @@ class TerrainUpdateScheduler
 class TerrainGenerator
 {
    public:
-    void GenerateTerrain(TerrainData& terrain, BlockRegistry& blocks);
+    void GenerateTerrain(TerrainData& terrain, BlockRegistry& blocks, TerrainView& terrainView);
     void SetTerrainGenChunkBudget(int32_t chunkBudget)
     {
         terrainGenChunkBudget = chunkBudget;
@@ -65,9 +65,9 @@ class SubsystemTerrain : public Subsystem
 
    private:
     void onPlayerCreated(entt::registry& world, entt::entity entity);
+    void onPlayerDestroyed(entt::registry& world, entt::entity entity);
     TerrainGenerator m_terrainGenerator;
     TerrainUpdateScheduler m_terrainUpdateScheduler;
-    entt::connection m_resolveDirtyChunkConnection;
     entt::connection m_createPlayerConnection;
 };
 }  // namespace terrain

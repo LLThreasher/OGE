@@ -15,9 +15,6 @@ void SubsystemTerrain::onAttach(GameState& ctx)
     auto desc = ctx.world.ctx().get<TerrainDesc>();
     m_terrainGenerator.SetTerrainGenChunkBudget(desc.terrainGenChunkBudget);
     m_terrainUpdateScheduler.SetChunkViewDistance(desc.chunkViewDistance);
-    m_resolveDirtyChunkConnection =
-        ctx.events.sink<ResolveDirtyChunkEvent>()
-            .connect<&TerrainView::HandleResolveDirtyChunk>(ctx.world);
     m_createPlayerConnection =
         ctx.world.on_construct<ComponentPlayer>()
             .connect<&SubsystemTerrain::onPlayerCreated>(this);
@@ -25,7 +22,6 @@ void SubsystemTerrain::onAttach(GameState& ctx)
 
 void SubsystemTerrain::onDetach(GameState& ctx)
 {
-    m_resolveDirtyChunkConnection.release();
     m_createPlayerConnection.release();
 }
 
@@ -42,9 +38,10 @@ void SubsystemTerrain::onPlayerCreated(entt::registry& world,
 
 void SubsystemTerrain::onUpdate(FGameState& ctx)
 {
+    auto& tv = ctx.world.ctx().get<TerrainView>();
     m_terrainGenerator.GenerateTerrain(
-        ctx.world.ctx().get<TerrainView>().m_terrainData,
-        ctx.world.ctx().get<BlockRegistry>());
+        tv.m_terrainData,
+        ctx.world.ctx().get<BlockRegistry>(), tv);
 }
 
 void TerrainUpdateScheduler::InitialUpdate(TerrainData& terrain,

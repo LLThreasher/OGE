@@ -4,6 +4,9 @@
 #include "game/components.hpp"
 #include "game/replication_registry.hpp"
 #include "game/scene.hpp"
+#include "game/sim/terrain/subsystem_terrain.hpp"
+#include "game/terrain/block_registry.hpp"
+#include "game/terrain/terrain_view.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_server.hpp"
@@ -85,8 +88,9 @@ class DebugServerScene final : public Scene
                 math::max(p.peerId + 1, (uint32_t)m_playerEntries.size()));
             m_playerEntries[p.peerId] = playerInfo;
             LOG_INFO(
-                "create player enitty: {} for conn({})",
+                "create player enitty: {}({}) for conn({})",
                 uuids::to_string(uuids::uuid{m_playerEntries[p.peerId].uuid}),
+                (uint32_t)playerEntity,
                 p.peerId);
             auto packet = m_netServer.StartPacket(sizeof(entt::entity));
             packet.Write(playerEntity);
@@ -124,9 +128,17 @@ class DebugServerScene final : public Scene
         m_serverEventDispatcher.sink<OnServerReceivePacket>()
             .connect<&DebugServerScene::onServerReceivePacket>(this);
         RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
+        
+        m_sceneConfig.subsystems.Add(Id<sim::SubsystemTerrain>());
+
+        Load();
+        
         InstallReplicationHooks<ComponentPlayer>(m_world);
         InstallEntityReplicationHooks(m_world);
+        m_replicationRegistry.AddFamilyToSend(Id<terrain::TerrainView>());
         m_replicationRegistry.AddFamilyToSend(Id<ReplicatedTag>());
+        m_replicationRegistry.AddFamilyToSend(Id<ComponentCamera>());
+        m_replicationRegistry.AddFamilyToSend(Id<ComponentPerspectiveCamera>());
         m_replicationRegistry.AddFamilyToSend(Id<ComponentPlayer>());
     }
 
@@ -169,6 +181,25 @@ class DebugServerScene final : public Scene
         assert(m_serverEventDispatcher.size() == 0);
         m_replicationRegistry.ProduceAll(m_netServer, m_world);
         Scene::Update(f, sctx);
+    }
+
+    void Load() override
+    {
+        auto& blocks = m_world.ctx().emplace<::game::terrain::BlockRegistry>();
+        blocks.RegisterBlock("dirt", {
+                                         "Dirt",
+                                         "dirt.png",
+                                         1,
+                                     });
+        blocks.RegisterBlock("wood", {"Wood", "wood_plank.png", 1});
+        blocks.RegisterBlock("stone", {"Stone", "green_stone.png", 1});
+
+        m_world.ctx().emplace<::game::terrain::TerrainView>();
+
+        auto desc = m_world.ctx().emplace<::game::terrain::TerrainDesc>();
+        desc.chunkViewDistance = 1;
+
+        Scene::Load();
     }
 };
 }  // namespace game

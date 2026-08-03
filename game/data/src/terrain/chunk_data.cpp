@@ -76,9 +76,18 @@ void ChunkDataCollection::FreeChunk(ChunkHandle handle)
     chunkData.Destroy(handle);
 }
 
-PaletteCompressedChunk PaletteCompressedChunk::FromChunkData(const ChunkData& c)
+ChunkData* ChunkDataCollection::Poll(ChunkHandle& cursor)
 {
-    PaletteCompressedChunk result;
+    return chunkData.Poll(cursor);
+}
+
+const ChunkData* ChunkDataCollection::Poll(ChunkHandle& cursor) const
+{
+    return chunkData.Poll(cursor);
+}
+
+void PaletteCompressedChunk::FromChunkData(const ChunkData& c, PaletteCompressedChunk& result)
+{
     std::unordered_map<uint32_t, uint8_t> palette_map;
     for (size_t i = 0; i < CHUNK_SIZE_TOTAL; ++i)
     {
@@ -95,7 +104,6 @@ PaletteCompressedChunk PaletteCompressedChunk::FromChunkData(const ChunkData& c)
         }
     }
     assert(result.palette.size() <= 255);
-    return result;
 }
 
 void PaletteCompressedChunk::ToChunkData(ChunkData& c)

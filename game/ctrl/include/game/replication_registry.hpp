@@ -7,6 +7,7 @@
 
 #include "game/components.hpp"
 #include "game/input/entity_event_stream.hpp"
+#include "game/terrain/terrain_view.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
@@ -26,35 +27,6 @@ using input::EntityEvent;
 using input::EntityEventStream;
 using input::EntityEventType;
 using oge::DiscreteEventStream;
-
-template <typename T>
-struct EntityStorageTraits
-{
-    static size_t GetSize(entt::entity entity, entt::registry& world)
-    {
-        auto& comp = world.get<T>(entity);
-        return comp.Size();
-    }
-
-    static void Serialize(entt::entity entity, entt::registry& world,
-                          net::Buffer& buffer)
-    {
-        buffer.Write(entity);
-
-        auto& comp = world.get<T>(entity);
-        comp.Serialize(buffer);  // explicit contract
-    }
-
-    static void Deserialize(entt::registry& world, net::Buffer& buffer)
-    {
-        entt::entity entity = buffer.Read<entt::entity>();
-
-        T comp;
-        comp.Deserialize(buffer);
-
-        world.emplace_or_replace<T>(entity, std::move(comp));
-    }
-};
 
 template <typename TEvent>
 struct NetEventBatch : net::Object<NetEventBatch<TEvent>>
@@ -353,7 +325,7 @@ struct ComponentReplication
             packet.Write(input::ComponentDeltaType::Add);
             packet.Write(entity);
 
-            EntityStorageTraits<T>::Serialize(entity, world, packet);
+            world.get<T>(entity).Serialize(packet);
 
             server.Send(peer, packet, sendType, channel);
         }
@@ -394,7 +366,7 @@ struct ComponentReplication
 
             if (delta.type != input::ComponentDeltaType::Remove)
             {
-                size += EntityStorageTraits<T>::GetSize(delta.entity, world);
+                size += world.get<T>(delta.entity).Size();
             }
 
             auto packet = server.StartPacket(size);
@@ -405,7 +377,7 @@ struct ComponentReplication
 
             if (delta.type != input::ComponentDeltaType::Remove)
             {
-                EntityStorageTraits<T>::Serialize(delta.entity, world, packet);
+                world.get<T>(delta.entity).Serialize(packet);
             }
 
             server.Send(peer, packet, sendType, channel);
@@ -425,7 +397,7 @@ struct ComponentReplication
             case input::ComponentDeltaType::Add:
             case input::ComponentDeltaType::Update:
             {
-                EntityStorageTraits<T>::Deserialize(world, buffer);
+                world.get_or_emplace<T>(entity).Deserialize(buffer);
                 break;
             }
 
@@ -437,6 +409,21 @@ struct ComponentReplication
             }
         }
     }
+};
+
+struct TerrainReplication
+{
+    struct State
+    {
+        terrain::ChunkHandle snapshotCursor{};
+        bool needsSnapshot = true;
+    };
+
+    static entt::any CreateState();
+    static void Encode(entt::registry& world, ENetPeer* peer,
+                       oge::runtime::NetPacketSender& server, FamilyId family,
+                       SendType sendType, uint8_t channel, entt::any& anyState);
+    static void Decode(entt::registry& world, net::Buffer& buffer);
 };
 
 template <typename T>

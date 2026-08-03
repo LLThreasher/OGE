@@ -5,10 +5,12 @@
 #include <unordered_set>
 
 #include "defs.hpp"
+#include "entt/signal/fwd.hpp"
+#include "oge/math.hpp"
 #include "oge/point3.hpp"
 #include "oge/pool.hpp"
-#include "oge/math.hpp"
 #include "oge/runtime/entt.hpp"
+#include "oge/runtime/typed_registry.hpp"
 
 namespace game
 {
@@ -54,7 +56,7 @@ struct LocalUpdateBlockCmd
     bool touchesBorder;
 };
 
-enum class ChunkState
+enum class ChunkState : uint8_t
 {
     GeneratingTerrain,
     Persistent,
@@ -104,23 +106,65 @@ class ChunkDataCollection
     void FreeChunk(Point3 coord);
     void FreeChunk(ChunkHandle handle);
 
+    ChunkData* Poll(ChunkHandle& cursor);
+    const ChunkData* Poll(ChunkHandle& cursor) const;
+
    private:
     Pool<TerrainObject::Chunk, ChunkData> chunkData;
     std::unordered_map<Point3, ChunkHandle> coordToChunks;
 };
 
+inline static uint64_t HashBytes(uint64_t hash, const void* data, size_t len)
+{
+    constexpr uint64_t FNV_offset = 14695981039346656037ull;
+    constexpr uint64_t FNV_prime = 1099511628211ull;
+
+    const uint8_t* bytes = static_cast<const uint8_t*>(data);
+
+    if (hash == 0) hash = FNV_offset;
+
+    for (size_t i = 0; i < len; ++i)
+    {
+        hash ^= bytes[i];
+        hash *= FNV_prime;
+    }
+
+    return hash;
+}
+
 struct PaletteCompressedChunk
 {
     std::pmr::vector<uint32_t> palette;
-    uint8_t data[CHUNK_SIZE_TOTAL]; // 4096 bytes
+    uint8_t data[CHUNK_SIZE_TOTAL];  // 4096 bytes
 
-    static PaletteCompressedChunk FromChunkData(const ChunkData& c);
+    static void FromChunkData(const ChunkData& c, PaletteCompressedChunk& cc);
     void ToChunkData(ChunkData& c);
     uint32_t Get(int x, int y, int z) const
     {
         return palette[data[GetBlockIndex(x, y, z)]];
     }
 };
+
+inline uint64_t DebugHash(const PaletteCompressedChunk& chunk)
+{
+    uint64_t hash = 0;
+
+    // Hash palette size
+    uint32_t paletteSize = static_cast<uint32_t>(chunk.palette.size());
+    hash = HashBytes(hash, &paletteSize, sizeof(paletteSize));
+
+    // Hash palette contents
+    if (!chunk.palette.empty())
+    {
+        hash = HashBytes(hash, chunk.palette.data(),
+                         chunk.palette.size() * sizeof(uint32_t));
+    }
+
+    // Hash block data (4096 bytes)
+    hash = HashBytes(hash, chunk.data, CHUNK_SIZE_TOTAL);
+
+    return hash;
+}
 
 // allocate chunk -> generate terrain queue -> build mesh queue -> built chunk
 // meshes -> upload with streaming manager -> remove built chunk meshes ->
@@ -133,7 +177,6 @@ struct TerrainData
     std::unordered_map<ChunkHandle, std::vector<LocalUpdateBlockCmd>,
                        HandleHash<ChunkHandle>>
         blockModificationQueue;
-    std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> dirtyChunks;
 
     TerrainData()
     {
@@ -151,6 +194,12 @@ struct TerrainRaycastResult
     uint8_t hitFace;
     Point3 hitPos;
     uint32_t hitBlockValue;
+};
+
+template <ChunkState state>
+struct ChunkStateUpdateEvent
+{
+    ChunkHandle chunk;
 };
 
 class TerrainView
@@ -177,18 +226,33 @@ class TerrainView
     std::tuple<ChunkHandle, const ChunkData*> GetChunk(Point3 chunkCoord) const;
     std::tuple<ChunkHandle, ChunkData*> GetChunk(Point3 chunkCoord);
     const ChunkData* GetChunk(ChunkHandle handle) const;
+    const ChunkData* PollChunk(ChunkHandle& handle) const;
     ChunkData* GetChunk(ChunkHandle handle);
-    void SubmitChunk(ChunkHandle handle);
+    ChunkHandle CreateChunk(Point3 chunkCoord);
+    void UpgradeChunk(ChunkHandle handle, ChunkState newState);
     std::optional<TerrainRaycastResult> CastRay(math::vec3 pos, math::vec3 ray,
                                                 float maxDist = 20.f);
+    entt::dispatcher& GetEvents()
+    {
+        return m_dispatcher;
+    }
 
    protected:
     TerrainData m_terrainData;
-
-   private:
-    static void HandleResolveDirtyChunk(entt::registry& world,
-                                        ResolveDirtyChunkEvent e);
+    entt::dispatcher m_dispatcher;
 };
 
 }  // namespace terrain
 }  // namespace game
+
+namespace oge::runtime
+{
+template <>
+struct TypeName<::game::terrain::TerrainView>
+{
+    static constexpr std::string Get()
+    {
+        return "core::TerrainView";
+    }
+};
+}  // namespace oge::runtime

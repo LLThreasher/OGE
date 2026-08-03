@@ -7,6 +7,7 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "defs_ext.hpp"
 #include "game/terrain/block_registry.hpp"
@@ -14,6 +15,7 @@
 #include "game/view/gfx/commands.hpp"
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
+#include "oge/handle.hpp"
 #include "oge/macros.hpp"
 #include "oge/math.hpp"
 #include "oge/pool.hpp"
@@ -124,11 +126,16 @@ class TerrainMeshScheduler
                              const entt::registry& uiWorld,
                              const entt::registry& gameWorld,
                              ViewSubmissionGroup<View> fd);
+    void MarkChunkDirty(ChunkHandle chunk)
+    {
+        dirtyChunks.insert(chunk);
+    }
 
    private:
     std::unordered_map<entt::entity, uint32_t> playerToView;
     std::vector<ChunkHandle> toRemove;
     std::vector<ChunkHandle> toMesh;
+    std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> dirtyChunks;
 };
 
 class TerrainUploader
@@ -156,6 +163,8 @@ class TerrainRenderer : public Renderer
     TerrainMeshBuilder m_terrainMeshBuilder;
     TerrainUploader m_terrainUploader;
     TerrainMeshScheduler m_terrainMeshScheduler;
+
+    entt::connection m_resolveDirtyChunkConnection;
 };
 }  // namespace terrain
 using TerrainRenderer = terrain::TerrainRenderer;

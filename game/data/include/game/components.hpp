@@ -58,12 +58,46 @@ struct ComponentCamera
 
     math::mat4 view() const;
     void ApplyDelta(float dsx, float dsy);
+
+    void Serialize(net::Buffer& buffer)
+    {
+        buffer.Write(position);
+        buffer.Write(forward);
+    }
+
+    void Deserialize(net::Buffer& buffer)
+    {
+        buffer.Read(position);
+        buffer.Read(forward);
+    }
+
+    size_t Size()
+    {
+        return sizeof(position) + sizeof(forward);
+    }
 };
 
 struct ComponentPerspectiveCamera
 {
     float fov = math::radians(45.0f);
     float aspect = 1.f;
+
+    void Serialize(net::Buffer& buffer)
+    {
+        buffer.Write(fov);
+        buffer.Write(aspect);
+    }
+
+    void Deserialize(net::Buffer& buffer)
+    {
+        buffer.Read(fov);
+        buffer.Read(aspect);
+    }
+
+    size_t Size()
+    {
+        return sizeof(fov) + sizeof(aspect);
+    }
 };
 
 math::vec3 ScreenToRay(ComponentCamera camera,
@@ -111,6 +145,11 @@ struct ComponentCreature
         maxSpeed = buffer.Read<float>();
         initJumpSpeed = buffer.Read<float>();
     }
+
+    size_t Size()
+    {
+        return sizeof(maxSpeed) + sizeof(initJumpSpeed);
+    }
 };
 
 struct ComponentCreatureInfo
@@ -132,6 +171,11 @@ struct ComponentAABBCollider
     void Deserialize(net::Buffer& buffer)
     {
         aabb =  buffer.Read<AABB>();
+    }
+
+    size_t Size()
+    {
+        return sizeof(aabb);
     }
 };
 
@@ -190,6 +234,42 @@ struct TypeName<game::ComponentPlayer>
     static constexpr std::string Get()
     {
         return "core::ComponentPlayer";
+    }
+};
+
+template <>
+struct TypeName<game::ComponentAABBCollider>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ComponentAABBCollider";
+    }
+};
+
+template <>
+struct TypeName<game::ComponentCamera>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ComponentCamera";
+    }
+};
+
+template <>
+struct TypeName<game::ComponentPerspectiveCamera>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ComponentPerspectiveCamera";
+    }
+};
+
+template <>
+struct TypeName<game::ComponentCreature>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ComponentCreature";
     }
 };
 }  // namespace oge::runtime
