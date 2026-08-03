@@ -10,6 +10,7 @@
 #include "oge/point3.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/typed_registry.hpp"
+#include "game/terrain/terrain_view.hpp"
 
 using oge::runtime::AnythingFactory;
 using oge::runtime::SendType;
@@ -66,9 +67,11 @@ void game::RegisterReplications(AnythingFactory& af, ReplicationRegistry& rf)
     rf.RegisterFrom(af);
 }
 
-using namespace game;
+void game::InstallTerrainReplicationHooks(entt::registry& world)
+{
+}
 
-void InstallEntityReplicationHooks(entt::registry& world)
+void game::InstallEntityReplicationHooks(entt::registry& world)
 {
     world.ctx().emplace<EntityEventStream>();
     world.on_construct<ReplicatedTag>()
@@ -86,6 +89,8 @@ void InstallEntityReplicationHooks(entt::registry& world)
                                   .Push({input::EntityEventType::Destroy, e});
                           }>();
 }
+
+using namespace game;
 
 void EntityReplication::Encode(entt::registry& world, ENetPeer* peer,
                                oge::runtime::NetPacketSender& server,
@@ -162,21 +167,6 @@ void EntityReplication::Decode(entt::registry& world, net::Buffer& buffer)
     }
 }
 
-class ChunkEventStream
-    : public oge::DiscreteEventStream<terrain::ChunkStateUpdateEvent, 128>
-{
-};
-
-void InstallTerrainReplicationHooks(entt::registry& world)
-{
-    world.ctx().emplace<ChunkEventStream>();
-    auto& terrain = world.ctx().get<terrain::TerrainView>();
-    terrain.GetEvents()
-        .sink<terrain::ChunkStateUpdateEvent>()
-        .connect<+[](entt::registry& world, terrain::ChunkStateUpdateEvent e)
-                 { world.ctx().get<ChunkEventStream>().Push(e); }>(world);
-}
-
 enum class ChunkPacketType : uint8_t
 {
     Load,
@@ -245,5 +235,5 @@ void TerrainReplication::Decode(entt::registry& world, net::Buffer& buffer)
     LOG_DEBUG("recv hash {}, {}", coord, DebugHash(chunk));
     auto handle = terrain.CreateChunk(coord);
     chunk.ToChunkData(*terrain.GetChunk(handle));
-    terrain.UpgradeChunk(handle, ChunkState::Persistent, true);
+    terrain.UpgradeChunk(handle, ChunkState::Persistent);
 }

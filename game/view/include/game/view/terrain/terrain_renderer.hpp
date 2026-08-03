@@ -120,22 +120,16 @@ class TerrainMeshScheduler
    public:
     void QueueChunksForMeshing(const TerrainData& terrain,
                                TerrainPresentationData& pdata,
-                               entt::dispatcher& events);
+                               const ChunkEventStream& events);
     void SubmitVisibleChunks(const TerrainData& data,
                              TerrainPresentationData& pdata,
                              const entt::registry& uiWorld,
                              const entt::registry& gameWorld,
                              ViewSubmissionGroup<View> fd);
-    void MarkChunkDirty(ChunkHandle chunk)
-    {
-        dirtyChunks.insert(chunk);
-    }
 
    private:
     std::unordered_map<entt::entity, uint32_t> playerToView;
-    std::vector<ChunkHandle> toRemove;
-    std::vector<ChunkHandle> toMesh;
-    std::unordered_set<ChunkHandle, HandleHash<ChunkHandle>> dirtyChunks;
+    ChunkEventStream::Cursor chunkCursor{};
 };
 
 class TerrainUploader

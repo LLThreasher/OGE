@@ -6,6 +6,8 @@
 
 #include "entt/signal/fwd.hpp"
 #include "game/terrain/block_registry.hpp"
+#include "oge/fmt.hpp"
+#include "oge/log.hpp"
 #include "oge/point3.hpp"
 
 namespace game::terrain
@@ -39,42 +41,49 @@ void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
     assert(chunk != nullptr);
     if (chunk != nullptr)
     {
+        DowngradeChunk(handle, ChunkState::InvalidLighting);
         UpgradeChunk(handle, ChunkState::Persistent);
         if ((x & 0xF) == 0)
         {
-            UpgradeChunk(m_terrainData.chunks.GetHandle(
-                             {chunkCoord.x - 1, chunkCoord.y, chunkCoord.z}),
-                         ChunkState::Persistent);
+            auto nhandle = m_terrainData.chunks.GetHandle(
+                {chunkCoord.x - 1, chunkCoord.y, chunkCoord.z});
+            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
+            UpgradeChunk(nhandle, ChunkState::Persistent);
         }
         else if ((x & 0xF) == 15)
         {
-            UpgradeChunk(m_terrainData.chunks.GetHandle(
-                             {chunkCoord.x + 1, chunkCoord.y, chunkCoord.z}),
-                         ChunkState::Persistent);
+            auto nhandle = m_terrainData.chunks.GetHandle(
+                {chunkCoord.x + 1, chunkCoord.y, chunkCoord.z});
+            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
+            UpgradeChunk(nhandle, ChunkState::Persistent);
         }
         if ((y & 0xF) == 0)
         {
-            UpgradeChunk(m_terrainData.chunks.GetHandle(
-                             {chunkCoord.x, chunkCoord.y - 1, chunkCoord.z}),
-                         ChunkState::Persistent);
+            auto nhandle = m_terrainData.chunks.GetHandle(
+                {chunkCoord.x, chunkCoord.y - 1, chunkCoord.z});
+            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
+            UpgradeChunk(nhandle, ChunkState::Persistent);
         }
         else if ((y & 0xF) == 15)
         {
-            UpgradeChunk(m_terrainData.chunks.GetHandle(
-                             {chunkCoord.x, chunkCoord.y + 1, chunkCoord.z}),
-                         ChunkState::Persistent);
+            auto nhandle = m_terrainData.chunks.GetHandle(
+                {chunkCoord.x, chunkCoord.y + 1, chunkCoord.z});
+            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
+            UpgradeChunk(nhandle, ChunkState::Persistent);
         }
         if ((z & 0xF) == 0)
         {
-            UpgradeChunk(m_terrainData.chunks.GetHandle(
-                             {chunkCoord.x, chunkCoord.y, chunkCoord.z - 1}),
-                         ChunkState::Persistent);
+            auto nhandle = m_terrainData.chunks.GetHandle(
+                {chunkCoord.x, chunkCoord.y, chunkCoord.z - 1});
+            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
+            UpgradeChunk(nhandle, ChunkState::Persistent);
         }
         else if ((z & 0xF) == 15)
         {
-            UpgradeChunk(m_terrainData.chunks.GetHandle(
-                             {chunkCoord.x, chunkCoord.y, chunkCoord.z + 1}),
-                         ChunkState::Persistent);
+            auto nhandle = m_terrainData.chunks.GetHandle(
+                {chunkCoord.x, chunkCoord.y, chunkCoord.z + 1});
+            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
+            UpgradeChunk(nhandle, ChunkState::Persistent);
         }
         return chunk->SetBlock(x & 0xF, y & 0xF, z & 0xF, value);
     }
@@ -111,32 +120,71 @@ ChunkHandle TerrainView::CreateChunk(Point3 chunkCoord)
     return m_terrainData.chunks.AllocateChunk(chunkCoord);
 }
 
-void TerrainView::UpgradeChunk(ChunkHandle handle, ChunkState state,
-                               bool updateNeighbors)
+static bool AllNeighborsValid(const ChunkDataCollection& chunks, ChunkState src,
+                              Point3 coord)
+{
+    bool valid = true;
+
+    ChunkDir::ForEachNeighbor(coord,
+                              [&](const Point3& neighborPos)
+                              {
+                                  auto handle = chunks.GetHandle(neighborPos);
+                                  if (!handle.IsValid())
+                                  {
+                                      valid = false;
+                                      return;
+                                  }
+
+                                  if (chunks.Get(handle)->weakState < src)
+                                  {
+                                      valid = false;
+                                  }
+                              });
+
+    return valid;
+}
+
+void TerrainView::UpgradeChunk(ChunkHandle handle, ChunkState state)
+{
+    UpgradeChunkInternal(handle, state, true);
+}
+
+void TerrainView::UpgradeChunkInternal(ChunkHandle handle, ChunkState state,
+                                       bool updateNeighbors)
 {
     auto chunk = m_terrainData.chunks.Get(handle);
-    chunk->state = state;
-    m_dispatcher.trigger(ChunkStateUpdateEvent{state, handle});
+    if (!chunk) return;
+    if (state <= chunk->state) return;
     if (updateNeighbors)
     {
-        static std::vector<Point3> faces{
-            {-1, 0, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}};
-        for (Point3 p : faces)
-        {
-            auto handle = m_terrainData.chunks.GetHandle(chunk->Coords + p);
-            if (!handle.IsValid()) continue;
-            m_dispatcher.trigger(
-                ChunkStateUpdateEvent{chunk->state, handle, true});
-        }
-        if (chunk->Coords.y > 0)
-        {
-            auto handle = m_terrainData.chunks.GetHandle(chunk->Coords +
-                                                         Point3{0, -1, 0});
-            if (handle.IsValid())
-                m_dispatcher.trigger(
-                    ChunkStateUpdateEvent{chunk->state, handle, true});
-        }
+        if (chunk->weakState < state) chunk->weakState = state;
+
+        auto coord = chunk->Coords;
+
+        ChunkDir::ForEachNeighbor(
+            coord,
+            [&](const Point3& neighborPos)
+            {
+                UpgradeChunkInternal(
+                    m_terrainData.chunks.GetHandle(neighborPos), state, false);
+            });
     }
+    if (!AllNeighborsValid(m_terrainData.chunks, state, chunk->Coords)) return;
+    auto prevState = chunk->state;
+    chunk->state = state;
+    m_chunkEvents.Push(ChunkStateUpdateEvent{prevState, state, handle});
+    LOG_DEBUG("upgrade chunk {}, {}", chunk->Coords, m_chunkEvents.HeadIndex());
+}
+
+void TerrainView::DowngradeChunk(ChunkHandle handle, ChunkState newState)
+{
+    assert(newState != ChunkState::Persistent);
+    auto chunk = m_terrainData.chunks.Get(handle);
+    if (newState >= chunk->state) return;
+    auto prevState = chunk->state;
+    chunk->state = newState;
+    chunk->weakState = newState;
+    m_chunkEvents.Push(ChunkStateUpdateEvent{prevState, newState, handle});
 }
 
 std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos,

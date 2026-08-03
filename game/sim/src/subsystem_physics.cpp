@@ -164,6 +164,8 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
         body.acceleration = {};
     }
 
+    cachedCollisions.clear();
+    
     // collision between physical body and terrain Y
     for (auto [e, collider, body] :
          game.view<UpdateTag<utype>, const ComponentAABBCollider,

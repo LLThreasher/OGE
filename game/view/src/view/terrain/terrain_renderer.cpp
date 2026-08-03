@@ -22,15 +22,6 @@ void TerrainRenderer::onAttach(RendererState& ctx)
     m_terrainMeshBuilder.SetVertexBudget(desc->meshingQuadBudget);
     m_terrainUploader.SetMaxNumChunks((tdesc->chunkViewDistance + 1) *
                                       (tdesc->chunkViewDistance + 1) * 6);
-    ctx.world.ctx()
-        .find<TerrainView>()
-        ->GetEvents()
-        .sink<ChunkStateUpdateEvent>()
-        .connect<+[](TerrainRenderer* self, ChunkStateUpdateEvent e)
-                 {
-                     if (e.state != ChunkState::Persistent) return;
-                     self->m_terrainMeshScheduler.MarkChunkDirty(e.chunk);
-                 }>(this);
     LOG_DEBUG("attach terrain renderer");
 }
 
@@ -40,9 +31,9 @@ void TerrainRenderer::onDetach(RendererState& ctx)
 
 void TerrainRenderer::onUpdate(FRendererState& ctx)
 {
-    auto& terrainData = ctx.world.ctx().get<TerrainView>().m_terrainData;
-    m_terrainMeshScheduler.QueueChunksForMeshing(terrainData, m_terrainPData,
-                                                 ctx.events);
+    auto& tv = ctx.world.ctx().get<TerrainView>();
+    auto& terrainData = tv.m_terrainData;
+    m_terrainMeshScheduler.QueueChunksForMeshing(terrainData, m_terrainPData, tv.GetEvents());
     m_terrainMeshBuilder.BuildChunkMeshes(
         terrainData, ctx.world.ctx().get<BlockRegistry>(), m_terrainPData,
         ctx.memory.frameBuffer.Resource());
@@ -54,28 +45,15 @@ void TerrainRenderer::onUpdate(FRendererState& ctx)
 
 void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain,
                                                  TerrainPresentationData& pdata,
-                                                 entt::dispatcher& events)
+                                                 const ChunkEventStream& events)
 {
-    for (auto handle : dirtyChunks)
+    ChunkStateUpdateEvent e;
+    while (events.PollOne(chunkCursor, e))
     {
-        auto chunk = terrain.chunks.Get(handle);
-        bool fullNeighbors = true;
-        for (int i = 0; i < 6; ++i)
-        {
-            if (i == FACE_DOWN && chunk->Coords.y == 0) continue;
-            auto neighborCoord = oge::perFaceOffset[i] + chunk->Coords;
-            auto [handle, chunk] = terrain.chunks.Get(neighborCoord);
-            if (!chunk || chunk->state != ChunkState::Persistent)
-            {
-                fullNeighbors = false;
-                break;
-            }
-        }
-        if (!fullNeighbors) continue;
-        pdata.buildMeshQueue.push(handle);
-        LOG_DEBUG("queue {} for meshing", chunk->Coords);
+        // if (e.state != ChunkState::Persistent) continue;
+        pdata.buildMeshQueue.push(e.chunk);
+        LOG_DEBUG("queue {} for meshing, {}", terrain.chunks.Get(e.chunk)->Coords, chunkCursor);
     }
-    dirtyChunks.clear();
 }
 
 struct FrustumPlane

@@ -24,8 +24,8 @@ int main(int argc, char* argv[])
     app.RegisterScene<game::DebugScene3>();
     app.RegisterScene<game::ClientConnScene>();
     app.RegisterScene<game::ClientScene>();
-    // app.SwitchToScene<game::DebugScene3>();
-    app.SwitchToScene<game::ClientConnScene>();
+    app.SwitchToScene<game::DebugScene3>();
+    // app.SwitchToScene<game::ClientConnScene>();
     // app.SwitchToScene<game::ClientScene>({{"next_scene",
     // app.Id<game::DebugScene3>()}});
     window->Run(app);

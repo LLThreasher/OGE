@@ -316,8 +316,9 @@ struct ComponentReplication
                 }
                 else
                 {
-                    world.patch<T>(entity,
-                                   [&](auto res) { res.Deserialize(buffer); });
+                    T& res = world.get<T>(entity);
+                    res.Deserialize(buffer);
+                    world.patch<T>(entity);
                 }
                 break;
             }
@@ -414,97 +415,6 @@ struct EventStreamReplication
         for (auto& e : batch.events) queue.Push(std::move(e));
     }
 };
-
-// this modifies world directly
-// template <>
-// struct EventStreamReplication<EntityEventStream>
-// {
-//     using TEvent = EntityEvent;
-//     struct State
-//     {
-//         typename EntityEventStream::Cursor cursor = 0;
-//         bool initialized = false;
-//     };
-
-//     static entt::any CreateState()
-//     {
-//         return State{};
-//     }
-
-//     static void Encode(entt::registry& world, ENetPeer* peer,
-//                        oge::runtime::NetPacketSender& server, FamilyId
-//                        family, SendType sendType, uint8_t channel, entt::any&
-//                        anyState)
-//     {
-//         auto& state = entt::any_cast<State&>(anyState);
-//         auto& stream = world.ctx().get<EntityEventStream>();
-
-//         if (!state.initialized)
-//         {
-//             state.cursor = stream.HeadIndex();
-//             state.initialized = true;
-//             return;
-//         }
-
-//         auto ss = entt::snapshot(world);
-//         auto& reg = world.ctx().get<ReplicationRegistry>();
-//         TEvent ev;
-//         net::Buffer packet;
-//         packet.Write(family);
-//         while (stream.PollOne(state.cursor, ev))
-//         {
-//             packet.Write(ev.type);
-//             auto arch = oge::runtime::net::BufferOutputArchive(packet);
-//             if (ev.type == EntityEventType::Create)
-//             {
-//                 std::array<entt::entity, 1> entities{ev.entity};
-//                 for (auto id : reg.SeralizableComponents())
-//                 {
-//                     ss.get(arch, entities.begin(), entities.end(), id);
-//                 }
-//             }
-//         }
-
-//         if (batch.events.empty()) return;
-
-//         auto& loader = world.ctx().get<entt::snapshot>();
-//         auto& registry = world.ctx().get<ReplicationRegistry>();
-//         auto packet = server.StartPacket(sizeof(FamilyId) + batch.Size());
-
-//         packet.Write(family);
-//         std::array<entt::entity, 1> entities{};
-//         loader.get()
-
-//         // wip
-
-//         server.Send(peer, packet, sendType, channel);
-//     }
-
-//     static void Decode(entt::registry& world, net::Buffer& buffer)
-//     {
-//         NetEventBatch<TEvent> batch;
-//         batch.Deserialize(buffer);
-
-//         auto& queue = world.ctx().get<EntityEventStream>();
-
-//         auto& loader = world.ctx().get<entt::continuous_loader>();
-//         for (auto& e : batch.events)
-//         {
-//             if (e.type == EntityEventType::Destroy)
-//             {
-//                 world.destroy(loader.map(e.entity));
-//             }
-//             else
-//             {
-//                 auto arch = oge::runtime::net::BufferOutputArchive(buffer);
-//                 assert(e.type == EntityEventType::Create);
-//                 auto res = world.create(e.entity);
-//                 loader.get<entt::entity>(arch);
-//                 // wip
-//             }
-//         }
-//     }
-// };
 
 template <typename TEventStream>
     requires IsEventStream<TEventStream>

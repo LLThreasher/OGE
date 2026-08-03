@@ -6,6 +6,7 @@
 
 #include "defs.hpp"
 #include "entt/signal/fwd.hpp"
+#include "oge/event_stream.hpp"
 #include "oge/math.hpp"
 #include "oge/point3.hpp"
 #include "oge/pool.hpp"
@@ -58,10 +59,16 @@ struct LocalUpdateBlockCmd
 
 enum class ChunkState : uint8_t
 {
-    GeneratingTerrain,
+    GeneratingTerrain = 0,
+    InvalidLighting,
     Persistent,
     PendingDestroy,
 };
+
+constexpr bool operator<(ChunkState a, ChunkState b)
+{
+    return static_cast<uint8_t>(a) < static_cast<uint8_t>(b);
+}
 
 inline size_t GetBlockIndex(uint8_t x, uint8_t y, uint8_t z)
 {
@@ -75,6 +82,8 @@ struct ChunkData
     uint32_t data[CHUNK_SIZE_TOTAL] = {};
     Point3 Coords = {};
     ChunkState state = ChunkState::GeneratingTerrain;
+    // this is only assigned to state if all neighbors have it
+    ChunkState weakState = ChunkState::GeneratingTerrain;
 
    public:
     ChunkData(Point3 coords)
@@ -100,7 +109,7 @@ class ChunkDataCollection
     std::tuple<ChunkHandle, const ChunkData*> Get(Point3 coord) const;
     std::tuple<ChunkHandle, ChunkData*> Get(Point3 coord);
 
-    ChunkHandle GetHandle(Point3 coord);
+    ChunkHandle GetHandle(Point3 coord) const;
 
     ChunkHandle AllocateChunk(Point3 coord);
     void FreeChunk(Point3 coord);
@@ -198,9 +207,15 @@ struct TerrainRaycastResult
 
 struct ChunkStateUpdateEvent
 {
+    ChunkState prevState;
     ChunkState state;
     ChunkHandle chunk;
     bool weak = false;
+};
+
+class ChunkEventStream
+    : public oge::DiscreteEventStream<terrain::ChunkStateUpdateEvent, 128>
+{
 };
 
 class TerrainView
@@ -230,17 +245,20 @@ class TerrainView
     const ChunkData* PollChunk(ChunkHandle& handle) const;
     ChunkData* GetChunk(ChunkHandle handle);
     ChunkHandle CreateChunk(Point3 chunkCoord);
-    void UpgradeChunk(ChunkHandle handle, ChunkState newState, bool updateNeighbors = false);
+    void UpgradeChunk(ChunkHandle handle, ChunkState newState);
+    void DowngradeChunk(ChunkHandle handle, ChunkState newState);
     std::optional<TerrainRaycastResult> CastRay(math::vec3 pos, math::vec3 ray,
                                                 float maxDist = 20.f);
-    entt::dispatcher& GetEvents()
+    const ChunkEventStream& GetEvents() const
     {
-        return m_dispatcher;
+        return m_chunkEvents;
     }
 
    protected:
     TerrainData m_terrainData;
-    entt::dispatcher m_dispatcher;
+    ChunkEventStream m_chunkEvents;
+
+    void UpgradeChunkInternal(ChunkHandle handle, ChunkState newState, bool updateNeighbors);
 };
 
 }  // namespace terrain

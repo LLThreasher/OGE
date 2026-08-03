@@ -43,7 +43,6 @@ struct ComponentCamera
     float pitch;
     math::vec3 position;
     math::vec3 forward;
-    entt::entity targetPanel;
 
     math::vec3 up() const
     {

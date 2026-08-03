@@ -27,7 +27,7 @@ std::tuple<ChunkHandle, const ChunkData*> ChunkDataCollection::Get(
     return {ChunkHandle{}, nullptr};
 }
 
-ChunkHandle ChunkDataCollection::GetHandle(Point3 coord)
+ChunkHandle ChunkDataCollection::GetHandle(Point3 coord) const
 {
     auto it = coordToChunks.find(coord);
     if (it != coordToChunks.end())

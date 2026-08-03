@@ -114,6 +114,7 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                 math::vec3{(collider.aabb.min.x + collider.aabb.max.x) / 2.f,
                            1.65f,
                            (collider.aabb.min.z + collider.aabb.max.z) / 2.f};
+            ctx.world.patch<ComponentCamera>(entity);
         }
 
         if constexpr (variant == UpdateType::FixedStep)

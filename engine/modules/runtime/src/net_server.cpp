@@ -5,6 +5,7 @@
 #include <memory_resource>
 
 #include "enet_interface.hpp"
+#include "oge/log.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 namespace oge::runtime
@@ -105,6 +106,6 @@ void NetServer::OnClientDisconnected(ENetPeer* peer)
 
 void NetServer::OnPacketReceived(ENetPeer* peer, uint8_t* data, size_t length)
 {
-    LOG_INFO("Server received {} bytes from {}", length, peer->incomingPeerID);
+    LOG_DEBUG("Server received {} bytes from {}", length, peer->incomingPeerID);
 }
 }  // namespace oge::runtime

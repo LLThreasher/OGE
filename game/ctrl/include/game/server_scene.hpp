@@ -4,6 +4,8 @@
 #include "game/components.hpp"
 #include "game/replication_registry.hpp"
 #include "game/scene.hpp"
+#include "game/sim/subsystem.hpp"
+#include "game/sim/subsystem_physics.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/terrain_view.hpp"
@@ -40,6 +42,7 @@ class DebugServerScene final : public Scene
             m_netServer.Disconnect(c.peer);
             LOG_INFO("drop peer connection due to flow ctrl: {}",
                      (void*)c.peer);
+            return;
         }
         m_pendingConnection = c.peer;
         m_pendingConnTimeout = p_pendingConnTimeoutSec;
@@ -79,8 +82,22 @@ class DebugServerScene final : public Scene
                 m_netServer.Disconnect(p.peer);
                 LOG_INFO("drop peer connection due to flow ctrl 2: {}",
                          (void*)p.peer);
+                return;
             }
             auto playerInfo = p.data->Read<PlayerInfo>();
+            for (auto& entry : m_playerEntries)
+            {
+                if (entry.uuid == playerInfo.uuid)
+                {
+                    LOG_WARN(
+                        "found existing player with uuid {}, disconnecting",
+                        uuids::to_string(uuids::uuid{entry.uuid}));
+                    m_netServer.Disconnect(p.peer);
+                    m_pendingConnection2 = nullptr;
+                    m_pendingConn2Timeout = 0.f;
+                    return;
+                }
+            }
             auto playerEntity =
                 ComponentPlayer::CreatePlayer(m_world, playerInfo);
             m_world.emplace<ReplicatedTag>(playerEntity);
@@ -90,8 +107,7 @@ class DebugServerScene final : public Scene
             LOG_INFO(
                 "create player enitty: {}({}) for conn({})",
                 uuids::to_string(uuids::uuid{m_playerEntries[p.peerId].uuid}),
-                (uint32_t)playerEntity,
-                p.peerId);
+                (uint32_t)playerEntity, p.peerId);
             auto packet = m_netServer.StartPacket(sizeof(entt::entity));
             packet.Write(playerEntity);
             m_netServer.Send(p.peer, packet);
@@ -128,12 +144,25 @@ class DebugServerScene final : public Scene
         m_serverEventDispatcher.sink<OnServerReceivePacket>()
             .connect<&DebugServerScene::onServerReceivePacket>(this);
         RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
-        
+
         m_sceneConfig.subsystems.Add(Id<sim::SubsystemTerrain>());
+        m_sceneConfig.subsystems.Add(
+            Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
+        m_sceneConfig.subsystems.Add(
+            Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
+        m_sceneConfig.subsystems.Add(
+            Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
+        m_sceneConfig.subsystems.Add(
+            Id<sim::SubsystemCreature<UpdateType::Realtime>>());
+        m_sceneConfig.subsystems.Add(
+            Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
+        m_sceneConfig.subsystems.Add(
+            Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
 
         Load();
-        
+
         InstallComponentReplicationHooks<ComponentPlayer>(m_world);
+        InstallComponentReplicationHooks<ComponentCamera>(m_world);
         InstallEntityReplicationHooks(m_world);
         m_replicationRegistry.AddFamilyToSend(Id<terrain::TerrainView>());
         m_replicationRegistry.AddFamilyToSend(Id<ReplicatedTag>());
@@ -176,7 +205,7 @@ class DebugServerScene final : public Scene
                 m_pendingConn2Timeout -= f.dt;
             }
         }
-        
+
         m_netServer.Poll(m_serverEventDispatcher);
         assert(m_serverEventDispatcher.size() == 0);
         m_replicationRegistry.ProduceAll(m_netServer, m_world);

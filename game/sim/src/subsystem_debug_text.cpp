@@ -18,7 +18,7 @@ static void onLog(oge::LogLevel lvl, std::string_view msg, void* user)
     auto& storage = ctx->world.ctx().get<oge::Pool<0, DebugText>>();
     storage.Create(std::move(std::pmr::string{
                        msg, ctx->memory.multiFrameBuffer.Resource()}),
-                   5.f);
+                   lvl != oge::LogLevel::Debug ? 5.f : 0.5f);
 }
 
 void SubsystemDebugText::onAttach(GameState& ctx)
@@ -62,7 +62,8 @@ void SubsystemDebugText::onUpdate(FGameState& ctx)
         ramInfo = GetRAMUsage();
         cpuUsage = GetCPUUsage();
     }
-    auto handle = pool.Create(std::move(std::pmr::string{ctx.memory.fixedUpdateBuffer.Resource()}));
+    auto handle = pool.Create(
+        std::move(std::pmr::string{ctx.memory.fixedUpdateBuffer.Resource()}));
     auto txt = pool.Get(handle);
     fmt::format_to(std::back_inserter(txt->text),
                    "{}\n{:.2f} ms | I {:.2f} | L {:.2f} | U {:.2f} | S "

@@ -40,7 +40,7 @@ class RingBuffer
 
    protected:
     T m_buffer[Capacity] = {};
-    Index m_head = 0;
+    Index m_head = 1;
 };
 
 }  // namespace oge
