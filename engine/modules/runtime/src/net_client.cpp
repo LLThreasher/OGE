@@ -3,14 +3,19 @@
 #include <enet/enet.h>
 
 #include <cstddef>
+#include <memory_resource>
 
+#include "enet_interface.hpp"
+#include "oge/log.hpp"
+#include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 using namespace oge::runtime;
 
-bool NetClient::Initialize(size_t channelCount)
+bool NetClient::Initialize(size_t channelCount,
+                           std::pmr::memory_resource* memory)
 {
-    if (enet_initialize() != 0)
+    if (oge_enet_initialize(memory) != 0)
     {
         LOG_ERROR("ENet init failed");
         return false;
@@ -47,7 +52,7 @@ bool NetClient::Connect(const char* ip, uint16_t port, uint32_t timeoutMs)
         return false;
     }
 
-    status = ClientStatus::Connecting;
+    state = State::Connecting;
 
     connectWaitTime = timeoutMs;
     return true;
@@ -55,14 +60,17 @@ bool NetClient::Connect(const char* ip, uint16_t port, uint32_t timeoutMs)
 
 void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
 {
+    UpdatePacketStats(dt);
+
     if (!host) return;
 
-    if (status == ClientStatus::Connecting && connectWaitTime < 0)
+    if (state == State::Connecting && connectWaitTime < 0)
     {
         enet_peer_reset(peer);
         peer = nullptr;
         LOG_INFO("Connection timeout");
-        status = ClientStatus::Disconnected;
+        state = State::Disconnected;
+        dispatcher.trigger<OnClientDisconnected>();
     }
 
     connectWaitTime -= dt * 1000.f;
@@ -75,21 +83,24 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
         {
             case ENET_EVENT_TYPE_CONNECT:
                 LOG_INFO("Connected to server");
-                status = ClientStatus::Connected;
+                state = State::Connected;
+                dispatcher.trigger<OnClientConnected>();
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
+            {
                 OnPacketReceived(event.packet->data, event.packet->dataLength);
-                dispatcher.trigger<OnClientPacketReceived>(
-                    {net::Buffer(event.packet->data, event.packet->dataLength)
-                         .ToReadOnly()});
+                auto buffer =
+                    net::Buffer(event.packet->data, event.packet->dataLength)
+                        .ToReadOnly();
+                dispatcher.trigger<OnClientReceivePacket>({&buffer});
                 enet_packet_destroy(event.packet);
                 break;
-
+            }
             case ENET_EVENT_TYPE_DISCONNECT:
                 LOG_INFO("Disconnected from server");
                 peer = nullptr;
-                status = ClientStatus::Disconnected;
+                state = State::Disconnected;
                 break;
 
             default:
@@ -103,49 +114,49 @@ void NetClient::Disconnect(uint32_t timeoutMs)
     if (!peer) return;
 
     enet_peer_disconnect(peer, 0);
+    enet_host_flush(host);
 
-    status = ClientStatus::Disconnecting;
+    uint32_t waitInterval = 100;
+    while (peer != nullptr && timeoutMs > 0)
+    {
+        ENetEvent event;
+        while (enet_host_service(host, &event, waitInterval) > 0)
+        {
+            switch (event.type)
+            {
+                case ENET_EVENT_TYPE_DISCONNECT:
+                    LOG_INFO("Disconnected from server");
+                    peer = nullptr;
+                    state = State::Disconnected;
+                    break;
+                default:
+                    break;
+            }
+        }
+        timeoutMs -= waitInterval;
+    }
 
-    enet_peer_reset(peer);
-    peer = nullptr;
+    if (peer != nullptr)
+    {
+        LOG_INFO("gracefull disconnect failed, force shutdown");
+        enet_peer_reset(peer);
+        peer = nullptr;
+    }
 }
 
 void NetClient::Shutdown()
 {
     if (host)
     {
+        Disconnect(200);
         enet_host_destroy(host);
         host = nullptr;
-        enet_deinitialize();
+        oge_enet_shutdown();
         LOG_INFO("Client shutdown");
     }
 }
 
-net::Buffer NetClient::StartPacket(size_t size)
+void NetClient::Send(net::Buffer data, SendType sendType, uint8_t channel)
 {
-    return sendPacketProducer.AllocPacket(size);
-}
-
-void NetClient::SendReliable(net::Buffer data, uint8_t channel)
-{
-    if (!peer) return;
-
-    ENetPacket* packet = enet_packet_create(
-        data.Data().data(), data.Data().size(), ENET_PACKET_FLAG_RELIABLE);
-    
-    sendPacketProducer.FreePacket(data);
-
-    enet_peer_send(peer, channel, packet);
-}
-
-void NetClient::SendUnreliable(net::Buffer data, uint8_t channel)
-{
-    if (!peer) return;
-
-    ENetPacket* packet =
-        enet_packet_create(data.Data().data(), data.Data().size(), 0);
-    
-    sendPacketProducer.FreePacket(data);
-
-    enet_peer_send(peer, channel, packet);
+    NetPacketSender::Send(peer, data, sendType, channel);
 }

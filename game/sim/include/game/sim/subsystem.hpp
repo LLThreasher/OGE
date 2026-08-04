@@ -6,13 +6,14 @@
 #include <string>
 
 #include "game/components.hpp"
-#include "game/memory_context.hpp"
 #include "game/frame_perf.hpp"  // debug info pass
 #include "game/input/player_input_stream.hpp"
+#include "game/memory_context.hpp"
 #include "oge/platform/perf.hpp"
 #include "oge/runtime/asset_manager.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
+#include "oge/runtime/typed_registry.hpp"
 
 namespace game::sim
 {
@@ -30,7 +31,9 @@ using GameFrame = float;
 struct FGameState : GameState
 {
     float dt;
-    FGameState(GameFrame f, GameState& state) : dt(f), GameState(state) {}
+    FGameState(GameFrame f, GameState& state) : dt(f), GameState(state)
+    {
+    }
 };
 
 struct ShowDebugTextEvent
@@ -52,27 +55,30 @@ class Subsystem : public Stage<GameState, FGameState>
 
 class SubsystemPipeline : public FixedStepPipeline<Subsystem, GameFrame>
 {
+    GameState m_state;
+
    public:
     NO_COPY(SubsystemPipeline)
-    SubsystemPipeline(GameState& state, AnythingFactory& af,
-                      float updateInterval)
-        : FixedStepPipeline<Subsystem, GameFrame>(state, af, updateInterval)
+    SubsystemPipeline(GameState&& state, float updateInterval)
+        : m_state(state),
+          FixedStepPipeline<Subsystem, GameFrame>(m_state, updateInterval)
     {
     }
 };
 
 class RealtimeSubsystemPipeline : public FramePipeline<Subsystem, GameFrame>
 {
+    GameState m_state;
+
    public:
-    RealtimeSubsystemPipeline(GameState& state, AnythingFactory& af)
-        : FramePipeline<Subsystem, GameFrame>(state, af)
+    RealtimeSubsystemPipeline(GameState&& state)
+        : m_state(state), FramePipeline<Subsystem, GameFrame>(m_state)
     {
     }
 };
 
-#define DECL_FNS(SysName)                   \
+#define DECL_FNS                            \
    public:                                  \
-    DECL_ID(SysName)                        \
     void onAttach(GameState& ctx) override; \
     void onDetach(GameState& ctx) override; \
     void onUpdate(FGameState& ctx) override;
@@ -80,7 +86,7 @@ class RealtimeSubsystemPipeline : public FramePipeline<Subsystem, GameFrame>
 #define DECL_SYS(SysName)            \
     class SysName : public Subsystem \
     {                                \
-        DECL_FNS(SysName)            \
+        DECL_FNS                     \
     };
 
 class SubsystemDebugText : public Subsystem
@@ -92,28 +98,19 @@ class SubsystemDebugText : public Subsystem
     FramePerfStatus perfStatus = {};
     oge::platform::RAMInfo ramInfo = {};
     double cpuUsage = {};
-    DECL_FNS(SubsystemDebugText)
+    DECL_FNS
 };
 
 template <UpdateType utype>
 class SubsystemCreature : public Subsystem
 {
-   public:
-    DECL_ID(SubsystemCreature<utype>)
-    void onAttach(GameState& ctx) override;
-    void onDetach(GameState& ctx) override;
-    void onUpdate(FGameState& ctx) override;
+    DECL_FNS
 };
 
 template <UpdateType utype>
 class SubsystemPlayer : public Subsystem
 {
-   public:
-    DECL_ID(SubsystemPlayer<utype>)
-
-    void onAttach(GameState& ctx) override;
-    void onDetach(GameState& ctx) override;
-    void onUpdate(FGameState& ctx) override;
+    DECL_FNS
 };
 
 #undef DECL_FNS
@@ -124,3 +121,49 @@ class SubsystemPlayer : public Subsystem
     template class SysName<UpdateType::Realtime>;
 
 }  // namespace game::sim
+
+namespace oge::runtime
+{
+using ::game::UpdateType;
+using namespace ::game::sim;
+
+template <>
+struct TypeName<Subsystem>
+{
+    static constexpr std::string Get()
+    {
+        return "core::Subsystem";
+    }
+};
+
+template <>
+struct TypeName<SubsystemDebugText>
+{
+    static constexpr std::string Get()
+    {
+        return "core::SubsystemDebugText";
+    }
+};
+
+template <UpdateType utype>
+struct TypeName<SubsystemCreature<utype>>
+{
+    static constexpr std::string Get()
+    {
+        return utype == UpdateType::FixedStep
+                   ? "core::SubsystemTerrain<FixedStep>"
+                   : "core::SubsystemTerrain<Realtime>";
+    }
+};
+
+template <UpdateType utype>
+struct TypeName<SubsystemPlayer<utype>>
+{
+    static constexpr std::string Get()
+    {
+        return utype == UpdateType::FixedStep
+                   ? "core::SubsystemPlayer<FixedStep>"
+                   : "core::SubsystemPlayer<Realtime>";
+    }
+};
+}  // namespace oge::runtime

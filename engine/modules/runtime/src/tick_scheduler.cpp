@@ -1,13 +1,12 @@
 #include "oge/runtime/tick_scheduler.hpp"
 
-#include <algorithm>
-#include <functional>
+#include <cassert>
 #include <thread>
 
 namespace oge::runtime
 {
 TickScheduler::TickScheduler(float fixedDelta)
-    : m_fixedDelta(fixedDelta), m_targetFrameTime(fixedDelta)
+    : m_fixedDelta(fixedDelta)
 {
 }
 
@@ -27,10 +26,20 @@ float TickScheduler::ConsumeTick()
     return 0.0f;
 }
 
-float TickScheduler::GetAlpha() const { return m_accumulator / m_fixedDelta; }
+float TickScheduler::GetAlpha() const
+{
+    return m_accumulator / m_fixedDelta;
+}
+
+void TickScheduler::SetInterval(float interval)
+{
+    assert(interval > 0.f);
+    m_fixedDelta = interval;
+}
 
 BlockingTickScheduler::BlockingTickScheduler(float interval)
-    : m_tickInterval(std::chrono::duration_cast<clock::duration>(std::chrono::duration<double>(interval)))
+    : m_tickInterval(std::chrono::duration_cast<clock::duration>(
+          std::chrono::duration<double>(interval)))
 {
     m_nextTick = clock::now();
 }
@@ -47,4 +56,4 @@ double BlockingTickScheduler::WaitForNextTick()
 
     return std::chrono::duration<double>(m_tickInterval).count();
 }
-}
+}  // namespace oge::runtime

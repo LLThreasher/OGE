@@ -1,10 +1,8 @@
 #pragma once
 
 #include <memory>
-#include <span>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include "oge/graphics/objects.hpp"
 
@@ -37,4 +35,4 @@ class AssetPool
     std::unordered_map<std::string, GPUTextureHandle> m_texturePool;
     std::unordered_map<std::string, std::shared_ptr<ui::IFont>> m_fontPool;
 };
-}  // namespace OneGame::Engine
+}  // namespace oge::runtime

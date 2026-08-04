@@ -7,12 +7,6 @@
 
 namespace oge::runtime::gfx
 {
-struct CmdDrawSprite
-{
-    IRect16 rect;
-    ColorRGBA8 color;
-    PSprite sprite;
-};
 
 template <typename... Args>
 class Pass

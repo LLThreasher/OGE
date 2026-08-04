@@ -1,7 +1,8 @@
-#include "oge/runtime/gfx/ui_pass.hpp"
+#include "game/view/gfx/ui_pass.hpp"
 
 #include <cstdint>
 
+#include "game/view/gfx/commands.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/command_list.hpp"
 #include "oge/graphics/objects.hpp"
@@ -12,12 +13,13 @@
 
 using namespace oge::graphics;
 
-namespace oge::runtime::gfx
+namespace game::view::gfx
 {
 constexpr uint32_t VERT_COUNT = 65536;
 constexpr uint32_t INDEX_COUNT = VERT_COUNT / 4 * 6;
 
-GPUBindingGroupHandle UIPass::GetOrCreateBindingGroup(IGraphicsBackend& backend, GPUTextureHandle texture)
+GPUBindingGroupHandle UIPass::GetOrCreateBindingGroup(IGraphicsBackend& backend,
+                                                      GPUTextureHandle texture)
 {
     assert(texture.IsValid());
     auto it = cachedBindingGroups.find(texture);
@@ -30,7 +32,8 @@ GPUBindingGroupHandle UIPass::GetOrCreateBindingGroup(IGraphicsBackend& backend,
         BindingGroupDesc desc{};
         desc.layout = bindingGroupLayout;
         desc.textures.push_back(texture);
-        auto [newIt, inserted] = cachedBindingGroups.emplace(texture, backend.CreateBindingGroup(desc));
+        auto [newIt, inserted] = cachedBindingGroups.emplace(
+            texture, backend.CreateBindingGroup(desc));
         return newIt->second;
     }
 }
@@ -93,19 +96,14 @@ void UIPass::onAttach(InitDrawContext& ctx)
     indexArena.Flush(backend);
 }
 
-void UIPass::onDetach(InitDrawContext& ctx) {}
-
-void UIPass::onUpdate(DrawContext& ctx, View view)
+void UIPass::onDetach(InitDrawContext& ctx)
 {
-    if (ctx.backend.SwapchainRecreated())
-    {
-        auto extent = ctx.backend.SwapchainExtent();
-        math::get_screen_affine(ctx.backend.SwapchainPretransform(), extent.x, extent.y, pushConstant.transform,
-                                pushConstant.offset);
-    }
+}
 
+void UIPass::onUpdate(DrawContext& ctx, View view, ScreenAffine pushConstant)
+{
     classedVertices.clear();
-    for (auto quad : view.Get<CmdDrawSprite>())
+    for (auto quad : view.Get<oge::runtime::CmdDrawSprite>())
     {
         auto tl = quad.rect.pos.clampToZero();
         auto br = tl + quad.rect.extent;
@@ -125,12 +123,15 @@ void UIPass::onUpdate(DrawContext& ctx, View view)
     cmd.BindGraphicsPipeline(pipelineHandle);
     auto vBufBase = vertexArena.Allocate(0).offset;
     cmd.BindVertexBuffer(vertexArena.GetBuffer(), vBufBase);
-    cmd.BindIndexBuffer(indexArena.GetBuffer(), indexArena.Allocate(INDEX_COUNT).offset, IndexFormat::Uint16);
+    cmd.BindIndexBuffer(indexArena.GetBuffer(),
+                        indexArena.Allocate(INDEX_COUNT).offset,
+                        IndexFormat::Uint16);
     uint32_t bindingSetIdx = 0;
     for (const auto& it : classedVertices)
     {
-        // tCmd.UpdateBuffer(vertexBuffer, vBuffOffset, vertices.size() * sizeof(Vertex), vertices.data());
-        // tCmd.BufferBarrier(vertexBuffer, BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
+        // tCmd.UpdateBuffer(vertexBuffer, vBuffOffset, vertices.size() *
+        // sizeof(Vertex), vertices.data()); tCmd.BufferBarrier(vertexBuffer,
+        // BufferUsage::Vertex | BufferUsage::TransferDst, BufferUsage::Vertex);
 
         auto& vertices = it.second;
         auto& tex = it.first;
@@ -138,8 +139,10 @@ void UIPass::onUpdate(DrawContext& ctx, View view)
         memcpy(vBuf.cpuPtr, vertices.data(), vertices.size() * sizeof(Vertex));
 
         cmd.BindBindingGroup(GetOrCreateBindingGroup(ctx.backend, tex), 0);
-        cmd.PushConstants(ShaderStage::Vertex, &pushConstant, sizeof(PushConstant));
-        cmd.DrawIndexed(vertices.size() / 4 * 6, 1, 0, (vBuf.offset - vBufBase) / sizeof(Vertex), 0);
+        cmd.PushConstants(ShaderStage::Vertex, &pushConstant,
+                          sizeof(PushConstant));
+        cmd.DrawIndexed(vertices.size() / 4 * 6, 1, 0,
+                        (vBuf.offset - vBufBase) / sizeof(Vertex), 0);
     }
     vertexArena.Flush(ctx.backend);
     vertexArena.AdvanceFrame();

@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cinttypes>
-
 #include "oge/handle.hpp"
 #include "oge/rect.hpp"
 
@@ -50,19 +48,19 @@ struct GPUBufferSpan : BufferSpan
 
 namespace gpu_objects
 {
-    using oge::GPUTextureRegion;
-    using oge::BufferSpan;
-    using oge::GPUBufferSpan;
+using oge::BufferSpan;
+using oge::GPUBufferSpan;
+using oge::GPUTextureRegion;
 
-    using oge::HandleHash;
-    using oge::GPUBufferHandle;
-    using oge::GPUTextureHandle;
-    using oge::GPUPipelineHandle;
-    using oge::GPUBindingGroupHandle;
-    using oge::GPUBindingGroupLayoutHandle;
-    using oge::GPUFenceHandle;
-    using oge::GPURenderPassHandle;
-    using oge::GPUFrameBufferHandle;
-    using oge::GPUQueryPoolHandle;
-}
-}  // namespace oge::graphics
+using oge::GPUBindingGroupHandle;
+using oge::GPUBindingGroupLayoutHandle;
+using oge::GPUBufferHandle;
+using oge::GPUFenceHandle;
+using oge::GPUFrameBufferHandle;
+using oge::GPUPipelineHandle;
+using oge::GPUQueryPoolHandle;
+using oge::GPURenderPassHandle;
+using oge::GPUTextureHandle;
+using oge::HandleHash;
+}  // namespace gpu_objects
+}  // namespace oge

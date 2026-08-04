@@ -12,7 +12,7 @@ namespace oge
 template <typename T, size_t Capacity>
 class RingBuffer
 {
-public:
+   public:
     using Index = uint64_t;
 
     constexpr static size_t capacity = Capacity;
@@ -38,9 +38,9 @@ public:
         return m_head;
     }
 
-protected:
+   protected:
     T m_buffer[Capacity] = {};
-    Index m_head = 0;
+    Index m_head = 1;
 };
 
 }  // namespace oge

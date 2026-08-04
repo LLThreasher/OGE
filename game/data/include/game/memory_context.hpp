@@ -11,11 +11,16 @@ class CpuFrameArena
 {
    public:
     CpuFrameArena(size_t bufferSize = 64 * 1024)
-        : buffer_(bufferSize), resource_(buffer_.data(), buffer_.size(), std::pmr::null_memory_resource())
+        : buffer_(bufferSize),
+          resource_(buffer_.data(), buffer_.size(),
+                    std::pmr::null_memory_resource())
     {
     }
 
-    std::pmr::memory_resource* Resource() { return &resource_; }
+    std::pmr::memory_resource* Resource()
+    {
+        return &resource_;
+    }
 
     void Update()
     {
@@ -35,7 +40,10 @@ class CpuDurationFrameArena
     {
     }
 
-    std::pmr::memory_resource* Resource() { return active ? &arenaA : &arenaB; }
+    std::pmr::memory_resource* Resource()
+    {
+        return active ? &arenaA : &arenaB;
+    }
 
     void Update(float dt)
     {
@@ -76,7 +84,8 @@ class CpuDurationFrameArena
 //         assert(framesInFlight <= 3);
 //     }
 
-//     std::pmr::memory_resource* Resource() { return currentFrameIdx == 0 ? &slot0 : (currentFrameIdx == 1 ? &slot1 : &slot2); }
+//     std::pmr::memory_resource* Resource() { return currentFrameIdx == 0 ?
+//     &slot0 : (currentFrameIdx == 1 ? &slot1 : &slot2); }
 
 //     void Update(float dt)
 //     {
@@ -92,15 +101,18 @@ class CpuDurationFrameArena
 // };
 class CpuSwapFrameArena
 {
-public:
-    CpuSwapFrameArena(size_t framesInFlight,
-                      size_t bufferSize = 64 * 1024)
+   public:
+    CpuSwapFrameArena(size_t framesInFlight, size_t bufferSize = 64 * 1024)
         : framesInFlight(framesInFlight),
-          arenas{
-              std::pmr::monotonic_buffer_resource(framesInFlight >= 1 ? bufferSize : 0, std::pmr::null_memory_resource()),
-              std::pmr::monotonic_buffer_resource(framesInFlight >= 2 ? bufferSize : 0, std::pmr::null_memory_resource()),
-              std::pmr::monotonic_buffer_resource(framesInFlight == 3 ? bufferSize : 0, std::pmr::null_memory_resource())
-          }
+          arenas{std::pmr::monotonic_buffer_resource(
+                     framesInFlight >= 1 ? bufferSize : 0,
+                     std::pmr::null_memory_resource()),
+                 std::pmr::monotonic_buffer_resource(
+                     framesInFlight >= 2 ? bufferSize : 0,
+                     std::pmr::null_memory_resource()),
+                 std::pmr::monotonic_buffer_resource(
+                     framesInFlight == 3 ? bufferSize : 0,
+                     std::pmr::null_memory_resource())}
     {
         assert(framesInFlight > 0 && framesInFlight <= 3);
     }
@@ -127,7 +139,7 @@ public:
         return currentFrameIdx;
     }
 
-private:
+   private:
     std::array<std::pmr::monotonic_buffer_resource, 3> arenas;
     size_t currentFrameIdx = 0;
     size_t framesInFlight;
@@ -137,6 +149,7 @@ struct MemoryContext
 {
     CpuFrameArena frameBuffer;
     CpuDurationFrameArena multiFrameBuffer;
+    CpuDurationFrameArena fixedUpdateBuffer;
 
     void Update(float dt)
     {

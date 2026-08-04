@@ -13,4 +13,4 @@ ILogger* GetLogger()
 {
     return g_logger;
 }
-}
+}  // namespace oge

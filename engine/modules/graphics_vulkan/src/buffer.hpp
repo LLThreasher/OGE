@@ -18,4 +18,4 @@ struct VulkanBuffer
     VkDeviceSize size = 0;
 };
 
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

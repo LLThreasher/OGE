@@ -3,3 +3,5 @@ ColumnLimit: 80
 PointerAlignment: Left
 BreakBeforeBraces: Allman
 IndentWidth: 4
+AllowShortBlocksOnASingleLine: Never
+AllowShortFunctionsOnASingleLine: None

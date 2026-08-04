@@ -1,10 +1,10 @@
 #pragma once
 
-#include <cinttypes>
 #include <array>
+#include <cinttypes>
 
-#include "oge/handle.hpp"
 #include "oge/flag_helper.hpp"
+#include "oge/handle.hpp"
 
 namespace oge::graphics
 {
@@ -170,4 +170,4 @@ struct CopyTextureTarget
     uint32_t mipLevel = 0;
 };
 
-}
+}  // namespace oge::graphics

@@ -2,21 +2,23 @@
 #include "game/view/terrain/terrain_renderer.hpp"
 #include "oge/graphics/objects.hpp"
 #include "oge/log.hpp"
-#include "oge/runtime/streaming_manager.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/gfx/chunk_allocator2.hpp"
+#include "oge/runtime/streaming_manager.hpp"
 
 namespace game::view::terrain
 {
 using namespace oge::graphics;
 
-void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, AssetContext& ctx)
+void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain,
+                                    AssetContext& ctx)
 {
     while (!terrain.uploadMeshQueue.empty())
     {
         auto [chunk, chunkMesh] = std::move(terrain.uploadMeshQueue.front());
         terrain.uploadMeshQueue.pop();
-        size_t quadCount = terrain.builtChunkMeshes.Get(chunkMesh)->quads.size();
+        size_t quadCount =
+            terrain.builtChunkMeshes.Get(chunkMesh)->quads.size();
         auto chunkByteSize = quadCount * sizeof(TexturedQuad);
         auto slot = ctx.chunkAllocator.Allocate(ctx.backend, chunkByteSize);
         auto resolved = ctx.chunkAllocator.Resolve(slot);
@@ -36,10 +38,13 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, AssetConte
 
         auto mesh = terrain.builtChunkMeshes.Get(chunkMesh);
         ctx.streamingManager.UploadBuffer<UploadType::Async>(
-            mesh->quads, {BufferUsage::Storage, resolved.buffer, resolved.offset}, res);
+            mesh->quads,
+            {BufferUsage::Storage, resolved.buffer, resolved.offset}, res);
     }
 }
 
-void TerrainUploader::SetMaxNumChunks(uint32_t maxNumChunks) {}
+void TerrainUploader::SetMaxNumChunks(uint32_t maxNumChunks)
+{
+}
 
-}  // namespace OneGame::Engine::Terrain
+}  // namespace game::view::terrain

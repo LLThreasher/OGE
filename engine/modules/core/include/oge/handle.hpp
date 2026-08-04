@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstddef>
+#include <cstdint>
 
 namespace oge
 {
@@ -11,9 +11,15 @@ struct Handle
     uint16_t index = 0;
     uint16_t generation = 0;
 
-    constexpr bool IsValid() const noexcept { return index != 0; }
+    constexpr bool IsValid() const noexcept
+    {
+        return index != 0;
+    }
 
-    static Handle<Tag> InvalidHandle() { return Handle<Tag>{0, 0}; }
+    static Handle<Tag> InvalidHandle()
+    {
+        return Handle<Tag>{0, 0};
+    }
 
     bool operator==(const Handle<Tag>& other) const noexcept
     {
@@ -30,4 +36,4 @@ struct HandleHash
     }
 };
 
-}  // namespace OGE
+}  // namespace oge

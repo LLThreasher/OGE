@@ -1,10 +1,10 @@
 #pragma once
 
 #include <cstddef>
+
 #include "oge/log.hpp"
-#include "oge/ring_allocator.hpp"
 #include "oge/runtime/entt.hpp"
-#include "oge/runtime/net_packet_producer.hpp"
+#include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 struct _ENetPeer;
@@ -17,55 +17,48 @@ namespace oge::runtime
 struct OnServerReceiveConnect
 {
     ENetPeer* peer;
+    uint32_t peerId;
 };
 
 struct OnServerReceiveDisconnect
 {
     ENetPeer* peer;
+    uint32_t peerId;
 };
 
 struct OnServerReceivePacket
 {
     ENetPeer* peer;
-    net::Buffer data;
+    uint32_t peerId;
+    net::Buffer* data;
 };
 
-class NetServer
+class NetServer : public NetPacketSender
 {
    public:
-    NetServer(size_t sendBufferSize) : sendPacketProducer(sendBufferSize) {}
-    ~NetServer() { Shutdown(); }
+    NetServer()
+    {
+    }
+    ~NetServer()
+    {
+        Shutdown();
+    }
 
-    bool Initialize(uint16_t port, size_t maxClients, size_t channelCount = 2);
+    bool Initialize(
+        uint16_t port, size_t maxClients, size_t channelCount = 2,
+        std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
 
-    void Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs = 0);
+    void Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs = 0);
 
     void Shutdown();
 
-    net::Buffer StartPacket(size_t size);
-
-    void SendReliable(ENetPeer* peer, net::Buffer data,
-                      uint8_t channel = 0);
-
-    void SendUnreliable(ENetPeer* peer, net::Buffer data,
-                        uint8_t channel = 1);
+    void Disconnect(ENetPeer* peer, uint32_t signal = 0);
 
    private:
-    void OnClientConnected(ENetPeer* peer) { LOG_INFO("Client connected"); }
+    void OnClientConnected(ENetPeer* peer);
 
-    void OnClientDisconnected(ENetPeer* peer)
-    {
-        LOG_INFO("Client disconnected");
-    }
+    void OnClientDisconnected(ENetPeer* peer);
 
-    void OnPacketReceived(ENetPeer* peer, uint8_t* data, size_t length)
-    {
-        LOG_INFO("Server received {} bytes", length);
-    }
-
-   private:
-    ENetHost* host = nullptr;
-
-    NetPacketProducer sendPacketProducer;
+    void OnPacketReceived(ENetPeer* peer, uint8_t* data, size_t length);
 };
 }  // namespace oge::runtime

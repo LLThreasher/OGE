@@ -2,14 +2,15 @@
 
 #include <vulkan/vulkan.h>
 
-#include "oge/log.hpp"
-#include "vulkan.hpp"
 #include "buffer.hpp"
+#include "oge/log.hpp"
 #include "texture.hpp"
+#include "vulkan.hpp"
 
 namespace oge::graphics::vulkan
 {
-GPUBindingGroupLayoutHandle VulkanBackend::CreateBindingGroupLayout(const BindingGroupLayoutDesc& desc)
+GPUBindingGroupLayoutHandle VulkanBackend::CreateBindingGroupLayout(
+    const BindingGroupLayoutDesc& desc)
 {
     VulkanBindingGroupLayout layout{};
     layout.dynamicBufferMask = desc.dynamicBufferMask;
@@ -28,7 +29,8 @@ GPUBindingGroupLayoutHandle VulkanBackend::CreateBindingGroupLayout(const Bindin
         binding.binding = bindingIndex++;
         binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         binding.descriptorCount = 1;
-        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        binding.stageFlags =
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         bindings.push_back(binding);
     }
@@ -46,16 +48,19 @@ GPUBindingGroupLayoutHandle VulkanBackend::CreateBindingGroupLayout(const Bindin
         if (storage)
         {
             binding.descriptorType =
-                dynamic ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+                dynamic ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
+                        : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         }
         else
         {
             binding.descriptorType =
-                dynamic ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                dynamic ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+                        : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         }
 
         binding.descriptorCount = 1;
-        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        binding.stageFlags =
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         bindings.push_back(binding);
     }
@@ -65,7 +70,8 @@ GPUBindingGroupLayoutHandle VulkanBackend::CreateBindingGroupLayout(const Bindin
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
     layoutInfo.pBindings = bindings.data();
 
-    if (vkCreateDescriptorSetLayout(m_device.device, &layoutInfo, nullptr, &layout.layout) != VK_SUCCESS)
+    if (vkCreateDescriptorSetLayout(m_device.device, &layoutInfo, nullptr,
+                                    &layout.layout) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create descriptor set layout");
     }
@@ -73,7 +79,8 @@ GPUBindingGroupLayoutHandle VulkanBackend::CreateBindingGroupLayout(const Bindin
     return m_bindingGroupLayouts.Create(layout);
 }
 
-void VulkanBackend::DestroyBindingGroupLayout(GPUBindingGroupLayoutHandle handle)
+void VulkanBackend::DestroyBindingGroupLayout(
+    GPUBindingGroupLayoutHandle handle)
 {
     auto layout = m_bindingGroupLayouts.Get(handle);
 
@@ -86,7 +93,8 @@ void VulkanBackend::DestroyBindingGroupLayout(GPUBindingGroupLayoutHandle handle
     m_bindingGroupLayouts.Destroy(handle);
 }
 
-GPUBindingGroupHandle VulkanBackend::CreateBindingGroup(const BindingGroupDesc& desc)
+GPUBindingGroupHandle VulkanBackend::CreateBindingGroup(
+    const BindingGroupDesc& desc)
 {
     VulkanBindingGroup group{};
     group.layoutHandle = desc.layout;
@@ -102,7 +110,8 @@ GPUBindingGroupHandle VulkanBackend::CreateBindingGroup(const BindingGroupDesc& 
     allocInfo.descriptorSetCount = 1;
     allocInfo.pSetLayouts = &layout->layout;
 
-    auto vkres = vkAllocateDescriptorSets(m_device.device, &allocInfo, &group.descriptorSet);
+    auto vkres = vkAllocateDescriptorSets(m_device.device, &allocInfo,
+                                          &group.descriptorSet);
     if (vkres != VK_SUCCESS)
     {
         LOG_ERROR("Failed to allocate descriptor set {}", (void*)vkres);
@@ -154,7 +163,8 @@ GPUBindingGroupHandle VulkanBackend::CreateBindingGroup(const BindingGroupDesc& 
         VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = buf->buffer;
         bufferInfo.offset = 0;
-        bufferInfo.range = bufHandle.stride == 0 ? VK_WHOLE_SIZE : bufHandle.stride;
+        bufferInfo.range =
+            bufHandle.stride == 0 ? VK_WHOLE_SIZE : bufHandle.stride;
         bufferInfos.push_back(bufferInfo);
 
         VkWriteDescriptorSet write{};
@@ -163,15 +173,17 @@ GPUBindingGroupHandle VulkanBackend::CreateBindingGroup(const BindingGroupDesc& 
         write.dstBinding = bindingIndex++;
         if ((layout->storageBufferMask & (1 << i)) != 0)
         {
-            write.descriptorType = (layout->dynamicBufferMask & (1 << i)) != 0
-                                       ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
-                                       : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+            write.descriptorType =
+                (layout->dynamicBufferMask & (1 << i)) != 0
+                    ? VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC
+                    : VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         }
         else
         {
-            write.descriptorType = (layout->dynamicBufferMask & (1 << i)) != 0
-                                       ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
-                                       : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            write.descriptorType =
+                (layout->dynamicBufferMask & (1 << i)) != 0
+                    ? VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC
+                    : VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         }
         write.descriptorCount = 1;
         write.pBufferInfo = &bufferInfos.back();
@@ -179,7 +191,9 @@ GPUBindingGroupHandle VulkanBackend::CreateBindingGroup(const BindingGroupDesc& 
         writes.push_back(write);
     }
 
-    vkUpdateDescriptorSets(m_device.device, static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
+    vkUpdateDescriptorSets(m_device.device,
+                           static_cast<uint32_t>(writes.size()), writes.data(),
+                           0, nullptr);
 
     return m_bindingGroups.Create(group);
 }
@@ -198,4 +212,4 @@ void VulkanBackend::DestroyBindingGroup(GPUBindingGroupHandle handle)
     *group = {};
     m_bindingGroups.Destroy(handle);
 }
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

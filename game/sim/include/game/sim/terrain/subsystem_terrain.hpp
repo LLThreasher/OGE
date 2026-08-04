@@ -26,7 +26,10 @@ class TerrainUpdateScheduler
 {
    public:
     void InitialUpdate(TerrainData& terrain, Point3 chunkOrigin);
-    void SetChunkViewDistance(int val) { m_chunkViewDistance = val; }
+    void SetChunkViewDistance(int val)
+    {
+        m_chunkViewDistance = val;
+    }
 
    private:
     int m_chunkViewDistance = 4;
@@ -35,8 +38,11 @@ class TerrainUpdateScheduler
 class TerrainGenerator
 {
    public:
-    void GenerateTerrain(TerrainData& terrain, BlockRegistry& blocks);
-    void SetTerrainGenChunkBudget(int32_t chunkBudget) { terrainGenChunkBudget = chunkBudget; }
+    void GenerateTerrain(TerrainData& terrain, BlockRegistry& blocks, TerrainView& terrainView);
+    void SetTerrainGenChunkBudget(int32_t chunkBudget)
+    {
+        terrainGenChunkBudget = chunkBudget;
+    }
 
    private:
     int terrainGenChunkBudget = 8;
@@ -45,23 +51,34 @@ class TerrainGenerator
 class SubsystemTerrain : public Subsystem
 {
    public:
-    SubsystemTerrain() {}
-    DECL_ID(SubsystemTerrain);
+    SubsystemTerrain()
+    {
+    }
     NO_COPY(SubsystemTerrain);
     ~SubsystemTerrain() = default;
 
     void onAttach(GameState& ctx) override;
     void onDetach(GameState& ctx) override;
     void onUpdate(FGameState& ctx) override;
-    // void Present(const TerrainContext& ctx, PresentationContext pctx, FrameOutputData& fd) override;
+    // void Present(const TerrainContext& ctx, PresentationContext pctx,
+    // FrameOutputData& fd) override;
 
    private:
     void onPlayerCreated(entt::registry& world, entt::entity entity);
+    void onPlayerDestroyed(entt::registry& world, entt::entity entity);
     TerrainGenerator m_terrainGenerator;
     TerrainUpdateScheduler m_terrainUpdateScheduler;
-    entt::connection m_resolveDirtyChunkConnection;
     entt::connection m_createPlayerConnection;
 };
 }  // namespace terrain
 using SubsystemTerrain = terrain::SubsystemTerrain;
 }  // namespace game::sim
+
+template <>
+struct oge::runtime::TypeName<game::sim::SubsystemTerrain>
+{
+    static constexpr std::string Get()
+    {
+        return "core::SubsystemTerrain";
+    }
+};

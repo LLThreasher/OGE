@@ -1,7 +1,7 @@
 #include "frame_buffer.hpp"
 
-#include "vulkan.hpp"
 #include "texture.hpp"
+#include "vulkan.hpp"
 
 namespace oge::graphics::vulkan
 {
@@ -31,7 +31,8 @@ GPURenderPassHandle VulkanBackend::CreateRenderPass(const RenderPassDesc& desc)
     return m_renderPasses.Create(vkPass);
 }
 
-VulkanRenderPass VulkanBackend::CreateRenderPassInternal(VulkanRenderPassDesc& desc)
+VulkanRenderPass VulkanBackend::CreateRenderPassInternal(
+    VulkanRenderPassDesc& desc)
 {
     std::vector<VkAttachmentDescription> attachments;
     std::vector<VkAttachmentReference> colorRefs;
@@ -119,15 +120,16 @@ VulkanRenderPass VulkanBackend::CreateRenderPassInternal(VulkanRenderPassDesc& d
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
     dependency.dstSubpass = 0;
 
-    dependency.srcStageMask =
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                              VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 
-    dependency.dstStageMask =
-        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                              VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 
     dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                               VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
     dependency.dependencyFlags = 0;
 
@@ -146,7 +148,8 @@ VulkanRenderPass VulkanBackend::CreateRenderPassInternal(VulkanRenderPassDesc& d
 
     VkRenderPass renderPass;
 
-    if (vkCreateRenderPass(m_device.device, &info, nullptr, &renderPass) != VK_SUCCESS)
+    if (vkCreateRenderPass(m_device.device, &info, nullptr, &renderPass) !=
+        VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create render pass");
     }
@@ -171,7 +174,8 @@ void VulkanBackend::DestroyRenderPass(GPURenderPassHandle handle)
     m_renderPasses.Destroy(handle);
 }
 
-GPUFrameBufferHandle VulkanBackend::CreateFrameBuffer(GPURenderPassHandle passHandle, const FrameBufferDesc& desc)
+GPUFrameBufferHandle VulkanBackend::CreateFrameBuffer(
+    GPURenderPassHandle passHandle, const FrameBufferDesc& desc)
 {
     auto pass = m_renderPasses.Get(passHandle);
 
@@ -184,13 +188,15 @@ GPUFrameBufferHandle VulkanBackend::CreateFrameBuffer(GPURenderPassHandle passHa
     // Validate attachment count
     // --------------------------------------------------
 
-    size_t expectedAttachmentCount = pass->desc.colorCount + (pass->desc.hasDepth ? 1 : 0);
+    size_t expectedAttachmentCount =
+        pass->desc.colorCount + (pass->desc.hasDepth ? 1 : 0);
 
     size_t providedAttachmentCount = desc.colorCount + (desc.hasDepth ? 1 : 0);
 
     if (expectedAttachmentCount != providedAttachmentCount)
     {
-        throw std::runtime_error("Framebuffer attachment count does not match render pass");
+        throw std::runtime_error(
+            "Framebuffer attachment count does not match render pass");
     }
 
     // --------------------------------------------------
@@ -205,7 +211,8 @@ GPUFrameBufferHandle VulkanBackend::CreateFrameBuffer(GPURenderPassHandle passHa
         // Validate format
         if (pass->desc.renderTextures[i].format != tex->format)
         {
-            throw std::runtime_error("Framebuffer color format mismatch with render pass");
+            throw std::runtime_error(
+                "Framebuffer color format mismatch with render pass");
         }
 
         if (i == 0)
@@ -217,7 +224,8 @@ GPUFrameBufferHandle VulkanBackend::CreateFrameBuffer(GPURenderPassHandle passHa
         {
             if (tex->width != width || tex->height != height)
             {
-                throw std::runtime_error("Framebuffer color attachment size mismatch");
+                throw std::runtime_error(
+                    "Framebuffer color attachment size mismatch");
             }
         }
 
@@ -234,10 +242,12 @@ GPUFrameBufferHandle VulkanBackend::CreateFrameBuffer(GPURenderPassHandle passHa
 
         if (!pass->desc.hasDepth)
         {
-            throw std::runtime_error("Framebuffer has depth but render pass does not");
+            throw std::runtime_error(
+                "Framebuffer has depth but render pass does not");
         }
 
-        if (pass->desc.renderTextures[MaxColorAttachments].format != tex->format)
+        if (pass->desc.renderTextures[MaxColorAttachments].format !=
+            tex->format)
         {
             throw std::runtime_error("Framebuffer depth format mismatch");
         }
@@ -265,7 +275,8 @@ GPUFrameBufferHandle VulkanBackend::CreateFrameBuffer(GPURenderPassHandle passHa
 
     VkFramebuffer framebuffer;
 
-    if (vkCreateFramebuffer(m_device.device, &info, nullptr, &framebuffer) != VK_SUCCESS)
+    if (vkCreateFramebuffer(m_device.device, &info, nullptr, &framebuffer) !=
+        VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create framebuffer");
     }
@@ -290,4 +301,4 @@ void VulkanBackend::DestroyFrameBuffer(GPUFrameBufferHandle handle)
     }
     m_frameBuffers.Destroy(handle);
 }
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

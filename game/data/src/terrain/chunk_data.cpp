@@ -1,3 +1,5 @@
+#include <cstdint>
+#include <span>
 #include "game/terrain/terrain_view.hpp"
 
 namespace game::terrain
@@ -11,9 +13,13 @@ uint32_t ChunkData::GetBlock(uint8_t x, uint8_t y, uint8_t z) const
     return data[GetBlockIndex(x, y, z)];
 }
 
-void ChunkData::SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value) { data[GetBlockIndex(x, y, z)] = value; }
+void ChunkData::SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value)
+{
+    data[GetBlockIndex(x, y, z)] = value;
+}
 
-std::tuple<ChunkHandle, const ChunkData*> ChunkDataCollection::Get(Point3 coord) const
+std::tuple<ChunkHandle, const ChunkData*> ChunkDataCollection::Get(
+    Point3 coord) const
 {
     auto it = coordToChunks.find(coord);
     if (it != coordToChunks.end())
@@ -23,7 +29,7 @@ std::tuple<ChunkHandle, const ChunkData*> ChunkDataCollection::Get(Point3 coord)
     return {ChunkHandle{}, nullptr};
 }
 
-ChunkHandle ChunkDataCollection::GetHandle(Point3 coord)
+ChunkHandle ChunkDataCollection::GetHandle(Point3 coord) const
 {
     auto it = coordToChunks.find(coord);
     if (it != coordToChunks.end())
@@ -72,9 +78,18 @@ void ChunkDataCollection::FreeChunk(ChunkHandle handle)
     chunkData.Destroy(handle);
 }
 
-PaletteCompressedChunk PaletteCompressedChunk::FromChunkData(const ChunkData& c)
+ChunkData* ChunkDataCollection::Poll(ChunkHandle& cursor)
 {
-    PaletteCompressedChunk result;
+    return chunkData.Poll(cursor);
+}
+
+const ChunkData* ChunkDataCollection::Poll(ChunkHandle& cursor) const
+{
+    return chunkData.Poll(cursor);
+}
+
+void PaletteCompressedChunk::FromChunkData(const ChunkData& c, PaletteCompressedChunk& result)
+{
     std::unordered_map<uint32_t, uint8_t> palette_map;
     for (size_t i = 0; i < CHUNK_SIZE_TOTAL; ++i)
     {
@@ -91,6 +106,18 @@ PaletteCompressedChunk PaletteCompressedChunk::FromChunkData(const ChunkData& c)
         }
     }
     assert(result.palette.size() <= 255);
-    return result;
 }
-}  // namespace OneGame::Engine::Terrain
+
+void PaletteCompressedChunk::ToChunkData(ChunkData& c, std::span<uint32_t> palette, std::span<uint8_t, CHUNK_SIZE_TOTAL> data)
+{
+    for (size_t i = 0; i < CHUNK_SIZE_TOTAL; ++i)
+    {
+        c.data[i] = palette[data[i]];
+    }
+}
+
+void PaletteCompressedChunk::ToChunkData(ChunkData& c)
+{
+    ToChunkData(c, std::span<uint32_t>(palette), std::span<uint8_t, CHUNK_SIZE_TOTAL>(data));
+}
+}  // namespace game::terrain

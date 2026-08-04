@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+
 #include "oge/graphics/configs.hpp"
 #include "oge/graphics/forward.hpp"
 #include "oge/graphics/objects.hpp"
@@ -8,8 +9,8 @@
 
 namespace oge::runtime::gfx
 {
-using graphics::IGraphicsBackend;
 using graphics::BufferUsage;
+using graphics::IGraphicsBackend;
 
 class FrameArena
 {
@@ -42,4 +43,4 @@ class FrameArena
     uint32_t m_framesInFlight;
     uint32_t m_alignment;
 };
-}  // namespace OneGame::Engine::Graphics
+}  // namespace oge::runtime::gfx

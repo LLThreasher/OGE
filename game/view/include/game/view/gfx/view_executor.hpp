@@ -2,11 +2,13 @@
 
 #include <optional>
 
+#include "game/view/gfx/commands.hpp"
 #include "game/view/submission_queue.hpp"
-#include "oge/runtime/gfx/commands.hpp"
+#include "oge/color.hpp"
+#include "oge/graphics/backend.hpp"
+#include "oge/graphics/command_list.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
 #include "oge/runtime/typed_registry.hpp"
-#include "oge/graphics/command_list.hpp"
 
 namespace game::view::gfx
 {
@@ -16,25 +18,37 @@ template <typename... Passes>
 class ViewExecutor
 {
    public:
-    ViewExecutor() {}
-    
+    ViewExecutor()
+    {
+    }
+
+    void SetClearColor(oge::ColorRGBAF32 color)
+    {
+        m_clearColor = color;
+    }
+
     void Attach(OGEContextReadOnly& ctx)
     {
         m_ctx.emplace(ctx);
-        std::apply([&](Passes&... args) { ((args.onAttach(m_ctx.value())), ...); }, m_passes);
+        UpdatePretransforms(m_ctx->assets.backend);
+        std::apply([&](Passes&... args)
+                   { ((args.onAttach(m_ctx.value())), ...); }, m_passes);
     }
 
     void Detach()
     {
-        std::apply([&](Passes&... args) { ((args.onDetach(m_ctx.value())), ...); }, m_passes);
+        std::apply([&](Passes&... args)
+                   { ((args.onDetach(m_ctx.value())), ...); }, m_passes);
         m_ctx.reset();
     }
 
-    template<typename TQueue>
+    template <typename TQueue>
     void Update(float dt, TQueue& s_queue)
     {
-        DrawContext ctx(dt, m_ctx.value());
-        s_queue.template Add<CmdAddView>(GameViewType::Overlay, IRect16{{0, 0}, ctx.backend.SwapchainExtent()});
+        DrawContext ctx(dt, m_ctx.value(), m_clearColor);
+        s_queue.template Add<CmdAddView>(
+            GameViewType::Overlay,
+            IRect16{{0, 0}, ctx.backend.SwapchainExtent()});
         for (auto view : ALL_GAME_VIEWS)
         {
             DrawView(ctx, s_queue.GetSingle(view));
@@ -60,11 +74,21 @@ class ViewExecutor
         math::mat4 proj =
             math::get_perspective_rot(ctx.backend.SwapchainPretransform()) *
             (math::perspective_rev_z(cmdview.fov,
-                                     cmdview.aspect == 0.f ? ctx.backend.SwapchainAspect() : cmdview.aspect, 0.1f));
+                                     cmdview.aspect == 0.f
+                                         ? ctx.backend.SwapchainAspect()
+                                         : cmdview.aspect,
+                                     0.1f));
         auto pvTransform = proj * cmdview.view;
 
+        if (ctx.backend.SwapchainRecreated())
+        {
+            UpdatePretransforms(ctx.backend);
+        }
+        auto& screenAffine = m_screenAffine;
+
         auto& rect = cmdview.rect;
-        ctx.drawCmd.SetViewRect(rect.pos.x, rect.pos.y, rect.extent.x, rect.extent.y);
+        ctx.drawCmd.SetViewRect(rect.pos.x, rect.pos.y, rect.extent.x,
+                                rect.extent.y);
 
         std::apply(
             [&](Passes&... args)
@@ -74,8 +98,14 @@ class ViewExecutor
                      {
                          using T = std::decay_t<decltype(value)>;
 
-                         if constexpr (std::derived_from<T, RequiresVPTransform>)
-                             value.onUpdate(ctx, value.ExtractView(queue), pvTransform);
+                         if constexpr (std::derived_from<T,
+                                                         RequiresVPTransform>)
+                             value.onUpdate(ctx, value.ExtractView(queue),
+                                            pvTransform);
+                         else if constexpr (std::derived_from<
+                                                T, RequiresScreenAffine>)
+                             value.onUpdate(ctx, value.ExtractView(queue),
+                                            screenAffine);
                          else
                              value.onUpdate(ctx, value.ExtractView(queue));
                      }(args)),
@@ -84,7 +114,18 @@ class ViewExecutor
             m_passes);
     }
 
+    void UpdatePretransforms(IGraphicsBackend& backend)
+    {
+        auto extent = backend.SwapchainExtent();
+        math::get_screen_affine(backend.SwapchainPretransform(), extent.x,
+                                extent.y, m_screenAffine.transform,
+                                m_screenAffine.offset);
+    }
+
     std::optional<InitDrawContext> m_ctx;
     std::tuple<Passes...> m_passes;
+    oge::ColorRGBAF32 m_clearColor = oge::colors::CORNFLOWER_BLUE;
+    math::mat4 m_proj;
+    ScreenAffine m_screenAffine;
 };
 }  // namespace game::view::gfx

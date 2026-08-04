@@ -9,7 +9,11 @@ struct FramePerfStatus
     float assetUploadTime = 0.f;
     float renderSubmitTime = 0.f;
 
-    float actualFrameTime() const { return inputProcessingTime + logicTime + assetUploadTime + renderSubmitTime; }
+    float actualFrameTime() const
+    {
+        return inputProcessingTime + logicTime + assetUploadTime +
+               renderSubmitTime;
+    }
 
     FramePerfStatus operator+(const FramePerfStatus& other) const
     {
@@ -31,4 +35,4 @@ struct FramePerfStatus
         };
     }
 };
-}
+}  // namespace game

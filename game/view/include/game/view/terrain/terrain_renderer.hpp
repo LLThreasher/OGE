@@ -7,6 +7,7 @@
 #include <queue>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "defs_ext.hpp"
 #include "game/terrain/block_registry.hpp"
@@ -14,6 +15,7 @@
 #include "game/view/gfx/commands.hpp"
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
+#include "oge/handle.hpp"
 #include "oge/macros.hpp"
 #include "oge/math.hpp"
 #include "oge/pool.hpp"
@@ -48,7 +50,9 @@ struct BuiltChunkMesh2
 {
     std::pmr::vector<TexturedQuad> quads;
 
-    BuiltChunkMesh2() {}
+    BuiltChunkMesh2()
+    {
+    }
     NO_COPY(BuiltChunkMesh2)
 };
 
@@ -74,25 +78,35 @@ struct ChunkMeshingWorkerContext
 struct TerrainPresentationData
 {
     std::queue<ChunkHandle> buildMeshQueue;
-    Pool<TerrainObject::MeshingWorkerContext, ChunkMeshingWorkerContext> meshingWorkerContexts;
+    Pool<TerrainObject::MeshingWorkerContext, ChunkMeshingWorkerContext>
+        meshingWorkerContexts;
     Pool<TerrainObject::BuiltChunkMesh, BuiltChunkMesh2> builtChunkMeshes;
 
     std::queue<std::tuple<ChunkHandle, BuiltMeshHandle>> uploadMeshQueue;
-    std::unordered_map<ChunkHandle, PTerrainMesh, HandleHash<ChunkHandle>> residentChunks;
+    std::unordered_map<ChunkHandle, PTerrainMesh, HandleHash<ChunkHandle>>
+        residentChunks;
 
-    TerrainPresentationData() {}
+    TerrainPresentationData()
+    {
+    }
     NO_COPY(TerrainPresentationData)
 };
 
 class TerrainMeshBuilder
 {
    public:
-    void BuildChunkMeshes(const TerrainData& terrain, const BlockRegistry& blocks,
-                          TerrainPresentationData& terrainPData, std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
-    void SetVertexBudget(uint32_t val) { m_vertexBudget = val; }
+    void BuildChunkMeshes(
+        const TerrainData& terrain, const BlockRegistry& blocks,
+        TerrainPresentationData& terrainPData,
+        std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
+    void SetVertexBudget(uint32_t val)
+    {
+        m_vertexBudget = val;
+    }
 
    private:
-    void ExecuteBuildChunkMesh(TerrainPresentationData& pData, MeshingWorkerContextHandle handle,
+    void ExecuteBuildChunkMesh(TerrainPresentationData& pData,
+                               MeshingWorkerContextHandle handle,
                                const BlockRegistry& blocks);
 
     uint32_t m_vertexBudget = 1024;
@@ -104,14 +118,18 @@ class TerrainMeshScheduler
     using View = oge::SubmissionView<gfx::CmdDrawTerrainMeshOpaque>;
 
    public:
-    void QueueChunksForMeshing(const TerrainData& terrain, TerrainPresentationData& pdata, entt::dispatcher& events);
-    void SubmitVisibleChunks(const TerrainData& data, TerrainPresentationData& pdata, const entt::registry& tctx,
+    void QueueChunksForMeshing(const TerrainData& terrain,
+                               TerrainPresentationData& pdata,
+                               const ChunkEventStream& events);
+    void SubmitVisibleChunks(const TerrainData& data,
+                             TerrainPresentationData& pdata,
+                             const entt::registry& uiWorld,
+                             const entt::registry& gameWorld,
                              ViewSubmissionGroup<View> fd);
 
    private:
     std::unordered_map<entt::entity, uint32_t> playerToView;
-    std::vector<ChunkHandle> toRemove;
-    std::vector<ChunkHandle> toMesh;
+    ChunkEventStream::Cursor chunkCursor{};
 };
 
 class TerrainUploader
@@ -124,8 +142,9 @@ class TerrainUploader
 class TerrainRenderer : public Renderer
 {
    public:
-    TerrainRenderer() {}
-    DECL_ID(TerrainRenderer);
+    TerrainRenderer()
+    {
+    }
     NO_COPY(TerrainRenderer);
     ~TerrainRenderer() = default;
 
@@ -138,7 +157,18 @@ class TerrainRenderer : public Renderer
     TerrainMeshBuilder m_terrainMeshBuilder;
     TerrainUploader m_terrainUploader;
     TerrainMeshScheduler m_terrainMeshScheduler;
+
+    entt::connection m_resolveDirtyChunkConnection;
 };
-}
+}  // namespace terrain
 using TerrainRenderer = terrain::TerrainRenderer;
-}  // namespace game::view::terrain
+}  // namespace game::view
+
+template <>
+struct oge::runtime::TypeName<::game::view::TerrainRenderer>
+{
+    static constexpr std::string Get()
+    {
+        return "core::TerrainRenderer";
+    }
+};

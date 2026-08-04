@@ -10,4 +10,4 @@ struct VulkanFence
     VkFence fence = VK_NULL_HANDLE;
 };
 
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

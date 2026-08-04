@@ -1,9 +1,10 @@
 #pragma once
 
-#include "oge/macros.hpp"
 #include <cassert>
 #include <tuple>
 #include <vector>
+
+#include "oge/macros.hpp"
 
 namespace oge
 {

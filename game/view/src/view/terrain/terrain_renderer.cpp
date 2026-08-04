@@ -4,7 +4,10 @@
 
 #include "game/components.hpp"
 #include "game/terrain/block_registry.hpp"
+#include "game/terrain/terrain_view.hpp"
 #include "game/view/renderer.hpp"
+#include "oge/fmt.hpp"
+#include "oge/log.hpp"
 #include "oge/runtime/ui/objects.hpp"
 
 namespace game::view::terrain
@@ -17,7 +20,9 @@ void TerrainRenderer::onAttach(RendererState& ctx)
     auto desc = ctx.world.ctx().find<TerrainRendererDesc>();
     if (desc == nullptr) desc = &ctx.world.ctx().emplace<TerrainRendererDesc>();
     m_terrainMeshBuilder.SetVertexBudget(desc->meshingQuadBudget);
-    m_terrainUploader.SetMaxNumChunks((tdesc->chunkViewDistance + 1) * (tdesc->chunkViewDistance + 1) * 6);
+    m_terrainUploader.SetMaxNumChunks((tdesc->chunkViewDistance + 1) *
+                                      (tdesc->chunkViewDistance + 1) * 6);
+    LOG_DEBUG("attach terrain renderer");
 }
 
 void TerrainRenderer::onDetach(RendererState& ctx)
@@ -26,50 +31,28 @@ void TerrainRenderer::onDetach(RendererState& ctx)
 
 void TerrainRenderer::onUpdate(FRendererState& ctx)
 {
-    auto& terrainData = ctx.world.ctx().get<TerrainView>().m_terrainData;
-    m_terrainMeshScheduler.QueueChunksForMeshing(terrainData, m_terrainPData, ctx.events);
-    m_terrainMeshBuilder.BuildChunkMeshes(terrainData, ctx.world.ctx().get<BlockRegistry>(), m_terrainPData, ctx.memory.frameBuffer.Resource());
+    auto& tv = ctx.world.ctx().get<TerrainView>();
+    auto& terrainData = tv.m_terrainData;
+    m_terrainMeshScheduler.QueueChunksForMeshing(terrainData, m_terrainPData, tv.GetEvents());
+    m_terrainMeshBuilder.BuildChunkMeshes(
+        terrainData, ctx.world.ctx().get<BlockRegistry>(), m_terrainPData,
+        ctx.memory.frameBuffer.Resource());
     m_terrainUploader.UploadTerrain(m_terrainPData, ctx.assets);
-    m_terrainMeshScheduler.SubmitVisibleChunks(terrainData, m_terrainPData, ctx.world,
-                                               ctx.submissionQueue.View<CmdDrawTerrainMeshOpaque>());
+    m_terrainMeshScheduler.SubmitVisibleChunks(
+        terrainData, m_terrainPData, ctx.uiWorld, ctx.world,
+        ctx.submissionQueue.View<CmdDrawTerrainMeshOpaque>());
 }
 
-void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain, TerrainPresentationData& pdata,
-                                                 entt::dispatcher& events)
+void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain,
+                                                 TerrainPresentationData& pdata,
+                                                 const ChunkEventStream& events)
 {
-    toRemove.clear();
-    toMesh.clear();
-    for (auto handle : terrain.dirtyChunks)
+    ChunkStateUpdateEvent e;
+    while (events.PollOne(chunkCursor, e))
     {
-        auto chunk = terrain.chunks.Get(handle);
-        if (!chunk || chunk->state != ChunkState::Persistent)
-        {
-            toRemove.push_back(handle);
-            continue;
-        }
-        bool fullNeighbors = true;
-        for (int i = 0; i < 6; ++i)
-        {
-            if (i == FACE_DOWN && chunk->Coords.y == 0) continue;
-            auto neighborCoord = oge::perFaceOffset[i] + chunk->Coords;
-            auto [handle, chunk] = terrain.chunks.Get(neighborCoord);
-            if (!chunk || chunk->state != ChunkState::Persistent)
-            {
-                fullNeighbors = false;
-                break;
-            }
-        }
-        if (!fullNeighbors) continue;
-        toMesh.push_back(handle);
-    }
-    for (auto handle : toRemove)
-    {
-        events.enqueue<ResolveDirtyChunkEvent>(handle);
-    }
-    for (auto handle : toMesh)
-    {
-        pdata.buildMeshQueue.push(handle);
-        events.enqueue<ResolveDirtyChunkEvent>(handle);
+        // if (e.state != ChunkState::Persistent) continue;
+        pdata.buildMeshQueue.push(e.chunk);
+        // LOG_DEBUG("queue {} for meshing, {}", terrain.chunks.Get(e.chunk)->Coords, chunkCursor);
     }
 }
 
@@ -78,7 +61,10 @@ struct FrustumPlane
     glm::vec3 normal;
     float distance;
 
-    float DistanceToPoint(const glm::vec3& p) const { return glm::dot(normal, p) + distance; }
+    float DistanceToPoint(const glm::vec3& p) const
+    {
+        return glm::dot(normal, p) + distance;
+    }
 };
 
 struct Frustum
@@ -86,7 +72,8 @@ struct Frustum
     FrustumPlane planes[5];  // left, right, bottom, top, near
 };
 
-static Frustum BuildFrustumGeometric(const ComponentCamera& cam, const ComponentPerspectiveCamera& pcam)
+static Frustum BuildFrustumGeometric(const ComponentCamera& cam,
+                                     const ComponentPerspectiveCamera& pcam)
 {
     constexpr float nearPlane = 0.1f;
 
@@ -113,7 +100,8 @@ static Frustum BuildFrustumGeometric(const ComponentCamera& cam, const Component
     glm::vec3 nbl = nearCenter - nearUp - nearRight;
     glm::vec3 nbr = nearCenter - nearUp + nearRight;
 
-    auto MakePlane = [](const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
+    auto MakePlane =
+        [](const glm::vec3& a, const glm::vec3& b, const glm::vec3& c)
     {
         FrustumPlane p;
         p.normal = glm::normalize(glm::cross(b - a, c - a));
@@ -142,7 +130,8 @@ static Frustum BuildFrustumGeometric(const ComponentCamera& cam, const Component
     return f;
 }
 
-static bool IsAABBVisible(const Frustum& frustum, const glm::vec3& min, const glm::vec3& max)
+static bool IsAABBVisible(const Frustum& frustum, const glm::vec3& min,
+                          const glm::vec3& max)
 {
     for (int i = 0; i < 5; i++)
     {
@@ -162,30 +151,36 @@ static bool IsAABBVisible(const Frustum& frustum, const glm::vec3& min, const gl
 static bool IsVisibleToPlayer(Point3 chunkCoord, const Frustum& frustum)
 {
     glm::vec3 chunkMin =
-        glm::vec3(chunkCoord.x * CHUNK_SIZE_X, chunkCoord.y * CHUNK_SIZE_Y, chunkCoord.z * CHUNK_SIZE_Z);
+        glm::vec3(chunkCoord.x * CHUNK_SIZE_X, chunkCoord.y * CHUNK_SIZE_Y,
+                  chunkCoord.z * CHUNK_SIZE_Z);
 
-    glm::vec3 chunkMax = chunkMin + math::vec3(CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z);
+    glm::vec3 chunkMax =
+        chunkMin + math::vec3(CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z);
 
     return IsAABBVisible(frustum, chunkMin, chunkMax);
 }
 
-void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data, TerrainPresentationData& pdata,
-                                               const entt::registry& tctx, ViewSubmissionGroup<View> fd)
+void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data,
+                                               TerrainPresentationData& pdata,
+                                               const entt::registry& uiWorld,
+                                               const entt::registry& gameWorld,
+                                               ViewSubmissionGroup<View> fd)
 {
     using namespace oge::graphics;
     using namespace ui;
 
     playerToView.clear();
     uint32_t baseView = 0;
-    for (auto [entity, view] : tctx.view<ViewPanel>().each())
+    for (auto [entity, view] : uiWorld.view<ViewPanel>().each())
     {
-        if (!tctx.all_of<ComponentPlayer>(view.activeCamera))
+        if (!gameWorld.all_of<ComponentPlayer>(view.activeCamera))
         {
             baseView |= static_cast<uint32_t>(view.activeSlot);
         }
         else
         {
-            playerToView.emplace(view.activeCamera, static_cast<uint32_t>(view.activeSlot));
+            playerToView.emplace(view.activeCamera,
+                                 static_cast<uint32_t>(view.activeSlot));
         }
     }
 
@@ -193,13 +188,14 @@ void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data, TerrainP
     {
         auto chunk = data.chunks.Get(handle);
 
-        fd.Add<CmdDrawTerrainMeshOpaque>(GameViewType{baseView}, slot, chunk->Coords);
+        fd.Add<CmdDrawTerrainMeshOpaque>(GameViewType{baseView}, slot,
+                                         chunk->Coords);
     }
 
-    for (auto player : tctx.view<ComponentPlayer>())
+    for (auto player : gameWorld.view<ComponentPlayer>())
     {
-        auto& cam = tctx.get<ComponentCamera>(player);
-        auto& pcam = tctx.get<ComponentPerspectiveCamera>(player);
+        auto& cam = gameWorld.get<ComponentCamera>(player);
+        auto& pcam = gameWorld.get<ComponentPerspectiveCamera>(player);
         Frustum frustum = BuildFrustumGeometric(cam, pcam);
 
         auto it = playerToView.find(player);
@@ -209,7 +205,8 @@ void TerrainMeshScheduler::SubmitVisibleChunks(const TerrainData& data, TerrainP
         {
             auto chunk = data.chunks.Get(handle);
             if (!IsVisibleToPlayer(chunk->Coords, frustum)) continue;
-            fd.Add<CmdDrawTerrainMeshOpaque>(GameViewType{it->second}, slot, chunk->Coords);
+            fd.Add<CmdDrawTerrainMeshOpaque>(GameViewType{it->second}, slot,
+                                             chunk->Coords);
         }
     }
 }

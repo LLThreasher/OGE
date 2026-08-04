@@ -1,14 +1,15 @@
-#include "oge/log.hpp"
-#include "oge/runtime/ui/objects.hpp"
 #include "game/ui/objects.hpp"
-#include "oge/runtime/asset_ctx.hpp"
 #include "game/view/submission_queue.hpp"
+#include "oge/log.hpp"
+#include "oge/runtime/asset_ctx.hpp"
+#include "oge/runtime/ui/objects.hpp"
 
 namespace game::ui
 {
 using namespace oge;
 
-entt::entity CreateButton(entt::registry& game, AssetContext& asset, UIRect rect)
+entt::entity CreateButton(entt::registry& game, AssetContext& asset,
+                          UIRect rect)
 {
     auto res = game.create();
     game.emplace<UIRect>(res, rect);
@@ -17,24 +18,31 @@ entt::entity CreateButton(entt::registry& game, AssetContext& asset, UIRect rect
     return res;
 }
 
-entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset, UIRect rect)
+entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset,
+                                 UIRect rect)
 {
     auto view = game.create();
     auto res = game.create();
     game.emplace<UITerminal>(res, view);
     game.emplace<UIRect>(res, rect);
-    game.emplace<UISprite>(res, UISprite{.sprite = asset.LoadTexture("invalid.png"), .color = COLOR_BLACK});
+    game.emplace<UISprite>(res,
+                           UISprite{.sprite = asset.LoadTexture("invalid.png"),
+                                    .color = BLACK});
     game.emplace<UIZLevel>(res, 2);
     game.emplace<UIRaycastTarget>(res);
 
     game.emplace<UIParent>(view, res);
-    game.emplace<UIRect>(view, UIRect{math::vec2{0.f, 0.f}, math::vec2{1.f, 1.f}});
-    game.emplace<UIText>(view,
-                         UIText{.font = asset.LoadASCIIBitmapFont16x6("om_tall_plain_idx.png"), .data = {.text="Terminal"}});
+    game.emplace<UIRect>(view,
+                         UIRect{math::vec2{0.f, 0.f}, math::vec2{1.f, 1.f}});
+    game.emplace<UIText>(
+        view,
+        UIText{.font = asset.LoadASCIIBitmapFont16x6("om_tall_plain_idx.png"),
+               .data = {.text = "Terminal"}});
     return res;
 }
 
-entt::entity CreateGameView(entt::registry& game, const UIRect rect)
+entt::entity CreateGameView(entt::registry& game, const UIRect rect,
+                            entt::entity camera)
 {
     std::unordered_set freeSlots{
         view::GameViewType::Slot0,
@@ -46,15 +54,15 @@ entt::entity CreateGameView(entt::registry& game, const UIRect rect)
     {
         freeSlots.erase(view.activeSlot);
     }
-    if (freeSlots.empty())
-    {
-        assert(false && "too many view panels");
-    }
+    assert(!freeSlots.empty() && "too many view panels");
     auto res = game.create();
-    game.emplace<view::ViewPanel>(res).activeSlot = *freeSlots.begin();
+    game.emplace<view::ViewPanel>(
+        res, view::ViewPanel{.activeSlot = *freeSlots.begin(),
+                             .activeCamera = camera});
     game.emplace<UIRect>(res, rect);
-    LOG_INFO("game view created at slot {}", static_cast<int>(game.get<view::ViewPanel>(res).activeSlot));
+    LOG_INFO("game view created at slot {}",
+             static_cast<int>(game.get<view::ViewPanel>(res).activeSlot));
     return res;
 }
 
-} // namespace oge::runtime::ui
+}  // namespace game::ui

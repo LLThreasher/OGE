@@ -14,7 +14,10 @@ struct IntTriple
 {
     T x, y, z;
 
-    bool operator==(const IntTriple<T>& other) const noexcept { return x == other.x && y == other.y && z == other.z; }
+    bool operator==(const IntTriple<T>& other) const noexcept
+    {
+        return x == other.x && y == other.y && z == other.z;
+    }
 
     template <typename U>
     IntTriple<wider_t<T, U>> operator+(const IntTriple<U>& other) const noexcept
@@ -44,11 +47,15 @@ struct IntTriple
         }
     }
 
-    operator math::vec3() const { return {x, y, z}; }
+    operator math::vec3() const
+    {
+        return {x, y, z};
+    }
 
     operator IntTriple<int32_t>() const
     {
-        return {static_cast<int32_t>(x), static_cast<int32_t>(y), static_cast<int32_t>(z)};
+        return {static_cast<int32_t>(x), static_cast<int32_t>(y),
+                static_cast<int32_t>(z)};
     }
 
     static IntTriple<T> FromVec3(const math::vec3& v)
@@ -64,7 +71,7 @@ constexpr Point3 perFaceOffset[6] = {
     {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},
 };
 
-}  // namespace OneGame::Engine
+}  // namespace oge
 namespace std
 {
 template <>

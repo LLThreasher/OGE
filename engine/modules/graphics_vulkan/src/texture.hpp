@@ -26,4 +26,4 @@ struct VulkanTexture
     uint32_t mipLevels = 1;
 };
 
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

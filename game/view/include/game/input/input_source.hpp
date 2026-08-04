@@ -35,30 +35,14 @@ struct FInputContext
     const RawInputStream& raw;
     entt::registry& uiWorld;
 
-    FInputContext(InputFrame& f, InputContext& ctx) : dt(f.dt), raw(f.raw), uiWorld(ctx.uiWorld) {}
+    FInputContext(InputFrame& f, InputContext& ctx)
+        : dt(f.dt), raw(f.raw), uiWorld(ctx.uiWorld)
+    {
+    }
 };
 
 class InputSource : public Stage<InputContext, FInputContext>
 {
-   public:
-    struct Def
-    {
-        PlayerInputStream* target;
-        float hfov;
-        float vfov;
-        union
-        {
-            struct
-            {
-                entt::entity viewWidget;
-                entt::entity moveWidget;
-            } widgetInput;
-            struct
-            {
-                size_t mouseIdx;
-            } mouseIuput;
-        };
-    };
 };
 
 void RegisterInputSources(AnythingFactory& af);
@@ -69,13 +53,6 @@ class UIDragInput : public InputSource
     RawInputStream::Cursor raw_idx = {};
 
    public:
-    DECL_ID(UIDragInput);
-
-    static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
-    {
-        return std::make_unique<UIDragInput>();
-    }
-
     void onAttach(InputContext& ctx);
     void onDetach(InputContext& ctx);
     void onUpdate(FInputContext& ctx);
@@ -84,6 +61,7 @@ class UIDragInput : public InputSource
 class WidgetInput : public InputSource
 {
     PlayerInputStream& out;
+    const ComponentPerspectiveCamera& pcam;
     entt::entity viewWidget;
     entt::entity moveWidget;
     float vfov;
@@ -92,18 +70,24 @@ class WidgetInput : public InputSource
     bool isDigging = false;
 
    public:
-    DECL_ID(WidgetInput);
-    WidgetInput(const Def& def) : out(*def.target)
+    struct Def
     {
-        viewWidget = def.widgetInput.viewWidget;
-        moveWidget = def.widgetInput.moveWidget;
-        vfov = def.vfov;
-        hfov = def.hfov;
-    }
+        PlayerInputStream& target;
+        const ComponentPerspectiveCamera& pcam;
+        entt::entity viewWidget;
+        entt::entity moveWidget;
+        float vfov;
+        float hfov;
+    };
 
-    static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
+    WidgetInput(Def&& def)
+        : out(def.target),
+          pcam(def.pcam),
+          viewWidget(def.viewWidget),
+          moveWidget(def.moveWidget),
+          hfov(def.hfov),
+          vfov(def.vfov)
     {
-        return std::make_unique<WidgetInput>(def);
     }
 
     void onAttach(InputContext& ctx);
@@ -120,17 +104,19 @@ class KeyMouseInput : public InputSource
     RawInputStream::Cursor raw_idx = {};
 
    public:
-    DECL_ID(KeyMouseInput);
-    KeyMouseInput(const Def& def) : InputSource(), out(*def.target)
+    struct Def
     {
-        mouseIdx = def.mouseIuput.mouseIdx;
+        PlayerInputStream& target;
+        size_t mouseIdx;
+        float hfov;
+        float vfov;
+    };
+
+    KeyMouseInput(Def&& def) : InputSource(), out(def.target)
+    {
+        mouseIdx = def.mouseIdx;
         vfov = def.vfov;
         hfov = def.hfov;
-    }
-
-    static std::unique_ptr<InputSource> Build(const Def& def, AnythingFactory& af)
-    {
-        return std::make_unique<KeyMouseInput>(def);
     }
 
     void onAttach(InputContext& ctx);
@@ -140,7 +126,53 @@ class KeyMouseInput : public InputSource
 
 class InputPipeline : public FramePipeline<InputSource, InputFrame>
 {
+    InputContext m_input;
+
    public:
-    InputPipeline(InputContext& state, AnythingFactory& af) : FramePipeline<InputSource, InputFrame>(state, af) {}
+    InputPipeline(InputContext&& state)
+        : m_input(state), FramePipeline<InputSource, InputFrame>(m_input)
+    {
+    }
 };
 };  // namespace game::input
+
+namespace oge::runtime
+{
+using namespace game::input;
+
+template <>
+struct TypeName<InputSource>
+{
+    static constexpr std::string Get()
+    {
+        return "core::InputSource";
+    }
+};
+
+template <>
+struct TypeName<UIDragInput>
+{
+    static constexpr std::string Get()
+    {
+        return "core::UIDragInput";
+    }
+};
+
+template <>
+struct TypeName<WidgetInput>
+{
+    static constexpr std::string Get()
+    {
+        return "core::WidgetInput";
+    }
+};
+
+template <>
+struct TypeName<KeyMouseInput>
+{
+    static constexpr std::string Get()
+    {
+        return "core::KeyMouseInput";
+    }
+};
+}  // namespace oge::runtime

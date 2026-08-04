@@ -1,16 +1,16 @@
 #pragma once
 
 #include "game/view/gfx/commands.hpp"
-#include "oge/point3.hpp"
-#include "oge/runtime/gfx/commands.hpp"
-#include "oge/submission_group.hpp"
-#include "oge/runtime/entt.hpp"
 #include "oge/array_helper.hpp"
+#include "oge/point3.hpp"
+#include "oge/runtime/entt.hpp"
+#include "oge/runtime/objects_ext.hpp"
+#include "oge/submission_group.hpp"
 
 namespace game::view
 {
-using namespace oge::runtime;
-using namespace oge::runtime::gfx;
+using namespace ::oge::runtime;
+using oge::runtime::CmdDrawSprite;
 using namespace ::game::view::gfx;
 
 enum class GameViewType : uint32_t
@@ -52,19 +52,32 @@ class ViewSubmissionGroup
    public:
     template <typename... Args>
     using TView = ViewSubmissionGroup<oge::SubmissionView<Args...>>;
-    static constexpr size_t ViewCount = std::bit_width(static_cast<uint32_t>(GameViewType::All));
+    static constexpr size_t ViewCount =
+        std::bit_width(static_cast<uint32_t>(GameViewType::All));
 
-    ViewSubmissionGroup(std::pmr::memory_resource* r) : m_groups(MakeArray<SubmissionGroupT, ViewCount>(r)) {}
-    ViewSubmissionGroup(std::array<SubmissionGroupT, ViewCount> groups) : m_groups(groups) {}
+    ViewSubmissionGroup(std::pmr::memory_resource* r)
+        : m_groups(MakeArray<SubmissionGroupT, ViewCount>(r))
+    {
+    }
+    ViewSubmissionGroup(std::array<SubmissionGroupT, ViewCount> groups)
+        : m_groups(groups)
+    {
+    }
 
     // Single-bit access
-    SubmissionGroupT& GetSingle(GameViewType viewBit) { return m_groups[BitToIndex(viewBit)]; }
+    SubmissionGroupT& GetSingle(GameViewType viewBit)
+    {
+        return m_groups[BitToIndex(viewBit)];
+    }
 
     // Mask access
     class MaskView
     {
        public:
-        MaskView(SubmissionGroupT* groups, uint32_t mask) : m_groups(groups), m_mask(mask) {}
+        MaskView(SubmissionGroupT* groups, uint32_t mask)
+            : m_groups(groups), m_mask(mask)
+        {
+        }
 
         template <typename Fn>
         void ForEach(Fn&& fn)
@@ -87,7 +100,10 @@ class ViewSubmissionGroup
         uint32_t m_mask;
     };
 
-    MaskView Get(GameViewType views) { return MaskView(m_groups.data(), static_cast<uint32_t>(views)); }
+    MaskView Get(GameViewType views)
+    {
+        return MaskView(m_groups.data(), static_cast<uint32_t>(views));
+    }
 
     template <typename T, typename... Args>
     void Add(GameViewType views, Args&&... args)
@@ -113,31 +129,34 @@ class ViewSubmissionGroup
     template <typename... Args>
     TView<Args...> View()
     {
-        // Passed the explicit template arguments and the required 'arr' argument
-        return TView<Args...>(
-            create_array_impl<Args...>(m_groups, std::make_index_sequence<ViewCount>{}));
+        // Passed the explicit template arguments and the required 'arr'
+        // argument
+        return TView<Args...>(create_array_impl<Args...>(
+            m_groups, std::make_index_sequence<ViewCount>{}));
     }
 
    private:
     template <typename... Args, size_t... Is>
-    static std::array<oge::SubmissionView<Args...>, ViewCount> create_array_impl(
-        std::array<SubmissionGroupT, ViewCount>& arr, std::index_sequence<Is...>)
+    static std::array<oge::SubmissionView<Args...>, ViewCount>
+    create_array_impl(std::array<SubmissionGroupT, ViewCount>& arr,
+                      std::index_sequence<Is...>)
     {
         // Corrected fold expansion and added 'template' keyword
         return {arr[Is].template View<Args...>()...};
     }
-    
+
     static constexpr size_t BitToIndex(GameViewType viewBit)
     {
         return std::countr_zero(static_cast<uint32_t>(viewBit));
     }
 
-
     std::array<SubmissionGroupT, ViewCount> m_groups;
 };
 
-using SingleSubmissionQueue = oge::SubmissionGroup<CmdDrawSprite, CmdAddView, CmdDrawGeneralMeshOpaque,
-                                              CmdDrawTerrainMeshOpaque, CmdDrawDebugText, CmdDrawDebugRect>;
+using SingleSubmissionQueue =
+    oge::SubmissionGroup<CmdDrawSprite, CmdAddView, CmdDrawGeneralMeshOpaque,
+                         CmdDrawTerrainMeshOpaque, CmdDrawDebugText,
+                         CmdDrawDebugRect>;
 
 using SubmissionQueue = ViewSubmissionGroup<SingleSubmissionQueue>;
 

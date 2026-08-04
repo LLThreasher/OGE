@@ -104,22 +104,23 @@ enum class KeyCode : uint8_t
     KY_YEN = 0x7D,           // (Japanese keyboard)
     KY_ABNT_C2 = 0x7E,       // Numpad . on Portugese (Brazilian) keyboards
     KY_NUMPADEQUALS = 0x8D,  // = on numeric keypad (NEC PC98)
-    KY_PREVTRACK = 0x90,     // Previous Track (KC_CIRCUMFLEX on Japanese keyboard)
-    KY_AT = 0x91,            //                     (NEC PC98)
-    KY_COLON = 0x92,         //                     (NEC PC98)
-    KY_UNDERLINE = 0x93,     //                     (NEC PC98)
-    KY_KANJI = 0x94,         // (Japanese keyboard)
-    KY_STOP = 0x95,          //                     (NEC PC98)
-    KY_AX = 0x96,            //                     (Japan AX)
-    KY_UNLABELED = 0x97,     //                        (J3100)
-    KY_NEXTTRACK = 0x99,     // Next Track
-    KY_NUMPADENTER = 0x9C,   // Enter on numeric keypad
+    KY_PREVTRACK = 0x90,  // Previous Track (KC_CIRCUMFLEX on Japanese keyboard)
+    KY_AT = 0x91,         //                     (NEC PC98)
+    KY_COLON = 0x92,      //                     (NEC PC98)
+    KY_UNDERLINE = 0x93,  //                     (NEC PC98)
+    KY_KANJI = 0x94,      // (Japanese keyboard)
+    KY_STOP = 0x95,       //                     (NEC PC98)
+    KY_AX = 0x96,         //                     (Japan AX)
+    KY_UNLABELED = 0x97,  //                        (J3100)
+    KY_NEXTTRACK = 0x99,  // Next Track
+    KY_NUMPADENTER = 0x9C,  // Enter on numeric keypad
     KY_RCONTROL = 0x9D,
-    KY_MUTE = 0xA0,         // Mute
-    KY_CALCULATOR = 0xA1,   // Calculator
-    KY_PLAYPAUSE = 0xA2,    // Play / Pause
-    KY_MEDIASTOP = 0xA4,    // Media Stop
-    KY_TWOSUPERIOR = 0xAA,  // ² on French AZERTY keyboard (same place as ~ ` on QWERTY)
+    KY_MUTE = 0xA0,        // Mute
+    KY_CALCULATOR = 0xA1,  // Calculator
+    KY_PLAYPAUSE = 0xA2,   // Play / Pause
+    KY_MEDIASTOP = 0xA4,   // Media Stop
+    KY_TWOSUPERIOR =
+        0xAA,  // ² on French AZERTY keyboard (same place as ~ ` on QWERTY)
     KY_VOLUMEDOWN = 0xAE,   // Volume -
     KY_VOLUMEUP = 0xB0,     // Volume +
     KY_WEBHOME = 0xB2,      // Web home
@@ -173,4 +174,4 @@ enum class KeyModifier : uint32_t
     RWin = 0x0400000
 };
 
-}  // namespace OneGame::Engine
+}  // namespace oge::input

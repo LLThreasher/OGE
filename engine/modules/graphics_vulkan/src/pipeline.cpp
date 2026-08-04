@@ -1,10 +1,9 @@
 #include "pipeline.hpp"
 
-#include "vulkan.hpp"
 #include "binding_group.hpp"
 #include "frame_buffer.hpp"
-
 #include "oge/log.hpp"
+#include "vulkan.hpp"
 
 namespace oge::graphics::vulkan
 {
@@ -16,7 +15,8 @@ VkShaderModule VulkanBackend::CreateShaderModule(const std::vector<char>& code)
     createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
     VkShaderModule module;
-    if (vkCreateShaderModule(m_device.device, &createInfo, nullptr, &module) != VK_SUCCESS)
+    if (vkCreateShaderModule(m_device.device, &createInfo, nullptr, &module) !=
+        VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create shader module");
     }
@@ -24,7 +24,8 @@ VkShaderModule VulkanBackend::CreateShaderModule(const std::vector<char>& code)
     return module;
 }
 
-GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDesc& desc)
+GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(
+    const GraphicsPipelineDesc& desc)
 {
     LOG_DEBUG("begin create pipeline");
     VulkanPipeline pipeline{};
@@ -82,7 +83,8 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
     VkPipelineVertexInputStateCreateInfo vertexInput{};
     if (attributes.empty())
     {
-        vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInput.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vertexInput.vertexBindingDescriptionCount = 0;
         vertexInput.pVertexBindingDescriptions = VK_NULL_HANDLE;
         vertexInput.vertexAttributeDescriptionCount = 0;
@@ -90,10 +92,12 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
     }
     else
     {
-        vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInput.sType =
+            VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vertexInput.vertexBindingDescriptionCount = 1;
         vertexInput.pVertexBindingDescriptions = &binding;
-        vertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributes.size());
+        vertexInput.vertexAttributeDescriptionCount =
+            static_cast<uint32_t>(attributes.size());
         vertexInput.pVertexAttributeDescriptions = attributes.data();
     }
 
@@ -101,7 +105,8 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
     // --- Input Assembly
     //
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
-    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
     switch (desc.topology)
     {
         case PrimitiveTopology::TriangleList:
@@ -121,18 +126,21 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
     viewportState.viewportCount = 1;
     viewportState.scissorCount = 1;
 
-    std::array<VkDynamicState, 2> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+    std::array<VkDynamicState, 2> dynamicStates = {VK_DYNAMIC_STATE_VIEWPORT,
+                                                   VK_DYNAMIC_STATE_SCISSOR};
 
     VkPipelineDynamicStateCreateInfo dynamicState{};
     dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+    dynamicState.dynamicStateCount =
+        static_cast<uint32_t>(dynamicStates.size());
     dynamicState.pDynamicStates = dynamicStates.data();
 
     //
     // --- Rasterizer
     //
     VkPipelineRasterizationStateCreateInfo rasterizer{};
-    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.cullMode = ToVkCullMode(desc.cullMode);
     rasterizer.frontFace = ToVkFrontFace(desc.frontFace);
@@ -144,14 +152,16 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
     // --- Multisampling
     //
     VkPipelineMultisampleStateCreateInfo multisampling{};
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
     //
     // --- Depth Stencil
     //
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
-    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthStencil.depthTestEnable = desc.depthTest;
     depthStencil.depthWriteEnable = desc.writeDepth;
     depthStencil.depthCompareOp = ToVkCompareOp(desc.depthCompareOp);
@@ -163,13 +173,15 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
     //
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask =
-        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+        VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
     colorBlendAttachment.blendEnable = desc.blending;
     if (desc.blending)
     {
         // Color blending
         colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-        colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        colorBlendAttachment.dstColorBlendFactor =
+            VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
 
         // Alpha blending
@@ -179,7 +191,8 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
     }
 
     VkPipelineColorBlendStateCreateInfo colorBlending{};
-    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.sType =
+        VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     colorBlending.attachmentCount = 1;
     colorBlending.pAttachments = &colorBlendAttachment;
 
@@ -195,29 +208,37 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
 
         vkRange.stageFlags = 0;
 
-        if (HasFlag(range.stageFlags, ShaderStage::Vertex)) vkRange.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
+        if (HasFlag(range.stageFlags, ShaderStage::Vertex))
+            vkRange.stageFlags |= VK_SHADER_STAGE_VERTEX_BIT;
 
-        if (HasFlag(range.stageFlags, ShaderStage::Fragment)) vkRange.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
+        if (HasFlag(range.stageFlags, ShaderStage::Fragment))
+            vkRange.stageFlags |= VK_SHADER_STAGE_FRAGMENT_BIT;
 
-        if (HasFlag(range.stageFlags, ShaderStage::Compute)) vkRange.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
+        if (HasFlag(range.stageFlags, ShaderStage::Compute))
+            vkRange.stageFlags |= VK_SHADER_STAGE_COMPUTE_BIT;
 
         vkRanges.push_back(vkRange);
     }
 
     VkPipelineLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.setLayoutCount = static_cast<uint32_t>(desc.bindingGroupLayouts.size());
-    std::vector<VkDescriptorSetLayout> vkLayouts(desc.bindingGroupLayouts.size());
+    layoutInfo.setLayoutCount =
+        static_cast<uint32_t>(desc.bindingGroupLayouts.size());
+    std::vector<VkDescriptorSetLayout> vkLayouts(
+        desc.bindingGroupLayouts.size());
     for (int i = 0; i < desc.bindingGroupLayouts.size(); i++)
     {
-        vkLayouts[i] = m_bindingGroupLayouts.Get(desc.bindingGroupLayouts[i])->layout;
+        vkLayouts[i] =
+            m_bindingGroupLayouts.Get(desc.bindingGroupLayouts[i])->layout;
     }
     layoutInfo.pSetLayouts = vkLayouts.data();
 
     layoutInfo.pushConstantRangeCount = static_cast<uint32_t>(vkRanges.size());
-    layoutInfo.pPushConstantRanges = vkRanges.empty() ? VK_NULL_HANDLE : vkRanges.data();
+    layoutInfo.pPushConstantRanges =
+        vkRanges.empty() ? VK_NULL_HANDLE : vkRanges.data();
 
-    if (vkCreatePipelineLayout(m_device.device, &layoutInfo, nullptr, &pipeline.layout) != VK_SUCCESS)
+    if (vkCreatePipelineLayout(m_device.device, &layoutInfo, nullptr,
+                               &pipeline.layout) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create pipeline layout");
     }
@@ -238,11 +259,13 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.pDynamicState = &dynamicState;
     pipelineInfo.layout = pipeline.layout;
-    pipelineInfo.renderPass = m_renderPasses.Get(m_swapchain.renderPass)->handle;
+    pipelineInfo.renderPass =
+        m_renderPasses.Get(m_swapchain.renderPass)->handle;
     pipelineInfo.subpass = 0;
 
-    if (vkCreateGraphicsPipelines(m_device.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline.pipeline) !=
-        VK_SUCCESS)
+    if (vkCreateGraphicsPipelines(m_device.device, VK_NULL_HANDLE, 1,
+                                  &pipelineInfo, nullptr,
+                                  &pipeline.pipeline) != VK_SUCCESS)
     {
         vkDestroyPipelineLayout(m_device.device, pipeline.layout, nullptr);
         throw std::runtime_error("Failed to create graphics pipeline");
@@ -256,7 +279,8 @@ GPUPipelineHandle VulkanBackend::CreateGraphicsPipeline(const GraphicsPipelineDe
     return m_pipelines.Create(pipeline);
 }
 
-GPUPipelineHandle VulkanBackend::CreateComputePipeline(const ComputePipelineDesc& desc)
+GPUPipelineHandle VulkanBackend::CreateComputePipeline(
+    const ComputePipelineDesc& desc)
 {
     VulkanPipeline pipeline{};
 
@@ -265,15 +289,19 @@ GPUPipelineHandle VulkanBackend::CreateComputePipeline(const ComputePipelineDesc
     //
     VkPipelineLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.setLayoutCount = static_cast<uint32_t>(desc.bindingGroupLayouts.size());
-    std::vector<VkDescriptorSetLayout> vkLayouts(desc.bindingGroupLayouts.size());
+    layoutInfo.setLayoutCount =
+        static_cast<uint32_t>(desc.bindingGroupLayouts.size());
+    std::vector<VkDescriptorSetLayout> vkLayouts(
+        desc.bindingGroupLayouts.size());
     for (int i = 0; i < desc.bindingGroupLayouts.size(); i++)
     {
-        vkLayouts[i] = m_bindingGroupLayouts.Get(desc.bindingGroupLayouts[i])->layout;
+        vkLayouts[i] =
+            m_bindingGroupLayouts.Get(desc.bindingGroupLayouts[i])->layout;
     }
     layoutInfo.pSetLayouts = vkLayouts.data();
 
-    if (vkCreatePipelineLayout(m_device.device, &layoutInfo, nullptr, &pipeline.layout) != VK_SUCCESS)
+    if (vkCreatePipelineLayout(m_device.device, &layoutInfo, nullptr,
+                               &pipeline.layout) != VK_SUCCESS)
     {
         throw std::runtime_error("Failed to create compute layout");
     }
@@ -295,8 +323,9 @@ GPUPipelineHandle VulkanBackend::CreateComputePipeline(const ComputePipelineDesc
     pipelineInfo.stage = stage;
     pipelineInfo.layout = pipeline.layout;
 
-    if (vkCreateComputePipelines(m_device.device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &pipeline.pipeline) !=
-        VK_SUCCESS)
+    if (vkCreateComputePipelines(m_device.device, VK_NULL_HANDLE, 1,
+                                 &pipelineInfo, nullptr,
+                                 &pipeline.pipeline) != VK_SUCCESS)
     {
         vkDestroyPipelineLayout(m_device.device, pipeline.layout, nullptr);
         throw std::runtime_error("Failed to create compute pipeline");
@@ -325,4 +354,4 @@ void VulkanBackend::DestroyPipeline(GPUPipelineHandle handle)
     m_pipelines.Destroy(handle);
 }
 
-}  // namespace OneGame::Engine::Graphics::Vulkan
+}  // namespace oge::graphics::vulkan

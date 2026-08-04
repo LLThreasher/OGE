@@ -18,7 +18,7 @@ PRIVATE
     ${SOURCE_FILES_CPP}
  )
 
-target_link_libraries(game_ctrl PUBLIC game_data game_sim)
+target_link_libraries(game_ctrl PUBLIC game_data game_sim stduuid oge::platform)
 
 target_include_directories(game_ctrl
 PUBLIC
@@ -26,4 +26,7 @@ PUBLIC
 )
 
 add_library(game::ctrl ALIAS game_ctrl)
-add_library(game::headless ALIAS game_ctrl)
+
+add_library(game_ctrl_native INTERFACE)
+target_link_libraries(game_ctrl_native INTERFACE game::ctrl oge::platform::native)
+add_library(game::headless ALIAS game_ctrl_native)

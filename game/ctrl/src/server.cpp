@@ -1,5 +1,8 @@
 #include "game/server.hpp"
+
 #include <csignal>
+
+#include "game/replication_registry.hpp"
 #include "oge/log.hpp"
 #include "oge/platform/spdlogger.hpp"
 
@@ -13,28 +16,27 @@ void signal_handler(int signal_num)
     }
 }
 
-namespace game {
-    Server::Server(float tickInterval)
-        : m_tick(tickInterval),
-          m_ctx(m_metaWorld),
-          m_am(*m_ctx.Emplace<AssetManager>()),
-          SceneRunner(m_ctx)
-    {
-        SetLogger(new oge::platform::SpdLogger());
-        using namespace sim;
-        RegisterSubsystems(m_anyFactory);
-    }
-
-    int Server::Run()
-    {
-        std::signal(SIGINT, signal_handler);
-        while (keep_running)
-        {
-            float dt = m_tick.WaitForNextTick();
-            UpdateScene({dt});
-        }
-        LOG_INFO("Shutting down");
-        DetachScene();
-        return 0;
-    }
+namespace game
+{
+Server::Server(float tickInterval)
+    : m_tick(tickInterval),
+      m_ctx(m_metaWorld),
+      m_am(m_ctx.Emplace<AssetManager>())
+{
+    using namespace sim;
+    RegisterSubsystems(m_anyFactory);
 }
+
+int Server::Run()
+{
+    std::signal(SIGINT, signal_handler);
+    while (keep_running)
+    {
+        float dt = m_tick.WaitForNextTick();
+        UpdateScene({dt});
+    }
+    LOG_INFO("Shutting down");
+    DetachScene();
+    return 0;
+}
+}  // namespace game

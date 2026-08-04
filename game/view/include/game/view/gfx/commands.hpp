@@ -1,19 +1,19 @@
 #pragma once
 
 #include "oge/color.hpp"
-#include "oge/rect.hpp"
 #include "oge/point3.hpp"
-#include "oge/runtime/gfx/commands.hpp"
+#include "oge/rect.hpp"
+#include "oge/math.hpp"
+#include "oge/runtime/objects_ext.hpp"
 
-namespace game::math
+namespace game
 {
-    using namespace oge::math;
-}
-
-namespace game::view::gfx
+namespace view::gfx
 {
-using oge::runtime::GPUChunkedAllocation;
+namespace math = ::oge::math;
 using oge::Point3;
+using oge::runtime::GPUChunkedAllocation;
+using oge::runtime::PSprite;
 
 using namespace oge::rects;
 using namespace oge::colors;
@@ -21,7 +21,7 @@ using namespace oge::gpu_objects;
 
 struct PDebugRect : IRect
 {
-    ColorRGBA8 color = COLOR_WHITE;
+    ColorRGBA8 color = WHITE;
 };
 
 struct PViewTransform
@@ -82,7 +82,8 @@ struct CmdDrawDebugRect
 struct CmdAddView
 {
     IRect16 rect;
-    math::mat4 view = math::lookAt(math::vec3(20, 20, 20), math::vec3(0, 0, 0), math::vec3(0, 1, 0));
+    math::mat4 view = math::lookAt(math::vec3(20, 20, 20), math::vec3(0, 0, 0),
+                                   math::vec3(0, 1, 0));
     float fov = math::radians(45.0f);
     float aspect = 0.f;
 };
@@ -91,4 +92,15 @@ class RequiresVPTransform
 {
 };
 
-} // namespace game::view::gfx
+class RequiresScreenAffine
+{
+};
+
+struct ScreenAffine
+{
+    math::mat2 transform;
+    math::vec2 offset;
+};
+
+}  // namespace game::view::gfx
+}

@@ -52,7 +52,8 @@ class SkylineAllocator
         InsertNode(bestIndex, bestX, bestY, width, height);
 
         output.pos = UPoint2{bestX, bestY};
-        output.extent = UPoint2{bestX + width - m_padding, bestY + height - m_padding};
+        output.extent =
+            UPoint2{bestX + width - m_padding, bestY + height - m_padding};
 
         return true;
     }
@@ -96,7 +97,8 @@ class SkylineAllocator
         return y;
     }
 
-    void InsertNode(int index, uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+    void InsertNode(int index, uint32_t x, uint32_t y, uint32_t width,
+                    uint32_t height)
     {
         Node newNode;
         newNode.x = x;
@@ -160,21 +162,31 @@ const uint32_t SKYLINE_PADDING = 2;
 class DynamicSkylineAllocator
 {
    public:
-    DynamicSkylineAllocator(uint32_t atlasWidth = 1024, uint32_t atlasHeight = 1024)
+    DynamicSkylineAllocator(uint32_t atlasWidth = 1024,
+                            uint32_t atlasHeight = 1024)
         : m_atlasWidth(atlasWidth), m_atlasHeight(atlasHeight)
     {
     }
 
-    uint32_t GetWidth() { return m_atlasWidth; }
-    uint32_t GetHeight() { return m_atlasHeight; }
+    uint32_t GetWidth()
+    {
+        return m_atlasWidth;
+    }
+    uint32_t GetHeight()
+    {
+        return m_atlasHeight;
+    }
 
-    GPUTextureRegion Allocate(graphics::IGraphicsBackend& backend, uint32_t width, uint32_t height)
+    GPUTextureRegion Allocate(graphics::IGraphicsBackend& backend,
+                              uint32_t width, uint32_t height)
     {
         GPUTextureRegion output;
         if (m_allocators.empty())
         {
-            m_allocators.emplace_back(m_atlasWidth, m_atlasHeight, SKYLINE_PADDING);
-            m_textures.push_back(backend.AllocateGPUTexture(m_atlasWidth, m_atlasHeight));
+            m_allocators.emplace_back(m_atlasWidth, m_atlasHeight,
+                                      SKYLINE_PADDING);
+            m_textures.push_back(
+                backend.AllocateGPUTexture(m_atlasWidth, m_atlasHeight));
         }
         if (m_allocators.back().Allocate(width, height, output.region))
         {
@@ -182,8 +194,10 @@ class DynamicSkylineAllocator
         }
         else
         {
-            m_allocators.emplace_back(m_atlasWidth, m_atlasHeight, SKYLINE_PADDING);
-            m_textures.push_back(backend.AllocateGPUTexture(m_atlasWidth, m_atlasHeight));
+            m_allocators.emplace_back(m_atlasWidth, m_atlasHeight,
+                                      SKYLINE_PADDING);
+            m_textures.push_back(
+                backend.AllocateGPUTexture(m_atlasWidth, m_atlasHeight));
             assert(m_allocators.back().Allocate(width, height, output.region));
             output.texture = m_textures.back();
         }
@@ -196,4 +210,4 @@ class DynamicSkylineAllocator
     std::vector<SkylineAllocator> m_allocators;
     std::vector<GPUTextureHandle> m_textures;
 };
-}  // namespace oge::runtime::renderer
+}  // namespace oge::runtime::gfx

@@ -4,6 +4,7 @@ set(APP_NAME Arterium)
 include(cmake/utils.cmake)
 
 option(GAME_BUILD_TARGET "Target to build" "Client")
+option(ENABLE_ASAN "Enable AddressSanitizer")
 
 if (GAME_BUILD_TARGET STREQUAL "android")
 message(STATUS "building android")
@@ -17,7 +18,7 @@ endif()
 message(STATUS "Compiler ID: ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
 
-if (CMAKE_BUILD_TYPE STREQUAL "Release")
+if (CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ENABLE_ASAN)
 if(CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC" OR MSVC)
     # Target only optimized configurations
     set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /OPT:REF /OPT:ICF")
@@ -43,6 +44,18 @@ if (ipo_supported)
 endif()
 endif()
 
+if(ENABLE_ASAN)
+    add_compile_options(
+        -fsanitize=address
+        -fno-omit-frame-pointer
+        -g
+    )
+
+    add_link_options(
+        -fsanitize=address
+    )
+endif()
+
 include(cmake/build_config.cmake)
 
 if(NOT GAME_BUILD_TARGET STREQUAL "android")
@@ -50,6 +63,7 @@ add_subdirectory(engine)
 add_subdirectory(game)
 if(GAME_BUILD_TARGET STREQUAL "client")
 add_subdirectory(game_desktop)
+add_subdirectory(game_server)
 elseif(GAME_BUILD_TARGET STREQUAL "server")
 add_subdirectory(game_server)
 endif()

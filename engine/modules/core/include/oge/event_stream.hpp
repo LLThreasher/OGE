@@ -14,6 +14,8 @@ template <typename T, size_t Capacity = 256>
 class DiscreteEventStream : public RingBuffer<T, Capacity>
 {
    public:
+    static constexpr size_t MCapacity = Capacity;
+    using TEvent = T;
     using Base = RingBuffer<T, Capacity>;
     using Cursor = typename Base::Index;
 
@@ -26,7 +28,15 @@ class DiscreteEventStream : public RingBuffer<T, Capacity>
     {
         if (cursor == 0) cursor = frontier;
 
-        if (cursor >= frontier) return false;
+        if (cursor >= frontier)
+        {
+            if (cursor > frontier)
+            {
+                LOG_WARN("advanced cursor detected at {}, current head {}",
+                         cursor, frontier);
+            }
+            return false;
+        }
 
         if (frontier - cursor > Capacity)
         {
@@ -39,7 +49,10 @@ class DiscreteEventStream : public RingBuffer<T, Capacity>
         return true;
     }
 
-    void AdvanceCursor(Cursor& cursor) const { cursor = Base::HeadIndex(); }
+    void AdvanceCursor(Cursor& cursor) const
+    {
+        cursor = Base::HeadIndex();
+    }
 };
 
 template <typename T>
@@ -66,8 +79,7 @@ class AccumulativeEventStream : public DiscreteEventStream<T, bufferSize>
         if (this->HeadIndex() - cursor > bufferSize)
             LOG_WARN("stale cursor detected at {}, current head {}", cursor,
                      this->HeadIndex());
-        auto res = this->Get(frontier - 1) -
-                   this->Get(cursor - 1);
+        auto res = this->Get(frontier - 1) - this->Get(cursor - 1);
         cursor = frontier;
         return res;
     }

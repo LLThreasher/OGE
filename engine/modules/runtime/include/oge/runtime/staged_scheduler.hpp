@@ -1,12 +1,9 @@
 #pragma once
 #include <algorithm>
-#include <functional>
 #include <memory>
 #include <type_traits>
-#include <unordered_map>
 #include <vector>
 
-#include "oge/log.hpp"
 #include "oge/runtime/tick_scheduler.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
@@ -37,17 +34,43 @@ class BasePipeline
     using TFrameCtx = typename TStage::FrameCtx;
 
    public:
-    BasePipeline(TCtx& ctx, AnythingFactory& factory) : m_ctx(ctx), m_factory(factory) {}
+    BasePipeline(TCtx& ctx) : m_ctx(ctx)
+    {
+    }
+    ~BasePipeline()
+    {
+        Clear();
+    }
+
+    template <typename TDerived>
+    TDerived* AddStage(AnythingFactory& af)
+    {
+        return reinterpret_cast<TDerived*>(AddStage(af, af.Id<TDerived>()));
+    }
+
+    template <typename TDerived>
+    TDerived* AddStage(AnythingFactory& af, typename TDerived::Def data)
+    {
+        return reinterpret_cast<TDerived*>(
+            AddStage(af, af.Id<TDerived>(), data));
+    }
+
+    TStage* AddStage(AnythingFactory& af, oge_id_type id, entt::any data = {})
+    {
+        return AddStage(af.BuildABC<TStage>(id, data));
+    }
 
     TStage* AddStage(std::unique_ptr<TStage> stage)
     {
+        assert(stage);
         m_stages.push_back(std::move(stage));
         assert(m_stages.back() != nullptr && "nullptr stage");
         m_stages.back()->onAttach(m_ctx);
         return m_stages.back().get();
     }
 
-    std::unique_ptr<TStage> SwapOutStage(std::unique_ptr<TStage> newStage, TStage* oldStage)
+    std::unique_ptr<TStage> SwapOutStage(std::unique_ptr<TStage> newStage,
+                                         TStage* oldStage)
     {
         auto it = FindStage(oldStage);
         if (it == m_stages.end()) return nullptr;
@@ -94,51 +117,29 @@ class BasePipeline
    protected:
     auto FindStage(TStage* handle)
     {
-        auto it =
-            std::find_if(m_stages.begin(), m_stages.end(), [handle](const auto& ptr) { return ptr.get() == handle; });
+        auto it = std::find_if(m_stages.begin(), m_stages.end(),
+                               [handle](const auto& ptr)
+                               { return ptr.get() == handle; });
         return it;
     }
 
     std::vector<std::unique_ptr<TStage>> m_stages;
-    AnythingFactory& m_factory;
     TCtx& m_ctx;
 };
 
 template <typename TControl, typename TStage, typename TFrameData = float>
-class DefaultPipeline : public BasePipeline<TControl, TStage, TFrameData>
-{
-   public:
-    DefaultPipeline(TStage::Ctx& ctx, AnythingFactory& af) : BasePipeline<TControl, TStage, TFrameData>(ctx, af) {}
-    template <typename TSys>
-    TStage* AddStage()
-    {
-        return BasePipeline<TControl, TStage, TFrameData>::AddStage(this->m_factory.template BuildABC<TStage>(entt::type_hash<TSys>::value()));
-    }
-};
-
-template <typename TControl, typename TStage, typename TFrameData = float>
-class DefPipeline : public BasePipeline<TControl, TStage, TFrameData>
-{
-   public:
-    DefPipeline(TStage::Ctx& ctx, AnythingFactory& af) : BasePipeline<TControl, TStage, TFrameData>(ctx, af) {}
-    template <typename TSys>
-    TStage* AddStage(TStage::Def def)
-    {
-        return BasePipeline<TControl, TStage, TFrameData>::AddStage(
-            this->m_factory.template BuildABC<TStage>(entt::type_hash<TSys>::value(), def));
-    }
-};
-
-template <typename TControl, typename TStage, typename TFrameData = float>
-using Pipeline = std::conditional_t<IsABC<TStage>, DefPipeline<TControl, TStage, TFrameData>,
-                                    DefaultPipeline<TControl, TStage, TFrameData>>;
+using Pipeline = BasePipeline<TControl, TStage, TFrameData>;
 
 template <typename TStage, typename TFrameData = float>
-class FramePipeline : public Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>
+class FramePipeline
+    : public Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>
 {
    public:
-    using TPipeline = Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>;
-    FramePipeline(TStage::Ctx& ctx, AnythingFactory& af) : TPipeline(ctx, af) {}
+    using TPipeline =
+        Pipeline<FramePipeline<TStage, TFrameData>, TStage, TFrameData>;
+    FramePipeline(TStage::Ctx& ctx) : TPipeline(ctx)
+    {
+    }
     template <typename Fn>
     void onUpdate(TFrameData dt, typename TStage::Ctx& ctx, Fn&& update)
     {
@@ -147,14 +148,17 @@ class FramePipeline : public Pipeline<FramePipeline<TStage, TFrameData>, TStage,
 };
 
 template <typename TStage, typename FrameData = float>
-class FixedStepPipeline : public Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>
+class FixedStepPipeline
+    : public Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>
 {
    public:
-    using TPipeline = Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>;
-    FixedStepPipeline(TStage::Ctx& ctx, AnythingFactory& af, float updateInterval = 1.f / 60.f)
-        : TPipeline(ctx, af), m_tickScheduler(updateInterval)
+    using TPipeline =
+        Pipeline<FixedStepPipeline<TStage, FrameData>, TStage, FrameData>;
+    FixedStepPipeline(TStage::Ctx& ctx, float updateInterval = 1.f / 60.f)
+        : TPipeline(ctx), m_tickScheduler(updateInterval)
     {
     }
+
     template <typename Fn>
     void onUpdate(FrameData frame, typename TStage::Ctx& ctx, Fn&& update)
     {
@@ -177,7 +181,15 @@ class FixedStepPipeline : public Pipeline<FixedStepPipeline<TStage, FrameData>, 
         }
     }
 
-    float GetAlpha() { return m_tickScheduler.GetAlpha(); }
+    float GetAlpha()
+    {
+        return m_tickScheduler.GetAlpha();
+    }
+
+    void SetUpdateInterval(float interval)
+    {
+        m_tickScheduler.SetInterval(interval);
+    }
 
    private:
     TickScheduler m_tickScheduler;

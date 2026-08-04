@@ -1,16 +1,18 @@
 #pragma once
 
-#include "oge/runtime/gfx/draw_context.hpp"
-#include "oge/point3.hpp"
 #include "game/view/gfx/commands.hpp"
 #include "game/view/submission_queue.hpp"
+#include "oge/point3.hpp"
+#include "oge/runtime/gfx/draw_context.hpp"
+#include "oge/runtime/gfx/pass.hpp"
 
 namespace game::view::gfx
 {
 
 constexpr uint32_t BLOCK_TEXTURE_SIZE = 16;
 
-class TerrainPass2 : public RequiresVPTransform, public Pass<CmdDrawTerrainMeshOpaque>
+class TerrainPass2 : public RequiresVPTransform,
+                     public oge::runtime::gfx::Pass<CmdDrawTerrainMeshOpaque>
 {
     struct TerrainMesh
     {
@@ -25,25 +27,33 @@ class TerrainPass2 : public RequiresVPTransform, public Pass<CmdDrawTerrainMeshO
     };
 
    public:
-    TerrainPass2() {}
+    TerrainPass2()
+    {
+    }
 
-    void UpdateBlockTexture(AssetContext& assets, const std::string& id, uint32_t slot);
+    void UpdateBlockTexture(AssetContext& assets, const std::string& id,
+                            uint32_t slot);
     void onAttach(InitDrawContext& ctx);
     void onDetach(InitDrawContext& ctx);
     void onUpdate(DrawContext& ctx, View view, const math::mat4& pvTransform);
 
    private:
-    GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend, FrameArena& arena,
-                                                  GPUBufferHandle storageBuffer, uint32_t chunkSize);
+    GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend,
+                                                  FrameArena& arena,
+                                                  GPUBufferHandle storageBuffer,
+                                                  uint32_t chunkSize);
 
-    std::unordered_map<GPUBindingGroupHandle, std::vector<TerrainMesh>, HandleHash<GPUBindingGroupHandle>>
+    std::unordered_map<GPUBindingGroupHandle, std::vector<TerrainMesh>,
+                       HandleHash<GPUBindingGroupHandle>>
         activeChunkSlots;
     std::vector<UBO> ubos;
 
-    std::unordered_map<GPUBufferHandle, GPUBindingGroupHandle, HandleHash<GPUBufferHandle>> cachedBindingGroups;
+    std::unordered_map<GPUBufferHandle, GPUBindingGroupHandle,
+                       HandleHash<GPUBufferHandle>>
+        cachedBindingGroups;
 
     GPUPipelineHandle pipelineHandle;
     GPUBindingGroupLayoutHandle bindingGroupLayout;
     GPUTextureHandle blockTexture;
 };
-}  // namespace oge::runtime::renderer
+}  // namespace game::view::gfx

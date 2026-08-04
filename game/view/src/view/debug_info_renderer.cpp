@@ -6,7 +6,9 @@
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
 #include "oge/graphics/backend.hpp"
+#include "oge/handle.hpp"
 #include "oge/point2.hpp"
+#include "oge/pool.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/entt.hpp"
 
@@ -17,7 +19,9 @@ void DebugInfoRenderer::onAttach(RendererState& ctx)
     debugFont = ctx.assets.LoadASCIIBitmapFont16x6("om_tall_plain_idx.png");
 }
 
-void DebugInfoRenderer::onDetach(RendererState& ctx) {}
+void DebugInfoRenderer::onDetach(RendererState& ctx)
+{
+}
 
 void DebugInfoRenderer::onUpdate(FRendererState& ctx)
 {
@@ -31,13 +35,16 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
         m_budgetGPUMem = memUsage.heapBudget[0];
     }
 
-    auto& spriteQueue = ctx.submissionQueue.View<oge::runtime::gfx::CmdDrawSprite>().GetSingle(GameViewType::Overlay);
+    auto spriteView =
+        ctx.submissionQueue.View<oge::runtime::CmdDrawSprite>();
+    auto& spriteQueue = spriteView.GetSingle(GameViewType::Overlay);
 
-    std::pmr::string debugString{ctx.memory.frameBuffer.Resource()};
+    debugString.clear();
     debugString.reserve(1024);
-    for (auto [e, txt] : ctx.world.view<const DebugText>().each())
+    auto& pool = ctx.world.ctx().get<oge::Pool<0, DebugText>>();
+    for (oge::Handle<0> cursor{}; auto txt = pool.Poll(cursor);)
     {
-        debugString.append(txt.text);
+        debugString.append(txt->text);
         debugString.push_back('\n');
     }
 
@@ -47,15 +54,19 @@ void DebugInfoRenderer::onUpdate(FRendererState& ctx)
         gpuDebugString.clear();
         gpuDebugString.append(gpuInfo.name);
         gpuDebugString.push_back('\n');
-        fmt::format_to(std::back_inserter(gpuDebugString), "FPS {:.2f}\n", 1.f / ctx.dt);
-        fmt::format_to(std::back_inserter(gpuDebugString), "GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024,
+        fmt::format_to(std::back_inserter(gpuDebugString), "FPS {:.2f}\n",
+                       1.f / ctx.dt);
+        fmt::format_to(std::back_inserter(gpuDebugString),
+                       "GPU MEM: {} / {} MB", m_currentGPUMem / 1024 / 1024,
                        m_budgetGPUMem / 1024 / 1024);
     }
-    
+
     uint8_t offsetX = 40;
     uint8_t offsetY = 10;
     debugString.append(gpuDebugString);
-    debugFont->CreateTextSprites(spriteQueue, {debugString, 32},
-                                 {{{offsetX, offsetY}, ctx.assets.backend.SwapchainExtent() - oge::U16Point2{offsetX, offsetY}}});
+    debugFont->CreateTextSprites(spriteQueue, {debugString, 16},
+                                 {{{offsetX, offsetY},
+                                   ctx.assets.backend.SwapchainExtent() -
+                                       oge::U16Point2{offsetX, offsetY}}});
 }
 }  // namespace game::view

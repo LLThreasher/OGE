@@ -2,14 +2,20 @@
 
 #include <enet/enet.h>
 
+#include <memory_resource>
+
+#include "enet_interface.hpp"
+#include "entt/graph/fwd.hpp"
+#include "oge/log.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 namespace oge::runtime
 {
 bool NetServer::Initialize(uint16_t port, size_t maxClients,
-                           size_t channelCount)
+                           size_t channelCount,
+                           std::pmr::memory_resource* memory)
 {
-    if (enet_initialize() != 0)
+    if (oge_enet_initialize(memory) != 0)
     {
         LOG_ERROR("ENet init failed");
         return false;
@@ -32,8 +38,10 @@ bool NetServer::Initialize(uint16_t port, size_t maxClients,
     return true;
 }
 
-void NetServer::Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs)
+void NetServer::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
 {
+    UpdatePacketStats(dt);
+
     if (!host) return;
 
     ENetEvent event;
@@ -44,22 +52,27 @@ void NetServer::Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs)
         {
             case ENET_EVENT_TYPE_CONNECT:
                 OnClientConnected(event.peer);
-                dispatcher.trigger<OnServerReceiveConnect>({event.peer});
+                dispatcher.trigger<OnServerReceiveConnect>(
+                    {event.peer, event.peer->incomingPeerID});
                 break;
 
             case ENET_EVENT_TYPE_RECEIVE:
                 OnPacketReceived(event.peer, event.packet->data,
                                  event.packet->dataLength);
-                dispatcher.trigger<OnServerReceivePacket>(
-                    {event.peer,
-                     net::Buffer{event.packet->data, event.packet->dataLength}
-                         .ToReadOnly()});
+                {
+                    auto buffer = net::Buffer{event.packet->data,
+                                              event.packet->dataLength}
+                                      .ToReadOnly();
+                    dispatcher.trigger<OnServerReceivePacket>(
+                        {event.peer, event.peer->incomingPeerID, &buffer});
+                }
                 enet_packet_destroy(event.packet);
                 break;
 
             case ENET_EVENT_TYPE_DISCONNECT:
                 OnClientDisconnected(event.peer);
-                dispatcher.trigger<OnServerReceiveDisconnect>({event.peer});
+                dispatcher.trigger<OnServerReceiveDisconnect>(
+                    {event.peer, event.peer->incomingPeerID});
                 break;
 
             default:
@@ -74,34 +87,29 @@ void NetServer::Shutdown()
     {
         enet_host_destroy(host);
         host = nullptr;
-        enet_deinitialize();
+        oge_enet_shutdown();
         LOG_INFO("Server shutdown");
     }
 }
 
-net::Buffer NetServer::StartPacket(size_t size)
+void NetServer::Disconnect(ENetPeer* peer, uint32_t signal)
 {
-    return sendPacketProducer.AllocPacket(size);
+    enet_peer_disconnect_later(peer, signal);
 }
 
-void NetServer::SendReliable(ENetPeer* peer, net::Buffer data,
-                             uint8_t channel)
+void NetServer::OnClientConnected(ENetPeer* peer)
 {
-    ENetPacket* packet =
-        enet_packet_create(data.Data().data(), data.Data().size(), ENET_PACKET_FLAG_RELIABLE);
-    
-    sendPacketProducer.FreePacket(data);
-
-    enet_peer_send(peer, channel, packet);
+    LOG_INFO("Client connected in({}), out({})", peer->incomingPeerID, peer->outgoingPeerID);
 }
 
-void NetServer::SendUnreliable(ENetPeer* peer, net::Buffer data,
-                               uint8_t channel)
+void NetServer::OnClientDisconnected(ENetPeer* peer)
 {
-    ENetPacket* packet = enet_packet_create(data.Data().data(), data.Data().size(), 0);
+    LOG_INFO("Client disconnected in({}), out({})", peer->incomingPeerID, peer->outgoingPeerID);
+}
 
-    sendPacketProducer.FreePacket(data);
-
-    enet_peer_send(peer, channel, packet);
+void NetServer::OnPacketReceived(ENetPeer* peer, uint8_t* data, size_t length)
+{
+    // LOG_DEBUG("Server received {} bytes from {}", length, peer->incomingPeerID);
+    RecordReceive(length);
 }
 }  // namespace oge::runtime

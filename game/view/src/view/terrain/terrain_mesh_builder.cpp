@@ -13,7 +13,8 @@ constexpr size_t oppositeFace[6] = {
 };
 
 constexpr std::array<uint16_t, 16> fullMask = {
-    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
+    0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
 };
 
 using namespace oge::graphics;
@@ -25,14 +26,19 @@ static size_t MaskIndex(size_t z, size_t y)
     return (z * 18) + y;
 }
 
-inline int32_t MaskHasBlock(const uint32_t* masks, int32_t x, int32_t y, int32_t z)
+inline int32_t MaskHasBlock(const uint32_t* masks, int32_t x, int32_t y,
+                            int32_t z)
 {
     return (masks[MaskIndex(z + 1, y + 1)] & (1 << (x + 1))) != 0 ? 1 : 0;
 }
 
-inline uint8_t VertexAO(uint8_t corner, uint8_t s1, uint8_t s2) { return (s1 & s2) ? 3 : (s1 + s2 + corner); }
+inline uint8_t VertexAO(uint8_t corner, uint8_t s1, uint8_t s2)
+{
+    return (s1 & s2) ? 3 : (s1 + s2 + corner);
+}
 
-void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltChunkMesh2* context,
+void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context,
+                               BuiltChunkMesh2* context,
                                const BlockRegistry& blocks)
 {
     const uint32_t* masks = _context->opaqueMasks;
@@ -61,7 +67,8 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 int wy = y - 1;
                 int wz = z - 1;
 
-                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[0];
+                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(
+                    _context->compressedChunk.Get(x, wy, wz)))[0];
 
                 // -X face
                 TexturedQuad quad{
@@ -70,16 +77,20 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                     (uint8_t)wz,
                     0u,
                     texSlot,
-                    COLOR_WHITE,
+                    WHITE,
                     {0xF, 0xF, 0xF, 0xF},
                     {
-                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz - 1), MaskHasBlock(masks, x - 1, wy - 1, wz),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz - 1),
+                                 MaskHasBlock(masks, x - 1, wy - 1, wz),
                                  MaskHasBlock(masks, x - 1, wy, wz - 1)),
-                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz + 1), MaskHasBlock(masks, x - 1, wy - 1, wz),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz + 1),
+                                 MaskHasBlock(masks, x - 1, wy - 1, wz),
                                  MaskHasBlock(masks, x - 1, wy, wz + 1)),
-                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz + 1), MaskHasBlock(masks, x - 1, wy + 1, wz),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz + 1),
+                                 MaskHasBlock(masks, x - 1, wy + 1, wz),
                                  MaskHasBlock(masks, x - 1, wy, wz + 1)),
-                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz - 1), MaskHasBlock(masks, x - 1, wy + 1, wz),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz - 1),
+                                 MaskHasBlock(masks, x - 1, wy + 1, wz),
                                  MaskHasBlock(masks, x - 1, wy, wz - 1)),
                     }};
                 context->quads.emplace_back(quad);
@@ -95,7 +106,8 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 int wy = y - 1;
                 int wz = z - 1;
 
-                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[1];
+                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(
+                    _context->compressedChunk.Get(x, wy, wz)))[1];
 
                 // +X face
                 TexturedQuad quad{
@@ -104,16 +116,20 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                     (uint8_t)wz,
                     1u,
                     texSlot,
-                    COLOR_WHITE,
+                    WHITE,
                     {0xF, 0xF, 0xF, 0xF},
                     {
-                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz + 1), MaskHasBlock(masks, x + 1, wy - 1, wz),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz + 1),
+                                 MaskHasBlock(masks, x + 1, wy - 1, wz),
                                  MaskHasBlock(masks, x + 1, wy, wz + 1)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz - 1), MaskHasBlock(masks, x + 1, wy - 1, wz),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz - 1),
+                                 MaskHasBlock(masks, x + 1, wy - 1, wz),
                                  MaskHasBlock(masks, x + 1, wy, wz - 1)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz - 1), MaskHasBlock(masks, x + 1, wy + 1, wz),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz - 1),
+                                 MaskHasBlock(masks, x + 1, wy + 1, wz),
                                  MaskHasBlock(masks, x + 1, wy, wz - 1)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz + 1), MaskHasBlock(masks, x + 1, wy + 1, wz),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz + 1),
+                                 MaskHasBlock(masks, x + 1, wy + 1, wz),
                                  MaskHasBlock(masks, x + 1, wy, wz + 1)),
                     }};
                 context->quads.emplace_back(quad);
@@ -129,7 +145,8 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 int wy = y - 1;
                 int wz = z - 1;
 
-                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[2];
+                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(
+                    _context->compressedChunk.Get(x, wy, wz)))[2];
 
                 // +Y face
                 TexturedQuad quad{
@@ -138,16 +155,20 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                     (uint8_t)wz,
                     2u,
                     texSlot,
-                    COLOR_WHITE,
+                    WHITE,
                     {0xF, 0xF, 0xF, 0xF},
                     {
-                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz + 1),
+                                 MaskHasBlock(masks, x, wy + 1, wz + 1),
                                  MaskHasBlock(masks, x - 1, wy + 1, wz)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz + 1),
+                                 MaskHasBlock(masks, x, wy + 1, wz + 1),
                                  MaskHasBlock(masks, x + 1, wy + 1, wz)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz - 1),
+                                 MaskHasBlock(masks, x, wy + 1, wz - 1),
                                  MaskHasBlock(masks, x + 1, wy + 1, wz)),
-                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz - 1),
+                                 MaskHasBlock(masks, x, wy + 1, wz - 1),
                                  MaskHasBlock(masks, x - 1, wy + 1, wz)),
                     }};
                 context->quads.emplace_back(quad);
@@ -163,7 +184,8 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 int wy = y - 1;
                 int wz = z - 1;
 
-                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[3];
+                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(
+                    _context->compressedChunk.Get(x, wy, wz)))[3];
 
                 // -Y face
                 TexturedQuad quad{
@@ -172,16 +194,20 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                     (uint8_t)wz,
                     3u,
                     texSlot,
-                    COLOR_WHITE,
+                    WHITE,
                     {0xF, 0xF, 0xF, 0xF},
                     {
-                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz - 1), MaskHasBlock(masks, x, wy - 1, wz - 1),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz - 1),
+                                 MaskHasBlock(masks, x, wy - 1, wz - 1),
                                  MaskHasBlock(masks, x - 1, wy - 1, wz)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz + 1), MaskHasBlock(masks, x, wy - 1, wz + 1),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz + 1),
+                                 MaskHasBlock(masks, x, wy - 1, wz + 1),
                                  MaskHasBlock(masks, x + 1, wy - 1, wz)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz - 1), MaskHasBlock(masks, x, wy - 1, wz - 1),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz - 1),
+                                 MaskHasBlock(masks, x, wy - 1, wz - 1),
                                  MaskHasBlock(masks, x + 1, wy - 1, wz)),
-                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz + 1), MaskHasBlock(masks, x, wy - 1, wz + 1),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz + 1),
+                                 MaskHasBlock(masks, x, wy - 1, wz + 1),
                                  MaskHasBlock(masks, x - 1, wy - 1, wz)),
                     }};
                 context->quads.emplace_back(quad);
@@ -197,7 +223,8 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 int wy = y - 1;
                 int wz = z - 1;
 
-                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[4];
+                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(
+                    _context->compressedChunk.Get(x, wy, wz)))[4];
 
                 // +Z face
                 TexturedQuad quad{
@@ -206,16 +233,20 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                     (uint8_t)wz,
                     4u,
                     texSlot,
-                    COLOR_WHITE,
+                    WHITE,
                     {0xF, 0xF, 0xF, 0xF},
                     {
-                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz + 1), MaskHasBlock(masks, x, wy - 1, wz + 1),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz + 1),
+                                 MaskHasBlock(masks, x, wy - 1, wz + 1),
                                  MaskHasBlock(masks, x - 1, wy, wz + 1)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz + 1), MaskHasBlock(masks, x, wy - 1, wz + 1),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz + 1),
+                                 MaskHasBlock(masks, x, wy - 1, wz + 1),
                                  MaskHasBlock(masks, x + 1, wy, wz + 1)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz + 1),
+                                 MaskHasBlock(masks, x, wy + 1, wz + 1),
                                  MaskHasBlock(masks, x + 1, wy, wz + 1)),
-                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz + 1), MaskHasBlock(masks, x, wy + 1, wz + 1),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz + 1),
+                                 MaskHasBlock(masks, x, wy + 1, wz + 1),
                                  MaskHasBlock(masks, x - 1, wy, wz + 1)),
                     }};
                 context->quads.emplace_back(quad);
@@ -231,7 +262,8 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                 int wy = y - 1;
                 int wz = z - 1;
 
-                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(_context->compressedChunk.Get(x, wy, wz)))[5];
+                uint8_t texSlot = blocks.GetTextureSlot(blocks.GetBlockId(
+                    _context->compressedChunk.Get(x, wy, wz)))[5];
 
                 // -Z face
                 TexturedQuad quad{
@@ -240,16 +272,20 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
                     (uint8_t)wz,
                     5u,
                     texSlot,
-                    COLOR_WHITE,
+                    WHITE,
                     {0xF, 0xF, 0xF, 0xF},
                     {
-                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz - 1), MaskHasBlock(masks, x, wy - 1, wz - 1),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy - 1, wz - 1),
+                                 MaskHasBlock(masks, x, wy - 1, wz - 1),
                                  MaskHasBlock(masks, x + 1, wy, wz - 1)),
-                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz - 1), MaskHasBlock(masks, x, wy - 1, wz - 1),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy - 1, wz - 1),
+                                 MaskHasBlock(masks, x, wy - 1, wz - 1),
                                  MaskHasBlock(masks, x - 1, wy, wz - 1)),
-                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1),
+                        VertexAO(MaskHasBlock(masks, x - 1, wy + 1, wz - 1),
+                                 MaskHasBlock(masks, x, wy + 1, wz - 1),
                                  MaskHasBlock(masks, x - 1, wy, wz - 1)),
-                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz - 1), MaskHasBlock(masks, x, wy + 1, wz - 1),
+                        VertexAO(MaskHasBlock(masks, x + 1, wy + 1, wz - 1),
+                                 MaskHasBlock(masks, x, wy + 1, wz - 1),
                                  MaskHasBlock(masks, x + 1, wy, wz - 1)),
                     }};
                 context->quads.emplace_back(quad);
@@ -258,23 +294,27 @@ void ExecuteBuildChunkMeshJob2(const ChunkMeshingWorkerContext* _context, BuiltC
     }
 }
 
-void TerrainMeshBuilder::ExecuteBuildChunkMesh(TerrainPresentationData& terrain, MeshingWorkerContextHandle handle,
-                                               const BlockRegistry& blocks)
+void TerrainMeshBuilder::ExecuteBuildChunkMesh(
+    TerrainPresentationData& terrain, MeshingWorkerContextHandle handle,
+    const BlockRegistry& blocks)
 {
     m_runningVertexCount += CHUNK_VERTEX_BYTE_SIZE;
     auto _context = terrain.meshingWorkerContexts.Get(handle);
     auto context = terrain.builtChunkMeshes.Get(_context->chunkMeshHandle);
     ExecuteBuildChunkMeshJob2(_context, context, blocks);
     if (!terrain.builtChunkMeshes.Get(_context->chunkMeshHandle)->quads.empty())
-        terrain.uploadMeshQueue.push(std::make_tuple(_context->chunkHandle, _context->chunkMeshHandle));
+        terrain.uploadMeshQueue.push(
+            std::make_tuple(_context->chunkHandle, _context->chunkMeshHandle));
     else
         terrain.builtChunkMeshes.Destroy(_context->chunkMeshHandle);
     terrain.meshingWorkerContexts.Destroy(handle);
     m_runningVertexCount -= CHUNK_VERTEX_BYTE_SIZE;
 }
 
-void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const BlockRegistry& blocks,
-                                          TerrainPresentationData& pData, std::pmr::memory_resource* memory)
+void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain,
+                                          const BlockRegistry& blocks,
+                                          TerrainPresentationData& pData,
+                                          std::pmr::memory_resource* memory)
 {
     while (!pData.buildMeshQueue.empty())
     {
@@ -285,7 +325,8 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
         auto handle = std::move(pData.buildMeshQueue.front());
         pData.buildMeshQueue.pop();
         auto data = terrain.chunks.Get(handle);
-        // LOG_DEBUG("building mesh at ({}, {}, {})", data->Coords.x, data->Coords.y, data->Coords.z);
+        // LOG_DEBUG("building mesh at ({}, {}, {})", data->Coords.x,
+        // data->Coords.y, data->Coords.z);
 
         // skip chunks with missing neighbors
         const ChunkData* neighbors[6] = {};
@@ -309,7 +350,8 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
                 {
                     size_t blkIdx = GetBlockIndex(x, y, z);
                     assert(blkIdx < CHUNK_SIZE_TOTAL);
-                    uint32_t opaque = blocks.IsOpaque(blocks.GetBlockId(data->data[blkIdx]));
+                    uint32_t opaque =
+                        blocks.IsOpaque(blocks.GetBlockId(data->data[blkIdx]));
                     context->opaqueMasks[midx] |= opaque << (x + 1);
                 }
             }
@@ -326,7 +368,8 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
                 {
                     for (size_t y = 0; y < CHUNK_SIZE_Y; ++y)
                     {
-                        context->opaqueMasks[MaskIndex(z + 1, y + 1)] |= 1 << extendedX;
+                        context->opaqueMasks[MaskIndex(z + 1, y + 1)] |=
+                            1 << extendedX;
                     }
                 }
             }
@@ -340,7 +383,8 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
                         uint8_t neighborX = i == 0 ? 0 : 15;
                         auto midx = MaskIndex(z + 1, y + 1);
                         context->opaqueMasks[midx] |=
-                            blocks.IsOpaque(blocks.GetBlockId(neighborData[GetBlockIndex(neighborX, y, z)]))
+                            blocks.IsOpaque(blocks.GetBlockId(
+                                neighborData[GetBlockIndex(neighborX, y, z)]))
                             << extendedX;
                     }
                 }
@@ -375,7 +419,9 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
                     {
                         uint8_t neighborY = i == 0 ? 0 : 15;
                         context->opaqueMasks[midx] |=
-                            blocks.IsOpaque(blocks.GetBlockId(neighborData[GetBlockIndex(x, neighborY, z)])) << (x + 1);
+                            blocks.IsOpaque(blocks.GetBlockId(
+                                neighborData[GetBlockIndex(x, neighborY, z)]))
+                            << (x + 1);
                     }
                 }
             }
@@ -408,8 +454,10 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
                     for (size_t x = 0; x < CHUNK_SIZE_X; ++x)
                     {
                         uint8_t neighborZ = i == 0 ? 0 : 15;
-                        context->opaqueMasks[midx] |= blocks.IsOpaque(neighborData[GetBlockIndex(x, y, neighborZ)])
-                                                      << (x + 1);
+                        context->opaqueMasks[midx] |=
+                            blocks.IsOpaque(
+                                neighborData[GetBlockIndex(x, y, neighborZ)])
+                            << (x + 1);
                     }
                 }
             }
@@ -430,21 +478,22 @@ void TerrainMeshBuilder::BuildChunkMeshes(const TerrainData& terrain, const Bloc
 
         if (allAndMask == 0x1FFFE)
         {
-            // LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full soild", data->Coords.x,
-            //           data->Coords.y, data->Coords.z);
+            // LOG_DEBUG(
+            //     "skip chunk meshing for ({}, {}, {}), because it is full soild",
+            //     data->Coords.x, data->Coords.y, data->Coords.z);
             pData.meshingWorkerContexts.Destroy(contextHandle);
             continue;
         }
         else if (allOrMask == 0x0)
         {
-            // LOG_DEBUG("skip chunk meshing for ({}, {}, {}), because it is full air", data->Coords.x,
-            // data->Coords.y,
-            //           data->Coords.z);
+            // LOG_DEBUG(
+            //     "skip chunk meshing for ({}, {}, {}), because it is full air",
+            //     data->Coords.x, data->Coords.y, data->Coords.z);
             pData.meshingWorkerContexts.Destroy(contextHandle);
             continue;
         }
 
-        context->compressedChunk = PaletteCompressedChunk::FromChunkData(*data);
+        PaletteCompressedChunk::FromChunkData(*data, context->compressedChunk);
 
         context->chunkMeshHandle = pData.builtChunkMeshes.Create();
         context->chunkHandle = handle;

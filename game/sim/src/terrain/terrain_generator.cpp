@@ -1,13 +1,17 @@
 #include "game/sim/terrain/subsystem_terrain.hpp"
-#include "oge/log.hpp"
+#include "game/terrain/terrain_view.hpp"
 #include "oge/fmt.hpp"
+#include "oge/log.hpp"
 
 namespace game::sim::terrain
 {
-void TerrainGenerator::GenerateTerrain(TerrainData& terrain, BlockRegistry& blocks)
+void TerrainGenerator::GenerateTerrain(TerrainData& terrain,
+                                       BlockRegistry& blocks,
+                                    TerrainView& terrainView)
 {
     int terrainGenChunkCount = 0;
-    while (!terrain.generateTerrainQueue.empty() && terrainGenChunkCount < terrainGenChunkBudget)
+    while (!terrain.generateTerrainQueue.empty() &&
+           terrainGenChunkCount < terrainGenChunkBudget)
     {
         auto handle = std::move(terrain.generateTerrainQueue.front());
         terrain.generateTerrainQueue.pop();
@@ -60,9 +64,9 @@ void TerrainGenerator::GenerateTerrain(TerrainData& terrain, BlockRegistry& bloc
             }
         }
 
-        chunk->state = ChunkState::Persistent;
-        terrain.dirtyChunks.emplace(handle);
+        // LOG_DEBUG("generated chunk {}", chunk->Coords);
+        terrainView.UpgradeChunk(handle, ChunkState::Persistent);
         terrainGenChunkCount += 1;
     }
 }
-}  // namespace OneGame::Engine::Terrain
+}  // namespace game::sim::terrain

@@ -1,18 +1,27 @@
 #pragma once
 
+#include <array>
+#include <cstddef>
+#include <cstdint>
 #include <string_view>
+
+#include "game/game_world.hpp"
+#include "game/input/player_input_stream.hpp"
 #include "oge/aabb.hpp"
+#include "oge/input/raw_input_stream.hpp"
 #include "oge/math.hpp"
 #include "oge/runtime/entt.hpp"
-
-namespace game::math
-{
-    using namespace oge::math;
-}
+#include "oge/runtime/net_serializer.hpp"
 
 namespace game
 {
+namespace math = ::oge::math;
 using oge::AABB;
+
+struct DirtyTag
+{
+    oge::BitSet256 dirtyComponents;
+};
 
 enum class UpdateType
 {
@@ -25,20 +34,32 @@ struct UpdateTag
 {
 };
 
+struct ReplicatedTag
+{
+};
+
 struct ComponentCamera
 {
     float yaw;
     float pitch;
     math::vec3 position;
     math::vec3 forward;
-    entt::entity targetPanel;
 
-    math::vec3 up() const { return glm::cross(right(), forward); }
+    math::vec3 up() const
+    {
+        return glm::cross(right(), forward);
+    }
 
     math::vec3 right() const
     {
         static glm::vec3 worldUp(0, 1, 0);
         return glm::normalize(glm::cross(forward, worldUp));
+    }
+
+    ComponentCamera(math::vec3 position = {}, math::vec3 forward = {})
+    {
+        yaw = std::atan2(forward.x, forward.z);
+        pitch = std::asin(forward.y);
     }
 
     math::mat4 view() const;
@@ -51,7 +72,10 @@ struct ComponentPerspectiveCamera
     float aspect = 1.f;
 };
 
-math::vec3 ScreenToRay(ComponentCamera camera, ComponentPerspectiveCamera pcamera, math::vec2 pos);
+math::vec3 ScreenToRay(ComponentCamera camera,
+                       ComponentPerspectiveCamera pcamera, math::vec2 pos);
+math::vec2 ScreenToView(ComponentPerspectiveCamera pcamera, math::vec2 pos);
+math::vec3 ViewToRay(ComponentCamera camera, math::vec2 pos);
 
 struct InputSourceWidget
 {
@@ -79,7 +103,10 @@ struct ComponentCreature
     math::vec2 lookOrder = {};
     bool jumpOrder = false;
 
-    void SetMaxJumpHeight(float height) { initJumpSpeed = math::sqrt(2.f * height * 9.8f); }
+    void SetMaxJumpHeight(float height)
+    {
+        initJumpSpeed = math::sqrt(2.f * height * 9.8f);
+    }
 };
 
 struct ComponentCreatureInfo
@@ -94,11 +121,21 @@ struct ComponentAABBCollider
     AABB aabb;
 };
 
+struct PlayerInfo
+{
+    std::array<uint8_t, 16> uuid;
+    math::vec3 latestPosition;
+};
+
 struct ComponentPlayer
 {
+    std::array<uint8_t, 16> id;
     float lastActionTime = 0.f;
+    input::PlayerInputStream::Cursor inputCursor{};
 
-    static entt::entity CreatePlayer(entt::registry& world, math::vec3 pos);
+    static entt::entity CreatePlayer(entt::registry& world, PlayerInfo info,
+                                     entt::entity hint = entt::null);
+    static void DestroyPlayer(entt::registry& world, PlayerInfo info);
 };
 
 struct DebugText
@@ -108,3 +145,60 @@ struct DebugText
 };
 
 }  // namespace game
+
+namespace oge::runtime
+{
+template <>
+struct TypeName<game::ReplicatedTag>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ReplicatedTag";
+    }
+};
+
+template <>
+struct TypeName<game::ComponentPlayer>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ComponentPlayer";
+    }
+};
+
+template <>
+struct TypeName<game::ComponentAABBCollider>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ComponentAABBCollider";
+    }
+};
+
+template <>
+struct TypeName<game::ComponentCamera>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ComponentCamera";
+    }
+};
+
+template <>
+struct TypeName<game::ComponentPerspectiveCamera>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ComponentPerspectiveCamera";
+    }
+};
+
+template <>
+struct TypeName<game::ComponentCreature>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ComponentCreature";
+    }
+};
+}  // namespace oge::runtime

@@ -32,4 +32,4 @@ struct WindowHandle
 #endif
 };
 
-}  // namespace OneGame::Engine::Graphics
+}  // namespace oge::platform

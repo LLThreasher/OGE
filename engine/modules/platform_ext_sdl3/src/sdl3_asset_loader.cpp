@@ -1,8 +1,10 @@
+#include "SDL3/SDL_iostream.h"
+#include "SDL3/SDL_storage.h"
 #if defined(IO_USE_SDL3)
 #include <SDL3/SDL.h>
 
-#include "oge/platform/io.hpp"
 #include "oge/log.hpp"
+#include "oge/platform/io.hpp"
 
 namespace oge::platform
 {
@@ -31,5 +33,15 @@ bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
 
     return true;
 }
-}  // namespace OneGame::Engine
+
+bool TrySaveBlob(const std::string_view& id, const std::vector<char>& output)
+{
+#ifdef PLATFORM_ANDROID
+    return SDL_SaveFile(std::string(id).c_str(), output.data(), output.size());
+#else
+    std::string path = fmt::format("{}assets/{}", SDL_GetBasePath(), id);
+    return SDL_SaveFile(path.c_str(), output.data(), output.size());
+#endif
+}
+}  // namespace oge::platform
 #endif

@@ -18,12 +18,10 @@ PRIVATE
     ${SOURCE_FILES_CPP}
  )
 
-if(IO_USE_SDL3)
-    target_compile_definitions(oge_platform_ext_sdl3
-    PUBLIC
-        IO_USE_SDL3
-    )
-endif()
+target_compile_definitions(oge_platform_ext_sdl3
+PUBLIC
+    IO_USE_SDL3
+)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
 target_sources(oge_platform_ext_sdl3
@@ -42,7 +40,13 @@ add_library(oge::platform_ext::sdl3 ALIAS oge_platform_ext_sdl3)
 
 target_link_libraries(oge_platform_ext_sdl3 PUBLIC oge::core oge::platform oge::platform_ext)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Android")
+if(CMAKE_SYSTEM_NAME STREQUAL "Android" OR ENABLE_ASAN)
+if(APPLE)
+    target_link_libraries(oge_platform_ext_sdl3 PRIVATE
+        "-framework Cocoa"
+        "-framework QuartzCore"
+    )
+endif()
 target_link_libraries(oge_platform_ext_sdl3 PRIVATE SDL3::SDL3)
 else()
 target_link_libraries(oge_platform_ext_sdl3 PRIVATE SDL3::SDL3-static)
