@@ -177,6 +177,7 @@ void TerrainView::DowngradeChunk(ChunkHandle handle, ChunkState newState)
 {
     assert(newState != ChunkState::Persistent);
     auto chunk = m_terrainData.chunks.Get(handle);
+    if (!chunk) return;
     if (newState >= chunk->state) return;
     auto prevState = chunk->state;
     chunk->state = newState;
