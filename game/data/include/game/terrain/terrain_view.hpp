@@ -216,7 +216,7 @@ struct ChunkStateUpdateEvent
 };
 
 class ChunkEventStream
-    : public oge::DiscreteEventStream<terrain::ChunkStateUpdateEvent, 128>
+    : public oge::DiscreteEventStream<terrain::ChunkStateUpdateEvent, 1024>
 {
 };
 

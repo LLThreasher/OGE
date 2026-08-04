@@ -1,0 +1,99 @@
+#pragma once
+
+#include <cstdint>
+#include <string>
+#include <string_view>
+
+#include "game/components.hpp"
+#include "game/debug_scene.hpp"
+#include "game/input/player_input_stream.hpp"
+#include "game/json.hpp"
+#include "game/replication_registry.hpp"
+#include "game/scene.hpp"
+#include "game/scene_ext.hpp"
+#include "oge/log.hpp"
+#include "oge/runtime/net_client.hpp"
+#include "oge/runtime/net_packet_sender.hpp"
+#include "oge/runtime/net_serializer.hpp"
+
+namespace game
+{
+using oge::runtime::NetClient;
+using oge::runtime::OnClientConnected;
+using oge::runtime::OnClientConnectionTimeout;
+using oge::runtime::OnClientDisconnected;
+using oge::runtime::OnClientReceivePacket;
+
+class ClientScene2 : public DebugScene3
+{
+    NetClient& m_client;
+    entt::dispatcher m_clientDispatcher;
+    ReplicationRegistry m_replicationRegistry;
+
+    bool m_readyToQuit = false;
+
+    void onDisconnected(OnClientDisconnected ctx)
+    {
+        LOG_ERROR("client disconnected");
+        m_readyToQuit = true;
+    }
+
+    void onRecievePacket(OnClientReceivePacket ctx)
+    {
+        m_replicationRegistry.HandleIncoming(m_world, *ctx.data);
+    }
+
+   public:
+    ClientScene2(const Def& def)
+        : DebugScene3(def), m_client(*m_ctx.any_ctx.Get<NetClient>())
+    {
+        LOG_INFO("client scene loaded");
+        RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
+        m_clientDispatcher.sink<OnClientReceivePacket>()
+            .connect<&ClientScene2::onRecievePacket>(this);
+        m_clientDispatcher.sink<OnClientDisconnected>()
+            .connect<&ClientScene2::onDisconnected>(this);
+        m_replicationRegistry.AddPeer(m_client.Host());
+
+        InstallEntityReplicationHooks(m_world);
+        m_replicationRegistry.AddFamilyToSend(Id<input::PlayerInputStream>());
+
+        // send ready package
+        auto packet = m_client.StartPacket(sizeof(uint32_t));
+        packet.Write<uint32_t>(0);
+        m_client.Send(packet, oge::runtime::SendType::Reliable);
+    }
+
+    ~ClientScene2()
+    {
+        m_client.Disconnect();
+        m_ctx.any_ctx.Erase<NetClient>();
+    }
+
+    void Update(Frame f, SceneContext sctx) override
+    {
+        m_client.Poll(m_clientDispatcher, f.dt);
+        if (m_readyToQuit)
+        {
+            sctx.nextScene = Id<SceneExt>();
+            sctx.nextSceneArgs = {};
+            return;
+        }
+        m_replicationRegistry.ProduceAll(m_client, m_world);
+
+        DebugScene3::Update(f, sctx);
+    }
+};
+}  // namespace game
+
+namespace oge::runtime
+{
+template <>
+struct TypeName<game::ClientScene2>
+{
+    static constexpr std::string Get()
+    {
+        return "core::ClientScene2";
+    }
+};
+}  // namespace oge::runtime

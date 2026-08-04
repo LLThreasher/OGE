@@ -60,6 +60,7 @@ endif()
 add_subdirectory(3rdparty)
 add_subdirectory(modules/core)
 add_subdirectory(modules/platform)
+add_subdirectory(modules/platform_native)
 add_subdirectory(modules/runtime)
 
 if(BUILD_WINDOW)

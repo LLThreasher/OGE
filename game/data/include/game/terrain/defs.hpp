@@ -26,7 +26,7 @@ struct TerrainRendererDesc
 
 struct TerrainDesc
 {
-    int32_t chunkViewDistance = 2;
+    int32_t chunkViewDistance = 8;
     int32_t terrainGenChunkBudget = 8;
 };
 

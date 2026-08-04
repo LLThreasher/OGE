@@ -1,3 +1,5 @@
+#pragma once
+
 #include <string>
 
 #include "game/components.hpp"
@@ -8,21 +10,22 @@
 #include "game/scene_ext.hpp"
 #include "game/scene_runner.hpp"
 #include "game/sim/subsystem.hpp"
-#include "game/sim/subsystem_physics.hpp"
-#include "game/sim/terrain/subsystem_terrain.hpp"
 #include "game/ui/objects.hpp"
 #include "game/view/gfx/terrain_pass2.hpp"
 #include "game/view/renderer.hpp"
-#include "game/view/submission_queue.hpp"
 #include "game/view/terrain/terrain_renderer.hpp"
 #include "oge/input/keyboard.hpp"
+#include "oge/log.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
 namespace game
 {
-class DebugScene3 final : public SceneExt
+class DebugScene3 : public SceneExt
 {
+   private:
+    PlayerInfo m_playerInfo;
+    entt::connection m_waitPlayer{};
     entt::entity m_cross;
     entt::entity m_player;
     entt::entity m_lookWidget;
@@ -31,19 +34,20 @@ class DebugScene3 final : public SceneExt
 
     void AddWidgetInput(oge::runtime::AssetContext assets)
     {
+        LOG_DEBUG("create widget input");
         // create move widget
         auto scaledX = 0.3f;
         auto scaledY = scaledX * assets.backend.SwapchainAspect();
 
         auto lookWidget = m_uiWorld.create();
         m_uiWorld.emplace<ui::UIRect>(lookWidget, math::vec2{0.0f, 0.0f},
-                                    math::vec2{1.0f, 1.0f});
+                                      math::vec2{1.0f, 1.0f});
         m_uiWorld.emplace<ui::UIZLevel>(lookWidget, 0);
         m_uiWorld.emplace<ui::UIRaycastTarget>(lookWidget);
 
         auto mvWidget = m_uiWorld.create();
         m_uiWorld.emplace<ui::UIRect>(mvWidget, math::vec2{0.0f, 1.f - scaledY},
-                                    math::vec2{scaledX, scaledY});
+                                      math::vec2{scaledX, scaledY});
         m_uiWorld.emplace<ui::UIZLevel>(mvWidget, 1);
         m_uiWorld.emplace<ui::UIRaycastTarget>(mvWidget);
 
@@ -67,27 +71,35 @@ class DebugScene3 final : public SceneExt
         m_moveWidget = mvWidget;
     }
 
+    void onConstructPlayer(entt::registry& world, entt::entity e)
+    {
+        LOG_INFO(
+            "entity {}: check player id {} against {}",
+            (uint64_t)e,
+            uuids::to_string(uuids::uuid(world.get<ComponentPlayer>(e).id)),
+            uuids::to_string(uuids::uuid(m_playerInfo.uuid)));
+        if (world.get<ComponentPlayer>(e).id == m_playerInfo.uuid)
+        {
+            m_waitPlayer.release();
+            ui::CreateGameView(m_uiWorld, {math::vec2{0, 0}, math::vec2{1, 1}},
+                               e);
+            world.emplace<input::PlayerInputStream>(e);
+            world.emplace<ReplicatedTag>(e);
+            m_player = e;
+
+            AddWidgetInput(m_ctx.assets);
+        }
+    }
+
    public:
     DebugScene3(const Def& def) : SceneExt(def)
     {
+        m_playerInfo = LoadOrCreatePlayer();
         if (m_sceneConfig.empty())
         {
-            auto& config = m_sceneConfig;
-            config.subsystems.push_back(Id<sim::SubsystemDebugText>());
-            config.subsystems.push_back(Id<sim::SubsystemTerrain>());
-            config.subsystems.push_back(
-                Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
-            config.subsystems.push_back(
-                Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
-            config.subsystems.push_back(
-                Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
-
-            config.realtimeSubsystems.push_back(
-                Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-            config.realtimeSubsystems.push_back(
-                Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-            config.realtimeSubsystems.push_back(
-                Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
+            m_sceneConfig = GetDefaultSceneConfig(AF());
+            m_sceneConfig.subsystems.insert(m_sceneConfig.subsystems.begin(),
+                                            Id<sim::SubsystemDebugText>());
         }
 
         Load();
@@ -98,33 +110,40 @@ class DebugScene3 final : public SceneExt
         m_renderers.AddStage<view::CameraRenderer>(AF());
 
         auto assets = AssetContext(m_ctx.any_ctx);
-        auto& blks =
-            m_world.ctx().get<::game::terrain::BlockRegistry>().GetBlockTextures();
+        auto& blks = m_world.ctx()
+                         .get<::game::terrain::BlockRegistry>()
+                         .GetBlockTextures();
         for (size_t i = 0; i < blks.size(); ++i)
         {
             GetPasses().GetPass<TerrainPass2>().UpdateBlockTexture(assets,
                                                                    blks[i], i);
         }
 
-        m_player = ComponentPlayer::CreatePlayer(m_world, LoadOrCreatePlayer());
         {
-            ComponentCamera& cam = m_world.get<ComponentCamera>(m_player);
-            cam.position = {20.f, 20.f, 20.f};
+            auto it = def.args.find("wait_player");
+            if (it != def.args.end() && std::get<bool>(it->second))
+            {
+                m_waitPlayer =
+                    m_world.on_construct<ComponentPlayer>()
+                        .connect<&DebugScene3::onConstructPlayer>(this);
+            }
+            else
+            {
+                m_player = ComponentPlayer::CreatePlayer(m_world, m_playerInfo);
+                {
+                    ComponentCamera& cam =
+                        m_world.get<ComponentCamera>(m_player);
+                    cam.position = {20.f, 20.f, 20.f};
 
-            glm::vec3 target = {0.f, 0.f, 0.f};
-            cam.forward = glm::normalize(target - cam.position);
+                    glm::vec3 target = {0.f, 0.f, 0.f};
+                    cam.forward = glm::normalize(target - cam.position);
 
-            cam.yaw = std::atan2(cam.forward.x, cam.forward.z);
-            cam.pitch = std::asin(cam.forward.y);
-
-            ComponentPerspectiveCamera& pcam =
-                m_world.get<ComponentPerspectiveCamera>(m_player);
-            pcam.fov = math::radians(45.f);
+                    cam.yaw = std::atan2(cam.forward.x, cam.forward.z);
+                    cam.pitch = std::asin(cam.forward.y);
+                }
+                onConstructPlayer(m_world, m_player);
+            }
         }
-
-        auto vpe = ui::CreateGameView(
-            m_uiWorld, {math::vec2{0, 0}, math::vec2{1, 1}}, m_player);
-        m_uiWorld.patch<view::ViewPanel>(vpe);
 
         // m_terminalButton = ui::CreateButton(world, context,
         // {math::vec2{0.f, 0.f}, math::vec2{0.1f, 0.1f}});
@@ -151,12 +170,11 @@ class DebugScene3 final : public SceneExt
         //     world\nTerminal"});
         //     // world.emplace<UIZLevel>(e, 1);
         // }
-
-        AddWidgetInput(assets);
     }
 
     void Update(Frame f, SceneContext sctx) override
     {
+        if (m_waitPlayer) return;
         using oge::input::KeyCode;
 
         auto& keys = f.is.ActiveKeys();
@@ -209,30 +227,12 @@ class DebugScene3 final : public SceneExt
         }
         SceneExt::Update(std::move(f), sctx);
     }
-
-    void Load() override
-    {
-        auto& blocks = m_world.ctx().emplace<::game::terrain::BlockRegistry>();
-        blocks.RegisterBlock("dirt", {
-                                         "Dirt",
-                                         "dirt.png",
-                                         1,
-                                     });
-        blocks.RegisterBlock("wood", {"Wood", "wood_plank.png", 1});
-        blocks.RegisterBlock("stone", {"Stone", "green_stone.png", 1});
-
-        m_world.ctx().emplace<::game::terrain::TerrainView>();
-
-        auto desc = m_world.ctx().emplace<::game::terrain::TerrainDesc>();
-        desc.chunkViewDistance = 1;
-
-        SceneExt::Load();
-    }
 };
 }  // namespace game
 
-namespace oge::runtime {
-template<>
+namespace oge::runtime
+{
+template <>
 struct TypeName<game::DebugScene3>
 {
     static constexpr std::string Get()
@@ -240,4 +240,4 @@ struct TypeName<game::DebugScene3>
         return "core::DebugScene3";
     }
 };
-}
+}  // namespace oge::runtime

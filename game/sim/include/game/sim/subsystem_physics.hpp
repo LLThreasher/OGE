@@ -1,3 +1,5 @@
+#pragma once
+
 #include "game/components.hpp"
 #include "game/sim/subsystem.hpp"
 #include "oge/aabb_ops.hpp"

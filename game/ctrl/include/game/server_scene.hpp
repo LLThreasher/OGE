@@ -129,18 +129,6 @@ class DebugServerScene final : public Scene
     DebugServerScene(const Def& def)
         : Scene(def), m_netServer(m_ctx.any_ctx.Emplace<NetServer>())
     {
-        uint16_t port = 23400;
-        size_t maxClients = 20;
-        {
-            auto it = def.args.find("port");
-            if (it != def.args.end()) port = std::get<int64_t>(it->second);
-        }
-        {
-            auto it = def.args.find("maxClients");
-            if (it != def.args.end())
-                maxClients = std::get<int64_t>(it->second);
-        }
-        m_netServer.Initialize(port, maxClients, 3);
         m_serverEventDispatcher.sink<OnServerReceiveConnect>()
             .connect<&DebugServerScene::onServerRecieveConnect>(this);
         m_serverEventDispatcher.sink<OnServerReceiveDisconnect>()
@@ -162,10 +150,23 @@ class DebugServerScene final : public Scene
             Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
         m_sceneConfig.subsystems.push_back(
             Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
-        m_subsystems.SetUpdateInterval(1 / 20.f);
 
         Load();
 
+        uint16_t port = 23400;
+        size_t maxClients = 20;
+        {
+            auto it = def.args.find("port");
+            if (it != def.args.end()) port = std::get<int64_t>(it->second);
+        }
+        {
+            auto it = def.args.find("maxClients");
+            if (it != def.args.end())
+                maxClients = std::get<int64_t>(it->second);
+        }
+        m_netServer.Initialize(port, maxClients, 3);
+
+        m_subsystems.SetUpdateInterval(1 / 20.f);
         InstallComponentReplicationHooks<ComponentPhysicBody>(m_world);
         InstallComponentReplicationHooks<ComponentCamera>(m_world);
         InstallComponentReplicationHooks<ComponentPerspectiveCamera>(m_world);
@@ -236,7 +237,14 @@ class DebugServerScene final : public Scene
         auto desc = m_world.ctx().emplace<::game::terrain::TerrainDesc>();
         desc.chunkViewDistance = 1;
 
-        Scene::Load();
+        for (auto stage : m_sceneConfig.subsystems)
+        {
+            m_subsystems.AddStage(m_ctx.any_factory, stage);
+        }
+        for (auto stage : m_sceneConfig.realtimeSubsystems)
+        {
+            m_subsystems.AddStage(m_ctx.any_factory, stage);
+        }
     }
 };
 }  // namespace game

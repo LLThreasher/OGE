@@ -9,6 +9,7 @@
 
 #include "oge/aabb.hpp"
 #include "oge/fixed_vector.hpp"
+#include "game/json.hpp"
 
 namespace game::terrain
 {
@@ -81,3 +82,19 @@ class BlockRegistry
     std::vector<AABBList> m_aabbLookup;
 };
 }  // namespace game::terrain
+
+DECL_JSON_OBJ(::oge::AABB, {
+    visit("min.x", self.min.x);
+    visit("min.y", self.min.y);
+    visit("min.z", self.min.z);
+    visit("max.x", self.max.x);
+    visit("max.y", self.max.y);
+    visit("max.z", self.max.z);
+})
+
+DECL_JSON_OBJ(::game::terrain::BlockConfig, {
+    visit("display_name", self.blockDisplayName);
+    visit("texture_slot_per_face", self.textureSlotPerFace);
+    visit("block_flags", self.blockFlags);
+    visit("aabbs", self.aabbs);
+})

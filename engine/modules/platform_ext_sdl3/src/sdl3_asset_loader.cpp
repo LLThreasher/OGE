@@ -34,7 +34,7 @@ bool TryLoadBlob(const std::string_view& id, std::vector<char>& output)
     return true;
 }
 
-bool TrySaveBlob(const std::string_view& id, std::vector<char>& output)
+bool TrySaveBlob(const std::string_view& id, const std::vector<char>& output)
 {
 #ifdef PLATFORM_ANDROID
     return SDL_SaveFile(std::string(id).c_str(), output.data(), output.size());

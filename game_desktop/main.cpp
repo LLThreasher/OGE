@@ -1,6 +1,7 @@
 #include "build_config.h"
 #include "game/client.hpp"
 #include "game/client_scene.hpp"
+#include "game/client_scene2.hpp"
 #include "game/debug_scene.hpp"
 #include "oge/platform/sdl3/create_window.hpp"
 #include "oge/platform/window.hpp"
@@ -23,9 +24,10 @@ int main(int argc, char* argv[])
     auto app = game::Client();
     app.RegisterScene<game::DebugScene3>();
     app.RegisterScene<game::ClientConnScene>();
-    app.RegisterScene<game::ClientScene>();
+    // app.RegisterScene<game::ClientScene>();
+    app.RegisterScene<game::ClientScene2>();
     // app.SwitchToScene<game::DebugScene3>();
-    app.SwitchToScene<game::ClientConnScene>();
+    app.SwitchToScene<game::ClientConnScene>({{"next_scene", app.Id<game::ClientScene2>()}});
     // app.SwitchToScene<game::ClientScene>({{"next_scene",
     // app.Id<game::DebugScene3>()}});
     window->Run(app);

@@ -122,6 +122,7 @@ void EntityReplication::Encode(entt::registry& world, ENetPeer* peer,
             server.Send(peer, packet);
         }
         state.useSnapshot = false;
+        stream->AdvanceCursor(state.cursor);
     }
     else
     {
@@ -170,7 +171,7 @@ void EntityReplication::Decode(entt::registry& world, net::Buffer& buffer)
     }
 }
 
-constexpr size_t MAX_CHUNK_PER_FRAME = 1;
+constexpr size_t MAX_CHUNK_PER_FRAME = 4;
 
 enum class ChunkPacketType : uint8_t
 {

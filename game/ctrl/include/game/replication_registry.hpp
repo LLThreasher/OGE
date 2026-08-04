@@ -237,10 +237,6 @@ struct ComponentReplication
             server.Send(peer, packet, sendType, channel);
         }
 
-        // After snapshot, start consuming future deltas
-        auto* stream = world.ctx().find<input::ComponentDeltaStream<T>>();
-        if (stream) stream->AdvanceCursor(state.cursor);
-
         state.needsSnapshot = false;
     }
 
@@ -314,7 +310,7 @@ struct ComponentReplication
                 {
                     T res{};
                     net::Deserialize(buffer, res);
-                    world.emplace<T>(entity, std::move(res));
+                    world.emplace<T>(entity, std::move(res)); // this line
                 }
                 else
                 {
