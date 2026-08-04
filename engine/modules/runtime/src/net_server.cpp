@@ -5,7 +5,6 @@
 #include <memory_resource>
 
 #include "enet_interface.hpp"
-#include "entt/graph/fwd.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
