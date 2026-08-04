@@ -4,17 +4,19 @@
 #include <concepts>
 #include <cstdint>
 #include <tuple>
-#include <type_traits>
 #include <vector>
 
 #include "game/components.hpp"
+#include "game/components_net.hpp"
 #include "game/input/entity_event_stream.hpp"
+#include "game/input/net.hpp"
 #include "game/terrain/terrain_view.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/net_server.hpp"
+#include "oge/runtime/net_traits.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
 namespace game
@@ -31,15 +33,7 @@ using input::EntityEventType;
 using oge::DiscreteEventStream;
 
 template <typename TEvent>
-struct NetEventBatch : net::Object<NetEventBatch<TEvent>>
-{
-    net::List<TEvent> events;
-
-    NET_OBJ_FN
-    {
-        visit(self.events);
-    }
-};
+using NetEventBatch = std::pmr::vector<TEvent>;
 
 struct ReplicationCapability : ICapability
 {
@@ -228,17 +222,17 @@ struct ComponentReplication
 
         for (auto entity : view)
         {
-            // size_t size = sizeof(FamilyId) +
-            // sizeof(input::ComponentDeltaType) +
-            //               sizeof(entt::entity);
+            size_t size = sizeof(FamilyId) + sizeof(input::ComponentDeltaType) +
+                          sizeof(entt::entity) +
+                          net::Size(world.get<T>(entity));
 
-            auto packet = server.StartPacket(1024);
+            auto packet = server.StartPacket(size);
 
             packet.Write(family);
             packet.Write(input::ComponentDeltaType::Add);
             packet.Write(entity);
 
-            world.get<T>(entity).Serialize(packet);
+            net::Serialize(packet, world.get<T>(entity));
 
             server.Send(peer, packet, sendType, channel);
         }
@@ -282,7 +276,7 @@ struct ComponentReplication
 
             if (delta.type != input::ComponentDeltaType::Remove)
             {
-                size += world.get<T>(delta.entity).Size();
+                size += net::Size(world.get<T>(delta.entity));
             }
 
             auto packet = server.StartPacket(size);
@@ -293,7 +287,7 @@ struct ComponentReplication
 
             if (delta.type != input::ComponentDeltaType::Remove)
             {
-                world.get<T>(delta.entity).Serialize(packet);
+                net::Serialize(packet, world.get<T>(delta.entity));
             }
 
             server.Send(peer, packet, sendType, channel);
@@ -319,13 +313,13 @@ struct ComponentReplication
                 if (!world.all_of<T>(entity))
                 {
                     T res{};
-                    res.Deserialize(buffer);
+                    net::Deserialize(buffer, res);
                     world.emplace<T>(entity, std::move(res));
                 }
                 else
                 {
                     T& res = world.get<T>(entity);
-                    res.Deserialize(buffer);
+                    net::Deserialize(buffer, res);
                     world.patch<T>(entity);
                 }
                 break;
@@ -406,10 +400,10 @@ struct EventStreamReplication
 
         if (batch.events.empty()) return;
 
-        auto packet = server.StartPacket(sizeof(FamilyId) + batch.Size());
+        auto packet = server.StartPacket(sizeof(FamilyId) + net::Size(batch));
 
         packet.Write(family);
-        batch.Serialize(packet);
+        net::Serialize(packet, batch);
 
         server.Send(peer, packet, sendType, channel);
     }
@@ -417,7 +411,7 @@ struct EventStreamReplication
     static void Decode(entt::registry& world, net::Buffer& buffer)
     {
         NetEventBatch<TEvent> batch;
-        batch.Deserialize(buffer);
+        net::Deserialize(buffer, batch);
 
         auto& queue = world.ctx().get<TEventStream>();
 
@@ -460,9 +454,9 @@ struct EntityEventStreamReplication
         if (!eStream) return;
         while (eStream->PollOne(state.eCursor, ee))
         {
-            if (ee.type.value == EntityEventType::Destroy)
+            if (ee.type == EntityEventType::Destroy)
             {
-                state.perStreamStates.erase(ee.entity.value);
+                state.perStreamStates.erase(ee.entity);
             }
         }
 
@@ -485,17 +479,16 @@ struct EntityEventStreamReplication
 
             TEvent ev;
             while (stream.PollOne(pState.cursor, ev))
-                batch.events.Add(std::move(ev));
+                batch.push_back(std::move(ev));
 
-            if (batch.events.empty()) continue;
+            if (batch.empty()) continue;
 
-            // auto packet = server.StartPacket(
-            //     sizeof(FamilyId) + sizeof(entt::entity) + batch.Size());
-            auto packet = server.StartPacket(512);
+            auto packet = server.StartPacket(
+                sizeof(FamilyId) + sizeof(entt::entity) + net::Size(batch));
 
             packet.Write(family);
             packet.Write(entity);
-            batch.Serialize(packet);
+            net::Serialize(packet, batch);
 
             server.Send(peer, packet, sendType, channel);
         }
@@ -506,11 +499,11 @@ struct EntityEventStreamReplication
         auto entity = buffer.Read<entt::entity>();
 
         NetEventBatch<TEvent> batch;
-        batch.Deserialize(buffer);
+        net::Deserialize(buffer, batch);
 
         auto& queue = world.get<TEventStream>(entity);
 
-        for (auto& e : batch.events) queue.Push(std::move(e));
+        for (auto& e : batch) queue.Push(std::move(e));
     }
 };
 

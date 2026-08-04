@@ -149,19 +149,20 @@ class DebugServerScene final : public Scene
             .connect<&DebugServerScene::onServerReceivePacket>(this);
         RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
 
-        m_sceneConfig.subsystems.Add(Id<sim::SubsystemTerrain>());
-        m_sceneConfig.subsystems.Add(
+        m_sceneConfig.subsystems.push_back(Id<sim::SubsystemTerrain>());
+        m_sceneConfig.subsystems.push_back(
             Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
-        m_sceneConfig.subsystems.Add(
+        m_sceneConfig.subsystems.push_back(
             Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-        m_sceneConfig.subsystems.Add(
+        m_sceneConfig.subsystems.push_back(
             Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
-        m_sceneConfig.subsystems.Add(
+        m_sceneConfig.subsystems.push_back(
             Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-        m_sceneConfig.subsystems.Add(
+        m_sceneConfig.subsystems.push_back(
             Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
-        m_sceneConfig.subsystems.Add(
+        m_sceneConfig.subsystems.push_back(
             Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
+        m_subsystems.SetUpdateInterval(1 / 20.f);
 
         Load();
 

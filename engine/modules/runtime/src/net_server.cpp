@@ -94,7 +94,7 @@ void NetServer::Shutdown()
 
 void NetServer::Disconnect(ENetPeer* peer, uint32_t signal)
 {
-    enet_peer_disconnect(peer, signal);
+    enet_peer_disconnect_later(peer, signal);
 }
 
 void NetServer::OnClientConnected(ENetPeer* peer)

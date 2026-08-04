@@ -136,7 +136,7 @@ class ClientScene : public SceneExt
     ClientScene(const Def& def)
         : SceneExt(def), m_client(*m_ctx.any_ctx.Get<NetClient>())
     {
-        m_sceneConfig.subsystems.Add(Id<sim::SubsystemDebugText>());
+        m_sceneConfig.subsystems.push_back(Id<sim::SubsystemDebugText>());
 
         Load();
 
@@ -175,6 +175,7 @@ class ClientScene : public SceneExt
 
     ~ClientScene()
     {
+        m_client.Disconnect();
         m_ctx.any_ctx.Erase<NetClient>();
     }
 

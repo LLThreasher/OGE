@@ -1,5 +1,6 @@
 #include "oge/runtime/tick_scheduler.hpp"
 
+#include <cassert>
 #include <thread>
 
 namespace oge::runtime
@@ -28,6 +29,12 @@ float TickScheduler::ConsumeTick()
 float TickScheduler::GetAlpha() const
 {
     return m_accumulator / m_fixedDelta;
+}
+
+void TickScheduler::SetInterval(float interval)
+{
+    assert(interval > 0.f);
+    m_fixedDelta = interval;
 }
 
 BlockingTickScheduler::BlockingTickScheduler(float interval)

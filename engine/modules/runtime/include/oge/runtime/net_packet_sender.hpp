@@ -78,6 +78,6 @@ class NetPacketSender
     PacketStats packetStats = {};
 
     float packetStatsLogTimer = 0.0f;
-    float packetStatsLogInterval = 1.0f;
+    float packetStatsLogInterval = 5.0f;
 };
 }  // namespace oge::runtime

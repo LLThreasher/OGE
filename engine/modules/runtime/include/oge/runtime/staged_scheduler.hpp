@@ -158,6 +158,7 @@ class FixedStepPipeline
         : TPipeline(ctx), m_tickScheduler(updateInterval)
     {
     }
+
     template <typename Fn>
     void onUpdate(FrameData frame, typename TStage::Ctx& ctx, Fn&& update)
     {
@@ -183,6 +184,11 @@ class FixedStepPipeline
     float GetAlpha()
     {
         return m_tickScheduler.GetAlpha();
+    }
+
+    void SetUpdateInterval(float interval)
+    {
+        m_tickScheduler.SetInterval(interval);
     }
 
    private:

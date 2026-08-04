@@ -11,24 +11,19 @@
 namespace game
 {
 using oge::runtime::oge_id_type;
-namespace net = oge::runtime::net;
 
-NET_OBJ(SceneConfig)
+struct SceneConfig
 {
-    net::List<oge_id_type> subsystems;
-    net::List<oge_id_type> realtimeSubsystems;
-
-    NET_OBJ_FN
-    {
-        visit(self.subsystems);
-        visit(self.realtimeSubsystems);
-    }
+    std::pmr::vector<oge_id_type> subsystems;
+    std::pmr::vector<oge_id_type> realtimeSubsystems;
 
     bool empty()
     {
         return subsystems.empty() && realtimeSubsystems.empty();
     }
 };
+
+
 
 class GameWorld
 {

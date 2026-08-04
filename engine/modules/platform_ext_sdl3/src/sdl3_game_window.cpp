@@ -181,7 +181,7 @@ void SDL3GameWindow::Run(WindowApp& app)
                     LOG_INFO("quit recived");
                     break;
                 case SDL_EVENT_WINDOW_MOUSE_ENTER:
-                    LOG_DEBUG("enter window");
+                    // LOG_DEBUG("enter window");
                     {
                         is.AddMouse(0);
                         float x, y;
@@ -190,7 +190,7 @@ void SDL3GameWindow::Run(WindowApp& app)
                         break;
                     }
                 case SDL_EVENT_WINDOW_MOUSE_LEAVE:
-                    LOG_DEBUG("leave window");
+                    // LOG_DEBUG("leave window");
                     is.DelMouse(0);
                     break;
                 case SDL_EVENT_KEY_DOWN:

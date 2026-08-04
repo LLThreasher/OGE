@@ -6,6 +6,7 @@
 #include <memory_resource>
 
 #include "enet_interface.hpp"
+#include "oge/log.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
@@ -60,7 +61,7 @@ bool NetClient::Connect(const char* ip, uint16_t port, uint32_t timeoutMs)
 void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
 {
     UpdatePacketStats(dt);
-    
+
     if (!host) return;
 
     if (state == State::Connecting && connectWaitTime < 0)
@@ -90,9 +91,9 @@ void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
             {
                 OnPacketReceived(event.packet->data, event.packet->dataLength);
                 auto buffer =
-                    net::Buffer(event.packet->data, event.packet->dataLength).ToReadOnly();
-                dispatcher.trigger<OnClientReceivePacket>(
-                    {&buffer});
+                    net::Buffer(event.packet->data, event.packet->dataLength)
+                        .ToReadOnly();
+                dispatcher.trigger<OnClientReceivePacket>({&buffer});
                 enet_packet_destroy(event.packet);
                 break;
             }
@@ -113,11 +114,34 @@ void NetClient::Disconnect(uint32_t timeoutMs)
     if (!peer) return;
 
     enet_peer_disconnect(peer, 0);
+    enet_host_flush(host);
 
-    state = State::Disconnecting;
+    uint32_t waitInterval = 100;
+    while (peer != nullptr && timeoutMs > 0)
+    {
+        ENetEvent event;
+        while (enet_host_service(host, &event, waitInterval) > 0)
+        {
+            switch (event.type)
+            {
+                case ENET_EVENT_TYPE_DISCONNECT:
+                    LOG_INFO("Disconnected from server");
+                    peer = nullptr;
+                    state = State::Disconnected;
+                    break;
+                default:
+                    break;
+            }
+        }
+        timeoutMs -= waitInterval;
+    }
 
-    enet_peer_reset(peer);
-    peer = nullptr;
+    if (peer != nullptr)
+    {
+        LOG_INFO("gracefull disconnect failed, force shutdown");
+        enet_peer_reset(peer);
+        peer = nullptr;
+    }
 }
 
 void NetClient::Shutdown()

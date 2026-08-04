@@ -17,6 +17,8 @@ class TickScheduler
 
     float GetAlpha() const;
 
+    void SetInterval(float interval);
+
    private:
     float m_fixedDelta;
     float m_accumulator = 0.0f;

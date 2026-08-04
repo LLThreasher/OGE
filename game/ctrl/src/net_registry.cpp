@@ -170,6 +170,8 @@ void EntityReplication::Decode(entt::registry& world, net::Buffer& buffer)
     }
 }
 
+constexpr size_t MAX_CHUNK_PER_FRAME = 1;
+
 enum class ChunkPacketType : uint8_t
 {
     Load,
@@ -216,11 +218,13 @@ void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
             packet.WriteRaw(cChunk.data, CHUNK_SIZE_TOTAL);
             server.Send(peer, packet);
 
-            if (++counter >= 8) return;
+            if (++counter >= MAX_CHUNK_PER_FRAME) return;
         }
         state.needsSnapshot = false;
         return;
     }
+
+    size_t counter = 0;
     ChunkStateUpdateEvent e;
     while (terrain.GetEvents().PollOne(state.chunkEventCursor, e))
     {
@@ -241,6 +245,7 @@ void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
                             cChunk.palette.size() * sizeof(uint32_t));
             packet.WriteRaw(cChunk.data, CHUNK_SIZE_TOTAL);
             server.Send(peer, packet);
+            if (++counter >= MAX_CHUNK_PER_FRAME) return;
         }
     }
 }

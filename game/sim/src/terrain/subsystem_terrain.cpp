@@ -67,7 +67,8 @@ void TerrainUpdateScheduler::InitialUpdate(TerrainData& terrain,
                 Point3 coord = {chunkOrigin.x + x, y, chunkOrigin.z + z};
 
                 auto handle = terrain.chunks.AllocateChunk(coord);
-                terrain.generateTerrainQueue.push(handle);
+                if (terrain.chunks.Get(handle)->weakState == terrain::ChunkState::GeneratingTerrain)
+                    terrain.generateTerrainQueue.push(handle);
             }
         }
 

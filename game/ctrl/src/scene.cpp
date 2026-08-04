@@ -18,12 +18,12 @@ Scene::Scene(const Def& def)
         auto jsonConfig = std::get<json::Object>(it->second);
         for (auto val : std::get<json::Array>(jsonConfig["subsystems"]))
         {
-            m_sceneConfig.subsystems.Add(std::get<int64_t>(val));
+            m_sceneConfig.subsystems.push_back(std::get<int64_t>(val));
         }
         for (auto val :
              std::get<json::Array>(jsonConfig["realtime_subsystems"]))
         {
-            m_sceneConfig.realtimeSubsystems.Add(std::get<int64_t>(val));
+            m_sceneConfig.realtimeSubsystems.push_back(std::get<int64_t>(val));
         }
     }
 }

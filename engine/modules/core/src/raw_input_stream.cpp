@@ -100,7 +100,7 @@ void RawInputStream::AddMouse(int id)
             break;
         }
     }
-    LOG_DEBUG("add mouse {} at slot {}", id, resultId);
+    // LOG_DEBUG("add mouse {} at slot {}", id, resultId);
     activePtrs.add(resultId);
     InputEvent res2{InputEventType::AddMouse};
     res2.pointerIdx = resultId;
@@ -112,7 +112,7 @@ void RawInputStream::DelMouse(int id)
     InputEvent res2{InputEventType::RemoveMouse};
     res2.pointerIdx = FindMouse(id);
     events.Push(res2);
-    LOG_DEBUG("remove mouse {} from slot {}", id, res2.pointerIdx);
+    // LOG_DEBUG("remove mouse {} from slot {}", id, res2.pointerIdx);
     toRemovePtrs.add(res2.pointerIdx);
     dirtyPtrs.add(res2.pointerIdx);
 }
@@ -154,7 +154,7 @@ void RawInputStream::SetTouchDown(uint64_t id, float x, float y)
     InputEvent res{InputEventType::PointerDown};
     res.pointerIdx = ptr_idx;
     events.Push(res);
-    LOG_DEBUG("add touch {} at slot {}", id, res.pointerIdx);
+    // LOG_DEBUG("add touch {} at slot {}", id, res.pointerIdx);
 
     pointerPos[res.pointerIdx] = math::vec2{x, y};
     dirtyPtrs.add(res.pointerIdx);
@@ -173,7 +173,7 @@ void RawInputStream::SetTouchUp(uint64_t id, float x, float y)
 
     InputEvent res{InputEventType::PointerUp};
     res.pointerIdx = tId;
-    LOG_DEBUG("del touch {} at slot {}", id, res.pointerIdx);
+    // LOG_DEBUG("del touch {} at slot {}", id, res.pointerIdx);
     events.Push(res);
     pointerPos[res.pointerIdx] = math::vec2{x, y};
     toRemovePtrs.add(res.pointerIdx);

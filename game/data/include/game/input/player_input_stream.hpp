@@ -6,13 +6,11 @@
 
 #include "oge/event_stream.hpp"
 #include "oge/math.hpp"
-#include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
 namespace game::input
 {
 namespace math = ::oge::math;
-namespace net = ::oge::runtime::net;
 using oge::AccumulativeEventStream;
 using oge::DiscreteEventStream;
 
@@ -64,26 +62,6 @@ struct PlayerInputEvent
     {
         actionMask &= ~(1 << static_cast<uint32_t>(action));
     }
-
-    void Serialize(net::Buffer& buffer) const
-    {
-        buffer.Write<float>(actionPos.x);
-        buffer.Write<float>(actionPos.y);
-        buffer.Write<uint8_t>(actionMask);
-    }
-
-    void Deserialize(net::Buffer& buffer)
-    {
-        actionPos.x = buffer.Read<float>();
-        actionPos.y = buffer.Read<float>();
-        actionMask = buffer.Read<uint8_t>();
-    }
-
-    size_t Size() const
-    {
-        assert(false);
-        return sizeof(float) * 2 + sizeof(uint8_t);
-    }
 };
 
 struct PlayerInputFrame
@@ -91,53 +69,6 @@ struct PlayerInputFrame
     std::vector<PlayerInputEvent> inputEvents;
     math::vec2 moveDelta;
     math::vec2 panDelta;
-
-    void Serialize(net::Buffer& buffer) const
-    {
-        // Write count
-        uint32_t count = static_cast<uint32_t>(inputEvents.size());
-        buffer.Write<uint32_t>(count);
-
-        // Write events
-        for (const auto& e : inputEvents) e.Serialize(buffer);
-
-        // Write moveDelta
-        buffer.Write<float>(moveDelta.x);
-        buffer.Write<float>(moveDelta.y);
-
-        // Write panDelta
-        buffer.Write<float>(panDelta.x);
-        buffer.Write<float>(panDelta.y);
-    }
-
-    void Deserialize(net::Buffer& buffer)
-    {
-        uint32_t count = buffer.Read<uint32_t>();
-
-        inputEvents.resize(count);
-
-        for (auto& e : inputEvents) e.Deserialize(buffer);
-
-        moveDelta.x = buffer.Read<float>();
-        moveDelta.y = buffer.Read<float>();
-
-        panDelta.x = buffer.Read<float>();
-        panDelta.y = buffer.Read<float>();
-    }
-
-    size_t Size() const
-    {
-        assert(false);
-        size_t total = 0;
-
-        total += sizeof(uint32_t);  // count
-
-        for (const auto& e : inputEvents) total += e.Size();
-
-        total += sizeof(float) * 4;  // moveDelta + panDelta
-
-        return total;
-    }
 };
 
 using PlayerActionStream = DiscreteEventStream<PlayerInputEvent, 16>;

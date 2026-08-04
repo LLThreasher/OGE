@@ -73,20 +73,20 @@ class DebugScene3 final : public SceneExt
         if (m_sceneConfig.empty())
         {
             auto& config = m_sceneConfig;
-            config.subsystems.Add(Id<sim::SubsystemDebugText>());
-            config.subsystems.Add(Id<sim::SubsystemTerrain>());
-            config.subsystems.Add(
+            config.subsystems.push_back(Id<sim::SubsystemDebugText>());
+            config.subsystems.push_back(Id<sim::SubsystemTerrain>());
+            config.subsystems.push_back(
                 Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
-            config.subsystems.Add(
+            config.subsystems.push_back(
                 Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
-            config.subsystems.Add(
+            config.subsystems.push_back(
                 Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
 
-            config.realtimeSubsystems.Add(
+            config.realtimeSubsystems.push_back(
                 Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-            config.realtimeSubsystems.Add(
+            config.realtimeSubsystems.push_back(
                 Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-            config.realtimeSubsystems.Add(
+            config.realtimeSubsystems.push_back(
                 Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
         }
 

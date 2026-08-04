@@ -64,62 +64,12 @@ struct ComponentCamera
 
     math::mat4 view() const;
     void ApplyDelta(float dsx, float dsy);
-
-    void Serialize(net::Buffer& buffer)
-    {
-        buffer.Write<float>(yaw);
-        buffer.Write<float>(pitch);
-
-        buffer.Write<float>(position.x);
-        buffer.Write<float>(position.y);
-        buffer.Write<float>(position.z);
-
-        buffer.Write<float>(forward.x);
-        buffer.Write<float>(forward.y);
-        buffer.Write<float>(forward.z);
-    }
-
-    void Deserialize(net::Buffer& buffer)
-    {
-        yaw = buffer.Read<float>();
-        pitch = buffer.Read<float>();
-
-        position.x = buffer.Read<float>();
-        position.y = buffer.Read<float>();
-        position.z = buffer.Read<float>();
-
-        forward.x = buffer.Read<float>();
-        forward.y = buffer.Read<float>();
-        forward.z = buffer.Read<float>();
-    }
-
-    size_t Size()
-    {
-        return sizeof(float) * 10;
-    }
 };
 
 struct ComponentPerspectiveCamera
 {
     float fov = math::radians(45.0f);
     float aspect = 1.f;
-
-    void Serialize(net::Buffer& buffer)
-    {
-        buffer.Write(fov);
-        buffer.Write(aspect);
-    }
-
-    void Deserialize(net::Buffer& buffer)
-    {
-        buffer.Read(fov);
-        buffer.Read(aspect);
-    }
-
-    size_t Size()
-    {
-        return sizeof(fov) + sizeof(aspect);
-    }
 };
 
 math::vec3 ScreenToRay(ComponentCamera camera,
@@ -157,23 +107,6 @@ struct ComponentCreature
     {
         initJumpSpeed = math::sqrt(2.f * height * 9.8f);
     }
-
-    void Serialize(net::Buffer& buffer)
-    {
-        buffer.Write(maxSpeed);
-        buffer.Write(initJumpSpeed);
-    }
-
-    void Deserialize(net::Buffer& buffer)
-    {
-        maxSpeed = buffer.Read<float>();
-        initJumpSpeed = buffer.Read<float>();
-    }
-
-    size_t Size()
-    {
-        return sizeof(maxSpeed) + sizeof(initJumpSpeed);
-    }
 };
 
 struct ComponentCreatureInfo
@@ -186,21 +119,6 @@ struct ComponentCreatureInfo
 struct ComponentAABBCollider
 {
     AABB aabb;
-
-    void Serialize(net::Buffer& buffer)
-    {
-        buffer.Write(aabb);
-    }
-
-    void Deserialize(net::Buffer& buffer)
-    {
-        aabb = buffer.Read<AABB>();
-    }
-
-    size_t Size()
-    {
-        return sizeof(aabb);
-    }
 };
 
 struct PlayerInfo
@@ -218,21 +136,6 @@ struct ComponentPlayer
     static entt::entity CreatePlayer(entt::registry& world, PlayerInfo info,
                                      entt::entity hint = entt::null);
     static void DestroyPlayer(entt::registry& world, PlayerInfo info);
-
-    void Serialize(net::Buffer& buffer)
-    {
-        buffer.WriteRaw(id.data(), id.size());
-    }
-
-    void Deserialize(net::Buffer& buffer)
-    {
-        buffer.ReadRaw(id.data(), id.size());
-    }
-
-    size_t Size()
-    {
-        return sizeof(uint8_t) * id.size();
-    }
 };
 
 struct DebugText

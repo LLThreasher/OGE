@@ -8,7 +8,6 @@
 
 namespace game::input
 {
-using oge::runtime::net::SimpleNetValue;
 
 enum class EntityEventType : uint8_t
 {
@@ -16,20 +15,14 @@ enum class EntityEventType : uint8_t
     Destroy,
 };
 
-NET_OBJ(EntityEvent)
+struct EntityEvent
 {
-    SimpleNetValue<EntityEventType> type;
-    SimpleNetValue<entt::entity> entity;
+    EntityEventType type;
+    entt::entity entity;
 
     EntityEvent(EntityEventType ty = {}, entt::entity e = entt::null)
         : type(ty), entity(e)
     {
-    }
-
-    NET_OBJ_FN
-    {
-        visit(self.type);
-        visit(self.entity);
     }
 };
 

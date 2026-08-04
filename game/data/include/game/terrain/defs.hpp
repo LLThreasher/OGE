@@ -2,6 +2,7 @@
 #include <array>
 #include <cassert>
 #include <cinttypes>
+#include <cstdint>
 
 #include "oge/color.hpp"
 #include "oge/runtime/net_serializer.hpp"
@@ -9,7 +10,6 @@
 
 namespace game::terrain
 {
-namespace net = oge::runtime::net;
 
 constexpr int CHUNK_SIZE_X = 16;
 constexpr int CHUNK_SIZE_Y = 16;
@@ -19,26 +19,15 @@ constexpr int CHUNK_SHIFT_X = 0;
 constexpr int CHUNK_SHIFT_Y = 4;
 constexpr int CHUNK_SHIFT_Z = 8;
 
-NET_OBJ(TerrainRendererDesc)
+struct TerrainRendererDesc
 {
-    net::UInt32 meshingQuadBudget = 4096 * 4;
-
-    NET_OBJ_FN
-    {
-        visit(self.meshingQuadBudget);
-    }
+    uint32_t meshingQuadBudget = 4096 * 4;
 };
 
-NET_OBJ(TerrainDesc)
+struct TerrainDesc
 {
-    net::Int32 chunkViewDistance = 2;
-    net::Int32 terrainGenChunkBudget = 8;
-
-    NET_OBJ_FN
-    {
-        visit(self.chunkViewDistance);
-        visit(self.terrainGenChunkBudget);
-    }
+    int32_t chunkViewDistance = 2;
+    int32_t terrainGenChunkBudget = 8;
 };
 
 namespace ChunkDir
