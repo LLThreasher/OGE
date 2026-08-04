@@ -5,6 +5,7 @@
 #include <memory_resource>
 
 #include "enet_interface.hpp"
+#include "entt/graph/fwd.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
@@ -37,8 +38,10 @@ bool NetServer::Initialize(uint16_t port, size_t maxClients,
     return true;
 }
 
-void NetServer::Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs)
+void NetServer::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
 {
+    UpdatePacketStats(dt);
+
     if (!host) return;
 
     ENetEvent event;
@@ -106,6 +109,7 @@ void NetServer::OnClientDisconnected(ENetPeer* peer)
 
 void NetServer::OnPacketReceived(ENetPeer* peer, uint8_t* data, size_t length)
 {
-    LOG_DEBUG("Server received {} bytes from {}", length, peer->incomingPeerID);
+    // LOG_DEBUG("Server received {} bytes from {}", length, peer->incomingPeerID);
+    RecordReceive(length);
 }
 }  // namespace oge::runtime

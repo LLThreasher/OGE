@@ -149,7 +149,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
         "ENABLE_PERF": "ON",
-        "ENABLE_ASAN": "OFF"
+        "ENABLE_ASAN": "ON"
       }
     },
     {

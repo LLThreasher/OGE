@@ -28,7 +28,7 @@ entt::entity ComponentPlayer::CreatePlayer(entt::registry& world,
         res, ComponentAABBCollider{.aabb = {math::vec3{0.f, 0.f, 0.f},
                                             math::vec3{0.7f, 1.8f, 0.7f}}});
     world.emplace<ComponentCamera>(
-        res, 0.f, 0.f, math::vec3{20.f, 20.f, 20.f},
+        res, math::vec3{20.f, 20.f, 20.f},
         math::vec3{glm::normalize(math::vec3{0.f, 0.f, 0.f} -
                                   math::vec3{20.f, 20.f, 20.f})});
     world.emplace<ComponentPerspectiveCamera>(res);
@@ -81,6 +81,7 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                    ComponentPlayer, ComponentPhysicBody, ComponentCreature>()
              .each())
     {
+        auto& cursor = player.inputCursor;
         if constexpr (variant == UpdateType::Realtime)
         {
             input.AdvanceTick();
@@ -100,13 +101,16 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                         math::normalize(
                             {camera.forward.x, 0, camera.forward.z}) *
                             moveDelta.y +
-                        math::vec3{right.x, 0, right.z} * moveDelta.x;
+                        math::normalize(math::vec3{right.x, 0, right.z}) *
+                            moveDelta.x;
                 }
                 else
                 {
                     creature.moveOrder =
                         camera.forward * moveDelta.y + right * moveDelta.x;
                 }
+                if (math::len_sq(creature.moveOrder) >= 1.0f)
+                    creature.moveOrder = math::normalize(creature.moveOrder);
             }
 
             camera.position =
@@ -131,7 +135,7 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                     {
                         auto raycastResult = terrain.CastRay(
                             camera.position,
-                            ScreenToRay(camera, pcam, event.actionPos));
+                            ViewToRay(camera, event.actionPos));
                         if (raycastResult.has_value())
                         {
                             if (event.get<PlayerAction::Digging>())

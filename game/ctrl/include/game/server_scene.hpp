@@ -119,6 +119,10 @@ class DebugServerScene final : public Scene
             m_replicationRegistry.AddPeer(p.peer);
             LOG_INFO("initialize replication peer for conn({})", p.peerId);
         }
+        else
+        {
+            m_replicationRegistry.HandleIncoming(m_world, *p.data);
+        }
     }
 
    public:
@@ -161,9 +165,12 @@ class DebugServerScene final : public Scene
 
         Load();
 
-        InstallComponentReplicationHooks<ComponentPlayer>(m_world);
+        InstallComponentReplicationHooks<ComponentPhysicBody>(m_world);
         InstallComponentReplicationHooks<ComponentCamera>(m_world);
+        InstallComponentReplicationHooks<ComponentPerspectiveCamera>(m_world);
+        InstallComponentReplicationHooks<ComponentPlayer>(m_world);
         InstallEntityReplicationHooks(m_world);
+
         m_replicationRegistry.AddFamilyToSend(Id<terrain::TerrainView>());
         m_replicationRegistry.AddFamilyToSend(Id<ReplicatedTag>());
         m_replicationRegistry.AddFamilyToSend(Id<ComponentCamera>());
@@ -206,7 +213,7 @@ class DebugServerScene final : public Scene
             }
         }
 
-        m_netServer.Poll(m_serverEventDispatcher);
+        m_netServer.Poll(m_serverEventDispatcher, f.dt);
         assert(m_serverEventDispatcher.size() == 0);
         m_replicationRegistry.ProduceAll(m_netServer, m_world);
         Scene::Update(f, sctx);

@@ -7,7 +7,6 @@
 #include <unordered_set>
 
 #include "defs.hpp"
-#include "entt/signal/fwd.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/math.hpp"
 #include "oge/point3.hpp"

@@ -48,7 +48,7 @@ class NetServer : public NetPacketSender
         uint16_t port, size_t maxClients, size_t channelCount = 2,
         std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
 
-    void Poll(entt::dispatcher& dispatcher, uint32_t timeoutMs = 0);
+    void Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs = 0);
 
     void Shutdown();
 

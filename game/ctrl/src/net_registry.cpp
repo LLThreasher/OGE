@@ -78,6 +78,7 @@ void game::InstallEntityReplicationHooks(entt::registry& world)
     world.on_construct<ReplicatedTag>()
         .template connect<+[](entt::registry& world, entt::entity e)
                           {
+                              LOG_DEBUG("create entity {}", (uint64_t)e);
                               world.ctx()
                                   .template get<input::EntityEventStream>()
                                   .Push({input::EntityEventType::Create, e});
@@ -85,6 +86,7 @@ void game::InstallEntityReplicationHooks(entt::registry& world)
     world.on_destroy<ReplicatedTag>()
         .template connect<+[](entt::registry& world, entt::entity e)
                           {
+                              LOG_DEBUG("destroy entity {}", (uint64_t)e);
                               world.ctx()
                                   .template get<input::EntityEventStream>()
                                   .Push({input::EntityEventType::Destroy, e});
@@ -202,7 +204,7 @@ void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
             if (chunk->state != ChunkState::Persistent) continue;
             PaletteCompressedChunk cChunk;
             PaletteCompressedChunk::FromChunkData(*chunk, cChunk);
-            LOG_DEBUG("send hash {}, {}", chunk->Coords, DebugHash(cChunk));
+            // LOG_DEBUG("send hash {}, {}", chunk->Coords, DebugHash(cChunk));
             auto packet =
                 server.StartPacket(CHUNK_SIZE_TOTAL + 512 * sizeof(uint32_t));
             packet.Write(family);
@@ -228,7 +230,7 @@ void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
         {
             PaletteCompressedChunk cChunk;
             PaletteCompressedChunk::FromChunkData(*chunk, cChunk);
-            LOG_DEBUG("send hash {}, {}", chunk->Coords, DebugHash(cChunk));
+            // LOG_DEBUG("send hash {}, {}", chunk->Coords, DebugHash(cChunk));
             auto packet =
                 server.StartPacket(CHUNK_SIZE_TOTAL + 512 * sizeof(uint32_t));
             packet.Write(family);

@@ -1,6 +1,7 @@
 #include "game/components.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/terrain/block_registry.hpp"
+#include "oge/math.hpp"
 
 namespace game::sim
 {
@@ -27,6 +28,8 @@ void SubsystemCreature<utype>::onUpdate(FrameCtx& ctx)
         float friction =
             blocks.GetBlockFriction(blocks.GetBlockId(body.onTopOfBlkValue));
 
+        assert(friction >= 0.0f && friction <= 1.0f);
+        assert(math::len_sq(creature.moveOrder) <= 1.0f + 1e-3f);
         if (!body.enableGravity)
         {
             body.velocity.y =

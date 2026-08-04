@@ -52,7 +52,7 @@ void TerrainMeshScheduler::QueueChunksForMeshing(const TerrainData& terrain,
     {
         // if (e.state != ChunkState::Persistent) continue;
         pdata.buildMeshQueue.push(e.chunk);
-        LOG_DEBUG("queue {} for meshing, {}", terrain.chunks.Get(e.chunk)->Coords, chunkCursor);
+        // LOG_DEBUG("queue {} for meshing, {}", terrain.chunks.Get(e.chunk)->Coords, chunkCursor);
     }
 }
 

@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cassert>
 #include <cstdint>
+#include <vector>
 
 #include "oge/event_stream.hpp"
 #include "oge/math.hpp"
@@ -21,17 +23,20 @@ enum class PlayerAction : uint8_t
     Jump,
 };
 
-NET_OBJ(PlayerInputEvent)
+struct PlayerInputEvent
 {
-    net::Vec2 actionPos = {};
-    net::UInt8 actionMask = 0;
+    // normalized to view
+    math::vec2 actionPos = {};
+    uint8_t actionMask = 0;
 
     PlayerInputEvent()
     {
     }
+
     PlayerInputEvent(math::vec2 pos) : actionPos(pos), actionMask(0)
     {
     }
+
     PlayerInputEvent(math::vec2 pos, PlayerAction a)
         : actionPos(pos), actionMask(1 << static_cast<uint32_t>(a))
     {
@@ -60,24 +65,78 @@ NET_OBJ(PlayerInputEvent)
         actionMask &= ~(1 << static_cast<uint32_t>(action));
     }
 
-    NET_OBJ_FN
+    void Serialize(net::Buffer& buffer) const
     {
-        visit(self.actionPos);
-        visit(self.actionMask);
+        buffer.Write<float>(actionPos.x);
+        buffer.Write<float>(actionPos.y);
+        buffer.Write<uint8_t>(actionMask);
+    }
+
+    void Deserialize(net::Buffer& buffer)
+    {
+        actionPos.x = buffer.Read<float>();
+        actionPos.y = buffer.Read<float>();
+        actionMask = buffer.Read<uint8_t>();
+    }
+
+    size_t Size() const
+    {
+        assert(false);
+        return sizeof(float) * 2 + sizeof(uint8_t);
     }
 };
 
-NET_OBJ(PlayerInputFrame)
+struct PlayerInputFrame
 {
-    net::List<PlayerInputEvent> inputEvents;
-    net::Vec2 moveDelta;
-    net::Vec2 panDelta;
+    std::vector<PlayerInputEvent> inputEvents;
+    math::vec2 moveDelta;
+    math::vec2 panDelta;
 
-    NET_OBJ_FN
+    void Serialize(net::Buffer& buffer) const
     {
-        visit(self.inputEvents);
-        visit(self.moveDelta);
-        visit(self.panDelta);
+        // Write count
+        uint32_t count = static_cast<uint32_t>(inputEvents.size());
+        buffer.Write<uint32_t>(count);
+
+        // Write events
+        for (const auto& e : inputEvents) e.Serialize(buffer);
+
+        // Write moveDelta
+        buffer.Write<float>(moveDelta.x);
+        buffer.Write<float>(moveDelta.y);
+
+        // Write panDelta
+        buffer.Write<float>(panDelta.x);
+        buffer.Write<float>(panDelta.y);
+    }
+
+    void Deserialize(net::Buffer& buffer)
+    {
+        uint32_t count = buffer.Read<uint32_t>();
+
+        inputEvents.resize(count);
+
+        for (auto& e : inputEvents) e.Deserialize(buffer);
+
+        moveDelta.x = buffer.Read<float>();
+        moveDelta.y = buffer.Read<float>();
+
+        panDelta.x = buffer.Read<float>();
+        panDelta.y = buffer.Read<float>();
+    }
+
+    size_t Size() const
+    {
+        assert(false);
+        size_t total = 0;
+
+        total += sizeof(uint32_t);  // count
+
+        for (const auto& e : inputEvents) total += e.Size();
+
+        total += sizeof(float) * 4;  // moveDelta + panDelta
+
+        return total;
     }
 };
 
@@ -114,23 +173,28 @@ class PlayerInputStream
 
     bool PollOne(Cursor& cursor, PlayerInputFrame& frame)
     {
+        AdvanceTick();
+        frame.inputEvents.clear();
+        frame.moveDelta = {};
+        frame.panDelta = {};
+
         bool flag = false;
         PlayerInputEvent e;
         while (actions.PollOne(cursor.actionCursor, e))
         {
-            frame.inputEvents.Add(e);
+            frame.inputEvents.push_back(e);
             flag = true;
         }
         math::vec2 move;
         while (moves.PollOne(cursor.moveCursor, move))
         {
-            frame.moveDelta.value += move;
+            frame.moveDelta += move;
             flag = true;
         }
         math::vec2 pan;
         while (pans.PollOne(cursor.panCursor, pan))
         {
-            frame.panDelta.value += pan;
+            frame.panDelta += pan;
             flag = true;
         }
         return flag;
@@ -142,8 +206,8 @@ class PlayerInputStream
         {
             actions.Push(ie);
         }
-        moves.Push(frame.moveDelta);
-        pans.Push(frame.panDelta);
+        InsertMoveDelta(frame.moveDelta);
+        InsertPanDelta(frame.panDelta);
     }
 
     void AdvanceTick()
@@ -209,8 +273,9 @@ class PlayerInputStream
 
 }  // namespace game::input
 
-namespace oge::runtime {
-template<>
+namespace oge::runtime
+{
+template <>
 struct TypeName<game::input::PlayerInputStream>
 {
     static constexpr std::string Get()
@@ -218,4 +283,4 @@ struct TypeName<game::input::PlayerInputStream>
         return "core::PlayerInputStream";
     }
 };
-}
+}  // namespace oge::runtime

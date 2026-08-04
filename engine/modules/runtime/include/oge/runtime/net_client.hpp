@@ -73,7 +73,7 @@ class NetClient : public NetPacketSender
    private:
     void OnPacketReceived(uint8_t* data, size_t length)
     {
-        LOG_DEBUG("Client received {} bytes", length);
+        RecordReceive(length);
     }
 
    private:

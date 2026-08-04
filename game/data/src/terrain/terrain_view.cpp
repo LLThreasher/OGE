@@ -4,10 +4,7 @@
 #include <tuple>
 #include <vector>
 
-#include "entt/signal/fwd.hpp"
 #include "game/terrain/block_registry.hpp"
-#include "oge/fmt.hpp"
-#include "oge/log.hpp"
 #include "oge/point3.hpp"
 
 namespace game::terrain
@@ -173,7 +170,7 @@ void TerrainView::UpgradeChunkInternal(ChunkHandle handle, ChunkState state,
     auto prevState = chunk->state;
     chunk->state = state;
     m_chunkEvents.Push(ChunkStateUpdateEvent{prevState, state, handle});
-    LOG_DEBUG("upgrade chunk {}, {}", chunk->Coords, m_chunkEvents.HeadIndex());
+    // LOG_DEBUG("upgrade chunk {}, {}", chunk->Coords, m_chunkEvents.HeadIndex());
 }
 
 void TerrainView::DowngradeChunk(ChunkHandle handle, ChunkState newState)

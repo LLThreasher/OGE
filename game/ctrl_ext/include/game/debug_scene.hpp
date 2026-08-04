@@ -1,6 +1,5 @@
 #include <string>
 
-#include "entt/entity/fwd.hpp"
 #include "game/components.hpp"
 #include "game/game_world.hpp"
 #include "game/input/input_source.hpp"
@@ -50,7 +49,9 @@ class DebugScene3 final : public SceneExt
 
         auto& pcam = m_world.get<const ComponentPerspectiveCamera>(m_player);
         auto m_widgetInputDef = input::WidgetInput::Def{
-            .target = m_world.get<input::PlayerInputStream>(m_player)};
+            .target = m_world.get<input::PlayerInputStream>(m_player),
+            .pcam = pcam,
+        };
         m_widgetInputDef.vfov = -pcam.fov;
         m_widgetInputDef.hfov =
             2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
@@ -169,10 +170,10 @@ class DebugScene3 final : public SceneExt
 
             auto& pcam =
                 m_world.get<const ComponentPerspectiveCamera>(m_player);
-            auto m_widgetInputDef = input::WidgetInput::Def{
+            auto widgetInputDef = input::KeyMouseInput::Def{
                 .target = m_world.get<input::PlayerInputStream>(m_player)};
-            m_widgetInputDef.vfov = -pcam.fov;
-            m_widgetInputDef.hfov =
+            widgetInputDef.vfov = -pcam.fov;
+            widgetInputDef.hfov =
                 2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
 
             m_inputs.Clear();
@@ -182,8 +183,8 @@ class DebugScene3 final : public SceneExt
                 input::KeyMouseInput::Def{
                     .target = m_world.get<input::PlayerInputStream>(m_player),
                     .mouseIdx = 0,
-                    .hfov = m_widgetInputDef.hfov / (float)extent.x,
-                    .vfov = m_widgetInputDef.vfov / (float)extent.y});
+                    .hfov = widgetInputDef.hfov / (float)extent.x,
+                    .vfov = widgetInputDef.vfov / (float)extent.y});
 
             // put something in the middle of the screen
             ui::UISprite crossSprite{.sprite =

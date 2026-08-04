@@ -59,6 +59,8 @@ bool NetClient::Connect(const char* ip, uint16_t port, uint32_t timeoutMs)
 
 void NetClient::Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs)
 {
+    UpdatePacketStats(dt);
+    
     if (!host) return;
 
     if (state == State::Connecting && connectWaitTime < 0)

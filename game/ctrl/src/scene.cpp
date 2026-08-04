@@ -1,6 +1,5 @@
 #include "game/scene.hpp"
 
-#include "entt/entity/fwd.hpp"
 #include "game/components.hpp"
 #include "game/input/entity_event_stream.hpp"
 #include "game/json.hpp"

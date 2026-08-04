@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "game/game_world.hpp"
+#include "game/input/player_input_stream.hpp"
 #include "oge/aabb.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/math.hpp"
@@ -55,24 +56,46 @@ struct ComponentCamera
         return glm::normalize(glm::cross(forward, worldUp));
     }
 
+    ComponentCamera(math::vec3 position = {}, math::vec3 forward = {})
+    {
+        yaw = std::atan2(forward.x, forward.z);
+        pitch = std::asin(forward.y);
+    }
+
     math::mat4 view() const;
     void ApplyDelta(float dsx, float dsy);
 
     void Serialize(net::Buffer& buffer)
     {
-        buffer.Write(position);
-        buffer.Write(forward);
+        buffer.Write<float>(yaw);
+        buffer.Write<float>(pitch);
+
+        buffer.Write<float>(position.x);
+        buffer.Write<float>(position.y);
+        buffer.Write<float>(position.z);
+
+        buffer.Write<float>(forward.x);
+        buffer.Write<float>(forward.y);
+        buffer.Write<float>(forward.z);
     }
 
     void Deserialize(net::Buffer& buffer)
     {
-        buffer.Read(position);
-        buffer.Read(forward);
+        yaw = buffer.Read<float>();
+        pitch = buffer.Read<float>();
+
+        position.x = buffer.Read<float>();
+        position.y = buffer.Read<float>();
+        position.z = buffer.Read<float>();
+
+        forward.x = buffer.Read<float>();
+        forward.y = buffer.Read<float>();
+        forward.z = buffer.Read<float>();
     }
 
     size_t Size()
     {
-        return sizeof(position) + sizeof(forward);
+        return sizeof(float) * 10;
     }
 };
 
@@ -101,6 +124,8 @@ struct ComponentPerspectiveCamera
 
 math::vec3 ScreenToRay(ComponentCamera camera,
                        ComponentPerspectiveCamera pcamera, math::vec2 pos);
+math::vec2 ScreenToView(ComponentPerspectiveCamera pcamera, math::vec2 pos);
+math::vec3 ViewToRay(ComponentCamera camera, math::vec2 pos);
 
 struct InputSourceWidget
 {
@@ -169,7 +194,7 @@ struct ComponentAABBCollider
 
     void Deserialize(net::Buffer& buffer)
     {
-        aabb =  buffer.Read<AABB>();
+        aabb = buffer.Read<AABB>();
     }
 
     size_t Size()
@@ -188,8 +213,10 @@ struct ComponentPlayer
 {
     std::array<uint8_t, 16> id;
     float lastActionTime = 0.f;
+    input::PlayerInputStream::Cursor inputCursor{};
 
-    static entt::entity CreatePlayer(entt::registry& world, PlayerInfo info, entt::entity hint = entt::null);
+    static entt::entity CreatePlayer(entt::registry& world, PlayerInfo info,
+                                     entt::entity hint = entt::null);
     static void DestroyPlayer(entt::registry& world, PlayerInfo info);
 
     void Serialize(net::Buffer& buffer)

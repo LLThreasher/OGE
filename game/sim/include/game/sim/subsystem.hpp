@@ -110,7 +110,6 @@ class SubsystemCreature : public Subsystem
 template <UpdateType utype>
 class SubsystemPlayer : public Subsystem
 {
-    input::PlayerInputStream::Cursor cursor;
     DECL_FNS
 };
 

@@ -28,7 +28,15 @@ class DiscreteEventStream : public RingBuffer<T, Capacity>
     {
         if (cursor == 0) cursor = frontier;
 
-        if (cursor >= frontier) return false;
+        if (cursor >= frontier)
+        {
+            if (cursor > frontier)
+            {
+                LOG_WARN("advanced cursor detected at {}, current head {}",
+                         cursor, frontier);
+            }
+            return false;
+        }
 
         if (frontier - cursor > Capacity)
         {

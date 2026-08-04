@@ -6,13 +6,25 @@ namespace game
 math::vec3 ScreenToRay(ComponentCamera camera,
                        ComponentPerspectiveCamera pcamera, math::vec2 pos)
 {
+    return ViewToRay(camera, ScreenToView(pcamera, pos));
+}
+
+math::vec2 ScreenToView(ComponentPerspectiveCamera pcamera, math::vec2 pos)
+{
     float ndcX = -pos.x * 2.0f + 1.0f;
     float ndcY = 1.0f - pos.y * 2.0f;
 
-    float tanHalfFov = tanf(pcamera.fov * 0.5f);
+    float tanHalfFov = math::tan(pcamera.fov * 0.5f);
 
     float viewX = ndcX * pcamera.aspect * tanHalfFov;
     float viewY = ndcY * tanHalfFov;
+    return {viewX, viewY};
+}
+
+math::vec3 ViewToRay(ComponentCamera camera, math::vec2 pos)
+{
+    float viewX = pos.x;
+    float viewY = pos.y;
     float viewZ = 1.0f;
 
     math::vec3 up = camera.up();

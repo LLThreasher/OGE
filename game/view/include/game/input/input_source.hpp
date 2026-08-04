@@ -61,6 +61,7 @@ class UIDragInput : public InputSource
 class WidgetInput : public InputSource
 {
     PlayerInputStream& out;
+    const ComponentPerspectiveCamera& pcam;
     entt::entity viewWidget;
     entt::entity moveWidget;
     float vfov;
@@ -72,18 +73,21 @@ class WidgetInput : public InputSource
     struct Def
     {
         PlayerInputStream& target;
+        const ComponentPerspectiveCamera& pcam;
         entt::entity viewWidget;
         entt::entity moveWidget;
         float vfov;
         float hfov;
     };
 
-    WidgetInput(Def&& def) : out(def.target)
+    WidgetInput(Def&& def)
+        : out(def.target),
+          pcam(def.pcam),
+          viewWidget(def.viewWidget),
+          moveWidget(def.moveWidget),
+          hfov(def.hfov),
+          vfov(def.vfov)
     {
-        viewWidget = def.viewWidget;
-        moveWidget = def.moveWidget;
-        hfov = def.hfov;
-        vfov = def.vfov;
     }
 
     void onAttach(InputContext& ctx);
@@ -134,7 +138,7 @@ class InputPipeline : public FramePipeline<InputSource, InputFrame>
 
 namespace oge::runtime
 {
-    using namespace game::input;
+using namespace game::input;
 
 template <>
 struct TypeName<InputSource>
@@ -171,4 +175,4 @@ struct TypeName<KeyMouseInput>
         return "core::KeyMouseInput";
     }
 };
-}
+}  // namespace oge::runtime

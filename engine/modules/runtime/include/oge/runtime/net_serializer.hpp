@@ -354,11 +354,86 @@ using Bool = SimpleNetValue<bool>;
 using Vec2 = SimpleNetValue<math::vec2>;
 using Vec3 = SimpleNetValue<math::vec3>;
 
+template <>
+struct SimpleNetValue<math::vec2>
+{
+    math::vec2 value;
+
+    SimpleNetValue(math::vec2 val = {}) : value(val)
+    {
+    }
+
+    constexpr uint64_t Size() const
+    {
+        return sizeof(float) * 2;
+    }
+
+    void Serialize(Buffer& buffer)
+    {
+        buffer.Write<float>(value.x);
+        buffer.Write<float>(value.y);
+    }
+
+    void Deserialize(Buffer& buffer)
+    {
+        value.x = buffer.Read<float>();
+        value.y = buffer.Read<float>();
+    }
+
+    operator math::vec2&()
+    {
+        return value;
+    }
+    operator const math::vec2&() const
+    {
+        return value;
+    }
+};
+
+template <>
+struct SimpleNetValue<math::vec3>
+{
+    math::vec3 value;
+
+    SimpleNetValue(math::vec3 val = {}) : value(val)
+    {
+    }
+
+    constexpr uint64_t Size() const
+    {
+        return sizeof(float) * 3;
+    }
+
+    void Serialize(Buffer& buffer)
+    {
+        buffer.Write<float>(value.x);
+        buffer.Write<float>(value.y);
+        buffer.Write<float>(value.z);
+    }
+
+    void Deserialize(Buffer& buffer)
+    {
+        value.x = buffer.Read<float>();
+        value.y = buffer.Read<float>();
+        value.z = buffer.Read<float>();
+    }
+
+    operator math::vec3&()
+    {
+        return value;
+    }
+
+    operator const math::vec3&() const
+    {
+        return value;
+    }
+};
+
 template <typename Derived>
 class Object
 {
    public:
-    constexpr uint64_t Size() const
+    uint64_t Size() const
     {
         uint64_t res = 0;
         Derived::VisitFields(*static_cast<const Derived*>(this),
@@ -384,13 +459,13 @@ struct List
 {
     std::pmr::vector<T> data;
 
-    constexpr uint64_t Size() const
+    uint64_t Size() const
     {
-        uint64_t res = 0;
-        for (const auto& val : data)
-        {
-            res += val.Size();
-        }
+        uint64_t res = sizeof(uint32_t); // count
+
+        for (auto& e : data)
+            res += e.Size();
+
         return res;
     }
 

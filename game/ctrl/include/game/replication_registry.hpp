@@ -2,6 +2,8 @@
 
 #include <array>
 #include <concepts>
+#include <cstdint>
+#include <tuple>
 #include <type_traits>
 #include <vector>
 
@@ -213,7 +215,7 @@ struct ComponentReplication
 {
     struct State
     {
-        typename input::ComponentDeltaStream<T>::Cursor cursor = 0;
+        typename input::ComponentDeltaStream<T>::Cursor cursor{};
         bool needsSnapshot = true;
     };
 
@@ -257,21 +259,24 @@ struct ComponentReplication
                        oge::runtime::NetPacketSender& server, FamilyId family,
                        SendType sendType, uint8_t channel, entt::any& anyState)
     {
+        // LOG_DEBUG("encode {}", oge::runtime::TypeName<T>::Get());
         auto& state = entt::any_cast<State&>(anyState);
-
-        if (state.needsSnapshot)
-        {
-            SendSnapshot(world, peer, server, family, sendType, channel, state);
-            return;
-        }
 
         auto* stream = world.ctx().find<input::ComponentDeltaStream<T>>();
         if (!stream) return;
+
+        if (state.needsSnapshot)
+        {
+            stream->AdvanceCursor(state.cursor);
+            SendSnapshot(world, peer, server, family, sendType, channel, state);
+            return;
+        }
 
         input::ComponentDeltaEvent<T> delta;
 
         while (stream->PollOne(state.cursor, delta))
         {
+            if (!world.valid(delta.entity)) continue;
             size_t size = sizeof(FamilyId) + sizeof(input::ComponentDeltaType) +
                           sizeof(entt::entity);
 
@@ -302,6 +307,9 @@ struct ComponentReplication
 
         entt::entity entity;
         buffer.Read(entity);
+
+        // LOG_DEBUG("decode {} for {}", oge::runtime::TypeName<T>::Get(),
+        // (uint64_t)entity);
 
         switch (type)
         {
@@ -437,6 +445,7 @@ struct EntityEventStreamReplication
 
     static entt::any CreateState()
     {
+        LOG_DEBUG("create e event state");
         return State{};
     }
 
@@ -451,9 +460,9 @@ struct EntityEventStreamReplication
         if (!eStream) return;
         while (eStream->PollOne(state.eCursor, ee))
         {
-            if (ee.type == EntityEventType::Destroy)
+            if (ee.type.value == EntityEventType::Destroy)
             {
-                state.perStreamStates.erase(ee.entity);
+                state.perStreamStates.erase(ee.entity.value);
             }
         }
 
@@ -480,8 +489,9 @@ struct EntityEventStreamReplication
 
             if (batch.events.empty()) continue;
 
-            auto packet = server.StartPacket(
-                sizeof(FamilyId) + sizeof(entt::entity) + batch.Size());
+            // auto packet = server.StartPacket(
+            //     sizeof(FamilyId) + sizeof(entt::entity) + batch.Size());
+            auto packet = server.StartPacket(512);
 
             packet.Write(family);
             packet.Write(entity);
