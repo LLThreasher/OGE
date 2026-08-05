@@ -64,18 +64,19 @@ struct SimpleValueTraits
     }
 };
 
-template <>
-struct NetTraits<int32_t> : SimpleValueTraits<int32_t>
-{
-};
+template <typename T>
+concept FixedWidthInteger =
+    std::same_as<T, int8_t>  ||
+    std::same_as<T, uint8_t> ||
+    std::same_as<T, int16_t> ||
+    std::same_as<T, uint16_t> ||
+    std::same_as<T, int32_t> ||
+    std::same_as<T, uint32_t> ||
+    std::same_as<T, int64_t> ||
+    std::same_as<T, uint64_t>;
 
-template <>
-struct NetTraits<uint8_t> : SimpleValueTraits<uint8_t>
-{
-};
-
-template <>
-struct NetTraits<uint32_t> : SimpleValueTraits<uint32_t>
+template <FixedWidthInteger T>
+struct NetTraits<T> : SimpleValueTraits<T>
 {
 };
 
@@ -175,6 +176,29 @@ struct ObjectTraits
         {                                                    \
             BODY                                             \
         }                                                    \
+    };
+
+#define DECL_NET_OBJ_PACKED(Type, Packed, ToPacked, FromPacked)  \
+    template <>                                                  \
+    struct ::oge::runtime::net::NetTraits<Type>                  \
+    {                                                            \
+        static uint64_t Size(const Type& value)                  \
+        {                                                        \
+            return net::Size(ToPacked(value));                   \
+        }                                                        \
+                                                                 \
+        static void Serialize(Buffer& buffer, const Type& value) \
+        {                                                        \
+            Packed packed = ToPacked(value);                     \
+            net::Serialize(buffer, packed);                      \
+        }                                                        \
+                                                                 \
+        static void Deserialize(Buffer& buffer, Type& value)     \
+        {                                                        \
+            Packed packed;                                       \
+            net::Deserialize(buffer, packed);                    \
+            value = FromPacked(packed);                          \
+        }                                                        \
     };
 
 template <typename T>
