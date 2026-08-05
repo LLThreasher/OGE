@@ -47,6 +47,18 @@ void ComponentCamera::ApplyDelta(float dsx, float dsy)
     forward = math::normalize(forward);
 }
 
+void ComponentCamera::SetYawPitch(float _yaw, float _pitch)
+{
+    yaw = _yaw;
+    pitch = _pitch;
+    pitch = math::clamp(pitch, -math::radians(89.0f), math::radians(89.0f));
+
+    forward.x = math::cos(pitch) * math::sin(yaw);
+    forward.y = math::sin(pitch);
+    forward.z = math::cos(pitch) * math::cos(yaw);
+    forward = math::normalize(forward);
+}
+
 math::mat4 ComponentCamera::view() const
 {
     return math::lookAt(position, position + forward, glm::vec3(0, 1, 0));

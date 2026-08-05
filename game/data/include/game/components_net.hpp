@@ -31,3 +31,7 @@ DECL_NET_OBJ(game::ComponentAABBCollider, {
 DECL_NET_OBJ(game::ComponentPlayer, {
     visit(self.id);
 })
+
+DECL_NET_OBJ(game::ComponentPhysicBody, {
+    visit(self.pos);
+})

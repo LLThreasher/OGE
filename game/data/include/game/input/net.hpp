@@ -7,14 +7,11 @@
 #include <vector>
 
 #include "game/input/player_input_stream.hpp"
+#include "oge/math.hpp"
 #include "oge/runtime/net_traits.hpp"
 
 namespace game::input::net
 {
-constexpr float INPUT_EPSILON = 0.000001f;
-
-// ±0.5 radians per frame, about ±28.6 degrees.
-constexpr float PAN_MAX_RAD = 0.5f;
 
 enum PlayerInputFrameFlags : uint8_t
 {
@@ -101,6 +98,32 @@ inline float DequantizeRangeS16(int16_t v, float maxAbs)
     return static_cast<float>(v) / 32767.0f * maxAbs;
 }
 
+inline uint16_t QuantizeRangeU16(float v, float minValue, float maxValue)
+{
+    if (maxValue <= minValue)
+    {
+        return 0;
+    }
+
+    v = std::clamp(v, minValue, maxValue);
+
+    const float t = (v - minValue) / (maxValue - minValue);
+
+    return static_cast<uint16_t>(std::lround(t * 65535.0f));
+}
+
+inline float DequantizeRangeU16(uint16_t v, float minValue, float maxValue)
+{
+    if (maxValue <= minValue)
+    {
+        return minValue;
+    }
+
+    const float t = static_cast<float>(v) / 65535.0f;
+
+    return minValue + t * (maxValue - minValue);
+}
+
 inline PackedPlayerInputEvent PackEvent(
     const game::input::PlayerInputEvent& src)
 {
@@ -155,8 +178,8 @@ inline PackedPlayerInputFrame PackFrame(
     {
         dst.flags = static_cast<uint8_t>(dst.flags | HasPan);
 
-        dst.panX = QuantizeRangeS16(src.panDelta.x, PAN_MAX_RAD);
-        dst.panY = QuantizeRangeS16(src.panDelta.y, PAN_MAX_RAD);
+        dst.panX = QuantizeRangeU16(src.panDelta.x, 0.f, math::pi * 2);
+        dst.panY = QuantizeRangeS16(src.panDelta.y, math::pi);
     }
 
     if (hasEvents)
@@ -192,8 +215,8 @@ inline game::input::PlayerInputFrame UnpackFrame(
 
     if ((src.flags & HasPan) != 0)
     {
-        dst.panDelta.x = DequantizeRangeS16(src.panX, PAN_MAX_RAD);
-        dst.panDelta.y = DequantizeRangeS16(src.panY, PAN_MAX_RAD);
+        dst.panDelta.x = DequantizeRangeU16(src.panX, 0.f, math::pi * 2);
+        dst.panDelta.y = DequantizeRangeS16(src.panY, math::pi);
     }
 
     if ((src.flags & HasEvents) != 0)

@@ -165,7 +165,7 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     }
 
     cachedCollisions.clear();
-    
+
     // collision between physical body and terrain Y
     for (auto [e, collider, body] :
          game.view<UpdateTag<utype>, const ComponentAABBCollider,
@@ -185,8 +185,13 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     {
         auto& [res, blkVals] = tup;
         auto& body = game.get<ComponentPhysicBody>(e);
-        body.isGrounded = res.type == oge::COLLISION_TYPE_POS_Y;
-        body.pos.y += res.effectiveOffset.y;
+        game.patch<ComponentPhysicBody>(
+            e,
+            [=](auto& body)
+            {
+                body.isGrounded = res.type == oge::COLLISION_TYPE_POS_Y;
+                body.pos.y += res.effectiveOffset.y;
+            });
 
         auto& collider = game.get<ComponentAABBCollider>(e);
         auto realAABB = collider.aabb + body.pos;
@@ -252,7 +257,8 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     {
         auto& [res, blkVals] = tup;
         auto& body = game.get<ComponentPhysicBody>(e);
-        body.pos += res.effectiveOffset;
+        game.patch<ComponentPhysicBody>(
+            e, [=](auto& body) { body.pos += res.effectiveOffset; });
 
         if (res.type == oge::COLLISION_TYPE_POS_X && body.velocity.x < 0.f)
             body.velocity.x = 0;
@@ -309,7 +315,8 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     {
         auto& [res, blkVals] = tup;
         auto& body = game.get<ComponentPhysicBody>(e);
-        body.pos += res.effectiveOffset;
+        game.patch<ComponentPhysicBody>(
+            e, [=](auto& body) { body.pos += res.effectiveOffset; });
 
         if (res.type == oge::COLLISION_TYPE_POS_Z && body.velocity.z < 0.f)
             body.velocity.z = 0;

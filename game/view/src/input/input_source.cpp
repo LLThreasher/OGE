@@ -42,6 +42,7 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
         raw.PollPtrDelta(mouseIdx, raw_idx) * math::vec2{hfov, vfov};
     out.InsertPanDelta(panDelta);
 
+    bool dirty = false;
     PlayerInputEvent pEvent{{0.f, 0.f}};
     pEvent.actionMask = out.LatestAction();
     oge::input::InputEvent event{};
@@ -57,9 +58,15 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
         else if (event.type == InputEventType::MouseButtonUp)
         {
             if (event.mouse.button() == MouseButton::Left)
+            {
                 pEvent.unset<PlayerAction::Digging>();
+                dirty = true;
+            }
             else if (event.mouse.button() == MouseButton::Right)
+            {
                 pEvent.unset<PlayerAction::Placing>();
+                dirty = true;
+            }
         }
         else if (event.type == InputEventType::KeyDown)
         {
@@ -69,10 +76,13 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
         else if (event.type == InputEventType::KeyUp)
         {
             if (event.key == KeyCode::KY_SPACE)
+            {
                 pEvent.unset<PlayerAction::Jump>();
+                dirty = true;
+            }
         }
     }
-    out.InsertAction(pEvent);
+    if (dirty || pEvent.actionMask != 0) out.InsertAction(pEvent);
 }
 
 void WidgetInput::onAttach(InputContext& ctx)

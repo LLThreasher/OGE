@@ -1,6 +1,7 @@
 #include "oge/runtime/net_packet_sender.hpp"
 
 #include <enet/enet.h>
+
 #include "enet_interface.hpp"
 #include "oge/log.hpp"
 
@@ -36,21 +37,19 @@ void NetPacketSender::Send(ENetPeer* peer, net::Buffer data, SendType sendType,
     auto err = enet_peer_send(peer, channel, packet);
     if (err < 0)
     {
-        LOG_ERROR("failed on packet of size {} to peer {}, errno {}", data.Data().size(),
-                 peer->incomingPeerID, err);
+        LOG_ERROR("failed on packet of size {} to peer {}, errno {}",
+                  data.Data().size(), peer->incomingPeerID, err);
         enet_packet_destroy(packet);
     }
 }
 
 void NetPacketSender::UpdatePacketStats(float dt)
 {
-    if (packetStatsLogInterval <= 0.0f)
-        return;
+    if (packetStatsLogInterval <= 0.0f) return;
 
     packetStatsLogTimer += dt;
 
-    if (packetStatsLogTimer < packetStatsLogInterval)
-        return;
+    if (packetStatsLogTimer < packetStatsLogInterval) return;
 
     const float elapsed = packetStatsLogTimer;
     packetStatsLogTimer = 0.0f;
@@ -69,17 +68,14 @@ void NetPacketSender::UpdatePacketStats(float dt)
 
     LOG_INFO(
         "Net stats: sent={} bytes, recv={} bytes, sentPkts={}, recvPkts={}, "
-        "sendRate={:.2f} B/s, recvRate={:.2f} B/s, sendPps={:.2f}, recvPps={:.2f}, "
+        "sendRate={:.2f} B/s, recvRate={:.2f} B/s",
+        packetStats.intervalBytesSent, packetStats.intervalBytesReceived,
+        packetStats.intervalPacketsSent, packetStats.intervalPacketsReceived,
+        sentBytesPerSecond, receivedBytesPerSecond);
+    LOG_INFO(
+        "Net stats: sendPps={:.2f}, recvPps={:.2f}, "
         "totalSent={} bytes, totalRecv={} bytes",
-        packetStats.intervalBytesSent,
-        packetStats.intervalBytesReceived,
-        packetStats.intervalPacketsSent,
-        packetStats.intervalPacketsReceived,
-        sentBytesPerSecond,
-        receivedBytesPerSecond,
-        sentPacketsPerSecond,
-        receivedPacketsPerSecond,
-        packetStats.bytesSent,
+        sentPacketsPerSecond, receivedPacketsPerSecond, packetStats.bytesSent,
         packetStats.bytesReceived);
 
     packetStats.intervalBytesSent = 0;

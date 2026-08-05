@@ -262,30 +262,57 @@ struct ComponentReplication
             return;
         }
 
+        entt::sparse_set newComps;
+        entt::storage<T> storage;
         input::ComponentDeltaEvent<T> delta;
-
         while (stream->PollOne(state.cursor, delta))
         {
             if (!world.valid(delta.entity)) continue;
-            size_t size = sizeof(FamilyId) + sizeof(input::ComponentDeltaType) +
-                          sizeof(entt::entity);
-
             if (delta.type != input::ComponentDeltaType::Remove)
             {
-                size += net::Size(world.get<T>(delta.entity));
+                if (!storage.contains(delta.entity))
+                    storage.emplace(delta.entity, world.get<T>(delta.entity));
+                if (delta.type == input::ComponentDeltaType::Add)
+                    newComps.push(delta.entity);
             }
+            else
+            {
+                if (storage.contains(delta.entity))
+                {
+                    storage.erase(delta.entity);
+                }
+                if (newComps.contains(delta.entity))
+                {
+                    newComps.erase(delta.entity);
+                }
+                else
+                {
+                    size_t size = sizeof(FamilyId) +
+                                  sizeof(input::ComponentDeltaType) +
+                                  sizeof(entt::entity);
+                    auto packet = server.StartPacket(size);
+                    packet.Write(family);
+                    packet.Write(delta.type);
+                    packet.Write(delta.entity);
+                    server.Send(peer, packet, sendType, channel);
+                }
+            }
+        }
+
+        for (auto [e, data] : storage.each())
+        {
+            auto ty = newComps.contains(e) ? input::ComponentDeltaType::Add
+                                           : input::ComponentDeltaType::Update;
+            size_t size = sizeof(FamilyId) + sizeof(input::ComponentDeltaType) +
+                          sizeof(entt::entity) +
+                          net::Size(world.get<T>(delta.entity));
 
             auto packet = server.StartPacket(size);
 
             packet.Write(family);
             packet.Write(delta.type);
             packet.Write(delta.entity);
-
-            if (delta.type != input::ComponentDeltaType::Remove)
-            {
-                net::Serialize(packet, world.get<T>(delta.entity));
-            }
-
+            net::Serialize(packet, world.get<T>(delta.entity));
             server.Send(peer, packet, sendType, channel);
         }
     }
@@ -310,7 +337,7 @@ struct ComponentReplication
                 {
                     T res{};
                     net::Deserialize(buffer, res);
-                    world.emplace<T>(entity, std::move(res)); // this line
+                    world.emplace<T>(entity, std::move(res));  // this line
                 }
                 else
                 {
@@ -383,7 +410,7 @@ struct EventStreamReplication
 
         if (!state.initialized)
         {
-            state.cursor = stream.HeadIndex();
+            stream.AdvanceCursor(state.cursor);
             state.initialized = true;
             return;
         }

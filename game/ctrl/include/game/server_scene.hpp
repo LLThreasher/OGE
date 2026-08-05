@@ -167,7 +167,9 @@ class DebugServerScene final : public Scene
         m_netServer.Initialize(port, maxClients, 3);
 
         m_subsystems.SetUpdateInterval(1 / 20.f);
+        InstallComponentReplicationHooks<ComponentAABBCollider>(m_world);
         InstallComponentReplicationHooks<ComponentPhysicBody>(m_world);
+        InstallComponentReplicationHooks<ComponentCreature>(m_world);
         InstallComponentReplicationHooks<ComponentCamera>(m_world);
         InstallComponentReplicationHooks<ComponentPerspectiveCamera>(m_world);
         InstallComponentReplicationHooks<ComponentPlayer>(m_world);
@@ -175,8 +177,9 @@ class DebugServerScene final : public Scene
 
         m_replicationRegistry.AddFamilyToSend(Id<terrain::TerrainView>());
         m_replicationRegistry.AddFamilyToSend(Id<ReplicatedTag>());
-        m_replicationRegistry.AddFamilyToSend(Id<ComponentCamera>());
-        m_replicationRegistry.AddFamilyToSend(Id<ComponentPerspectiveCamera>());
+        m_replicationRegistry.AddFamilyToSend(Id<ComponentAABBCollider>());
+        m_replicationRegistry.AddFamilyToSend(Id<ComponentPhysicBody>());
+        m_replicationRegistry.AddFamilyToSend(Id<ComponentCreature>());
         m_replicationRegistry.AddFamilyToSend(Id<ComponentPlayer>());
     }
 

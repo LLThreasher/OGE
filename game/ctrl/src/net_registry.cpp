@@ -63,6 +63,7 @@ void game::RegisterReplications(AnythingFactory& af, ReplicationRegistry& rf)
     RegisterComponentReplication<ComponentAABBCollider>(af);
     RegisterComponentReplication<ComponentCamera>(af);
     RegisterComponentReplication<ComponentPerspectiveCamera>(af);
+    RegisterComponentReplication<ComponentPhysicBody>(af);
     RegisterComponentReplication<ComponentCreature>(af);
     RegisterComponentReplication<ComponentPlayer>(af);
     RegisterEventReplication<input::PlayerInputStream>(af);

@@ -86,9 +86,9 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
         {
             input.AdvanceTick();
             math::vec2 panDelta;
-            if (input.PollPanDelta(cursor, panDelta))
+            if (input.PollAccumPan(cursor, panDelta))
             {
-                camera.ApplyDelta(panDelta.x, panDelta.y);
+                camera.SetYawPitch(panDelta.x, panDelta.y);
             }
 
             math::vec2 moveDelta;
@@ -133,9 +133,9 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                 {
                     if (player.lastActionTime <= 0.f)
                     {
-                        auto raycastResult = terrain.CastRay(
-                            camera.position,
-                            ViewToRay(camera, event.actionPos));
+                        auto raycastResult =
+                            terrain.CastRay(camera.position,
+                                            ViewToRay(camera, event.actionPos));
                         if (raycastResult.has_value())
                         {
                             if (event.get<PlayerAction::Digging>())

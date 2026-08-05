@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cassert>
 #include <string>
 
 #include "game/components.hpp"
@@ -74,17 +75,28 @@ class DebugScene3 : public SceneExt
     void onConstructPlayer(entt::registry& world, entt::entity e)
     {
         LOG_INFO(
-            "entity {}: check player id {} against {}",
-            (uint64_t)e,
+            "entity {}: check player id {} against {}", (uint64_t)e,
             uuids::to_string(uuids::uuid(world.get<ComponentPlayer>(e).id)),
             uuids::to_string(uuids::uuid(m_playerInfo.uuid)));
         if (world.get<ComponentPlayer>(e).id == m_playerInfo.uuid)
         {
             ui::CreateGameView(m_uiWorld, {math::vec2{0, 0}, math::vec2{1, 1}},
                                e);
-            if (m_waitPlayer)
-                world.emplace<input::PlayerInputStream>(e);
+            if (m_waitPlayer) world.emplace<input::PlayerInputStream>(e);
+            if (!world.all_of<UpdateTag<UpdateType::Realtime>>(e))
+                world.emplace<UpdateTag<UpdateType::Realtime>>(e);
+            if (!world.all_of<ComponentCamera>(e))
+                world.emplace<ComponentCamera>(e);
+            if (!world.all_of<ComponentPerspectiveCamera>(e))
+                world.emplace<ComponentPerspectiveCamera>(e);
             world.emplace<ReplicatedTag>(e);
+            assert(world.all_of<ComponentCamera>(e));
+            assert(world.all_of<const ComponentPerspectiveCamera>(e));
+            assert(world.all_of<input::PlayerInputStream>(e));
+            assert(world.all_of<const ComponentAABBCollider>(e));
+            assert(world.all_of<ComponentPlayer>(e));
+            assert(world.all_of<ComponentPhysicBody>(e));
+            assert(world.all_of<ComponentCreature>(e));
             m_player = e;
 
             AddWidgetInput(m_ctx.assets);

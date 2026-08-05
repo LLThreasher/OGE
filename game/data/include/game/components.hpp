@@ -64,6 +64,7 @@ struct ComponentCamera
 
     math::mat4 view() const;
     void ApplyDelta(float dsx, float dsy);
+    void SetYawPitch(float yaw, float pitch);
 };
 
 struct ComponentPerspectiveCamera
@@ -202,3 +203,5 @@ struct TypeName<game::ComponentCreature>
     }
 };
 }  // namespace oge::runtime
+
+DECL_TYPE_NAME(game::ComponentPhysicBody, "core::ComponentPhysicBody")

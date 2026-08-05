@@ -24,6 +24,16 @@ struct TypeName
     static constexpr std::string Get();
 };
 
+#define DECL_TYPE_NAME(Type, Name)         \
+    template <>                            \
+    struct ::oge::runtime::TypeName<Type>  \
+    {                                      \
+        static constexpr std::string Get() \
+        {                                  \
+            return Name;                   \
+        }                                  \
+    };
+
 class OGEContextReadOnly
 {
    protected:

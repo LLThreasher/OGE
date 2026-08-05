@@ -13,6 +13,7 @@
 #include "game/scene.hpp"
 #include "game/scene_ext.hpp"
 #include "game/sim/subsystem.hpp"
+#include "game/sim/subsystem_physics.hpp"
 #include "game/ui/objects.hpp"
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
@@ -150,6 +151,9 @@ class ClientConnScene : public SceneExt
             cfg.subsystems.clear();
             cfg.realtimeSubsystems.clear();
             cfg.subsystems.push_back(Id<sim::SubsystemDebugText>());
+            cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
+            // cfg.realtimeSubsystems.push_back(Id<sim::SubsystemCreature<UpdateType::Realtime>>());
+            // cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
             sctx.nextSceneArgs["scene_config"] = json::ToJson(cfg);
             sctx.nextSceneArgs["wait_player"] = json::ToJson(true);
         }
