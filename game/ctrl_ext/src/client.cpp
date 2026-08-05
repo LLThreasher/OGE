@@ -15,7 +15,6 @@
 #include "oge/runtime/gfx/skyline_allocator.hpp"
 #include "oge/runtime/typed_registry.hpp"
 #include "oge/stopwatch.hpp"
-#include "game/replication_registry.hpp"
 
 namespace game
 {

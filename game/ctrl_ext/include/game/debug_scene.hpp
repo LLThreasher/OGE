@@ -4,6 +4,7 @@
 #include <string>
 
 #include "game/components.hpp"
+#include "game/events.hpp"
 #include "game/game_world.hpp"
 #include "game/input/input_source.hpp"
 #include "game/input/player_input_stream.hpp"
@@ -19,7 +20,6 @@
 #include "oge/log.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/typed_registry.hpp"
-#include "game/events.hpp"
 
 namespace game
 {
@@ -36,12 +36,9 @@ class DebugScene3 : public SceneExt
 
     void ClearInputs()
     {
-        if (m_uiWorld.valid(m_lookWidget))
-            m_uiWorld.destroy(m_lookWidget);
-        if (m_uiWorld.valid(m_moveWidget))
-            m_uiWorld.destroy(m_moveWidget);
-        if (m_uiWorld.valid(m_cross))
-            m_uiWorld.destroy(m_cross);
+        if (m_uiWorld.valid(m_lookWidget)) m_uiWorld.destroy(m_lookWidget);
+        if (m_uiWorld.valid(m_moveWidget)) m_uiWorld.destroy(m_moveWidget);
+        if (m_uiWorld.valid(m_cross)) m_uiWorld.destroy(m_cross);
         m_inputs.Clear();
     }
 
@@ -49,8 +46,7 @@ class DebugScene3 : public SceneExt
     {
         auto extent = m_ctx.assets.backend.SwapchainExtent();
 
-        auto& pcam =
-            m_world.get<const ComponentPerspectiveCamera>(m_player);
+        auto& pcam = m_world.get<const ComponentPerspectiveCamera>(m_player);
         auto widgetInputDef = input::KeyMouseInput::Def{
             .target = m_world.get<input::PlayerInputStream>(m_player)};
         widgetInputDef.vfov = -pcam.fov;
@@ -58,24 +54,21 @@ class DebugScene3 : public SceneExt
             2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
 
         m_inputs.AddStage<input::KeyMouseInput>(
-            AF(),
-            input::KeyMouseInput::Def{
-                .target = m_world.get<input::PlayerInputStream>(m_player),
-                .mouseIdx = 0,
-                .hfov = widgetInputDef.hfov / (float)extent.x,
-                .vfov = widgetInputDef.vfov / (float)extent.y});
+            AF(), input::KeyMouseInput::Def{
+                      .target = m_world.get<input::PlayerInputStream>(m_player),
+                      .mouseIdx = 0,
+                      .hfov = widgetInputDef.hfov / (float)extent.x,
+                      .vfov = widgetInputDef.vfov / (float)extent.y});
 
         // put something in the middle of the screen
         ui::UISprite crossSprite{.sprite =
-                                        m_ctx.assets.LoadTexture("cross.png")};
+                                     m_ctx.assets.LoadTexture("cross.png")};
         m_cross = m_uiWorld.create();
         m_uiWorld.emplace<ui::UIRect>(
             m_cross,
-            math::vec2{
-                0.5f - 0.01f,
-                0.5f - 0.01f * m_ctx.assets.backend.SwapchainAspect()},
-            math::vec2{0.01f,
-                        0.01f * m_ctx.assets.backend.SwapchainAspect()});
+            math::vec2{0.5f - 0.01f,
+                       0.5f - 0.01f * m_ctx.assets.backend.SwapchainAspect()},
+            math::vec2{0.01f, 0.01f * m_ctx.assets.backend.SwapchainAspect()});
         m_uiWorld.emplace<ui::UISprite>(m_cross, crossSprite);
         m_uiWorld.emplace<ui::UIZLevel>(m_cross, 1);
     }
@@ -133,9 +126,23 @@ class DebugScene3 : public SceneExt
             if (!world.all_of<UpdateTag<UpdateType::Realtime>>(e))
                 world.emplace<UpdateTag<UpdateType::Realtime>>(e);
             if (!world.all_of<ComponentCamera>(e))
-                world.emplace<ComponentCamera>(e);
+            {
+                auto& cam = world.emplace<ComponentCamera>(e);
+                cam.position = {20.f, 20.f, 20.f};
+
+                glm::vec3 target = {0.f, 0.f, 0.f};
+                cam.forward = glm::normalize(target - cam.position);
+
+                cam.yaw = std::atan2(cam.forward.x, cam.forward.z);
+                cam.pitch = std::asin(cam.forward.y);
+
+                world.get<input::PlayerInputStream>(e).SetAim({cam.yaw, cam.pitch});
+            }
             if (!world.all_of<ComponentPerspectiveCamera>(e))
-                world.emplace<ComponentPerspectiveCamera>(e);
+            {
+                auto& pcam = world.emplace<ComponentPerspectiveCamera>(e);
+                pcam.aspect = m_ctx.assets.backend.SwapchainAspect();
+            }
             world.emplace<ReplicatedTag>(e);
             assert(world.all_of<ComponentCamera>(e));
             assert(world.all_of<const ComponentPerspectiveCamera>(e));
@@ -212,7 +219,8 @@ class DebugScene3 : public SceneExt
             }
         }
 
-        m_ctx.events.sink<SurfaceRecreateEvent>().connect<&DebugScene3::onResize>(this);
+        m_ctx.events.sink<SurfaceRecreateEvent>()
+            .connect<&DebugScene3::onResize>(this);
 
         // m_terminalButton = ui::CreateButton(world, context,
         // {math::vec2{0.f, 0.f}, math::vec2{0.1f, 0.1f}});

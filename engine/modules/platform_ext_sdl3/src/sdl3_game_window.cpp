@@ -16,7 +16,6 @@
 #include "oge/log.hpp"
 #include "oge/platform/sdl3/create_window.hpp"
 #include "oge/platform/spdlogger.hpp"
-#include "oge/timer.hpp"
 
 namespace oge::platform::sdl3
 {
