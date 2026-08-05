@@ -230,8 +230,8 @@ void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
     while (terrain.GetEvents().PollOne(state.chunkEventCursor, e))
     {
         auto chunk = terrain.GetChunk(e.chunk);
-        if (!chunk || chunk->state != e.state) continue;
-        if (e.state == ChunkState::Persistent)
+        if (!chunk || chunk->state != e.packed.state) continue;
+        if (e.packed.state == ChunkState::Persistent)
         {
             PaletteCompressedChunk cChunk;
             PaletteCompressedChunk::FromChunkData(*chunk, cChunk);

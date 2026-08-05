@@ -1,8 +1,7 @@
 #pragma once
 
 #include <cassert>
-#include <cinttypes>
-#include <unordered_map>
+#include <cstdint>
 
 #include "oge/math.hpp"
 #include "oge/type_traits.hpp"
@@ -66,6 +65,30 @@ struct IntTriple
 
 using LocalPoint3 = IntTriple<int8_t>;
 using Point3 = IntTriple<int32_t>;
+
+struct CompactLocalPoint3
+{
+    uint16_t val;
+
+    CompactLocalPoint3(Point3 pt = {}) : val((pt.x & 0xF) | ((pt.y & 0xF) << 4) | ((pt.z & 0xF) << 8))
+    {
+        assert(pt.x >= 0 && pt.x < 16);
+        assert(pt.y >= 0 && pt.y < 16);
+        assert(pt.z >= 0 && pt.z < 16);
+    }
+
+    operator Point3() const
+    {
+        return {static_cast<int32_t>(val & 0xF), static_cast<int32_t>((val >> 4) & 0xF),
+                static_cast<int32_t>((val >> 8) & 0xF)};
+    }
+
+    operator LocalPoint3() const
+    {
+        return {static_cast<int8_t>(val & 0xF), static_cast<int8_t>((val >> 4) & 0xF),
+                static_cast<int8_t>((val >> 8) & 0xF)};
+    }
+};
 
 constexpr Point3 perFaceOffset[6] = {
     {1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, -1, 0}, {0, 0, 1}, {0, 0, -1},

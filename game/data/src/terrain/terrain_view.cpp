@@ -1,8 +1,6 @@
 #include "game/terrain/terrain_view.hpp"
 
-#include <array>
 #include <tuple>
-#include <vector>
 
 #include "game/terrain/block_registry.hpp"
 #include "oge/point3.hpp"
@@ -34,53 +32,45 @@ bool TerrainView::TryGetBlock(int x, int y, int z, uint32_t& value) const
 void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
 {
     Point3 chunkCoord = {x >> 4, y >> 4, z >> 4};
+    oge::CompactLocalPoint3 localCoord = oge::Point3{x & 0xF, y & 0xF, z & 0xF};
     auto [handle, chunk] = GetChunk(chunkCoord);
     assert(chunk != nullptr);
+
+    static auto handleChunk = [&](Point3 coord)
+    {
+        auto nhandle = m_terrainData.chunks.GetHandle(coord);
+        DowngradeChunk(nhandle, ChunkState::InvalidLighting);
+        UpgradeChunk(nhandle, ChunkState::Persistent);
+    };
     if (chunk != nullptr)
     {
-        DowngradeChunk(handle, ChunkState::InvalidLighting);
-        UpgradeChunk(handle, ChunkState::Persistent);
+        ChunkStateUpdateEvent e{};
+        e.AddDirtyBlk(localCoord);
+        DowngradeChunk(handle, ChunkState::InvalidLighting, e);
+        UpgradeChunk(handle, ChunkState::Persistent, e);
         if ((x & 0xF) == 0)
         {
-            auto nhandle = m_terrainData.chunks.GetHandle(
-                {chunkCoord.x - 1, chunkCoord.y, chunkCoord.z});
-            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
-            UpgradeChunk(nhandle, ChunkState::Persistent);
+            handleChunk({chunkCoord.x - 1, chunkCoord.y, chunkCoord.z});
         }
         else if ((x & 0xF) == 15)
         {
-            auto nhandle = m_terrainData.chunks.GetHandle(
-                {chunkCoord.x + 1, chunkCoord.y, chunkCoord.z});
-            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
-            UpgradeChunk(nhandle, ChunkState::Persistent);
+            handleChunk({chunkCoord.x + 1, chunkCoord.y, chunkCoord.z});
         }
         if ((y & 0xF) == 0)
         {
-            auto nhandle = m_terrainData.chunks.GetHandle(
-                {chunkCoord.x, chunkCoord.y - 1, chunkCoord.z});
-            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
-            UpgradeChunk(nhandle, ChunkState::Persistent);
+            handleChunk({chunkCoord.x, chunkCoord.y - 1, chunkCoord.z});
         }
         else if ((y & 0xF) == 15)
         {
-            auto nhandle = m_terrainData.chunks.GetHandle(
-                {chunkCoord.x, chunkCoord.y + 1, chunkCoord.z});
-            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
-            UpgradeChunk(nhandle, ChunkState::Persistent);
+            handleChunk({chunkCoord.x, chunkCoord.y + 1, chunkCoord.z});
         }
         if ((z & 0xF) == 0)
         {
-            auto nhandle = m_terrainData.chunks.GetHandle(
-                {chunkCoord.x, chunkCoord.y, chunkCoord.z - 1});
-            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
-            UpgradeChunk(nhandle, ChunkState::Persistent);
+            handleChunk({chunkCoord.x, chunkCoord.y, chunkCoord.z - 1});
         }
         else if ((z & 0xF) == 15)
         {
-            auto nhandle = m_terrainData.chunks.GetHandle(
-                {chunkCoord.x, chunkCoord.y, chunkCoord.z + 1});
-            DowngradeChunk(nhandle, ChunkState::InvalidLighting);
-            UpgradeChunk(nhandle, ChunkState::Persistent);
+            handleChunk({chunkCoord.x, chunkCoord.y, chunkCoord.z + 1});
         }
         return chunk->SetBlock(x & 0xF, y & 0xF, z & 0xF, value);
     }
@@ -141,13 +131,15 @@ static bool AllNeighborsValid(const ChunkDataCollection& chunks, ChunkState src,
     return valid;
 }
 
-void TerrainView::UpgradeChunk(ChunkHandle handle, ChunkState state)
+void TerrainView::UpgradeChunk(ChunkHandle handle, ChunkState state,
+                               ChunkStateUpdateEvent dirtyPts)
 {
-    UpgradeChunkInternal(handle, state, true);
+    UpgradeChunkInternal(handle, state, true, dirtyPts);
 }
 
 void TerrainView::UpgradeChunkInternal(ChunkHandle handle, ChunkState state,
-                                       bool updateNeighbors)
+                                       bool updateNeighbors,
+                                       ChunkStateUpdateEvent event)
 {
     auto chunk = m_terrainData.chunks.Get(handle);
     if (!chunk) return;
@@ -169,11 +161,16 @@ void TerrainView::UpgradeChunkInternal(ChunkHandle handle, ChunkState state,
     if (!AllNeighborsValid(m_terrainData.chunks, state, chunk->Coords)) return;
     auto prevState = chunk->state;
     chunk->state = state;
-    m_chunkEvents.Push(ChunkStateUpdateEvent{prevState, state, handle});
-    // LOG_DEBUG("upgrade chunk {}, {}", chunk->Coords, m_chunkEvents.HeadIndex());
+    event.packed.prevState = prevState;
+    event.packed.state = state;
+    event.chunk = handle;
+    m_chunkEvents.Push(event);
+    // LOG_DEBUG("upgrade chunk {}, {}", chunk->Coords,
+    // m_chunkEvents.HeadIndex());
 }
 
-void TerrainView::DowngradeChunk(ChunkHandle handle, ChunkState newState)
+void TerrainView::DowngradeChunk(ChunkHandle handle, ChunkState newState,
+                                 ChunkStateUpdateEvent event)
 {
     assert(newState != ChunkState::Persistent);
     auto chunk = m_terrainData.chunks.Get(handle);
@@ -182,7 +179,10 @@ void TerrainView::DowngradeChunk(ChunkHandle handle, ChunkState newState)
     auto prevState = chunk->state;
     chunk->state = newState;
     chunk->weakState = newState;
-    m_chunkEvents.Push(ChunkStateUpdateEvent{prevState, newState, handle});
+    event.packed.prevState = prevState;
+    event.packed.state = newState;
+    event.chunk = handle;
+    m_chunkEvents.Push(event);
 }
 
 std::optional<TerrainRaycastResult> TerrainView::CastRay(math::vec3 pos,

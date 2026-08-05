@@ -1,10 +1,12 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <queue>
 #include <span>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "defs.hpp"
 #include "oge/event_stream.hpp"
@@ -207,12 +209,50 @@ struct TerrainRaycastResult
     uint32_t hitBlockValue;
 };
 
+struct PackedChunkState
+{
+    ChunkState prevState : 4;
+    ChunkState state : 4;
+    uint8_t dirtyCnt : 8;
+};
+
+// 64 bytes
 struct ChunkStateUpdateEvent
 {
-    ChunkState prevState;
-    ChunkState state;
+    PackedChunkState packed;
     ChunkHandle chunk;
-    bool weak = false;
+    std::array<oge::CompactLocalPoint3, 29> dirtyBlocks = {};
+
+    ChunkStateUpdateEvent(ChunkState prevState = {}, ChunkState state = {}, ChunkHandle handle = {}, std::span<oge::CompactLocalPoint3> dirtyPts = {})
+        : packed(prevState, state, 0u), chunk(handle)
+    {
+        for (auto pt : dirtyPts)
+        {
+            AddDirtyBlk(pt);
+        }
+    }
+
+    bool IsAllDirty() const
+    {
+        return packed.dirtyCnt > dirtyBlocks.size();
+    }
+
+    void MarkAllDirty()
+    {
+        packed.dirtyCnt = 255;
+    }
+
+    void AddDirtyBlk(oge::CompactLocalPoint3 pt)
+    {
+        auto cnt = packed.dirtyCnt;
+        if (cnt >= dirtyBlocks.size())
+        {
+            MarkAllDirty();
+            return;
+        }
+        packed.dirtyCnt = cnt + 1;
+        dirtyBlocks[cnt] = pt;
+    }
 };
 
 class ChunkEventStream
@@ -247,8 +287,8 @@ class TerrainView
     const ChunkData* PollChunk(ChunkHandle& handle) const;
     ChunkData* GetChunk(ChunkHandle handle);
     ChunkHandle CreateChunk(Point3 chunkCoord);
-    void UpgradeChunk(ChunkHandle handle, ChunkState newState);
-    void DowngradeChunk(ChunkHandle handle, ChunkState newState);
+    void UpgradeChunk(ChunkHandle handle, ChunkState newState, ChunkStateUpdateEvent event = {});
+    void DowngradeChunk(ChunkHandle handle, ChunkState newState, ChunkStateUpdateEvent event = {});
     std::optional<TerrainRaycastResult> CastRay(math::vec3 pos, math::vec3 ray,
                                                 float maxDist = 20.f);
     const ChunkEventStream& GetEvents() const
@@ -260,7 +300,7 @@ class TerrainView
     TerrainData m_terrainData;
     ChunkEventStream m_chunkEvents;
 
-    void UpgradeChunkInternal(ChunkHandle handle, ChunkState newState, bool updateNeighbors);
+    void UpgradeChunkInternal(ChunkHandle handle, ChunkState newState, bool updateNeighbors, ChunkStateUpdateEvent event = {});
 };
 
 }  // namespace terrain

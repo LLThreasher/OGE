@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.28)
 set(APP_NAME Arterium)
 include(cmake/utils.cmake)
 
-option(GAME_BUILD_TARGET "Target to build" "Client")
+option(GAME_BUILD_TARGET "Target to build" "server")
 option(ENABLE_ASAN "Enable AddressSanitizer")
 
 if (GAME_BUILD_TARGET STREQUAL "android")
