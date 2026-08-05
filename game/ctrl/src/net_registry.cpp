@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <vector>
 
 #include "game/components.hpp"
 #include "game/input/player_input_stream.hpp"
@@ -31,7 +32,7 @@ static void RegisterTerrainReplication(AnythingFactory& af)
     desc.capabilities.template Add<game::ReplicationCapability>(
         af.Id<game::terrain::TerrainView>(), &game::TerrainReplication::Encode,
         &game::TerrainReplication::Decode,
-        &game::TerrainReplication::CreateState, SendType::Reliable, 2);
+        &game::TerrainReplication::CreateState, SendType::Reliable, 1);
 }
 
 template <typename T>
@@ -176,6 +177,7 @@ constexpr size_t MAX_CHUNK_PER_FRAME = 4;
 enum class ChunkPacketType : uint8_t
 {
     Load,
+    LoadCompressed,
     Update,
     Discard,
 };
@@ -183,6 +185,68 @@ enum class ChunkPacketType : uint8_t
 entt::any TerrainReplication::CreateState()
 {
     return State{};
+}
+
+static std::pmr::vector<uint8_t> CompressChunk(const std::uint8_t* data,
+                                               std::size_t size)
+{
+    std::pmr::vector<uint8_t> out{};
+
+    if (size == 0) return out;
+
+    out.reserve(size);
+
+    std::size_t i = 0;
+
+    while (i < size)
+    {
+        std::uint8_t value = data[i];
+        std::uint8_t count = 1;
+
+        while (i + count < size && data[i + count] == value && count < 255)
+        {
+            ++count;
+        }
+
+        out.push_back(count);
+        out.push_back(value);
+
+        i += count;
+    }
+
+    return out;
+}
+
+static void DecompressChunk(const std::uint8_t* compressed,
+                            std::size_t compressedSize, std::uint8_t* out,
+                            std::size_t expectedSize)
+{
+    std::size_t inOffset = 0;
+    std::size_t outOffset = 0;
+
+    while (inOffset < compressedSize)
+    {
+        if (inOffset + 2 > compressedSize)
+        {
+            assert(false && "Invalid RLE data");
+        }
+
+        std::uint8_t count = compressed[inOffset++];
+        std::uint8_t value = compressed[inOffset++];
+
+        if (outOffset + count > expectedSize)
+        {
+            assert(false && "RLE decompressed data too large");
+        }
+
+        std::memset(out + outOffset, value, count);
+        outOffset += count;
+    }
+
+    if (outOffset != expectedSize)
+    {
+        assert(false && "RLE decompressed size mismatch");
+    }
 }
 
 void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
@@ -199,22 +263,38 @@ void TerrainReplication::Encode(entt::registry& world, ENetPeer* peer,
         PaletteCompressedChunk cChunk;
         PaletteCompressedChunk::FromChunkData(*chunk, cChunk);
         // LOG_DEBUG("send hash {}, {}", chunk->Coords, DebugHash(cChunk));
+
+        auto compressedData =
+            CompressChunk(reinterpret_cast<const std::uint8_t*>(cChunk.data),
+                          CHUNK_SIZE_TOTAL);
+        auto ptype = compressedData.size() < CHUNK_SIZE_TOTAL
+                         ? ChunkPacketType::LoadCompressed
+                         : ChunkPacketType::Load;
+
         auto packet =
             server.StartPacket(CHUNK_SIZE_TOTAL + 512 * sizeof(uint32_t));
         packet.Write(family);
-        packet.Write(ChunkPacketType::Load);
+        packet.Write(ptype);
         packet.Write(chunk->Coords);
-        packet.Write(cChunk.palette.size());
+        packet.Write((uint32_t)cChunk.palette.size());
         packet.WriteRaw(cChunk.palette.data(),
                         cChunk.palette.size() * sizeof(uint32_t));
-        packet.WriteRaw(cChunk.data, CHUNK_SIZE_TOTAL);
-        server.Send(peer, packet, sendType, channel);
+        if (ptype == ChunkPacketType::LoadCompressed)
+        {
+            packet.Write((uint32_t)compressedData.size());
+            packet.WriteRaw(compressedData.data(), compressedData.size());
+        }
+        else
+        {
+            packet.WriteRaw(cChunk.data, CHUNK_SIZE_TOTAL);
+        }
+        server.Send(peer, packet, sendType, 0);
     };
 
     auto writeUpdateChunk =
         [&](const ChunkStateUpdateEvent& e, const ChunkData* chunk)
     {
-        LOG_DEBUG("send update {}", chunk->Coords);
+        // LOG_DEBUG("send update {}", chunk->Coords);
         auto packet =
             server.StartPacket(CHUNK_SIZE_TOTAL + 512 * sizeof(uint32_t));
         packet.Write(family);
@@ -277,17 +357,28 @@ void TerrainReplication::Decode(entt::registry& world, net::Buffer& buffer)
     using namespace terrain;
     auto& terrain = world.ctx().get<terrain::TerrainView>();
 
-    auto readAddChunk = [&](oge::Point3 coord)
+    auto readAddChunk = [&](ChunkPacketType ptype, oge::Point3 coord)
     {
-        size_t paletteSize;
+        uint32_t paletteSize;
         buffer.Read(paletteSize);
         PaletteCompressedChunk chunk;
         chunk.palette.resize(paletteSize);
         buffer.ReadRaw(chunk.palette.data(), paletteSize * sizeof(uint32_t));
-        buffer.ReadRaw(chunk.data, CHUNK_SIZE_TOTAL);
 
         // LOG_DEBUG("recv hash {}, {}", coord, DebugHash(chunk));
         auto handle = terrain.CreateChunk(coord);
+        if (ptype == ChunkPacketType::Load)
+        {
+            buffer.ReadRaw(chunk.data, CHUNK_SIZE_TOTAL);
+        }
+        else
+        {
+            uint32_t size;
+            buffer.Read(size);
+            std::pmr::vector<uint8_t> data(size);
+            buffer.ReadRaw(data.data(), size);
+            DecompressChunk(data.data(), size, chunk.data, CHUNK_SIZE_TOTAL);
+        }
         chunk.ToChunkData(*terrain.GetChunk(handle));
         return handle;
     };
@@ -312,7 +403,6 @@ void TerrainReplication::Decode(entt::registry& world, net::Buffer& buffer)
 
     ChunkPacketType ptype;
     buffer.Read(ptype);
-    assert(ptype == ChunkPacketType::Load || ptype == ChunkPacketType::Update);
     oge::Point3 coord;
     buffer.Read(coord);
 
@@ -320,7 +410,8 @@ void TerrainReplication::Decode(entt::registry& world, net::Buffer& buffer)
     switch (ptype)
     {
         case ChunkPacketType::Load:
-            handle = readAddChunk(coord);
+        case ChunkPacketType::LoadCompressed:
+            handle = readAddChunk(ptype, coord);
             break;
         case ChunkPacketType::Update:
             handle = readUpdateChunk(coord);

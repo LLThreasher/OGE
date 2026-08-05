@@ -33,10 +33,11 @@ void NetPacketSender::Send(ENetPeer* peer, net::Buffer data, SendType sendType,
 
     RecordSend(data.Data().size());
 
-    if (enet_peer_send(peer, channel, packet) < 0)
+    auto err = enet_peer_send(peer, channel, packet);
+    if (err < 0)
     {
-        LOG_ERROR("failed on packet of size {} to peer {}", data.Data().size(),
-                 peer->incomingPeerID);
+        LOG_ERROR("failed on packet of size {} to peer {}, errno {}", data.Data().size(),
+                 peer->incomingPeerID, err);
         enet_packet_destroy(packet);
     }
 }
