@@ -80,14 +80,15 @@ class DebugScene3 : public SceneExt
             uuids::to_string(uuids::uuid(m_playerInfo.uuid)));
         if (world.get<ComponentPlayer>(e).id == m_playerInfo.uuid)
         {
-            m_waitPlayer.release();
             ui::CreateGameView(m_uiWorld, {math::vec2{0, 0}, math::vec2{1, 1}},
                                e);
-            world.emplace<input::PlayerInputStream>(e);
+            if (m_waitPlayer)
+                world.emplace<input::PlayerInputStream>(e);
             world.emplace<ReplicatedTag>(e);
             m_player = e;
 
             AddWidgetInput(m_ctx.assets);
+            m_waitPlayer.release();
         }
     }
 
