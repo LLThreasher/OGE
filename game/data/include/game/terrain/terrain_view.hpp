@@ -79,6 +79,57 @@ inline size_t GetBlockIndex(uint8_t x, uint8_t y, uint8_t z)
            ((size_t)z << CHUNK_SHIFT_Z);
 }
 
+struct PackedChunkState
+{
+    ChunkState prevState : 4;
+    ChunkState state : 4;
+    uint8_t dirtyCnt : 8;
+};
+
+// 64 bytes
+struct ChunkStateUpdateEvent
+{
+    PackedChunkState packed;
+    ChunkHandle chunk;
+    std::array<oge::CompactLocalPoint3, 29> dirtyBlocks = {};
+
+    ChunkStateUpdateEvent(ChunkState prevState = {}, ChunkState state = {}, ChunkHandle handle = {}, std::span<oge::CompactLocalPoint3> dirtyPts = {})
+        : packed(prevState, state, 0u), chunk(handle)
+    {
+        for (auto pt : dirtyPts)
+        {
+            AddDirtyBlk(pt);
+        }
+    }
+
+    bool IsValid() const
+    {
+        return chunk.IsValid();
+    }
+
+    bool IsAllDirty() const
+    {
+        return packed.dirtyCnt > dirtyBlocks.size();
+    }
+
+    void MarkAllDirty()
+    {
+        packed.dirtyCnt = 255;
+    }
+
+    void AddDirtyBlk(oge::CompactLocalPoint3 pt)
+    {
+        auto cnt = packed.dirtyCnt;
+        if (cnt >= dirtyBlocks.size())
+        {
+            MarkAllDirty();
+            return;
+        }
+        packed.dirtyCnt = cnt + 1;
+        dirtyBlocks[cnt] = pt;
+    }
+};
+
 struct ChunkData
 {
     // 16384 bytes
@@ -87,6 +138,7 @@ struct ChunkData
     ChunkState state = ChunkState::GeneratingTerrain;
     // this is only assigned to state if all neighbors have it
     ChunkState weakState = ChunkState::GeneratingTerrain;
+    ChunkStateUpdateEvent weakEvent = {};
 
    public:
     ChunkData(Point3 coords)
@@ -207,52 +259,6 @@ struct TerrainRaycastResult
     uint8_t hitFace;
     Point3 hitPos;
     uint32_t hitBlockValue;
-};
-
-struct PackedChunkState
-{
-    ChunkState prevState : 4;
-    ChunkState state : 4;
-    uint8_t dirtyCnt : 8;
-};
-
-// 64 bytes
-struct ChunkStateUpdateEvent
-{
-    PackedChunkState packed;
-    ChunkHandle chunk;
-    std::array<oge::CompactLocalPoint3, 29> dirtyBlocks = {};
-
-    ChunkStateUpdateEvent(ChunkState prevState = {}, ChunkState state = {}, ChunkHandle handle = {}, std::span<oge::CompactLocalPoint3> dirtyPts = {})
-        : packed(prevState, state, 0u), chunk(handle)
-    {
-        for (auto pt : dirtyPts)
-        {
-            AddDirtyBlk(pt);
-        }
-    }
-
-    bool IsAllDirty() const
-    {
-        return packed.dirtyCnt > dirtyBlocks.size();
-    }
-
-    void MarkAllDirty()
-    {
-        packed.dirtyCnt = 255;
-    }
-
-    void AddDirtyBlk(oge::CompactLocalPoint3 pt)
-    {
-        auto cnt = packed.dirtyCnt;
-        if (cnt >= dirtyBlocks.size())
-        {
-            MarkAllDirty();
-            return;
-        }
-        packed.dirtyCnt = cnt + 1;
-        dirtyBlocks[cnt] = pt;
-    }
 };
 
 class ChunkEventStream

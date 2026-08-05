@@ -146,7 +146,11 @@ void TerrainView::UpgradeChunkInternal(ChunkHandle handle, ChunkState state,
     if (state <= chunk->state) return;
     if (updateNeighbors)
     {
-        if (chunk->weakState < state) chunk->weakState = state;
+        if (chunk->weakState < state)
+        {
+            chunk->weakState = state;
+            chunk->weakEvent = event;
+        }
 
         auto coord = chunk->Coords;
 
@@ -159,6 +163,7 @@ void TerrainView::UpgradeChunkInternal(ChunkHandle handle, ChunkState state,
             });
     }
     if (!AllNeighborsValid(m_terrainData.chunks, state, chunk->Coords)) return;
+    if (!event.IsValid()) event = chunk->weakEvent;
     auto prevState = chunk->state;
     chunk->state = state;
     event.packed.prevState = prevState;

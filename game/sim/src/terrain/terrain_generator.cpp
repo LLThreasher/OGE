@@ -65,7 +65,9 @@ void TerrainGenerator::GenerateTerrain(TerrainData& terrain,
         }
 
         // LOG_DEBUG("generated chunk {}", chunk->Coords);
-        terrainView.UpgradeChunk(handle, ChunkState::Persistent);
+        ChunkStateUpdateEvent e{};
+        e.MarkAllDirty();
+        terrainView.UpgradeChunk(handle, ChunkState::Persistent, e);
         terrainGenChunkCount += 1;
     }
 }
