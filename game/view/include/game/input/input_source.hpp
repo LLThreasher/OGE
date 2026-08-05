@@ -61,7 +61,7 @@ class UIDragInput : public InputSource
 class WidgetInput : public InputSource
 {
     PlayerInputStream& out;
-    const ComponentPerspectiveCamera& pcam;
+    ComponentPerspectiveCamera pcam;
     entt::entity viewWidget;
     entt::entity moveWidget;
     float vfov;
@@ -73,7 +73,7 @@ class WidgetInput : public InputSource
     struct Def
     {
         PlayerInputStream& target;
-        const ComponentPerspectiveCamera& pcam;
+        ComponentPerspectiveCamera pcam;
         entt::entity viewWidget;
         entt::entity moveWidget;
         float vfov;

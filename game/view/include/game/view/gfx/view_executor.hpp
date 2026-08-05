@@ -7,6 +7,7 @@
 #include "oge/color.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/command_list.hpp"
+#include "oge/log.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
@@ -20,6 +21,15 @@ class ViewExecutor
    public:
     ViewExecutor()
     {
+    }
+
+    ~ViewExecutor()
+    {
+        if (m_ctx.has_value())
+        {
+            LOG_WARN("view executor not detached before destroy");
+            Detach();
+        }
     }
 
     void SetClearColor(oge::ColorRGBAF32 color)

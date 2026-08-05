@@ -41,7 +41,6 @@ class DebugInfoPass : public Pass<CmdDrawDebugText, CmdDrawDebugRect>, public Re
 
     GPUPipelineHandle pipeline;
     GPUBindingGroupLayoutHandle bindingGroupLayout;
-    GPUBindingGroupHandle bindingGroup;
 
     FrameArena vertexArena = {BufferUsage::Vertex};
     FrameArena indexArena = {BufferUsage::Index};

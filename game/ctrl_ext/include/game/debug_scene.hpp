@@ -19,6 +19,7 @@
 #include "oge/log.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/typed_registry.hpp"
+#include "game/events.hpp"
 
 namespace game
 {
@@ -33,12 +34,58 @@ class DebugScene3 : public SceneExt
     entt::entity m_moveWidget;
     bool usingKeyMouse = false;
 
-    void AddWidgetInput(oge::runtime::AssetContext assets)
+    void ClearInputs()
+    {
+        if (m_uiWorld.valid(m_lookWidget))
+            m_uiWorld.destroy(m_lookWidget);
+        if (m_uiWorld.valid(m_moveWidget))
+            m_uiWorld.destroy(m_moveWidget);
+        if (m_uiWorld.valid(m_cross))
+            m_uiWorld.destroy(m_cross);
+        m_inputs.Clear();
+    }
+
+    void AddKeyMouseInput()
+    {
+        auto extent = m_ctx.assets.backend.SwapchainExtent();
+
+        auto& pcam =
+            m_world.get<const ComponentPerspectiveCamera>(m_player);
+        auto widgetInputDef = input::KeyMouseInput::Def{
+            .target = m_world.get<input::PlayerInputStream>(m_player)};
+        widgetInputDef.vfov = -pcam.fov;
+        widgetInputDef.hfov =
+            2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
+
+        m_inputs.AddStage<input::KeyMouseInput>(
+            AF(),
+            input::KeyMouseInput::Def{
+                .target = m_world.get<input::PlayerInputStream>(m_player),
+                .mouseIdx = 0,
+                .hfov = widgetInputDef.hfov / (float)extent.x,
+                .vfov = widgetInputDef.vfov / (float)extent.y});
+
+        // put something in the middle of the screen
+        ui::UISprite crossSprite{.sprite =
+                                        m_ctx.assets.LoadTexture("cross.png")};
+        m_cross = m_uiWorld.create();
+        m_uiWorld.emplace<ui::UIRect>(
+            m_cross,
+            math::vec2{
+                0.5f - 0.01f,
+                0.5f - 0.01f * m_ctx.assets.backend.SwapchainAspect()},
+            math::vec2{0.01f,
+                        0.01f * m_ctx.assets.backend.SwapchainAspect()});
+        m_uiWorld.emplace<ui::UISprite>(m_cross, crossSprite);
+        m_uiWorld.emplace<ui::UIZLevel>(m_cross, 1);
+    }
+
+    void AddWidgetInput()
     {
         LOG_DEBUG("create widget input");
         // create move widget
         auto scaledX = 0.3f;
-        auto scaledY = scaledX * assets.backend.SwapchainAspect();
+        auto scaledY = scaledX * m_ctx.assets.backend.SwapchainAspect();
 
         auto lookWidget = m_uiWorld.create();
         m_uiWorld.emplace<ui::UIRect>(lookWidget, math::vec2{0.0f, 0.0f},
@@ -99,9 +146,16 @@ class DebugScene3 : public SceneExt
             assert(world.all_of<ComponentCreature>(e));
             m_player = e;
 
-            AddWidgetInput(m_ctx.assets);
+            AddWidgetInput();
             m_waitPlayer.release();
         }
+    }
+
+    void onResize(SurfaceRecreateEvent e)
+    {
+        ClearInputs();
+        AddWidgetInput();
+        usingKeyMouse = false;
     }
 
    public:
@@ -158,6 +212,8 @@ class DebugScene3 : public SceneExt
             }
         }
 
+        m_ctx.events.sink<SurfaceRecreateEvent>().connect<&DebugScene3::onResize>(this);
+
         // m_terminalButton = ui::CreateButton(world, context,
         // {math::vec2{0.f, 0.f}, math::vec2{0.1f, 0.1f}});
 
@@ -194,49 +250,14 @@ class DebugScene3 : public SceneExt
         if (keys.contains(KeyCode::KY_G) && !usingKeyMouse)
         {
             usingKeyMouse = true;
-            auto extent = m_ctx.assets.backend.SwapchainExtent();
-
-            m_uiWorld.destroy(m_lookWidget);
-            m_uiWorld.destroy(m_moveWidget);
-
-            auto& pcam =
-                m_world.get<const ComponentPerspectiveCamera>(m_player);
-            auto widgetInputDef = input::KeyMouseInput::Def{
-                .target = m_world.get<input::PlayerInputStream>(m_player)};
-            widgetInputDef.vfov = -pcam.fov;
-            widgetInputDef.hfov =
-                2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
-
-            m_inputs.Clear();
-
-            m_inputs.AddStage<input::KeyMouseInput>(
-                AF(),
-                input::KeyMouseInput::Def{
-                    .target = m_world.get<input::PlayerInputStream>(m_player),
-                    .mouseIdx = 0,
-                    .hfov = widgetInputDef.hfov / (float)extent.x,
-                    .vfov = widgetInputDef.vfov / (float)extent.y});
-
-            // put something in the middle of the screen
-            ui::UISprite crossSprite{.sprite =
-                                         m_ctx.assets.LoadTexture("cross.png")};
-            m_cross = m_uiWorld.create();
-            m_uiWorld.emplace<ui::UIRect>(
-                m_cross,
-                math::vec2{
-                    0.5f - 0.01f,
-                    0.5f - 0.01f * m_ctx.assets.backend.SwapchainAspect()},
-                math::vec2{0.01f,
-                           0.01f * m_ctx.assets.backend.SwapchainAspect()});
-            m_uiWorld.emplace<ui::UISprite>(m_cross, crossSprite);
-            m_uiWorld.emplace<ui::UIZLevel>(m_cross, 1);
+            ClearInputs();
+            AddKeyMouseInput();
         }
         else if (keys.contains(KeyCode::KY_ESCAPE) && usingKeyMouse)
         {
             usingKeyMouse = false;
-            m_inputs.Clear();
-            m_uiWorld.destroy(m_cross);
-            AddWidgetInput(m_ctx.assets);
+            ClearInputs();
+            AddWidgetInput();
         }
         SceneExt::Update(std::move(f), sctx);
     }

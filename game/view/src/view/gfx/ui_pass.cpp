@@ -98,6 +98,14 @@ void UIPass::onAttach(InitDrawContext& ctx)
 
 void UIPass::onDetach(InitDrawContext& ctx)
 {
+    for (auto& [tex, bg] : cachedBindingGroups)
+    {
+        ctx.assets.backend.DestroyBindingGroup(bg);
+    }
+    vertexArena.Shutdown(ctx.assets.backend);
+    indexArena.Shutdown(ctx.assets.backend);
+    ctx.assets.backend.DestroyPipeline(pipelineHandle);
+    ctx.assets.backend.DestroyBindingGroupLayout(bindingGroupLayout);
 }
 
 void UIPass::onUpdate(DrawContext& ctx, View view, ScreenAffine pushConstant)

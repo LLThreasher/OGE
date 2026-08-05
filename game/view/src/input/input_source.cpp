@@ -145,7 +145,7 @@ void WidgetInput::onUpdate(FInputContext& ctx)
                 }
             }
         }
-        else if (dragRel != nullptr)
+        else if (dragRel != nullptr || drag == nullptr)
         {
             isDigging = false;
             pEvent.unset<PlayerAction::Digging>();

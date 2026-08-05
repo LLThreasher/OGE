@@ -169,6 +169,7 @@ void SDL3GameWindow::Run(WindowApp& app)
                     app.OnWindowRecreate(&handle);
                     break;
                 }
+                case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
                 case SDL_EVENT_WINDOW_RESIZED:
                 {
                     int new_width = event.window.data1;

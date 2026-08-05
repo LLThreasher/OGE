@@ -74,6 +74,11 @@ void DebugInfoPass::onAttach(InitDrawContext& ctx)
 
 void DebugInfoPass::onDetach(InitDrawContext& ctx)
 {
+    auto& backend = ctx.assets.backend;
+    vertexArena.Shutdown(backend);
+    indexArena.Shutdown(backend);
+    backend.DestroyBindingGroupLayout(bindingGroupLayout);
+    backend.DestroyPipeline(pipeline);
 }
 
 void DebugInfoPass::onUpdate(DrawContext& ctx, View view, ScreenAffine pushConstant)

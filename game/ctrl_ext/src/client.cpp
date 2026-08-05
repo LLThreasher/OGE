@@ -77,8 +77,6 @@ AppFrameAction Client::Update(float dt, InputProvider PollInputs)
     if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;
 
     watch.Restart();
-    PollInputs(m_input, false);
-    perfStats.inputProcessingTime += watch.Restart();
 
     m_events.update();
     SceneRunner::UpdateScene({dt, m_input, m_perfStats, appRes});
@@ -119,14 +117,13 @@ void Client::OnWindowRecreate(WindowHandle* handle)
     m_waitingSurface = false;
     m_backend->RecreateSurface(handle);
     LOG_DEBUG("trigger surface recreate {}", m_backend->SwapchainExtent());
-    m_events.enqueue(SurfaceRecreateEvent{m_backend->SwapchainExtent(),
-                                          m_backend->SwapchainPretransform()});
 }
 
 void Client::OnResize(int width, int height)
 {
     m_backend->Resize(width, height);
-    m_events.enqueue(SurfaceRecreateEvent{m_backend->SwapchainExtent(),
+    LOG_DEBUG("trigger surface resize {}", m_backend->SwapchainExtent());
+    m_events.enqueue(SurfaceRecreateEvent{{(uint16_t)width, (uint16_t)height},
                                           m_backend->SwapchainPretransform()});
 }
 }  // namespace game
