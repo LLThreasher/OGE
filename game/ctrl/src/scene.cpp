@@ -80,7 +80,7 @@ SceneConfig GetDefaultSceneConfig(AnythingFactory& af)
         {"wood", {"Wood", "wood_plank.png", 1}},
         {"stone", {"Stone", "green_stone.png", 1}},
     };
-    config.terrainDesc.chunkViewDistance = 4;
+    config.terrainDesc.chunkViewDistance = 16;
 
     config.subsystems.push_back(af.Id<sim::SubsystemTerrain>());
     config.subsystems.push_back(

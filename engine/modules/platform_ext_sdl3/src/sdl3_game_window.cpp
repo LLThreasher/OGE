@@ -1,4 +1,6 @@
+#include <cstddef>
 #include <functional>
+#include <memory>
 
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_timer.h"
@@ -7,6 +9,8 @@
 
 #ifdef PLATFORM_WINDOWS
 #include <windows.h>
+#elif defined(PLATFORM_DARWIN)
+#include "SDL3/SDL_metal.h"
 #endif
 
 #include <SDL3/SDL.h>
@@ -104,10 +108,38 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
 #else
     m_window =
         SDL_CreateWindow(name.c_str(), width, height, SDL_WINDOW_RESIZABLE);
+#ifdef PLATFORM_DARWIN
+    m_hidden.metalView = SDL_Metal_CreateView(m_window);
+    if (!m_hidden.metalView)
+    {
+        LOG_ERROR("SDL_Metal_CreateView failed: %s", SDL_GetError());
+        abort();
+    }
+    else
+    {
+        m_hidden.metalLayer = SDL_Metal_GetLayer(m_hidden.metalView);
+        if (!m_hidden.metalLayer)
+        {
+            LOG_ERROR("SDL_Metal_GetLayer failed: %s", SDL_GetError());
+            abort();
+        }
+    }
+#endif
 #endif
     window_width = width;
     window_height = height;
     LOG_INFO("SDL3 GameWindow Created");
+}
+
+SDL3GameWindow::~SDL3GameWindow()
+{
+#ifdef PLATFORM_DARWIN
+    if (m_hidden.metalView != nullptr)
+    {
+        SDL_Metal_DestroyView(m_hidden.metalView);
+        m_hidden.metalLayer = nullptr;
+    }
+#endif
 }
 
 void SDL3GameWindow::Run(WindowApp& app)

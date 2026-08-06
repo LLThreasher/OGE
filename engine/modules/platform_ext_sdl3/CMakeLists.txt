@@ -23,13 +23,6 @@ PUBLIC
     IO_USE_SDL3
 )
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-target_sources(oge_platform_ext_sdl3
-PRIVATE
-    src/sdl3_metal_ext.mm
-)
-endif()
-
 target_include_directories(oge_platform_ext_sdl3
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include

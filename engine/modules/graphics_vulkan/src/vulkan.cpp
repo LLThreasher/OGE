@@ -854,7 +854,7 @@ void VulkanBackend::CreatePhysicalDevice()
 
 void VulkanBackend::RecreateSurface(WindowHandle& handle)
 {
-    m_swapchain.recreateSurface = handle;
+    m_swapchain.recreateSurface.emplace(handle);
 }
 
 void VulkanBackend::CreateSwapchainRenderPass()

@@ -11,7 +11,7 @@ struct WindowHandle
 #elif defined(PLATFORM_ANDROID)
     void* nativeWindow;
 #elif defined(PLATFORM_DARWIN)
-    const void* metalLayer;
+    void* metalLayer;
 #elif defined(PLATFORM_LINUX)
     bool isWayland;
     union

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cassert>
+#include <deque>
 #include <tuple>
 #include <vector>
 
@@ -9,26 +10,29 @@
 namespace oge
 {
 
+template <typename T>
+using SubmissionList = std::pmr::deque<T>;
+
 template <typename... TCommands>
 struct SubmissionView
 {
-    std::tuple<std::pmr::vector<TCommands>&...> buckets;
+    std::tuple<SubmissionList<TCommands>&...> buckets;
 
-    SubmissionView(std::tuple<std::pmr::vector<TCommands>&...> buckets)
+    SubmissionView(std::tuple<SubmissionList<TCommands>&...> buckets)
         : buckets(buckets)
     {
     }
 
     template <typename T>
-    std::pmr::vector<T>& Get()
+    SubmissionList<T>& Get()
     {
-        return std::get<std::pmr::vector<std::decay_t<T>>&>(buckets);
+        return std::get<SubmissionList<std::decay_t<T>>&>(buckets);
     }
 
     template <typename T, typename... Args>
     void Add(Args&&... args)
     {
-        auto& bucket = std::get<std::pmr::vector<T>&>(buckets);
+        auto& bucket = std::get<SubmissionList<T>&>(buckets);
         bucket.emplace_back(std::forward<Args>(args)...);
     }
 };
@@ -37,13 +41,13 @@ template <typename T>
 struct VectorWrapper
 {
     using Resource = std::pmr::memory_resource;
-    std::pmr::vector<T> vec;
+    SubmissionList<T> vec;
 
     void clear(Resource* r)
     {
         size_t size = vec.size();
-        vec = std::pmr::vector<T>{r};
-        vec.reserve(size);
+        vec = SubmissionList<T>{r};
+        // vec.reserve(size);
     }
 };
 
@@ -56,7 +60,7 @@ struct SubmissionGroup
 
     SubmissionGroup() = delete;
     SubmissionGroup(Resource* r)
-        : resource(r), buckets({std::pmr::vector<TCommands>{r}}...)
+        : resource(r), buckets({SubmissionList<TCommands>{r}}...)
     {
     }
     SubmissionGroup(const SubmissionGroup&) = delete;
@@ -74,7 +78,7 @@ struct SubmissionGroup
     }
 
     template <typename T>
-    std::pmr::vector<T>& Get()
+    SubmissionList<T>& Get()
     {
         return std::get<VectorWrapper<std::decay_t<T>>>(buckets).vec;
     }

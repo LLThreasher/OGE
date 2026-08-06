@@ -90,7 +90,7 @@ void TerrainPass2::onDetach(InitDrawContext& ctx)
 {
     auto& backend = ctx.assets.backend;
     backend.DestroyPipeline(pipelineHandle);
-    for (auto [buf, bg] : cachedBindingGroups)
+    for (auto& [buf, bg] : cachedBindingGroups)
     {
         backend.DestroyBindingGroup(bg);
     }
@@ -120,10 +120,10 @@ void TerrainPass2::onUpdate(DrawContext& ctx, View view,
     }
 
     ctx.drawCmd.BindGraphicsPipeline(pipelineHandle);
-    for (auto [bindingGroup, val] : activeChunkSlots)
+    for (const auto& [bindingGroup, val] : activeChunkSlots)
     {
         ubos.clear();
-        for (auto mesh : val)
+        for (const auto& mesh : val)
         {
             auto coord = mesh.coord;
             auto model = math::translate(

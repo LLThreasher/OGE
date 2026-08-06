@@ -48,6 +48,37 @@ void Client::Initialize(WindowHandle& handle)
                                           m_backend->SwapchainPretransform()});
 }
 
+bool Client::BeginFrame(AppFrameAction& action)
+{
+    auto& backend = *m_backend;
+    auto res = backend.BeginFrame();
+
+    if (res == BeginFrameAction::RecreateSurface)
+    {
+        m_waitingSurface = true;
+        action |= AppFrameAction::WaitSurface;
+        return false;
+    }
+    if (res != BeginFrameAction::Continue)
+    {
+        action |= AppFrameAction::None;
+        return false;
+    }
+    return true;
+}
+
+bool Client::EndFrame(AppFrameAction& action)
+{
+    auto& backend = *m_backend;
+    auto endRes = backend.EndFrame();
+    if (endRes == EndFrameAction::RecreateSurface)
+    {
+        action |= AppFrameAction::WaitSurface;
+        return false;
+    }
+    return true;
+}
+
 AppFrameAction Client::Update(float dt, InputProvider PollInputs)
 {
     FramePerfStatus perfStats{};
@@ -91,9 +122,9 @@ AppFrameAction Client::Update(float dt, InputProvider PollInputs)
     auto& tcmd = backend.CreateCommandList(QueueType::Transfer);
     m_sm.RunUploadStep(backend, tcmd);
 
-    perfStats.assetUploadTime = watch.Restart();
-
     CurrentScene()->Render(dt);
+
+    perfStats.assetUploadTime = watch.Restart();
 
     auto endRes = backend.EndFrame();
     if (endRes == EndFrameAction::RecreateSurface)
@@ -115,6 +146,7 @@ void Client::Shutdown()
 
 void Client::OnWindowRecreate(WindowHandle& handle)
 {
+    if (!m_waitingSurface) return;
     m_waitingSurface = false;
     m_backend->RecreateSurface(handle);
     LOG_DEBUG("trigger surface recreate {}", m_backend->SwapchainExtent());

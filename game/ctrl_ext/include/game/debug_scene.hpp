@@ -28,18 +28,24 @@ class DebugScene3 : public SceneExt
    private:
     PlayerInfo m_playerInfo;
     entt::connection m_waitPlayer{};
-    entt::entity m_cross;
-    entt::entity m_player;
-    entt::entity m_lookWidget;
-    entt::entity m_moveWidget;
+
+    entt::entity m_cross = entt::null;
+    entt::entity m_player = entt::null;
+    entt::entity m_lookWidget = entt::null;
+    entt::entity m_moveWidget = entt::null;
     bool usingKeyMouse = false;
 
     void ClearInputs()
     {
+        m_inputs.Clear();
+
         if (m_uiWorld.valid(m_lookWidget)) m_uiWorld.destroy(m_lookWidget);
         if (m_uiWorld.valid(m_moveWidget)) m_uiWorld.destroy(m_moveWidget);
         if (m_uiWorld.valid(m_cross)) m_uiWorld.destroy(m_cross);
-        m_inputs.Clear();
+
+        m_lookWidget = entt::null;
+        m_moveWidget = entt::null;
+        m_cross = entt::null;
     }
 
     void AddKeyMouseInput()
@@ -122,7 +128,9 @@ class DebugScene3 : public SceneExt
         {
             ui::CreateGameView(m_uiWorld, {math::vec2{0, 0}, math::vec2{1, 1}},
                                e);
-            if (m_waitPlayer) world.emplace<input::PlayerInputStream>(e);
+
+            if (!world.all_of<input::PlayerInputStream>(e))
+                world.emplace<input::PlayerInputStream>(e);
             if (!world.all_of<UpdateTag<UpdateType::Realtime>>(e))
                 world.emplace<UpdateTag<UpdateType::Realtime>>(e);
             if (!world.all_of<ComponentCamera>(e))
@@ -136,7 +144,8 @@ class DebugScene3 : public SceneExt
                 cam.yaw = std::atan2(cam.forward.x, cam.forward.z);
                 cam.pitch = std::asin(cam.forward.y);
 
-                world.get<input::PlayerInputStream>(e).SetAim({cam.yaw, cam.pitch});
+                world.get<input::PlayerInputStream>(e).SetAim(
+                    {cam.yaw, cam.pitch});
             }
             if (!world.all_of<ComponentPerspectiveCamera>(e))
             {

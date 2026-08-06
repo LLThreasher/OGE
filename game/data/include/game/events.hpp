@@ -1,3 +1,5 @@
+#pragma once
+
 #include "oge/math.hpp"
 #include "oge/point2.hpp"
 

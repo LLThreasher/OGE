@@ -15,6 +15,7 @@
 #include "oge/pool.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/typed_registry.hpp"
+#include "oge/macros.hpp"
 
 namespace game
 {

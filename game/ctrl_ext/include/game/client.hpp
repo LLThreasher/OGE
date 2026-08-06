@@ -2,6 +2,7 @@
 
 #include "game/scene_ext.hpp"
 #include "game/scene_runner.hpp"
+#include "oge/graphics/backend.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/platform/window_app.hpp"
 #include "oge/runtime/asset_manager.hpp"
@@ -39,5 +40,8 @@ class Client : public WindowApp, public SceneRunner<SceneExt>
     DynamicSkylineAllocator& m_sa;
 
     bool m_waitingSurface = false;
+
+    bool BeginFrame(AppFrameAction& action);
+    bool EndFrame(AppFrameAction& action);
 };
 }  // namespace game

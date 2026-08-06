@@ -1,11 +1,8 @@
 #pragma once
 #include <array>
 #include <cassert>
-#include <cinttypes>
 #include <cstdint>
 
-#include "oge/color.hpp"
-#include "oge/runtime/net_serializer.hpp"
 #include "oge/point3.hpp"
 
 namespace game::terrain

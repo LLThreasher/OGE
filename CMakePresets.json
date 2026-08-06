@@ -171,7 +171,8 @@
       "inherits": "apple-debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "ENABLE_PERF": "ON"
+        "ENABLE_PERF": "ON",
+        "ENABLE_ASAN": "OFF"
       }
     },
     {

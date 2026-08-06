@@ -3,9 +3,7 @@
 namespace oge::platform::sdl3
 {
 
-#ifdef PLATFORM_DARWIN
-const void* GetMetalLayer(SDL_Window* sdlWindow);
-#endif
+
 
 WindowHandle SDL3GameWindow::GetCurrentWindow()
 {
@@ -20,7 +18,7 @@ WindowHandle SDL3GameWindow::GetCurrentWindow()
     handle.nativeWindow = SDL_GetPointerProperty(
         props, SDL_PROP_WINDOW_ANDROID_WINDOW_POINTER, NULL);
 #elif defined(PLATFORM_DARWIN)
-    handle.metalLayer = GetMetalLayer(m_window);
+    handle.metalLayer = m_hidden.metalLayer;
 #elif defined(PLATFORM_LINUX)
     SDL_PropertiesID props = SDL_GetWindowProperties(m_window);
     const char* driver = SDL_GetCurrentVideoDriver();

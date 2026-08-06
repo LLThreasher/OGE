@@ -1,4 +1,5 @@
 #include <cassert>
+
 #include "game/components.hpp"
 #include "game/ui/objects.hpp"
 #include "game/view/renderer.hpp"
@@ -21,7 +22,8 @@ static void onCameraCreated(entt::registry& renderWorld,
     renderWorld.emplace<ComponentCamera>(e, gameWorld.get<ComponentCamera>(e));
 }
 
-static math::vec3 DecayToZero(math::vec3 value, float dt, float sharpness = 16.f)
+static math::vec3 DecayToZero(math::vec3 value, float dt,
+                              float sharpness = 16.f)
 {
     float alpha = 1.0f - std::exp(-sharpness * dt);
     return math::lerp(value, math::vec3{0.0f}, alpha);
@@ -38,8 +40,8 @@ void CameraRenderer::onAttach(RendererState& ctx)
         ctx.world);
     game.on_update<ViewPanel>().connect<&CameraRenderer::onViewPanelUpdate>(
         ctx.world);
-    ctx.world.on_construct<ComponentCamera>().connect<&onCameraCreated>(
-        ctx.renderWorld);
+    // ctx.world.on_construct<ComponentCamera>().connect<&onCameraCreated>(
+    //     ctx.renderWorld);
 }
 
 void CameraRenderer::onViewPanelUpdate(entt::registry& world,
@@ -52,7 +54,11 @@ void CameraRenderer::onViewPanelUpdate(entt::registry& world,
         auto camEntity = vp->activeCamera;
         if (auto pcam = world.try_get<ComponentPerspectiveCamera>(camEntity))
         {
-            pcam->aspect = (float)rect->extent.x / (float)rect->extent.y;
+            if (rect->extent.y > 0)
+            {
+                pcam->aspect = static_cast<float>(rect->extent.x) /
+                               static_cast<float>(rect->extent.y);
+            }
         }
     }
 }
@@ -67,14 +73,11 @@ void CameraRenderer::onUpdate(FRendererState& ctx)
         if (!ctx.world.valid(view.activeCamera)) continue;
         if (auto camera = ctx.world.try_get<ComponentCamera>(view.activeCamera))
         {
-            // auto& prevCam = ctx.renderWorld.get_or_emplace<CameraPair>(view.activeCamera);
-            // auto icam = prevCam.interpolate(*camera, ctx.alpha);
-            // prevCam.tryShift(*camera);
-            // cmdview.view = icam.view();
-            auto& rcam = ctx.renderWorld.get<ComponentCamera>(view.activeCamera);
-            rcam.position = math::lerp(rcam.position, camera->position, ctx.alpha);
-            rcam.forward = camera->forward;
-            cmdview.view = rcam.view();
+            // auto& rcam = ctx.renderWorld.get<ComponentCamera>(view.activeCamera);
+            // rcam.position = math::lerp(rcam.position, camera->position, ctx.alpha);
+            // rcam.forward = camera->forward;
+            // cmdview.view = rcam.view();
+            cmdview.view = camera->view();
         }
         if (auto pcamera = ctx.world.try_get<ComponentPerspectiveCamera>(
                 view.activeCamera))
