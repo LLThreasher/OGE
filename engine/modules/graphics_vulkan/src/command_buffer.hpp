@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <span>
 
+#include "oge/graphics/backend.hpp"
 #include "oge/graphics/command_list.hpp"
 
 namespace oge::graphics::vulkan
@@ -33,9 +34,7 @@ class VulkanCommandBuffer final : public ICommandList
                      uint32_t extentY) override;
 
     // ----- Render pass -----
-    void BeginRenderPass(const GPURenderPassHandle renderPass,
-                         const GPUFrameBufferHandle frameBuffer,
-                         const ClearValues& clearValues) override;
+    void BeginRenderPass(const GPURenderPassDesc& desc) override;
     void EndRenderPass() override;
 
     // ----- Binding -----

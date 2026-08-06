@@ -27,6 +27,24 @@ using VmaAllocator = VmaAllocator_T*;
 
 namespace oge::graphics::vulkan
 {
+
+struct RenderPassDesc
+{
+    std::array<ColorAttachmentDesc, MaxColorAttachments> colors;
+    uint32_t colorCount = 0;
+
+    bool hasDepth = false;
+    DepthAttachmentDesc depth;
+};
+
+struct FrameBufferDesc
+{
+    std::array<GPUTextureHandle, MaxColorAttachments> colors;
+    uint32_t colorCount = 0;
+    bool hasDepth = false;
+    GPUTextureHandle depth;
+};
+
 struct FrameData
 {
     VkCommandPool pool;
@@ -528,15 +546,15 @@ class VulkanBackend final : public IGraphicsBackend
     bool IsFenceSignaled(GPUFenceHandle) override;
     void ResetFence(GPUFenceHandle) override;
 
-    GPURenderPassHandle CreateRenderPass(const RenderPassDesc&) override;
-    void DestroyRenderPass(GPURenderPassHandle) override;
+    GPURenderPassHandle CreateRenderPass(const RenderPassDesc&);
+    void DestroyRenderPass(GPURenderPassHandle);
 
     GPUFrameBufferHandle CreateFrameBuffer(GPURenderPassHandle passHandle,
-                                           const FrameBufferDesc&) override;
-    void DestroyFrameBuffer(GPUFrameBufferHandle) override;
+                                           const FrameBufferDesc&);
+    void DestroyFrameBuffer(GPUFrameBufferHandle);
 
-    GPURenderPassHandle GetCurrentRenderPass() const override;
-    GPUFrameBufferHandle GetCurrentFrameBuffer() const override;
+    GPURenderPassHandle GetCurrentRenderPass() const;
+    GPUFrameBufferHandle GetCurrentFrameBuffer() const;
 
     GPUInfo GetGPUInfo() const override;
     GPUMemoryUsage GetGPUMemoryUsage() const override;

@@ -30,8 +30,7 @@ DrawContext::DrawContext(float dt, InitDrawContext& ctx, ColorRGBAF32 color)
     values.depthClear = 0.0f;
     values.stencilClear = 0.f;
 
-    cmd.BeginRenderPass(backend.GetCurrentRenderPass(),
-                        backend.GetCurrentFrameBuffer(), values);
+    cmd.BeginRenderPass({{}, values});
 }
 
 DrawContext::~DrawContext()

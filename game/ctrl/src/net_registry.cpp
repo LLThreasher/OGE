@@ -17,6 +17,11 @@
 using oge::runtime::AnythingFactory;
 using oge::runtime::SendType;
 
+namespace game
+{
+    using namespace ::game::legacy;
+}
+
 static void RegisterEntityReplication(AnythingFactory& af)
 {
     auto& desc = af.RegisterType<game::ReplicatedTag>();
@@ -56,7 +61,7 @@ static void RegisterComponentReplication(AnythingFactory& af)
         &game::ComponentReplication<T>::CreateState, SendType::Reliable, 0);
 }
 
-void game::RegisterReplications(AnythingFactory& af, ReplicationRegistry& rf)
+void game::legacy::RegisterReplications(AnythingFactory& af, ReplicationRegistry& rf)
 {
     RegisterTerrainReplication(af);
     RegisterEntityReplication(af);
@@ -70,11 +75,11 @@ void game::RegisterReplications(AnythingFactory& af, ReplicationRegistry& rf)
     rf.RegisterFrom(af);
 }
 
-void game::InstallTerrainReplicationHooks(entt::registry& world)
+void game::legacy::InstallTerrainReplicationHooks(entt::registry& world)
 {
 }
 
-void game::InstallEntityReplicationHooks(entt::registry& world)
+void game::legacy::InstallEntityReplicationHooks(entt::registry& world)
 {
     world.ctx().emplace<EntityEventStream>();
     world.on_construct<ReplicatedTag>()

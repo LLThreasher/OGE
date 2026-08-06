@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include "oge/graphics/backend.hpp"
 #include "oge/graphics/configs.hpp"
 #include "oge/graphics/objects.hpp"
 
@@ -17,9 +18,7 @@ class ICommandList
                              uint32_t extentY) = 0;
 
     // ----- Render pass -----
-    virtual void BeginRenderPass(const GPURenderPassHandle renderPass,
-                                 const GPUFrameBufferHandle frameBuffer,
-                                 const ClearValues& clearValues) = 0;
+    virtual void BeginRenderPass(const GPURenderPassDesc& desc) = 0;
     virtual void EndRenderPass() = 0;
 
     // ----- Binding -----

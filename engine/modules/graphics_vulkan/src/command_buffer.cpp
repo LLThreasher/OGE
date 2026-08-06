@@ -8,6 +8,7 @@
 #include "binding_group.hpp"
 #include "buffer.hpp"
 #include "frame_buffer.hpp"
+#include "oge/graphics/backend.hpp"
 #include "pipeline.hpp"
 #include "texture.hpp"
 #include "vulkan/vulkan_core.h"
@@ -54,12 +55,14 @@ void VulkanCommandBuffer::InternalEnd()
     // LOG_DEBUG("end mcd {}", (void*)m_cmd);
 }
 
-void VulkanCommandBuffer::BeginRenderPass(
-    const GPURenderPassHandle renderPass,
-    const GPUFrameBufferHandle frameBuffer, const ClearValues& clearValues)
+void VulkanCommandBuffer::BeginRenderPass(const GPURenderPassDesc& desc)
 {
-    VulkanRenderPass* rp = m_backend->m_renderPasses.Get(renderPass);
-    VulkanFrameBuffer* fb = m_backend->m_frameBuffers.Get(frameBuffer);
+    assert(!desc.colorTarget.IsValid());
+    auto& clearValues = desc.clearValues;
+    VulkanRenderPass* rp =
+        m_backend->m_renderPasses.Get(m_backend->GetCurrentRenderPass());
+    VulkanFrameBuffer* fb =
+        m_backend->m_frameBuffers.Get(m_backend->GetCurrentFrameBuffer());
 
     VkRenderPassBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;

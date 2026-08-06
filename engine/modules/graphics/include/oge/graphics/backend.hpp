@@ -110,23 +110,6 @@ struct DepthAttachmentDesc
     StoreOp storeOp = StoreOp::DontCare;
 };
 
-struct RenderPassDesc
-{
-    std::array<ColorAttachmentDesc, MaxColorAttachments> colors;
-    uint32_t colorCount = 0;
-
-    bool hasDepth = false;
-    DepthAttachmentDesc depth;
-};
-
-struct FrameBufferDesc
-{
-    std::array<GPUTextureHandle, MaxColorAttachments> colors;
-    uint32_t colorCount = 0;
-    bool hasDepth = false;
-    GPUTextureHandle depth;
-};
-
 struct BindingGroupLayoutDesc
 {
     int textureCount;
@@ -190,6 +173,12 @@ enum class EndFrameAction : uint32_t
     RecreateSurface,
 };
 
+struct GPURenderPassDesc
+{
+    GPUTextureHandle colorTarget = {};
+    ClearValues clearValues = {};
+};
+
 class IGraphicsBackend
 {
    public:
@@ -209,9 +198,6 @@ class IGraphicsBackend
     virtual U16Point2 SwapchainExtent() const = 0;
     virtual math::Orientation SwapchainPretransform() const = 0;
     virtual bool SwapchainRecreated() const = 0;
-
-    virtual GPURenderPassHandle GetCurrentRenderPass() const = 0;
-    virtual GPUFrameBufferHandle GetCurrentFrameBuffer() const = 0;
 
     virtual GPUInfo GetGPUInfo() const = 0;
     virtual GPUMemoryUsage GetGPUMemoryUsage() const = 0;
@@ -282,13 +268,6 @@ class IGraphicsBackend
     virtual void WaitForFence(GPUFenceHandle) = 0;
     virtual bool IsFenceSignaled(GPUFenceHandle) = 0;
     virtual void ResetFence(GPUFenceHandle) = 0;
-
-    virtual GPURenderPassHandle CreateRenderPass(const RenderPassDesc&) = 0;
-    virtual void DestroyRenderPass(GPURenderPassHandle) = 0;
-
-    virtual GPUFrameBufferHandle CreateFrameBuffer(
-        GPURenderPassHandle passHandle, const FrameBufferDesc&) = 0;
-    virtual void DestroyFrameBuffer(GPUFrameBufferHandle) = 0;
 };
 
 }  // namespace oge::graphics

@@ -1,19 +1,22 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
+
+namespace oge
+{
 
 template <typename T, std::size_t Capacity = 256>
 class NetworkEventStream
 {
-public:
+   public:
     using TEvent = T;
-    using Cursor = std::uint64_t;
+    using Cursor = std::uint32_t;
 
     static constexpr std::size_t MCapacity = Capacity;
 
-private:
+   private:
     struct Slot
     {
         Cursor sequence = 0;
@@ -29,7 +32,7 @@ private:
     // Highest sequence ever inserted/pushed, plus one.
     Cursor m_frontier = 1;
 
-public:
+   public:
     NetworkEventStream() = default;
 
     void Clear()
@@ -54,7 +57,8 @@ public:
     {
         if (sequence == 0)
         {
-            return false;
+            Push(event);
+            return true;
         }
 
         // Too old to be safely represented.
@@ -166,3 +170,4 @@ public:
         return m_frontier - Capacity;
     }
 };
+}  // namespace oge

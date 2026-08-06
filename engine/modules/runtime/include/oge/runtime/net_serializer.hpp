@@ -127,6 +127,11 @@ public:
         return *this;
     }
 
+    bool IsEmpty()
+    {
+        return readPos == writePos;
+    }
+
     void Reset()
     {
         writePos = 0;

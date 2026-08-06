@@ -19,7 +19,7 @@
 #include "oge/runtime/net_traits.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
-namespace game
+namespace game::legacy
 {
 using oge::runtime::FamilyId;
 using oge::runtime::ICapability;
@@ -533,3 +533,7 @@ struct EntityEventStreamReplication
 void RegisterReplications(oge::runtime::AnythingFactory& af,
                           ReplicationRegistry& rf);
 }  // namespace game
+
+namespace game {
+    using namespace legacy;
+}
