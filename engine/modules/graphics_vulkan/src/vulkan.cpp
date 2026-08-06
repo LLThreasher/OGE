@@ -671,9 +671,15 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
     }
 #endif
 
-    RecreateSurface(desc.window);
     PrintAllPhysicalDeviceInfo(m_device.instance);
+    m_device.presentMode = desc.frameTime == FrameTimePreference::VSync
+                               ? VK_PRESENT_MODE_FIFO_KHR
+                               : VK_PRESENT_MODE_MAILBOX_KHR;
+    RecreateSurfaceNow(desc.window);
+}
 
+void VulkanBackend::CreatePhysicalDevice()
+{
     std::vector<const char*> deviceExtensionGroups = {
         VK_EXT_MEMORY_BUDGET_EXTENSION_NAME,
         VK_EXT_DEVICE_MEMORY_REPORT_EXTENSION_NAME,
@@ -791,11 +797,11 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
 
     m_device.depthFormat = VK_FORMAT_D16_UNORM;
 
+    bool targetVSync = m_device.presentMode == VK_PRESENT_MODE_FIFO_KHR;
     VkPresentModeKHR presentMode = VK_PRESENT_MODE_FIFO_KHR;
     for (auto& mode : swapchainSupport.presentModes)
     {
-        if (mode == VK_PRESENT_MODE_FIFO_KHR &&
-            desc.frameTime == FrameTimePreference::VSync)
+        if (mode == VK_PRESENT_MODE_FIFO_KHR && targetVSync)
         {
             presentMode = mode;
             break;
@@ -844,23 +850,11 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
         createInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
         vkCreateCommandPool(m_device.device, &createInfo, nullptr, &frame.pool);
     }
-
-    RecreateSwapchain();
 }
 
-void VulkanBackend::RecreateSurface(WindowHandle* handle)
+void VulkanBackend::RecreateSurface(WindowHandle& handle)
 {
-    DestroySurface();
-    LOG_DEBUG("recreating surface");
-    auto res = CreateSurface(handle, m_device.instance, m_device.surface);
-    if (res != VK_SUCCESS)
-    {
-        LOG_ERROR("error recreating surface {}", static_cast<uint32_t>(res));
-        throw std::runtime_error("vulkan err: " + std::to_string(res));
-    }
-    LOG_DEBUG("surface recreated");
-
-    RecreateSwapchain();
+    m_swapchain.recreateSurface = handle;
 }
 
 void VulkanBackend::CreateSwapchainRenderPass()
@@ -1228,10 +1222,36 @@ GPURenderPassHandle VulkanBackend::GetCurrentRenderPass() const
     return m_swapchain.renderPass;
 }
 
+void VulkanBackend::RecreateSurfaceNow(WindowHandle handle)
+{
+    DestroySurface();
+    LOG_DEBUG("recreating surface");
+    auto res = CreateSurface(&handle, m_device.instance,
+                                m_device.surface);
+    if (res != VK_SUCCESS)
+    {
+        LOG_ERROR("error recreating surface {}",
+                    static_cast<uint32_t>(res));
+        throw std::runtime_error("vulkan err: " + std::to_string(res));
+    }
+    LOG_DEBUG("surface recreated");
+
+    if (m_device.physicalDevice == VK_NULL_HANDLE)
+        CreatePhysicalDevice();
+
+    RecreateSwapchain();
+}
+
 BeginFrameAction VulkanBackend::BeginFrame()
 {
-    FrameData& frame = m_frames[m_frameIndex];
+    if (m_swapchain.recreateSurface.has_value())
+    {
+        RecreateSurfaceNow(m_swapchain.recreateSurface.value());
+        m_swapchain.recreateSurface.reset();
+        return BeginFrameAction::SkipFrame;
+    }
 
+    FrameData& frame = m_frames[m_frameIndex];
     VkDevice& device = m_device.device;
     VkSwapchainKHR& swapchain = m_swapchain.swapchain;
 
@@ -1287,6 +1307,11 @@ BeginFrameAction VulkanBackend::BeginFrame()
 
 EndFrameAction VulkanBackend::EndFrame()
 {
+    if (m_swapchain.recreateSurface.has_value())
+    {
+        return EndFrameAction::Continue;
+    }
+
     FrameData& frame = m_frames[m_frameIndex];
     VkSwapchainKHR& swapchain = m_swapchain.swapchain;
 

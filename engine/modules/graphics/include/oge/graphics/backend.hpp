@@ -1,8 +1,6 @@
 #pragma once
 #include <array>
 #include <cstdint>
-#include <memory>
-#include <optional>
 #include <span>
 #include <string>
 #include <vector>
@@ -39,7 +37,7 @@ enum class FrameTimePreference
 
 struct BackendDesc
 {
-    WindowHandle* window;
+    WindowHandle& window;
     FrameTimePreference frameTime = FrameTimePreference::VSync;
 };
 
@@ -203,7 +201,7 @@ class IGraphicsBackend
     virtual GPUMemoryUsage GetGPUMemoryUsage() const = 0;
 
     virtual void Initialize(const BackendDesc&) = 0;
-    virtual void RecreateSurface(WindowHandle* handle) = 0;
+    virtual void RecreateSurface(WindowHandle& handle) = 0;
     virtual void Resize(uint32_t width, uint32_t height) = 0;
     virtual void WaitDeviceIdle() = 0;
     virtual void Shutdown() = 0;

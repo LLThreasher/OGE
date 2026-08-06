@@ -19,6 +19,12 @@ add_subdirectory(stb)
 include(FetchContent)
 
 FetchContent_Declare(
+    metal_cpp
+    GIT_REPOSITORY https://github.com/bkaradzic/metal-cpp.git
+    GIT_TAG        metal-cpp_27
+)
+
+FetchContent_Declare(
     glm
     GIT_REPOSITORY https://github.com/g-truc/glm.git
     GIT_TAG        1.0.3
@@ -68,6 +74,22 @@ FetchContent_MakeAvailable(entt)
 FetchContent_MakeAvailable(freetype)
 # FetchContent_MakeAvailable(enet)
 FetchContent_MakeAvailable(fmt)
+
+if(BUILD_METAL)
+FetchContent_MakeAvailable(metal_cpp)
+
+add_library(metal-cpp INTERFACE)
+
+target_include_directories(metal-cpp INTERFACE
+    ${metal_cpp_SOURCE_DIR}
+)
+
+target_link_libraries(metal-cpp INTERFACE
+    "-framework Foundation"
+    "-framework QuartzCore"
+    "-framework Metal"
+)
+endif()
 
 # set(SPDLOG_USE_STD_FORMAT ON CACHE BOOL "" FORCE)
 set(SPDLOG_FMT_EXTERNAL ON CACHE BOOL "" FORCE)

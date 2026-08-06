@@ -3,14 +3,13 @@
 #include <vulkan/vulkan.h>
 
 #include <cstdint>
-#include <memory>
-#include <stdexcept>
-#include <string>
+#include <optional>
 
 #include "command_buffer.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/math.hpp"
 #include "oge/pool.hpp"
+#include "oge/platform/window_handle.hpp"
 
 #define VK_CHECK_RESULT(expr)                                                 \
     do                                                                        \
@@ -482,6 +481,7 @@ struct VulkanSwapchain
     GPURenderPassHandle renderPass;
     std::vector<GPUFrameBufferHandle> framebuffers;
     bool isDirty = false;
+    std::optional<WindowHandle> recreateSurface = {};
 };
 
 class VulkanBackend final : public IGraphicsBackend
@@ -504,7 +504,7 @@ class VulkanBackend final : public IGraphicsBackend
     bool SwapchainRecreated() const override;
 
     void Initialize(const BackendDesc&) override;
-    void RecreateSurface(WindowHandle* handle) override;
+    void RecreateSurface(WindowHandle& handle) override;
     void Resize(uint32_t width, uint32_t height) override;
     void WaitDeviceIdle() override;
     void Shutdown() override;
@@ -583,6 +583,8 @@ class VulkanBackend final : public IGraphicsBackend
     Pool<GPUObjectType::RenderPass, VulkanRenderPass> m_renderPasses;
     Pool<GPUObjectType::FrameBuffer, VulkanFrameBuffer> m_frameBuffers;
 
+    void CreatePhysicalDevice();
+    void RecreateSurfaceNow(WindowHandle handle);
     VulkanRenderPass CreateRenderPassInternal(VulkanRenderPassDesc&);
     void CreateSyncObjects(int);
     bool RecreateSwapchain();

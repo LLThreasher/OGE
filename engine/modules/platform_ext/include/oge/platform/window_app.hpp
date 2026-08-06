@@ -23,11 +23,11 @@ using InputProvider =
 class WindowApp
 {
    public:
-    virtual void Initialize(WindowHandle* handle) = 0;
+    virtual void Initialize(WindowHandle& handle) = 0;
     virtual AppFrameAction Update(float dt, InputProvider pollInputs) = 0;
     virtual void Shutdown() = 0;
 
-    virtual void OnWindowRecreate(WindowHandle*) = 0;
+    virtual void OnWindowRecreate(WindowHandle&) = 0;
     virtual void OnResize(int width, int height) = 0;
 };
 }  // namespace oge::platform

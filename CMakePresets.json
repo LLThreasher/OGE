@@ -38,6 +38,7 @@
         "MAX_CMD_BUFFER_PER_QUEUE": "1",
         "FORCE_SINGLE_QUEUE": "ON",
         "BUILD_VULKAN": "ON",
+        "BUILD_METAL": "ON",
         "BUILD_WINDOW_SDL3": "ON",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       },

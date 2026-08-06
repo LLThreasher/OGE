@@ -120,7 +120,7 @@ void SDL3GameWindow::Run(WindowApp& app)
     {
 #endif
         auto handle = GetCurrentWindow();
-        app.Initialize(&handle);
+        app.Initialize(handle);
 #if !defined(OGE_DEBUG) || defined(PLATFORM_ANDROID)
     }
     catch (const std::exception& e)
@@ -165,7 +165,7 @@ void SDL3GameWindow::Run(WindowApp& app)
                 case SDL_EVENT_WINDOW_RESTORED:
                 {
                     auto handle = GetCurrentWindow();
-                    app.OnWindowRecreate(&handle);
+                    app.OnWindowRecreate(handle);
                     break;
                 }
                 case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:

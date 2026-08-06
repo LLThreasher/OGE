@@ -18,11 +18,11 @@ class Client : public WindowApp, public SceneRunner<SceneExt>
 {
    public:
     Client();
-    void Initialize(WindowHandle*) override;
+    void Initialize(WindowHandle&) override;
     AppFrameAction Update(float dt, InputProvider pollInputs) override;
     void Shutdown() override;
 
-    void OnWindowRecreate(WindowHandle*) override;
+    void OnWindowRecreate(WindowHandle&) override;
     void OnResize(int width, int height) override;
 
    private:

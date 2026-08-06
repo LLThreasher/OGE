@@ -34,7 +34,7 @@ Client::Client()
     RegisterRenderers(m_anyFactory);
 }
 
-void Client::Initialize(WindowHandle* handle)
+void Client::Initialize(WindowHandle& handle)
 {
     auto backend_ptr = oge::graphics::vulkan::CreateVulkanBackend();
     m_backend =
@@ -76,6 +76,8 @@ AppFrameAction Client::Update(float dt, InputProvider PollInputs)
     if (res != BeginFrameAction::Continue) return appRes | AppFrameAction::None;
 
     watch.Restart();
+    PollInputs(m_input, false);
+    perfStats.inputProcessingTime += watch.Restart();
 
     m_events.update();
     SceneRunner::UpdateScene({dt, m_input, m_perfStats, appRes});
@@ -111,7 +113,7 @@ void Client::Shutdown()
     m_backend->Shutdown();
 }
 
-void Client::OnWindowRecreate(WindowHandle* handle)
+void Client::OnWindowRecreate(WindowHandle& handle)
 {
     m_waitingSurface = false;
     m_backend->RecreateSurface(handle);

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <span>
 
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/configs.hpp"
