@@ -93,7 +93,8 @@ class SceneExt : public Scene
 
     void RemoveCursor(size_t mouseIdx)
     {
-        m_uiWorld.destroy(m_cursors[mouseIdx]);
+        if (m_uiWorld.valid(m_cursors[mouseIdx]))
+            m_uiWorld.destroy(m_cursors[mouseIdx]);
         m_cursors[mouseIdx] = entt::null;
     }
 
@@ -139,7 +140,7 @@ class SceneExt : public Scene
                 auto rect = m_uiWorld.get<ui::UIRect>(m_cursors[ptr]);
                 math::vec2 extent = m_ctx.assets.backend.SwapchainExtent();
                 math::vec2 pos = f.is.PollPtrLatest(ptr, cursor);
-                rect.pos = pos;
+                rect.pos = pos - (rect.extent * 0.5f);
                 m_uiWorld.emplace_or_replace<ui::UIRect>(m_cursors[ptr], rect);
             }
         }
