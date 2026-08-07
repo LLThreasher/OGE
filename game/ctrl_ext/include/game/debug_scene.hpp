@@ -181,7 +181,6 @@ class DebugScene3 : public SceneExt
 
         Load();
 
-        m_renderers.AddStage<view::UIRenderer>(AF());
         m_renderers.AddStage<view::DebugInfoRenderer>(AF());
         m_renderers.AddStage<view::TerrainRenderer>(AF());
         m_renderers.AddStage<view::CameraRenderer>(AF());

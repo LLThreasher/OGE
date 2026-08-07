@@ -13,6 +13,7 @@ SceneExt::SceneExt(const Def& def)
                                       AssetContext(def.ctx.any_ctx)}),
       m_squeue(m_ctx.memory.frameBuffer.Resource())
 {
+    m_renderers.AddStage<view::UIRenderer>(AF());
     m_viewExecutor.Attach(def.ctx.any_ctx);
 }
 

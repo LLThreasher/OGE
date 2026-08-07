@@ -163,7 +163,7 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                                 if (canPlace)
                                     terrain.SetBlock(placePos, blockValue);
                             }
-                            player.lastActionTime = 0.01f;
+                            player.lastActionTime = 0.3f;
                         }
                     }
                 }
