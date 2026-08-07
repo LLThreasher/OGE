@@ -40,10 +40,10 @@ struct ReplicatedTag
 
 struct ComponentCamera
 {
-    float yaw;
-    float pitch;
-    math::vec3 position;
-    math::vec3 forward;
+    float yaw = 0.f;
+    float pitch = 0.f;
+    math::vec3 position = {};
+    math::vec3 forward = {};
 
     math::vec3 up() const
     {
@@ -56,7 +56,12 @@ struct ComponentCamera
         return glm::normalize(glm::cross(forward, worldUp));
     }
 
-    ComponentCamera(math::vec3 position = {}, math::vec3 forward = {})
+    ComponentCamera(math::vec3 position = {})
+    {
+        SetYawPitch(0.f, 0.f);
+    }
+
+    ComponentCamera(math::vec3 position, math::vec3 forward)
     {
         yaw = std::atan2(forward.x, forward.z);
         pitch = std::asin(forward.y);

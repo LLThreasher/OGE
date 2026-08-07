@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cassert>
 #include <string>
 
@@ -17,7 +18,9 @@
 #include "game/view/renderer.hpp"
 #include "game/view/terrain/terrain_renderer.hpp"
 #include "oge/input/keyboard.hpp"
+#include "oge/input/raw_input_stream.hpp"
 #include "oge/log.hpp"
+#include "oge/math.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
@@ -68,13 +71,13 @@ class DebugScene3 : public SceneExt
 
         // put something in the middle of the screen
         ui::UISprite crossSprite{.sprite =
-                                     m_ctx.assets.LoadTexture("cross.png")};
+                                     m_ctx.assets.LoadTexture("cursors/dot_large.png")};
         m_cross = m_uiWorld.create();
         m_uiWorld.emplace<ui::UIRect>(
             m_cross,
-            math::vec2{0.5f - 0.01f,
-                       0.5f - 0.01f * m_ctx.assets.backend.SwapchainAspect()},
-            math::vec2{0.01f, 0.01f * m_ctx.assets.backend.SwapchainAspect()});
+            math::vec2{0.5f - 0.02f,
+                       0.5f - 0.02f * m_ctx.assets.backend.SwapchainAspect()},
+            math::vec2{0.02f, 0.02f * m_ctx.assets.backend.SwapchainAspect()});
         m_uiWorld.emplace<ui::UISprite>(m_cross, crossSprite);
         m_uiWorld.emplace<ui::UIZLevel>(m_cross, 1);
     }
@@ -137,15 +140,6 @@ class DebugScene3 : public SceneExt
             {
                 auto& cam = world.emplace<ComponentCamera>(e);
                 cam.position = {20.f, 20.f, 20.f};
-
-                glm::vec3 target = {0.f, 0.f, 0.f};
-                cam.forward = glm::normalize(target - cam.position);
-
-                cam.yaw = std::atan2(cam.forward.x, cam.forward.z);
-                cam.pitch = std::asin(cam.forward.y);
-
-                world.get<input::PlayerInputStream>(e).SetAim(
-                    {cam.yaw, cam.pitch});
             }
             if (!world.all_of<ComponentPerspectiveCamera>(e))
             {
@@ -217,12 +211,6 @@ class DebugScene3 : public SceneExt
                     ComponentCamera& cam =
                         m_world.get<ComponentCamera>(m_player);
                     cam.position = {20.f, 20.f, 20.f};
-
-                    glm::vec3 target = {0.f, 0.f, 0.f};
-                    cam.forward = glm::normalize(target - cam.position);
-
-                    cam.yaw = std::atan2(cam.forward.x, cam.forward.z);
-                    cam.pitch = std::asin(cam.forward.y);
                 }
                 onConstructPlayer(m_world, m_player);
             }
@@ -267,12 +255,14 @@ class DebugScene3 : public SceneExt
         if (keys.contains(KeyCode::KY_G) && !usingKeyMouse)
         {
             usingKeyMouse = true;
+            m_nextShowingCursor = false;
             ClearInputs();
             AddKeyMouseInput();
         }
         else if (keys.contains(KeyCode::KY_ESCAPE) && usingKeyMouse)
         {
             usingKeyMouse = false;
+            m_nextShowingCursor = true;
             ClearInputs();
             AddWidgetInput();
         }

@@ -115,6 +115,7 @@ math::vec2 ScreenSpaceToRelSpace(const entt::registry& world,
                                  math::vec2 screenPos);
 Point2 RelSpaceToScreenSpace(const entt::registry& world, math::vec2 relPos);
 ScreenRect UIRectToScreenRect(const entt::registry& world, entt::entity rect);
+void UpdateUIRectToScreenRect(entt::registry& world, entt::entity rect);
 
 entt::entity CastRayRelSpace(const entt::registry& gameWorld, math::vec2 pos);
 entt::entity CastRayScreenSpace(const entt::registry& gameWorld,

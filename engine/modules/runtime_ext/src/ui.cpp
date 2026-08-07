@@ -58,6 +58,31 @@ ScreenRect UIRectToScreenRect(const entt::registry& world, entt::entity rect)
     }
 }
 
+void UpdateUIRectToScreenRect(entt::registry& world, entt::entity rect)
+{
+    if (!world.all_of<ScreenRect>(rect)) return;
+    assert(world.all_of<UIRect>(rect));
+
+    auto parent = world.try_get<UIParent>(rect);
+    auto parentEntity = parent ? parent->parent : world.view<UIRoot>().front();
+    ScreenRect srect = UIRectToScreenRect(world, parentEntity);
+
+    auto& _srect = world.get<ScreenRect>(rect);
+    auto& uirect = world.get<const UIRect>(rect);
+    _srect.pos.x = (int32_t)(uirect.pos.x * srect.extent.x + srect.pos.x);
+    _srect.pos.y = (int32_t)(uirect.pos.y * srect.extent.y + srect.pos.y);
+    _srect.extent.x = (int32_t)(uirect.extent.x * srect.extent.x);
+    _srect.extent.y = (int32_t)(uirect.extent.y * srect.extent.y);
+
+    for (auto [e, parent] : world.view<const UIParent>()->each())
+    {
+        if (parent.parent == rect)
+        {
+            UpdateUIRectToScreenRect(world, rect);
+        }
+    }
+}
+
 math::vec2 ScreenSpaceToRelSpace(const ScreenRect rect, math::vec2 screenPos)
 {
     return (screenPos - static_cast<math::vec2>(rect.pos)) /

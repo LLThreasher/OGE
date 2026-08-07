@@ -39,6 +39,7 @@ math::vec2 RawInputStream::PollPtrDelta(size_t ptrIdx, Cursor& cursor) const
 
 void RawInputStream::NewFrame()
 {
+    m_lastFrameCursor = frameFrontier.cursor;
     frameFrontier.activeKeys = activeKeys;
     frameFrontier.dirtyPtrs = dirtyPtrs;
     events.AdvanceCursor(frameFrontier.cursor.eventCursor);

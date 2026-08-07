@@ -3,8 +3,6 @@
 namespace oge::platform::sdl3
 {
 
-
-
 WindowHandle SDL3GameWindow::GetCurrentWindow()
 {
     WindowHandle handle{};

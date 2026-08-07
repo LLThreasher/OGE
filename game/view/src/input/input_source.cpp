@@ -11,6 +11,7 @@
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/log.hpp"
 #include "oge/math.hpp"
+#include "oge/runtime/ui/objects.hpp"
 
 namespace game::input
 {
@@ -105,8 +106,8 @@ void WidgetInput::onUpdate(FInputContext& ctx)
         if (auto drag = game.try_get<UIDrag>(moveWidget))
         {
             math::vec2 moveDelta = drag->dragLastPos - drag->dragStartPos;
-            moveDelta = -moveDelta;
-            if (math::len_sq(moveDelta) > 0.f)
+            moveDelta = -moveDelta * 4.0f;
+            if (math::len_sq(moveDelta) >= 1.f)
                 moveDelta = math::normalize(moveDelta);
             out.InsertMoveDelta(moveDelta);
         }

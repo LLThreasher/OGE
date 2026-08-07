@@ -30,6 +30,11 @@ class SDL3GameWindow : public Window
 
     float window_width;
     float window_height;
+    float window_width_pixel;
+    float window_height_pixel;
+
+    float mouse_delta_scale_x = 1.f;
+    float mouse_delta_scale_y = 1.f;
 
     struct Impl
     {

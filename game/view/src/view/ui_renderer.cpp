@@ -5,6 +5,7 @@
 #include "oge/graphics/backend.hpp"
 #include "oge/log.hpp"
 #include "oge/point2.hpp"
+#include "oge/runtime/ui/objects.hpp"
 
 namespace game::view
 {
@@ -20,6 +21,11 @@ static void onCreateUIRect(entt::registry& gameWorld, entt::entity entity)
     {
         gameWorld.emplace<UIParent>(entity, gameWorld.view<UIRoot>().front());
     }
+}
+
+static void onUpdateUIRect(entt::registry& gameWorld, entt::entity entity)
+{
+    UpdateUIRectToScreenRect(gameWorld, entity);
 }
 
 static void onDestroyUIRect(entt::registry& gameWorld, entt::entity entity)
@@ -50,6 +56,7 @@ void UIRenderer::onAttach(RendererState& ctx)
 {
     auto& game = ctx.uiWorld;
     game.on_construct<UIRect>().connect<&onCreateUIRect>();
+    game.on_update<UIRect>().connect<&onUpdateUIRect>();
     game.on_destroy<UIRect>().connect<&onDestroyUIRect>();
     ctx.events.sink<SurfaceRecreateEvent>().connect<&onSurfaceRecreate>(game);
 

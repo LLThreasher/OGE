@@ -23,6 +23,8 @@ SceneExt::~SceneExt()
 
 void SceneExt::Update(Frame f, SceneContext sctx)
 {
+    UpdateCursors(f);
+    
     // input processing
     m_inputs.Update({f.dt, f.is});
     m_world.ctx().insert_or_assign(f.perfStats);

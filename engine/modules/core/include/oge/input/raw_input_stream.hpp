@@ -30,10 +30,7 @@ struct PackedMouseInfo
 {
     uint8_t val;
 
-    PackedMouseInfo() : val(0)
-    {
-    }
-    PackedMouseInfo(size_t id, MouseButton button)
+    PackedMouseInfo(size_t id = 0, MouseButton button = MouseButton::Left)
         : val((static_cast<uint8_t>(id & 0x7) << 4) |
               (static_cast<uint8_t>(button) & 0x7))
     {
@@ -57,7 +54,7 @@ struct InputEvent
     {
         KeyCode key;
         PackedMouseInfo mouse;
-        uint8_t pointerIdx;
+        uint8_t pointerIdx = 0;
     };
 };
 
@@ -106,6 +103,11 @@ class RawInputStream
     {
         return frameFrontier.activeKeys;
     }
+    const Cursor LastFrameCursor() const
+    {
+        return m_lastFrameCursor;
+    }
+
     static bool IsMouse(size_t ptrIdx)
     {
         return ptrIdx < MaxMousePtrCount;
@@ -124,6 +126,11 @@ class RawInputStream
     void SetTouchUpdate(uint64_t id, float x, float y);
     void SetTouchUp(uint64_t id, float x, float y);
 
+    void SetRelativeMouseMode(bool val)
+    {
+        m_relativeMouseMode = val;
+    }
+
    private:
     uint32_t FindMouse(int id) const;
     uint32_t FindTouch(uint64_t id) const;
@@ -140,6 +147,8 @@ class RawInputStream
         BitSet32 dirtyPtrs;
         KeySet activeKeys;
     } frameFrontier;
+    bool m_relativeMouseMode = false;
+    Cursor m_lastFrameCursor;
     BitSet32 activePtrs;
     BitSet32 dirtyPtrs;
     BitSet32 toRemovePtrs;

@@ -126,89 +126,61 @@ void UIDragInput::onUpdate(FInputContext& ctx)
     math::vec2 ptrPos;
     size_t ptrIdx;
 
+    auto handlePtrDown = [&]()
+    {
+        if (!game.valid(activeDrags[ptrIdx]))
+        {
+            ptrPos = raw.PollPtrLatest(ptrIdx, raw_idx);
+            hit = ui::CastRayRelSpace(game, ptrPos);
+            if (game.valid(hit) && !game.all_of<UIDrag>(hit))
+            {
+                auto& drag = game.emplace<UIDrag>(hit);
+                drag.inputIndex = ptrIdx;
+                drag.dragStartPos = ptrPos;
+                drag.dragLastPos = ptrPos;
+                drag.onTopOf = hit;
+                drag.dragStartButton = event.mouse.button();
+                activeDrags[drag.inputIndex] = hit;
+            }
+        }
+    };
+    auto handleDragUpdate = [&]()
+    {
+        if (game.valid(activeDrags[ptrIdx]))
+        {
+            UIDrag& drag = game.get<UIDrag>(activeDrags[ptrIdx]);
+            if (drag.dragStartButton == event.mouse.button())
+            {
+                ptrPos = raw.PollPtrLatest(event.mouse.ptrIdx(), raw_idx);
+                hit = ui::CastRayRelSpace(game, ptrPos);
+                drag.UpdateDrag(ptrPos, hit, ctx.dt);
+                if (game.valid(hit) && !game.all_of<UIDragReleaseDst>(hit))
+                    game.emplace<UIDragReleaseDst>(hit, activeDrags[ptrIdx]);
+                game.emplace<UIDragReleaseFinished>(activeDrags[ptrIdx], hit);
+                activeDrags[ptrIdx] = entt::null;
+            }
+        }
+    };
+
     while (raw.PollEvent(raw_idx, event))
     {
         switch (event.type)
         {
             case InputEventType::MouseButtonDown:
                 ptrIdx = event.mouse.ptrIdx();
-                if (!game.valid(activeDrags[ptrIdx]))
-                {
-                    ptrPos = raw.PollPtrLatest(ptrIdx, raw_idx);
-                    hit = ui::CastRayScreenSpace(game, ptrPos);
-                    if (game.valid(hit) && !game.all_of<UIDrag>(hit))
-                    {
-                        auto relMousePos =
-                            ui::ScreenSpaceToRelSpace(game, ptrPos);
-                        auto& drag = game.emplace<UIDrag>(hit);
-                        drag.inputIndex = ptrIdx;
-                        drag.dragStartPos = relMousePos;
-                        drag.dragLastPos = relMousePos;
-                        drag.onTopOf = hit;
-                        drag.dragStartButton = event.mouse.button();
-                        activeDrags[drag.inputIndex] = hit;
-                    }
-                }
+                handlePtrDown();
                 break;
             case InputEventType::MouseButtonUp:
                 ptrIdx = event.mouse.ptrIdx();
-                if (game.valid(activeDrags[ptrIdx]))
-                {
-                    UIDrag& mouseDrag = game.get<UIDrag>(activeDrags[ptrIdx]);
-                    if (mouseDrag.dragStartButton == event.mouse.button())
-                    {
-                        ptrPos =
-                            raw.PollPtrLatest(event.mouse.ptrIdx(), raw_idx);
-                        hit = ui::CastRayScreenSpace(game, ptrPos);
-                        mouseDrag.UpdateDrag(
-                            ui::ScreenSpaceToRelSpace(game, ptrPos), hit,
-                            ctx.dt);
-                        if (game.valid(hit) &&
-                            !game.all_of<UIDragReleaseDst>(hit))
-                            game.emplace<UIDragReleaseDst>(hit,
-                                                           activeDrags[ptrIdx]);
-                        game.emplace<UIDragReleaseFinished>(activeDrags[ptrIdx],
-                                                            hit);
-                        activeDrags[ptrIdx] = entt::null;
-                    }
-                }
+                handleDragUpdate();
                 break;
             case InputEventType::PointerDown:
                 ptrIdx = event.pointerIdx;
-                // LOG_DEBUG("handle {}", ptrIdx);
-                if (!game.valid(activeDrags[ptrIdx]))
-                {
-                    ptrPos = raw.PollPtrLatest(event.pointerIdx, raw_idx);
-                    hit = ui::CastRayRelSpace(game, ptrPos);
-                    // LOG_DEBUG("active {} {} {}", ptrIdx, ptrPos,
-                    // game.valid(hit));
-
-                    if (game.valid(hit) && !game.all_of<UIDrag>(hit))
-                    {
-                        // LOG_DEBUG("Touch {} drag start at {}", ptrIdx,
-                        // ptrPos);
-                        auto& drag = game.emplace<UIDrag>(hit);
-                        drag.inputIndex = ptrIdx;
-                        drag.dragStartPos = ptrPos;
-                        drag.dragLastPos = ptrPos;
-                        drag.onTopOf = hit;
-                        activeDrags[ptrIdx] = hit;
-                    }
-                }
+                handleDragUpdate();
                 break;
             case InputEventType::PointerUp:
                 ptrIdx = event.pointerIdx;
-                if (game.valid(activeDrags[ptrIdx]))
-                {
-                    ptrPos = raw.PollPtrLatest(event.pointerIdx, raw_idx);
-                    hit = ui::CastRayRelSpace(game, ptrPos);
-
-                    entt::entity& e = activeDrags[ptrIdx];
-                    auto& drag = game.get<UIDrag>(e);
-                    drag.UpdateDrag(ptrPos, hit, ctx.dt);
-                    game.emplace<UIDragReleaseFinished>(e, hit);
-                    e = entt::null;
-                }
+                handleDragUpdate();
                 break;
             default:
                 break;
@@ -217,36 +189,10 @@ void UIDragInput::onUpdate(FInputContext& ctx)
 
     for (size_t ptrIdx : raw.ActivePtrs())
     {
-        // #ifdef OGE_DEBUG
-        // if (raw.IsMouse(ptrIdx))
-        // {
-        //     ptrPos = raw.PollPtrLatest(ptrIdx, raw_idx);
-        //     // auto e = game.create();
-        //     // game.emplace<ScreenRect>(e, oge::I16Point2::FromVec2(ptrPos
-        //     - 5.f), oge::U16Point2{10, 10});
-        //     // game.emplace<UIZLevel>(e, 0);
-        //     // game.emplace<UIRaycastTarget>(e);
-        //     // game.emplace<UICursor>(e);
-        //     hit = ui::CastRayScreenSpace(game, ptrPos);
-        //     if (game.valid(hit)) game.emplace<UIRaycastHit>(hit);
-        // }
-        // #endif
         if (!game.valid(activeDrags[ptrIdx])) continue;
         ptrPos = raw.PollPtrLatest(ptrIdx, raw_idx);
-        if (raw.IsMouse(ptrIdx))
-        {
-            hit = ui::CastRayScreenSpace(game, ptrPos);
-            ptrPos = ui::ScreenSpaceToRelSpace(game, ptrPos);
-            // LOG_DEBUG("Mouse at {}", ptrPos);
-        }
-        else
-        {
-            hit = ui::CastRayRelSpace(game, ptrPos);
-            // LOG_DEBUG("Touch at {}", ptrPos);
-        }
+        hit = ui::CastRayRelSpace(game, ptrPos);
 
-        // LOG_DEBUG("Touch {} drag at ({}, {})", pidx, f.input.GetTouchX(pidx),
-        // f.input.GetTouchY(pidx));
         game.get<UIDrag>(activeDrags[ptrIdx]).UpdateDrag(ptrPos, hit, ctx.dt);
         if (game.valid(hit) && !game.all_of<UIDragReleaseDst>(hit))
         {

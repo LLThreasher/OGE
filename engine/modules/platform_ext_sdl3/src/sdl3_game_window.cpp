@@ -4,6 +4,7 @@
 
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_timer.h"
+#include "SDL3/SDL_video.h"
 #include "oge/platform/window_app.hpp"
 #include "sdl3_window.hpp"
 
@@ -105,10 +106,10 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
     // 2. Create window with SDL_WINDOW_VULKAN flag
 #ifdef PLATFORM_ANDROID
     m_window = SDL_CreateWindow(name.c_str(), 0, 0, SDL_WINDOW_FULLSCREEN);
-#else
+#elif defined(PLATFORM_DARWIN)
     m_window =
-        SDL_CreateWindow(name.c_str(), width, height, SDL_WINDOW_RESIZABLE);
-#ifdef PLATFORM_DARWIN
+        SDL_CreateWindow(name.c_str(), width, height,
+                         SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     m_hidden.metalView = SDL_Metal_CreateView(m_window);
     if (!m_hidden.metalView)
     {
@@ -124,7 +125,9 @@ SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
             abort();
         }
     }
-#endif
+#else
+    m_window =
+        SDL_CreateWindow(name.c_str(), width, height, SDL_WINDOW_RESIZABLE);
 #endif
     window_width = width;
     window_height = height;
@@ -186,7 +189,7 @@ void SDL3GameWindow::Run(WindowApp& app)
         {
             float x, y;
             SDL_GetMouseState(&x, &y);
-            is.SetMousePosition(0, x, y);
+            is.SetMousePosition(0, x / window_width, y / window_height);
             resetMousePos = false;
         }
         while ((!blocking && SDL_PollEvent(&event)) ||
@@ -200,12 +203,19 @@ void SDL3GameWindow::Run(WindowApp& app)
                     app.OnWindowRecreate(handle);
                     break;
                 }
-                case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
                 case SDL_EVENT_WINDOW_RESIZED:
+                    window_width = event.window.data1;
+                    window_height = event.window.data2;
+                    mouse_delta_scale_x = 1.f / window_width;
+                    mouse_delta_scale_y = 1.f / window_height;
+                    break;
+                case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
                 {
                     int new_width = event.window.data1;
                     int new_height = event.window.data2;
                     app.OnResize(new_width, new_height);
+                    window_width_pixel = new_width;
+                    window_height_pixel = new_height;
                     break;
                 }
                 case SDL_EVENT_QUIT:
@@ -218,12 +228,15 @@ void SDL3GameWindow::Run(WindowApp& app)
                         is.AddMouse(0);
                         float x, y;
                         SDL_GetMouseState(&x, &y);
-                        is.SetMousePosition(0, x, y);
+                        is.SetMousePosition(0, x / window_width,
+                                            y / window_height);
+                        SDL_HideCursor();
                         break;
                     }
                 case SDL_EVENT_WINDOW_MOUSE_LEAVE:
                     // LOG_DEBUG("leave window");
                     is.DelMouse(0);
+                    SDL_ShowCursor();
                     break;
                 case SDL_EVENT_KEY_DOWN:
                     is.SetKey(GetEngineKey(event.key.key), true);
@@ -240,7 +253,17 @@ void SDL3GameWindow::Run(WindowApp& app)
                         0, GetEngineMouseButton(event.button.button), false);
                     break;
                 case SDL_EVENT_MOUSE_MOTION:
-                    is.SetMouseDelta(0, event.motion.xrel, event.motion.yrel);
+                    if (SDL_GetWindowRelativeMouseMode(m_window))
+                    {
+                        is.SetMouseDelta(0, event.motion.xrel,
+                                         event.motion.yrel);
+                    }
+                    else
+                    {
+                        is.SetMouseDelta(
+                            0, event.motion.xrel * mouse_delta_scale_x,
+                            event.motion.yrel * mouse_delta_scale_y);
+                    }
                     break;
                 case SDL_EVENT_FINGER_DOWN:
                     is.SetTouchDown(event.tfinger.fingerID, event.tfinger.x,

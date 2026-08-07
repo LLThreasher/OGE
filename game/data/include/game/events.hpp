@@ -10,4 +10,9 @@ struct SurfaceRecreateEvent
     oge::U16Point2 swapchainExtent;
     oge::math::Orientation swapchainPretransform;
 };
+
+struct WindowResizeEvent
+{
+    oge::U16Point2 windowSize;
+};
 }  // namespace game
