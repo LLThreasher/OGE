@@ -5,6 +5,8 @@
 
 namespace oge::runtime
 {
+using namespace oge::graphics::gpu_objects;
+
 struct StagingAllocation : BufferSpan
 {
     void* cpuPtr;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 
 namespace oge
 {
@@ -39,3 +40,18 @@ struct HandleHash
 };
 
 }  // namespace oge
+
+// Specialise std::hash so that oge::Handle<Tag> works out of the box
+// with std::unordered_map / std::unordered_set without an explicit
+// Hash template argument.
+namespace std
+{
+template <auto Tag>
+struct hash<oge::Handle<Tag>>
+{
+    size_t operator()(const oge::Handle<Tag>& h) const noexcept
+    {
+        return oge::HandleHash<oge::Handle<Tag>>{}(h);
+    }
+};
+}  // namespace std

@@ -63,12 +63,10 @@ class GeneralMeshPass : public RequiresVPTransform,
     GPUBindingGroupHandle GetOrCreateBindingGroup(
         IGraphicsBackend& backend, GPUTextureHandle texture);
 
-    std::unordered_map<GPUTextureHandle, std::vector<CmdDrawGeneralMeshOpaque>,
-                       HandleHash<GPUTextureHandle>>
+    std::unordered_map<GPUTextureHandle, std::vector<CmdDrawGeneralMeshOpaque>>
         m_drawCommands;
 
-    std::unordered_map<GPUTextureHandle, GPUBindingGroupHandle,
-                       HandleHash<GPUTextureHandle>>
+    std::unordered_map<GPUTextureHandle, GPUBindingGroupHandle>
         m_cachedBindingGroups;
 
     GPUPipelineHandle m_pipelineHandle;

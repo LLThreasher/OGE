@@ -43,13 +43,11 @@ class TerrainPass2 : public RequiresVPTransform,
                                                   GPUBufferHandle storageBuffer,
                                                   uint32_t chunkSize);
 
-    std::unordered_map<GPUBindingGroupHandle, std::vector<TerrainMesh>,
-                       HandleHash<GPUBindingGroupHandle>>
+    std::unordered_map<GPUBindingGroupHandle, std::vector<TerrainMesh>>
         activeChunkSlots;
     std::vector<UBO> ubos;
 
-    std::unordered_map<GPUBufferHandle, GPUBindingGroupHandle,
-                       HandleHash<GPUBufferHandle>>
+    std::unordered_map<GPUBufferHandle, GPUBindingGroupHandle>
         cachedBindingGroups;
 
     GPUPipelineHandle pipelineHandle;

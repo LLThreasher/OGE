@@ -38,7 +38,6 @@ using namespace oge::math;
 namespace terrain
 {
 using oge::Handle;
-using oge::HandleHash;
 using oge::LocalPoint3;
 using oge::Point3;
 using oge::Pool;
@@ -243,8 +242,7 @@ struct TerrainData
     ChunkDataCollection chunks;
     std::queue<ChunkHandle> generateTerrainQueue;
     std::unordered_set<Point3> chunksToDestroy;
-    std::unordered_map<ChunkHandle, std::vector<LocalUpdateBlockCmd>,
-                       HandleHash<ChunkHandle>>
+    std::unordered_map<ChunkHandle, std::vector<LocalUpdateBlockCmd>>
         blockModificationQueue;
 
     TerrainData()

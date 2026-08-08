@@ -48,6 +48,7 @@ constexpr ColorRGBA8 GREY = {128, 128, 128, 255};
 constexpr ColorRGBA8 BLACK = {0, 0, 0, 128};
 constexpr ColorRGBA8 RED = {255, 0, 0, 255};
 constexpr ColorRGBA8 GREEN = {0, 255, 0, 255};
+constexpr ColorRGBA8 BLUE = {0, 0, 255, 255};
 constexpr ColorRGBA8 CORNFLOWER_BLUE = {26, 51, 102, 255};
 }  // namespace colors
 

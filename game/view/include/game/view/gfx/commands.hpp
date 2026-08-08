@@ -17,7 +17,7 @@ using oge::runtime::PSprite;
 
 using namespace oge::rects;
 using namespace oge::colors;
-using namespace oge::gpu_objects;
+using namespace oge::graphics::gpu_objects;
 
 struct PDebugRect : IRect
 {
