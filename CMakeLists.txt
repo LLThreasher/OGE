@@ -59,6 +59,7 @@ endif()
 include(cmake/build_config.cmake)
 
 if(NOT GAME_BUILD_TARGET STREQUAL "android")
+enable_testing()
 add_subdirectory(engine)
 add_subdirectory(game)
 if(GAME_BUILD_TARGET STREQUAL "client")

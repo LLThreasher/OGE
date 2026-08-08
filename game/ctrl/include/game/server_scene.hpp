@@ -2,6 +2,7 @@
 
 #include "game/app_context.hpp"
 #include "game/components.hpp"
+#include "game/net/event_log_stream.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
 #include "game/sim/subsystem.hpp"
@@ -116,7 +117,7 @@ class DebugServerScene final : public Scene
         {
             m_pendingConnection2 = nullptr;
             m_pendingConn2Timeout = 0.f;
-            m_replicationRegistry.AddPeer(p.peerId, p.peer);
+            m_replicationRegistry.AddPeer(p.peerId, p.peer, &m_world);
             LOG_INFO("initialize replication peer for conn({})", p.peerId);
         }
         else
@@ -127,7 +128,11 @@ class DebugServerScene final : public Scene
 
    public:
     DebugServerScene(const Def& def)
-        : Scene(def), m_netServer(m_ctx.any_ctx.Emplace<NetServer>())
+        : Scene(def),
+          m_netServer(m_ctx.any_ctx.Emplace<NetServer>()),
+          m_replicationRegistry(net::ReplicationRegistry::Def{
+              m_world.ctx().emplace<net::EventLogStream<>>(),
+              m_ctx.any_factory})
     {
         m_serverEventDispatcher.sink<OnServerReceiveConnect>()
             .connect<&DebugServerScene::onServerRecieveConnect>(this);
@@ -167,20 +172,14 @@ class DebugServerScene final : public Scene
         m_netServer.Initialize(port, maxClients, 3);
 
         m_subsystems.SetUpdateInterval(1 / 20.f);
-        InstallComponentReplicationHooks<ComponentAABBCollider>(m_world);
-        InstallComponentReplicationHooks<ComponentPhysicBody>(m_world);
-        InstallComponentReplicationHooks<ComponentCreature>(m_world);
-        InstallComponentReplicationHooks<ComponentCamera>(m_world);
-        InstallComponentReplicationHooks<ComponentPerspectiveCamera>(m_world);
-        InstallComponentReplicationHooks<ComponentPlayer>(m_world);
-        InstallEntityReplicationHooks(m_world);
-
-        m_replicationRegistry.AddFamilyToSend(Id<terrain::TerrainView>());
-        m_replicationRegistry.AddFamilyToSend(Id<ReplicatedTag>());
-        m_replicationRegistry.AddFamilyToSend(Id<ComponentAABBCollider>());
-        m_replicationRegistry.AddFamilyToSend(Id<ComponentPhysicBody>());
-        m_replicationRegistry.AddFamilyToSend(Id<ComponentCreature>());
-        m_replicationRegistry.AddFamilyToSend(Id<ComponentPlayer>());
+        net::InstallComponentReplicationHooks<ComponentAABBCollider>(m_world);
+        net::InstallComponentReplicationHooks<ComponentPhysicBody>(m_world);
+        net::InstallComponentReplicationHooks<ComponentCreature>(m_world);
+        net::InstallComponentReplicationHooks<ComponentCamera>(m_world);
+        net::InstallComponentReplicationHooks<ComponentPerspectiveCamera>(
+            m_world);
+        net::InstallComponentReplicationHooks<ComponentPlayer>(m_world);
+        net::InstallEntityReplicationHooks(m_world);
     }
 
     ~DebugServerScene()

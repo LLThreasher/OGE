@@ -50,7 +50,20 @@ class RingBuffer
         return m_buffer[index % Capacity];
     }
 
+    T& Get(Index index)
+    {
+        // OGE_ASSERT(Contains(index), "RingBuffer index out of range");
+        if (index == 0) index = m_head - 1;
+        return m_buffer[index % Capacity];
+    }
+
     const T& Head() const
+    {
+        // OGE_ASSERT(m_head > 0, "RingBuffer is empty");
+        return m_buffer[(m_head - 1) % Capacity];
+    }
+
+    T& Head()
     {
         // OGE_ASSERT(m_head > 0, "RingBuffer is empty");
         return m_buffer[(m_head - 1) % Capacity];

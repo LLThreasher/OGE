@@ -266,7 +266,7 @@ struct TerrainRaycastResult
 };
 
 class ChunkEventStream
-    : public oge::DiscreteEventStream<terrain::ChunkStateUpdateEvent, 2048>
+    : public oge::DiscreteEventStream<ChunkStateUpdateEvent, 2048>
 {
 };
 

@@ -9,7 +9,7 @@
 #include "game/input/input_source.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/json.hpp"
-#include "game/replication_registry.hpp"
+#include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
 #include "game/scene_ext.hpp"
 #include "game/sim/subsystem.hpp"
@@ -73,7 +73,7 @@ class ClientConnScene : public SceneExt
 
         auto packet = m_client.StartPacket(sizeof(PlayerInfo));
         packet.Write(m_playerInfo);
-        m_client.Send(packet, SendType::Reliable);
+        m_client.Send(packet, oge::runtime::SendType::Reliable);
     }
 
     void onConnectionTimeout(OnClientConnectionTimeout ctx)
