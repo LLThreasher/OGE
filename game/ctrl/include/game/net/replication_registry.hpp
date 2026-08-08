@@ -11,6 +11,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "entt/entity/fwd.hpp"
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/components_net.hpp"
@@ -105,25 +106,17 @@ struct ReplicationCapability : ICapability
 
     // we assume any type T with this capability are defined for
     //  net::Serialize(T) and net::Deserialize(T)
-};
 
-// -----------------------------------------------------------------------------
-// Replication registry
-// -----------------------------------------------------------------------------
-//
-// Public interface mostly preserved.
-// Added:
-//
-//     AdvanceTick(world, tick)
-//     AdvancePeerTick(peer, world, tick)
-//
-// Existing functions are unchanged in name.
-// ProduceAll now takes a tick argument because the packet header includes tick.
-//
-// If you absolutely cannot change ProduceAll's signature, you can instead store
-// the current outbound tick inside ReplicationRegistry and add SetTick(...).
-//
-// -----------------------------------------------------------------------------
+    // this install a hook that collects information from world
+    //  and submit to the event log stream in world.ctx()
+    //  on update (entity(ReplicatedTag)/component/chunk/block)
+    using InstallHooksFn = void (*) (EventLogStream<>&, entt::registry&);
+    InstallHooksFn installHooks = nullptr;
+
+    // this apply a event in the event log stream
+    using ApplyFn = void (*) (EventLogStream<>&, entt::registry&, net::Buffer&);
+    ApplyFn apply = nullptr;
+};
 
 class PacketScheduler
 {
