@@ -13,16 +13,6 @@ class Buffer
 {
 public:
     // -----------------------------
-    // Owning constructor
-    // -----------------------------
-    explicit Buffer(size_t initialSize = 1024)
-        : owned(initialSize),
-          data(owned)
-    {
-        assert(false && "not allowed");
-    }
-
-    // -----------------------------
     // Non-owning constructors
     // -----------------------------
     Buffer(void* ptr, size_t len)
@@ -36,6 +26,13 @@ public:
     Buffer(std::span<std::byte> span)
         : data(span)
     {}
+
+    Buffer(std::vector<std::byte>& scratchpad)
+        : scratch(&scratchpad), data(scratch->data(), scratch->capacity())
+    {
+        // we just assume the scratchpad is already initalized full packed
+        assert(scratch->size() == scratch->capacity());
+    }
 
     void Align(size_t alignment)
     {
@@ -158,20 +155,20 @@ private:
             return;
 
         // Cannot grow non-owning buffer
-        assert(!owned.empty() && "Attempting to grow non-owning Buffer");
+        assert(scratch != nullptr && "Attempting to grow non-owning Buffer");
 
         size_t newSize = std::max(
             data.size() * 2,
             writePos + additional
         );
 
-        owned.resize(newSize);
-        data = owned;  // refresh span
+        scratch->resize(newSize);
+        data = *scratch;  // refresh span
     }
 
 private:
-    std::vector<std::byte> owned;   // empty if non-owning
-    std::span<std::byte> data;
+    std::vector<std::byte>* scratch = nullptr;
+    std::span<std::byte> data = {};
 
     size_t writePos = 0;
     size_t readPos = 0;

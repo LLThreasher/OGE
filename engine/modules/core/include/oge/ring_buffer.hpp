@@ -3,6 +3,10 @@
 #include <stddef.h>
 
 #include <cinttypes>
+#include <concepts>
+#include <memory>
+#include <tuple>
+#include <utility>
 
 #include "oge/log.hpp"
 
@@ -20,6 +24,14 @@ class RingBuffer
     void Push(const T& value)
     {
         m_buffer[m_head % Capacity] = value;
+        ++m_head;
+    }
+
+    template <typename... Args>
+        requires std::constructible_from<T, Args...>
+    void EmplaceBack(Args&&... args)
+    {
+        m_buffer[m_head % Capacity] = T(std::forward<Args>(args)...);
         ++m_head;
     }
 
@@ -47,6 +59,11 @@ class RingBuffer
     Index HeadCursor() const
     {
         return m_head;
+    }
+
+    Index CurrentCursor() const
+    {
+        return m_head - 1;
     }
 
    protected:

@@ -2,10 +2,6 @@
 
 #include "game/app_context.hpp"
 #include "game/input/net.hpp"
-#include "game/net/entity_component_stream.hpp"
-#include "game/net/latest_streams.hpp"
-#include "game/net/player_net_input_stream.hpp"
-#include "game/net/terrain_net_stream.hpp"
 #include "game/terrain/terrain_view.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/typed_registry.hpp"
