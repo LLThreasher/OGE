@@ -6,7 +6,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "entt/entity/fwd.hpp"
 #include "game/net/replication_events.hpp"
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/typed_registry.hpp"

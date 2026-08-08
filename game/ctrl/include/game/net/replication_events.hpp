@@ -785,9 +785,6 @@ inline void ApplyEvent(entt::registry& world, const UpdateChunkEvent& event)
 // TypeName specializations for event types (needed by TypeRegistry)
 // =========================================================================
 
-namespace oge::runtime
-{
-
 // Entity events
 DECL_TYPE_NAME(game::net::AddEntityEvent, "net::AddEntityEvent")
 DECL_TYPE_NAME(game::net::RemoveEntityEvent, "net::RemoveEntityEvent")
@@ -798,6 +795,9 @@ DECL_TYPE_NAME(game::net::RemoveChunkEvent, "net::RemoveChunkEvent")
 DECL_TYPE_NAME(game::net::UpdateChunkEvent, "net::UpdateChunkEvent")
 DECL_TYPE_NAME(game::net::PlayerInputReplicationEvent,
                "net::PlayerInputReplicationEvent")
+
+namespace oge::runtime
+{
 
 // Generic TypeName for component event templates — generates a name
 // from the inner component type.
