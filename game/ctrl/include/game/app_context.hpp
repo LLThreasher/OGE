@@ -3,7 +3,6 @@
 #include <string_view>
 
 #include "game/memory_context.hpp"
-#include "game/replication_registry.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/typed_registry.hpp"
 

@@ -8,7 +8,7 @@
 #include "game/debug_scene.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/json.hpp"
-#include "game/replication_registry.hpp"
+#include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
 #include "game/scene_ext.hpp"
 #include "oge/log.hpp"

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "game/replication_registry.hpp"
 #include "game/scene.hpp"
 #include "game/scene_runner.hpp"
 #include "game/server_scene.hpp"

@@ -15,4 +15,17 @@ struct WindowResizeEvent
 {
     oge::U16Point2 windowSize;
 };
+
+struct ENetPeer;
+
+struct OnAddPeer
+{
+    ENetPeer* peer;
+    uint32_t peerId;
+};
+
+struct OnRemovePeer
+{
+    uint32_t peerId;
+};
 }  // namespace game

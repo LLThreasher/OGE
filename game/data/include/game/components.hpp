@@ -34,10 +34,6 @@ struct UpdateTag
 {
 };
 
-struct ReplicatedTag
-{
-};
-
 struct ComponentCamera
 {
     float yaw = 0.f;

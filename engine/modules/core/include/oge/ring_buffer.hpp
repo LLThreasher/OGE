@@ -23,17 +23,28 @@ class RingBuffer
         ++m_head;
     }
 
+    bool Contains(Index index) const
+    {
+        const Index begin = m_head > Capacity ? m_head - Capacity : 0;
+        const Index end = m_head;
+
+        return begin <= index && index < end;
+    }
+
     const T& Get(Index index) const
     {
+        // OGE_ASSERT(Contains(index), "RingBuffer index out of range");
+        if (index == 0) index = m_head - 1;
         return m_buffer[index % Capacity];
     }
 
     const T& Head() const
     {
+        // OGE_ASSERT(m_head > 0, "RingBuffer is empty");
         return m_buffer[(m_head - 1) % Capacity];
     }
 
-    Index HeadIndex() const
+    Index HeadCursor() const
     {
         return m_head;
     }

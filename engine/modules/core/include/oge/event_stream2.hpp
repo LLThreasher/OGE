@@ -11,8 +11,8 @@ template <typename T, std::size_t Capacity = 256>
 class NetworkEventStream
 {
    public:
-    using TEvent = T;
-    using Cursor = std::uint32_t;
+    using Event = T;
+    using Cursor = uint32_t;
 
     static constexpr std::size_t MCapacity = Capacity;
 
@@ -21,16 +21,20 @@ class NetworkEventStream
     {
         Cursor sequence = 0;
         bool occupied = false;
-        TEvent event{};
+        Event event{};
     };
 
     std::array<Slot, Capacity> m_slots{};
 
-    // One-past-highest contiguous/appended event index for normal Push().
+    // Next sequence assigned by Insert(event).
     Cursor m_head = 1;
 
-    // Highest sequence ever inserted/pushed, plus one.
-    Cursor m_frontier = 1;
+    // Current stream tick / readable frontier.
+    //
+    // Events with sequence < m_tick are considered available to Peek/Poll.
+    // Insert(sequence, event) can place future events, but they only become
+    // readable after AdvanceTick moves m_tick past them.
+    Cursor m_tick = 1;
 
    public:
     NetworkEventStream() = default;
@@ -39,30 +43,29 @@ class NetworkEventStream
     {
         m_slots = {};
         m_head = 1;
-        m_frontier = 1;
+        m_tick = 1;
     }
 
-    void Push(const TEvent& event)
+    // Appends at the next local head sequence.
+    Cursor Insert(const Event& event)
     {
-        Insert(m_head, event);
+        const Cursor sequence = m_head;
+        Insert(sequence, event);
         ++m_head;
-
-        if (m_head > m_frontier)
-        {
-            m_frontier = m_head;
-        }
+        return sequence;
     }
 
-    bool Insert(Cursor sequence, const TEvent& event)
+    // Inserts at an explicit sequence.
+    bool Insert(Cursor sequence, const Event& event)
     {
         if (sequence == 0)
         {
-            Push(event);
+            Insert(event);
             return true;
         }
 
-        // Too old to be safely represented.
-        if (m_frontier > Capacity && sequence + Capacity < m_frontier)
+        // Too old to still fit in the ring.
+        if (m_tick > Capacity && sequence + Capacity < m_tick)
         {
             return false;
         }
@@ -75,15 +78,9 @@ class NetworkEventStream
             return false;
         }
 
-        // Overwrite slot.
         slot.sequence = sequence;
         slot.occupied = true;
         slot.event = event;
-
-        if (sequence >= m_frontier)
-        {
-            m_frontier = sequence + 1;
-        }
 
         if (sequence >= m_head)
         {
@@ -93,16 +90,65 @@ class NetworkEventStream
         return true;
     }
 
-    bool PollOne(Cursor& cursor, TEvent& output) const
+    // Compatibility alias.
+    void Push(const Event& event)
     {
-        return PollOne(cursor, output, m_frontier);
+        Insert(event);
     }
 
-    bool PollOne(Cursor& cursor, TEvent& output, Cursor frontier) const
+    // Reads the event at cursor without advancing cursor.
+    bool Peek(Cursor cursor, Event& output) const
     {
         if (cursor == 0)
         {
-            cursor = frontier;
+            return false;
+        }
+
+        if (cursor >= m_tick)
+        {
+            return false;
+        }
+
+        const Slot& slot = m_slots[cursor % Capacity];
+
+        if (!slot.occupied || slot.sequence != cursor)
+        {
+            return false;
+        }
+
+        output = slot.event;
+        return true;
+    }
+
+    // Polls the event at cursor and advances cursor by one only on success.
+    bool Poll(Cursor& cursor, Event& output) const
+    {
+        if (cursor == 0)
+        {
+            cursor = OldestPossibleIndex();
+        }
+
+        if (!Peek(cursor, output))
+        {
+            return false;
+        }
+
+        ++cursor;
+        return true;
+    }
+
+    // Compatibility alias.
+    bool PollOne(Cursor& cursor, Event& output) const
+    {
+        return Poll(cursor, output);
+    }
+
+    // Compatibility overload with explicit frontier.
+    bool PollOne(Cursor& cursor, Event& output, Cursor frontier) const
+    {
+        if (cursor == 0)
+        {
+            cursor = OldestPossibleIndex(frontier);
         }
 
         if (cursor >= frontier)
@@ -122,9 +168,25 @@ class NetworkEventStream
         return true;
     }
 
+    // Advances the stream tick/frontier by one.
+    void AdvanceTick()
+    {
+        ++m_tick;
+    }
+
+    // Advances the stream tick/frontier to at least target_tick.
+    void AdvanceTick(Cursor target_tick)
+    {
+        if (target_tick > m_tick)
+        {
+            m_tick = target_tick;
+        }
+    }
+
+    // Compatibility helper.
     void AdvanceCursor(Cursor& cursor) const
     {
-        cursor = m_frontier;
+        cursor = m_tick;
     }
 
     bool Has(Cursor sequence) const
@@ -139,7 +201,7 @@ class NetworkEventStream
         return slot.occupied && slot.sequence == sequence;
     }
 
-    bool TryGet(Cursor sequence, TEvent& output) const
+    bool TryGet(Cursor sequence, Event& output) const
     {
         if (!Has(sequence))
         {
@@ -155,19 +217,31 @@ class NetworkEventStream
         return m_head;
     }
 
+    Cursor Tick() const
+    {
+        return m_tick;
+    }
+
+    // Compatibility name.
     Cursor Frontier() const
     {
-        return m_frontier;
+        return m_tick;
     }
 
     Cursor OldestPossibleIndex() const
     {
-        if (m_frontier <= Capacity)
+        return OldestPossibleIndex(m_tick);
+    }
+
+    static Cursor OldestPossibleIndex(Cursor frontier)
+    {
+        if (frontier <= Capacity)
         {
             return 1;
         }
 
-        return m_frontier - Capacity;
+        return frontier - Capacity;
     }
 };
+
 }  // namespace oge
