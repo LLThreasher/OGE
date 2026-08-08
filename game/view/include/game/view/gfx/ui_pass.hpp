@@ -41,13 +41,11 @@ class UIPass : public Pass<oge::runtime::CmdDrawSprite>, public RequiresScreenAf
     GPUBindingGroupHandle GetOrCreateBindingGroup(IGraphicsBackend& backend,
                                                   GPUTextureHandle texture);
 
-    std::unordered_map<GPUTextureHandle, std::vector<Vertex>,
-                       HandleHash<GPUTextureHandle>>
+    std::unordered_map<GPUTextureHandle, std::vector<Vertex>>
         classedVertices;
     std::vector<uint16_t> indices;
 
-    std::unordered_map<GPUTextureHandle, GPUBindingGroupHandle,
-                       HandleHash<GPUTextureHandle>>
+    std::unordered_map<GPUTextureHandle, GPUBindingGroupHandle>
         cachedBindingGroups;
 
     FrameArena vertexArena = {BufferUsage::Vertex};

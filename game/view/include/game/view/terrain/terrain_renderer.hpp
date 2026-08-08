@@ -83,7 +83,7 @@ struct TerrainPresentationData
     Pool<TerrainObject::BuiltChunkMesh, BuiltChunkMesh2> builtChunkMeshes;
 
     std::queue<std::tuple<ChunkHandle, BuiltMeshHandle>> uploadMeshQueue;
-    std::unordered_map<ChunkHandle, PTerrainMesh, HandleHash<ChunkHandle>>
+    std::unordered_map<ChunkHandle, PTerrainMesh>
         residentChunks;
 
     TerrainPresentationData()

@@ -13,6 +13,7 @@ class IGraphicsBackend;
 
 namespace oge::runtime
 {
+using namespace oge::graphics::gpu_objects;
 class AssetManager;
 class StreamingManager;
 namespace ui

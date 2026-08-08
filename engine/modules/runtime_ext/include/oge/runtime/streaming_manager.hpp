@@ -139,8 +139,7 @@ class StreamingManager
     std::queue<BufferUploadDesc> m_buffersToUpload;
     std::queue<BufferUploadDesc> m_buffersToUploadImmediate;
     Pool<StreamingObjects::ResourceBundle, ResourceBundle> m_resourceBundles;
-    std::unordered_map<ResourceBundleHandle, std::function<void()>,
-                       HandleHash<ResourceBundleHandle>>
+    std::unordered_map<ResourceBundleHandle, std::function<void()>>
         m_resourceBundleCallbacks;
     std::array<std::queue<std::tuple<ResourceBundleHandle, StagingAllocation>>,
                MAX_FRAMES_IN_FLIGHT>

@@ -14,8 +14,7 @@ using oge::colors::ColorRGBA8;
 using oge::colors::RED;
 using oge::colors::GREEN;
 using oge::colors::BLUE;
-using oge::runtime::GPUBufferSpan;
-using oge::runtime::GPUBufferHandle;
+using namespace oge::graphics::gpu_objects;
 
 // =========================================================================
 // Gizmo commands

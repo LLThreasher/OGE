@@ -3,7 +3,7 @@
 #include "oge/handle.hpp"
 #include "oge/rect.hpp"
 
-namespace oge
+namespace oge::graphics
 {
 
 enum class GPUObjectType : uint32_t
@@ -48,19 +48,18 @@ struct GPUBufferSpan : BufferSpan
 
 namespace gpu_objects
 {
-using oge::BufferSpan;
-using oge::GPUBufferSpan;
-using oge::GPUTextureRegion;
+using oge::graphics::BufferSpan;
+using oge::graphics::GPUBufferSpan;
+using oge::graphics::GPUTextureRegion;
 
-using oge::GPUBindingGroupHandle;
-using oge::GPUBindingGroupLayoutHandle;
-using oge::GPUBufferHandle;
-using oge::GPUFenceHandle;
-using oge::GPUFrameBufferHandle;
-using oge::GPUPipelineHandle;
-using oge::GPUQueryPoolHandle;
-using oge::GPURenderPassHandle;
-using oge::GPUTextureHandle;
-using oge::HandleHash;
+using oge::graphics::GPUBindingGroupHandle;
+using oge::graphics::GPUBindingGroupLayoutHandle;
+using oge::graphics::GPUBufferHandle;
+using oge::graphics::GPUFenceHandle;
+using oge::graphics::GPUFrameBufferHandle;
+using oge::graphics::GPUPipelineHandle;
+using oge::graphics::GPUQueryPoolHandle;
+using oge::graphics::GPURenderPassHandle;
+using oge::graphics::GPUTextureHandle;
 }  // namespace gpu_objects
 }  // namespace oge
