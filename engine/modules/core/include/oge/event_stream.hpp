@@ -79,9 +79,9 @@ class AccumulativeEventStream : public DiscreteEventStream<T, bufferSize>
     {
         if (cursor == 0) cursor = frontier;
         if (cursor >= frontier) return {};
-        if (this->HeadIndex() - cursor > bufferSize)
+        if (this->HeadCursor() - cursor > bufferSize)
             LOG_WARN("stale cursor detected at {}, current head {}", cursor,
-                     this->HeadIndex());
+                     this->HeadCursor());
         auto res = this->Get(frontier - 1) - this->Get(cursor - 1);
         cursor = frontier;
         return res;
