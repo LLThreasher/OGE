@@ -64,6 +64,7 @@ struct IntTriple
 };
 
 using LocalPoint3 = IntTriple<int8_t>;
+using LocalUPoint3 = IntTriple<int8_t>;
 using Point3 = IntTriple<int32_t>;
 
 struct CompactLocalPoint3
@@ -77,16 +78,11 @@ struct CompactLocalPoint3
         assert(pt.z >= 0 && pt.z < 16);
     }
 
-    operator Point3() const
+    template <typename T>
+    operator IntTriple<T>() const
     {
-        return {static_cast<int32_t>(val & 0xF), static_cast<int32_t>((val >> 4) & 0xF),
-                static_cast<int32_t>((val >> 8) & 0xF)};
-    }
-
-    operator LocalPoint3() const
-    {
-        return {static_cast<int8_t>(val & 0xF), static_cast<int8_t>((val >> 4) & 0xF),
-                static_cast<int8_t>((val >> 8) & 0xF)};
+        return {static_cast<T>(val & 0xF), static_cast<T>((val >> 4) & 0xF),
+                static_cast<T>((val >> 8) & 0xF)};
     }
 };
 

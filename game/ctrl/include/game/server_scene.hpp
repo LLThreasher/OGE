@@ -2,7 +2,7 @@
 
 #include "game/app_context.hpp"
 #include "game/components.hpp"
-#include "game/replication_registry.hpp"
+#include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
@@ -32,7 +32,7 @@ class DebugServerScene final : public Scene
     float m_pendingConnTimeout = 0.f;
     float m_pendingConn2Timeout = 0.f;
     std::vector<PlayerInfo> m_playerEntries;
-    ReplicationRegistry m_replicationRegistry;
+    net::ReplicationRegistry m_replicationRegistry;
 
     void onServerRecieveConnect(OnServerReceiveConnect c)
     {
@@ -63,7 +63,7 @@ class DebugServerScene final : public Scene
                 m_playerEntries[c.peerId] = {};
             }
         }
-        m_replicationRegistry.RemovePeer(c.peer);
+        m_replicationRegistry.RemovePeer(c.peerId);
     }
 
     void onServerReceivePacket(OnServerReceivePacket p)
@@ -116,12 +116,12 @@ class DebugServerScene final : public Scene
         {
             m_pendingConnection2 = nullptr;
             m_pendingConn2Timeout = 0.f;
-            m_replicationRegistry.AddPeer(p.peer);
+            m_replicationRegistry.AddPeer(p.peerId, p.peer);
             LOG_INFO("initialize replication peer for conn({})", p.peerId);
         }
         else
         {
-            m_replicationRegistry.HandleIncoming(m_world, *p.data);
+            m_replicationRegistry.HandleIncoming(p.peerId, m_world, *p.data);
         }
     }
 

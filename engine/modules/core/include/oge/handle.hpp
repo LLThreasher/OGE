@@ -25,6 +25,8 @@ struct Handle
     {
         return index == other.index && generation == other.generation;
     }
+
+    
 };
 
 template <typename Handle>

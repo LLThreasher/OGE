@@ -22,7 +22,7 @@ concept HasNetTraits = requires(T& value, const T& constValue, Buffer& buffer) {
         NetTraits<std::remove_cvref_t<T>>::Size(constValue)
     } -> std::convertible_to<uint64_t>;
 
-    { NetTraits<std::remove_cvref_t<T>>::Serialize(buffer, value) };
+    { NetTraits<std::remove_cvref_t<T>>::Serialize(buffer, constValue) };
 
     { NetTraits<std::remove_cvref_t<T>>::Deserialize(buffer, value) };
 };
@@ -34,7 +34,7 @@ uint64_t Size(const T& value)
 }
 
 template <typename T>
-void Serialize(Buffer& buffer, T& value)
+void Serialize(Buffer& buffer, const T& value)
 {
     NetTraits<std::remove_cvref_t<T>>::Serialize(buffer, value);
 }

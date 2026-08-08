@@ -69,13 +69,6 @@ struct PlayerInputEvent
     }
 };
 
-struct PlayerInputFrame
-{
-    std::vector<PlayerInputEvent> inputEvents;
-    math::vec2 moveDelta;
-    math::vec2 panDelta;
-};
-
 using PlayerActionStream = DiscreteEventStream<PlayerInputEvent, 16>;
 using PlayerDeltaStream = DiscreteEventStream<math::vec2, 16>;
 
@@ -96,8 +89,6 @@ inline float WrapRadians0To2Pi(float radians)
 class PlayerInputStream
 {
 public:
-    using TEvent = PlayerInputFrame;
-
     struct Cursor
     {
         PlayerActionStream::Cursor actionCursor = {};
@@ -177,74 +168,6 @@ public:
             currentAim = NormalizeAim(currentAim);
             aims.Push(currentAim);
             aimDirty = false;
-        }
-    }
-
-    // Polls all stream changes since the cursor and merges them into one frame.
-    //
-    // Returns true if there was any new input.
-    bool PollOne(Cursor& cursor, PlayerInputFrame& frame)
-    {
-        AdvanceTick();
-
-        frame.inputEvents.clear();
-        frame.moveDelta = {};
-        frame.panDelta = {};
-
-        bool hasAnyInput = false;
-
-        PlayerInputEvent event;
-        while (actions.PollOne(cursor.actionCursor, event))
-        {
-            frame.inputEvents.push_back(event);
-            hasAnyInput = true;
-        }
-
-        math::vec2 moveDelta;
-        while (moves.PollOne(cursor.moveCursor, moveDelta))
-        {
-            frame.moveDelta += moveDelta;
-            hasAnyInput = true;
-        }
-
-        // Important:
-        // panDelta is now being used as absolute aim yaw/pitch.
-        // If possible, rename PlayerInputFrame::panDelta to aim.
-        math::vec2 aim;
-        while (aims.PollOne(cursor.aimCursor, aim))
-        {
-            frame.panDelta = aim;
-            hasAnyInput = true;
-        }
-
-        return hasAnyInput;
-    }
-
-    // Pushes a fully formed input frame into this stream.
-    //
-    // This is useful for replaying received input frames locally.
-    // Assumption:
-    // - frame.moveDelta is a movement delta.
-    // - frame.panDelta is absolute aim yaw/pitch.
-    void Push(const PlayerInputFrame& frame)
-    {
-        for (const PlayerInputEvent& event : frame.inputEvents)
-        {
-            InsertAction(event);
-        }
-
-        if (frame.moveDelta.x != 0.0f || frame.moveDelta.y != 0.0f)
-        {
-            InsertMoveDelta(frame.moveDelta);
-        }
-
-        // Because frame.panDelta now means absolute aim, do not call
-        // InsertPanDelta() here.
-        //
-        // InsertPanDelta() is for local mouse/touch deltas.
-        if (frame.panDelta.x != 0.0f || frame.panDelta.y != 0.0f)
-        {
-            SetAim(frame.panDelta);
         }
     }
 

@@ -142,10 +142,13 @@ struct ChunkData
     ChunkStateUpdateEvent weakEvent = {};
 
    public:
-    ChunkData(Point3 coords)
+    ChunkData(Point3 coords = {})
     {
         Coords = coords;
     }
+    uint32_t GetBlock(oge::LocalUPoint3 pt) const;
+    void SetBlock(oge::LocalUPoint3 pt, uint32_t value);
+    
     uint32_t GetBlock(uint8_t x, uint8_t y, uint8_t z) const;
     void SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value);
 };

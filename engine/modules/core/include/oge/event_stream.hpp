@@ -1,6 +1,8 @@
 #pragma once
 
 #include <stddef.h>
+#include <cassert>
+#include <cstddef>
 
 #include "oge/log.hpp"
 #include "oge/ring_buffer.hpp"
@@ -21,7 +23,7 @@ class DiscreteEventStream : public RingBuffer<T, Capacity>
 
     bool PollOne(Cursor& cursor, T& output) const
     {
-        return PollOne(cursor, output, Base::HeadIndex());
+        return PollOne(cursor, output, Base::HeadCursor());
     }
 
     bool PollOne(Cursor& cursor, T& output, Cursor frontier) const
@@ -49,9 +51,10 @@ class DiscreteEventStream : public RingBuffer<T, Capacity>
         return true;
     }
 
+    // return the number of events passed
     void AdvanceCursor(Cursor& cursor) const
     {
-        cursor = Base::HeadIndex();
+        cursor = Base::HeadCursor();
     }
 };
 

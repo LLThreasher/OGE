@@ -1,9 +1,15 @@
 #include <cstdint>
 #include <span>
 #include "game/terrain/terrain_view.hpp"
+#include "oge/point3.hpp"
 
 namespace game::terrain
 {
+
+uint32_t ChunkData::GetBlock(oge::LocalUPoint3 pt) const
+{
+    return GetBlock(pt.x, pt.y, pt.z);
+}
 
 uint32_t ChunkData::GetBlock(uint8_t x, uint8_t y, uint8_t z) const
 {
@@ -11,6 +17,11 @@ uint32_t ChunkData::GetBlock(uint8_t x, uint8_t y, uint8_t z) const
     assert(0 <= y && y < CHUNK_SIZE_Y);
     assert(0 <= z && z < CHUNK_SIZE_Z);
     return data[GetBlockIndex(x, y, z)];
+}
+
+void ChunkData::SetBlock(oge::LocalUPoint3 pt, uint32_t value)
+{
+    SetBlock(pt.x, pt.y, pt.z, value);
 }
 
 void ChunkData::SetBlock(uint8_t x, uint8_t y, uint8_t z, uint32_t value)

@@ -9,7 +9,6 @@
 #include "game/frame_perf.hpp"
 #include "game/json.hpp"
 #include "game/memory_context.hpp"
-#include "game/replication_registry.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/runtime/typed_registry.hpp"
 

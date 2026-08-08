@@ -10,8 +10,81 @@
 #include "oge/math.hpp"
 #include "oge/runtime/net_traits.hpp"
 
+namespace game
+{
+struct ReplicatedTag
+{
+};
+}  // namespace game
+
 namespace game::input::net
 {
+enum class LifetimeEventKind
+{
+    Add,
+    Update,
+    Remove,
+};
+
+template <typename TPayload>
+struct LifetimeEvent
+{
+    using Payload = TPayload;
+
+    LifetimeEventKind kind{};
+    entt::entity entity{};
+    TPayload payload{};
+
+    static LifetimeEvent Add(
+        entt::entity entity,
+        const TPayload& payload)
+    {
+        return LifetimeEvent{
+            .kind = LifetimeEventKind::Add,
+            .entity = entity,
+            .payload = payload,
+        };
+    }
+
+    static LifetimeEvent Update(
+        entt::entity entity,
+        const TPayload& payload)
+    {
+        return LifetimeEvent{
+            .kind = LifetimeEventKind::Update,
+            .entity = entity,
+            .payload = payload,
+        };
+    }
+
+    static LifetimeEvent Remove(entt::entity entity)
+    {
+        return LifetimeEvent{
+            .kind = LifetimeEventKind::Remove,
+            .entity = entity,
+            .payload = {},
+        };
+    }
+};
+
+template <typename TAdapter, typename TEvent>
+concept IsLifetimePacketAdapter =
+    requires(
+        const TAdapter& adapter,
+        const TEvent& event)
+{
+    typename TAdapter::Packet;
+    {
+        adapter.MakePacket(event)
+    } -> std::same_as<typename TAdapter::Packet>;
+};
+
+struct PlayerInputFrame
+{
+    std::vector<PlayerInputEvent> inputEvents;
+    math::vec2 moveDelta;
+    math::vec2 panDelta;
+};
 
 enum PlayerInputFrameFlags : uint8_t
 {
@@ -25,6 +98,10 @@ struct PackedPlayerInputEvent
     uint16_t actionX = 0;
     uint16_t actionY = 0;
     uint8_t actionMask = 0;
+
+    PackedPlayerInputEvent() {}
+    PackedPlayerInputEvent(PlayerInputEvent& e);
+    operator PlayerInputEvent() const;
 };
 
 struct PackedPlayerInputFrame
@@ -38,6 +115,10 @@ struct PackedPlayerInputFrame
     int16_t panY = 0;
 
     std::vector<PackedPlayerInputEvent> inputEvents;
+
+    PackedPlayerInputFrame() {}
+    PackedPlayerInputFrame(PlayerInputFrame& e);
+    operator PlayerInputFrame() const;
 };
 
 inline uint16_t QuantizeUNorm16(float v)
@@ -125,7 +206,7 @@ inline float DequantizeRangeU16(uint16_t v, float minValue, float maxValue)
 }
 
 inline PackedPlayerInputEvent PackEvent(
-    const game::input::PlayerInputEvent& src)
+    const PlayerInputEvent& src)
 {
     PackedPlayerInputEvent dst;
 
@@ -136,10 +217,10 @@ inline PackedPlayerInputEvent PackEvent(
     return dst;
 }
 
-inline game::input::PlayerInputEvent UnpackEvent(
+inline PlayerInputEvent UnpackEvent(
     const PackedPlayerInputEvent& src)
 {
-    game::input::PlayerInputEvent dst;
+    PlayerInputEvent dst;
 
     dst.actionPos.x = DequantizeSNorm16(src.actionX);
     dst.actionPos.y = DequantizeSNorm16(src.actionY);
@@ -149,7 +230,7 @@ inline game::input::PlayerInputEvent UnpackEvent(
 }
 
 inline PackedPlayerInputFrame PackFrame(
-    const game::input::PlayerInputFrame& src)
+    const PlayerInputFrame& src)
 {
     PackedPlayerInputFrame dst;
 
@@ -198,10 +279,9 @@ inline PackedPlayerInputFrame PackFrame(
     return dst;
 }
 
-inline game::input::PlayerInputFrame UnpackFrame(
-    const PackedPlayerInputFrame& src)
+inline PlayerInputFrame UnpackFrame(const PackedPlayerInputFrame& src)
 {
-    game::input::PlayerInputFrame dst;
+    PlayerInputFrame dst;
 
     dst.moveDelta = {};
     dst.panDelta = {};
@@ -231,6 +311,27 @@ inline game::input::PlayerInputFrame UnpackFrame(
 
     return dst;
 }
+
+inline PackedPlayerInputEvent::PackedPlayerInputEvent(PlayerInputEvent& src)
+{
+    *this = PackEvent(src);
+}
+
+inline PackedPlayerInputEvent::operator PlayerInputEvent() const
+{
+    return UnpackEvent(*this);
+}
+
+inline PackedPlayerInputFrame::PackedPlayerInputFrame(PlayerInputFrame& src)
+{
+    *this = PackFrame(src);
+}
+
+inline PackedPlayerInputFrame::operator PlayerInputFrame() const
+{
+    return UnpackFrame(*this);
+}
+
 }  // namespace game::input::net
 
 DECL_NET_OBJ(game::input::net::PackedPlayerInputEvent, {
@@ -264,6 +365,6 @@ DECL_NET_OBJ_PACKED(game::input::PlayerInputEvent,
                     game::input::net::PackedPlayerInputEvent,
                     game::input::net::PackEvent, game::input::net::UnpackEvent)
 
-DECL_NET_OBJ_PACKED(game::input::PlayerInputFrame,
+DECL_NET_OBJ_PACKED(game::input::net::PlayerInputFrame,
                     game::input::net::PackedPlayerInputFrame,
                     game::input::net::PackFrame, game::input::net::UnpackFrame)
