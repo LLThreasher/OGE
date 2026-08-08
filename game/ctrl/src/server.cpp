@@ -2,7 +2,7 @@
 
 #include <csignal>
 
-#include "game/replication_registry.hpp"
+#include "game/net/replication_registry.hpp"
 #include "oge/log.hpp"
 #include "oge/platform/spdlogger.hpp"
 

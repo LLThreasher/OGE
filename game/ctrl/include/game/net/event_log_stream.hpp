@@ -49,7 +49,7 @@ struct EventLogEntryConstRef
 template <size_t Capacity = 4096>
 class EventLogStream
 {
-   private:
+   protected:
     oge::DiscreteEventStream<EventLogEntryMeta, Capacity> m_entries;
     std::bitset<Capacity> m_validSet = {};
     std::bitset<64> m_activePeers = {};
@@ -126,9 +126,10 @@ class EventLogStream
                         std::bitset<64> peerMask = ~std::bitset<64>{})
     {
         assert(peerMask.any());
-        EventLogEntryMeta meta = {m_entries.HeadCursor(), id, peerMask & m_activePeers};
+        EventLogEntryMeta meta = {m_entries.HeadCursor(), id, 0, peerMask & m_activePeers};
+        m_validSet.set(m_entries.HeadCursor() % Capacity, true);
         m_entries.Push(meta);
-        auto [it, succ] = m_payloads.emplace(meta.cursor);
+        auto [it, succ] = m_payloads.try_emplace(meta.cursor);
         assert(succ);
         it->second.resize(initPayloadSize);
         return {it->second};

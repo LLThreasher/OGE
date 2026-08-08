@@ -30,3 +30,21 @@ add_library(game::ctrl ALIAS game_ctrl)
 add_library(game_ctrl_native INTERFACE)
 target_link_libraries(game_ctrl_native INTERFACE game::ctrl oge::platform::native)
 add_library(game::headless ALIAS game_ctrl_native)
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+enable_testing()
+
+add_executable(replication_events_test
+    test/replication_events_test.cpp
+)
+
+target_link_libraries(replication_events_test PRIVATE game::ctrl)
+
+target_include_directories(replication_events_test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+add_test(NAME replication_events_test COMMAND replication_events_test)

@@ -28,7 +28,7 @@ class ClientScene2 : public DebugScene3
 {
     NetClient& m_client;
     entt::dispatcher m_clientDispatcher;
-    ReplicationRegistry m_replicationRegistry;
+    ::game::net::ReplicationRegistry m_replicationRegistry;
 
     bool m_readyToQuit = false;
 
@@ -40,12 +40,16 @@ class ClientScene2 : public DebugScene3
 
     void onRecievePacket(OnClientReceivePacket ctx)
     {
-        m_replicationRegistry.HandleIncoming(m_world, *ctx.data);
+        m_replicationRegistry.HandleIncoming(0, m_world, *ctx.data);
     }
 
    public:
     ClientScene2(const Def& def)
-        : DebugScene3(def), m_client(*m_ctx.any_ctx.Get<NetClient>())
+        : DebugScene3(def),
+          m_client(*m_ctx.any_ctx.Get<NetClient>()),
+          m_replicationRegistry(::game::net::ReplicationRegistry::Def{
+              m_world.ctx().emplace<::game::net::EventLogStream<>>(),
+              m_ctx.any_factory})
     {
         LOG_INFO("client scene loaded");
         RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
@@ -53,10 +57,9 @@ class ClientScene2 : public DebugScene3
             .connect<&ClientScene2::onRecievePacket>(this);
         m_clientDispatcher.sink<OnClientDisconnected>()
             .connect<&ClientScene2::onDisconnected>(this);
-        m_replicationRegistry.AddPeer(m_client.Host());
+        m_replicationRegistry.AddPeer(0, m_client.Host());
 
-        InstallEntityReplicationHooks(m_world);
-        m_replicationRegistry.AddFamilyToSend(Id<input::PlayerInputStream>());
+        ::game::net::InstallEntityReplicationHooks(m_world);
 
         // send ready package
         auto packet = m_client.StartPacket(sizeof(uint32_t));

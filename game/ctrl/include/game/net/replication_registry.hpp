@@ -11,13 +11,13 @@
 #include <unordered_map>
 #include <vector>
 
-#include "entt/entity/fwd.hpp"
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/components_net.hpp"
 #include "game/input/entity_event_stream.hpp"
 #include "game/input/net.hpp"
 #include "game/net/event_log_stream.hpp"
+#include "game/net/replication_events.hpp"
 #include "game/terrain/terrain_view.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/event_stream2.hpp"
@@ -74,6 +74,9 @@ struct EncodeContext
 {
     NetPeer peer{};
 
+    // Cursor to start reading from in the event log.
+    LogCursor begin{};
+
     // maximum number of bytes to send
     size_t byteLimit = std::numeric_limits<size_t>::max();
 };
@@ -118,12 +121,115 @@ struct ReplicationCapability : ICapability
     ApplyFn apply = nullptr;
 };
 
+// =========================================================================
+// ReplicationCapability factory helpers
+//
+// Each event type gets its own capability with its own family id.
+// The family id matches the event type hash so that
+// ReplicationRegistry::ProduceAll can look up the correct capability
+// from the event log entry's type id.
+// =========================================================================
+
+template <typename TEvent>
+ReplicationCapability MakeSimpleReplicationCapability(
+    FamilyId family,
+    typename ReplicationCapability::InstallHooksFn installHooks,
+    ReplicationMethod sendType = ReplicationMethod::SingleReliable)
+{
+    ReplicationCapability cap{};
+    cap.family = family;
+    cap.sendType = sendType;
+    cap.installHooks = installHooks;
+
+    cap.apply = [](EventLogStream<>& /*stream*/,
+                   entt::registry& world,
+                   net::Buffer& buffer)
+    {
+        TEvent event{};
+        net::Deserialize(buffer, event);
+        ApplyEvent(world, event);
+    };
+
+    return cap;
+}
+
 class PacketScheduler
 {
    public:
-    virtual void Reset();
+    virtual ~PacketScheduler() = default;
+    virtual void Reset() {}
     virtual bool Schedule(const EventLogStream<>& stream,
                           const EncodeContext& ctx, PacketPlan& plan) = 0;
+};
+
+// ---------------------------------------------------------------------------
+// SimplePacketScheduler
+//
+// A basic scheduler that packs as many events as possible into a single tick
+// while respecting a configurable byte limit.
+//
+// Set m_maxBytesPerFrame to 0 for unlimited.
+// ---------------------------------------------------------------------------
+
+class SimplePacketScheduler : public PacketScheduler
+{
+   public:
+    size_t m_maxBytesPerFrame = 1200;  // typical MTU-safe default
+
+    SimplePacketScheduler() = default;
+
+    explicit SimplePacketScheduler(size_t maxBytesPerFrame)
+        : m_maxBytesPerFrame(maxBytesPerFrame)
+    {
+    }
+
+    void Reset() override
+    {
+        // no per-frame state to reset
+    }
+
+    bool Schedule(const EventLogStream<>& stream, const EncodeContext& ctx,
+                  PacketPlan& plan) override
+    {
+        plan = {};
+        plan.hasPacket = true;
+
+        LogCursor cursor = ctx.begin;
+        size_t usedBytes = 0;
+        const size_t headerBytes =
+            sizeof(FamilyId) + sizeof(LogCursor) + sizeof(uint32_t);
+
+        while (true)
+        {
+            EventLogEntryConstRef ref{{}, m_scratchPayload};
+            if (!stream.PeekEvent(ctx.peer.id, ref, cursor))
+            {
+                break;
+            }
+
+            // Estimate: entry payload size + per-packet header
+            size_t entryBytes = ref.payload.size() + headerBytes;
+
+            if (m_maxBytesPerFrame > 0 &&
+                usedBytes + entryBytes > m_maxBytesPerFrame)
+            {
+                break;
+            }
+
+            PacketDesc desc{};
+            desc.logPosition = ref.entry.cursor;
+            desc.payloadByteCount = ref.payload.size();
+            plan.packets.push_back(desc);
+
+            usedBytes += entryBytes;
+            cursor = ref.entry.cursor + 1;
+        }
+
+        return !plan.packets.empty();
+    }
+
+   private:
+    mutable std::vector<std::byte> m_scratchPayload;
 };
 
 using Tick = int64_t;
@@ -159,8 +265,8 @@ class ReplicationRegistry
 
     std::unique_ptr<PacketScheduler> m_scheduler = nullptr;
 
-    EventLogStream<>& m_eventStream;
-    oge_id_type m_tickEventTypeId;
+    EventLogStream<>* m_eventStream = nullptr;
+    oge_id_type m_tickEventTypeId = 0;
 
     Tick m_currentTick = 0;
 
@@ -172,7 +278,9 @@ class ReplicationRegistry
     };
 
     ReplicationRegistry(const Def& def)
-        : m_eventStream(def.stream), m_tickEventTypeId(def.af.Id<AdvanceTick>())
+        : m_eventStream(&def.stream),
+          m_tickEventTypeId(def.af.Id<AdvanceTick>()),
+          m_scheduler(std::make_unique<SimplePacketScheduler>())
     {
     }
 
@@ -195,22 +303,27 @@ class ReplicationRegistry
     void ProduceAll(oge::runtime::NetPacketSender& server,
                     entt::registry& world)
     {
-        for (auto& [id, peerState] : m_peers)
+        assert(m_eventStream != nullptr);
+
+        for (auto& [peerId, peerState] : m_peers)
         {
             EncodeContext ectx{};
             ectx.peer = peerState.peer;
 
             PacketPlan plan;
-            m_scheduler->Schedule(m_eventStream, ectx, plan);
+            if (!m_scheduler->Schedule(*m_eventStream, ectx, plan))
+            {
+                continue;
+            }
 
-            if (!plan.hasPacket) continue;
-
-            for (auto pdesc : plan.packets)
+            for (auto& pdesc : plan.packets)
             {
                 EventLogEntry entry;
-                auto ok = m_eventStream.TryDequeueEvent(id, entry);
+                auto ok =
+                    m_eventStream->TryDequeueEvent(peerId, entry,
+                                                   pdesc.logPosition);
 
-                assert(ok);
+                if (!ok) continue;
 
                 if (entry.entry.id == m_tickEventTypeId)
                 {
@@ -220,51 +333,54 @@ class ReplicationRegistry
                     peerState.tick = tick.tick;
                 }
 
-                auto cap = m_units.at(entry.entry.id);
+                auto it = m_units.find(entry.entry.id);
+                if (it == m_units.end()) continue;
+
+                auto* cap = it->second;
                 switch (cap->sendType)
                 {
                     case ReplicationMethod::SingleReliable:
                     {
                         auto packet = server.StartPacket(
-                            m_eventStream.MetaSize() + pdesc.payloadByteCount);
-                        m_eventStream.SerializeEventMeta(packet, entry.entry);
-                        m_eventStream.SerializeEventPayload(packet,
-                                                            entry.payload);
-                        server.Send(peerState.peer.peer, packet, SendType::Reliable,
-                                    0);
+                            m_eventStream->MetaSize() +
+                            pdesc.payloadByteCount);
+                        m_eventStream->SerializeEventMeta(packet,
+                                                         entry.entry);
+                        m_eventStream->SerializeEventPayload(
+                            packet, entry.payload);
+                        server.Send(peerState.peer.peer, packet,
+                                    SendType::Reliable, 0);
                         break;
                     }
                     case ReplicationMethod::SingleSequenced:
                     {
                         auto packet = server.StartPacket(
-                            m_eventStream.MetaSize() + pdesc.payloadByteCount);
-                        m_eventStream.SerializeEventMeta(packet, entry.entry);
-                        m_eventStream.SerializeEventPayload(packet,
-                                                            entry.payload);
-                        server.Send(peerState.peer.peer, packet, SendType::Sequenced,
-                                    0);
+                            m_eventStream->MetaSize() +
+                            pdesc.payloadByteCount);
+                        m_eventStream->SerializeEventMeta(packet,
+                                                         entry.entry);
+                        m_eventStream->SerializeEventPayload(
+                            packet, entry.payload);
+                        server.Send(peerState.peer.peer, packet,
+                                    SendType::Sequenced, 0);
                         break;
                     }
                     case ReplicationMethod::StreamReliable:
                     {
-                        {
-                            auto packet =
-                                server.StartPacket(m_eventStream.MetaSize());
-                            m_eventStream.SerializeEventMeta(packet,
-                                                             entry.entry);
-                            server.Send(peerState.peer.peer, packet,
-                                        SendType::Reliable, 0);
-                        }
-                        {
-                            auto packet =
-                                server.StartPacket(sizeof(entry.entry.cursor) +
-                                                   pdesc.payloadByteCount);
-                            net::Serialize(packet, entry.entry.cursor);
-                            m_eventStream.SerializeEventPayload(packet,
-                                                                entry.payload);
-                            server.Send(peerState.peer.peer, packet,
-                                        SendType::Reliable, 1);
-                        }
+                        auto packet =
+                            server.StartPacket(m_eventStream->MetaSize());
+                        m_eventStream->SerializeEventMeta(packet,
+                                                         entry.entry);
+                        server.Send(peerState.peer.peer, packet,
+                                    SendType::Reliable, 0);
+                        auto payloadPacket = server.StartPacket(
+                            sizeof(entry.entry.cursor) +
+                            pdesc.payloadByteCount);
+                        net::Serialize(payloadPacket, entry.entry.cursor);
+                        m_eventStream->SerializeEventPayload(
+                            payloadPacket, entry.payload);
+                        server.Send(peerState.peer.peer, payloadPacket,
+                                    SendType::Reliable, 1);
                         break;
                     }
                 }
@@ -274,7 +390,8 @@ class ReplicationRegistry
 
     void HandleIncoming(PeerId peer, entt::registry& world, net::Buffer& buffer)
     {
-        m_eventStream.DeserializeEvent(peer, buffer);
+        assert(m_eventStream != nullptr);
+        m_eventStream->DeserializeEvent(peer, buffer);
     }
 
     void AdvancePeerTick(PeerId peer, entt::registry& world)
@@ -282,11 +399,103 @@ class ReplicationRegistry
         ++m_currentTick;
     }
 
-    void AddPeer(PeerId id, ENetPeer* peer)
+    // Store component-type info so the snapshot can iterate components.
+    using SnapshotComponentFn =
+        void (*)(EventLogStream<>&, entt::registry&, entt::entity,
+                 const std::bitset<64>& peerMask);
+
+    std::vector<SnapshotComponentFn> m_snapshotFns;
+
+    template <typename T>
+    static void SnapshotComponent(EventLogStream<>& stream,
+                                  entt::registry& world, entt::entity e,
+                                  const std::bitset<64>& peerMask)
+    {
+        if (!world.all_of<T>(e)) return;
+
+        AddComponentEvent<T> evt{e, world.get<T>(e)};
+        auto buf = stream.EnqueueEvent(
+            entt::type_hash<AddComponentEvent<T>>::value(),
+            net::Size(evt), peerMask);
+        net::Serialize(buf, evt);
+    }
+
+    // Register a component type for snapshot generation.
+    template <typename T>
+    void RegisterSnapshotComponent()
+    {
+        m_snapshotFns.push_back(&SnapshotComponent<T>);
+    }
+
+    // Generate a snapshot of the current world state for a newly joined
+    // peer.  Pushes AddEntity / AddComponent / AddChunk events with a
+    // receive mask that only targets this peer.
+    void GenerateSnapshot(PeerId peerId, entt::registry& world)
+    {
+        assert(m_eventStream != nullptr);
+
+        std::bitset<64> peerMask{};
+        peerMask.set(peerId);
+
+        // --- Entities ---
+        auto view = world.view<ReplicatedTag>();
+        for (entt::entity e : view)
+        {
+            AddEntityEvent evt{e};
+            auto buf = m_eventStream->EnqueueEvent(
+                entt::type_hash<AddEntityEvent>::value(),
+                net::Size(evt), peerMask);
+            net::Serialize(buf, evt);
+
+            // All registered component types.
+            for (auto& fn : m_snapshotFns)
+            {
+                fn(*m_eventStream, world, e, peerMask);
+            }
+        }
+
+        // --- Terrain chunks ---
+        if (world.ctx().contains<terrain::TerrainView>())
+        {
+            auto& terrain = world.ctx().get<terrain::TerrainView>();
+
+            terrain::ChunkHandle cursor{};
+            while (const terrain::ChunkData* chunk =
+                       terrain.PollChunk(cursor))
+            {
+                if (chunk->state != terrain::ChunkState::Persistent)
+                {
+                    continue;
+                }
+
+                AddChunkEvent evt{};
+                evt.coords = chunk->Coords;
+                evt.blocks.resize(terrain::CHUNK_SIZE_TOTAL);
+                for (size_t i = 0; i < terrain::CHUNK_SIZE_TOTAL; ++i)
+                {
+                    evt.blocks[i] = chunk->data[i];
+                }
+
+                auto buf = m_eventStream->EnqueueEvent(
+                    entt::type_hash<AddChunkEvent>::value(),
+                    net::Size(evt), peerMask);
+                net::Serialize(buf, evt);
+            }
+        }
+    }
+
+    void AddPeer(PeerId id, ENetPeer* peer, entt::registry* world = nullptr)
     {
         PeerState peerState{};
         peerState.peer = {peer, id};
         m_peers.emplace(id, std::move(peerState));
+
+        m_eventStream->AddPeer(id);
+
+        if (world != nullptr)
+        {
+            GenerateSnapshot(id, *world);
+        }
     }
 
     void RemovePeer(PeerId peer)
@@ -303,9 +512,8 @@ class ReplicationRegistry
 void RegisterReplications(oge::runtime::AnythingFactory& af,
                           ReplicationRegistry& rf);
 
-template <typename TComponent, size_t BufSize = 128>
-void InstallComponentReplicationHooks(entt::registry& world)
-{
-}
-
 }  // namespace game::net
+
+DECL_NET_OBJ(game::net::AdvanceTick, {
+    visit(self.tick);
+})

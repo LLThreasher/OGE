@@ -2,6 +2,7 @@
 
 #include "game/app_context.hpp"
 #include "game/input/net.hpp"
+#include "game/net/replication_events.hpp"
 #include "game/terrain/terrain_view.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/typed_registry.hpp"
@@ -10,51 +11,130 @@ using game::AnythingFactory;
 using game::ReplicatedTag;
 using namespace game::net;
 
-static void RegisterTerrainReplication(AnythingFactory& af)
+// ---------------------------------------------------------------------------
+// Per-event-type capability registration.
+// Each event type is registered separately with its own family id
+// (= type_hash of the event struct), so that ReplicationRegistry
+// dispatches to the correct apply function without a discriminator byte.
+// ---------------------------------------------------------------------------
+
+static void RegisterEntityEvents(AnythingFactory& af)
 {
-    auto& desc = af.RegisterType<game::terrain::TerrainView>();
-    desc.capabilities.Add<ReplicationCapability>(
-        MakeReplicationCapability<TerrainChunkNetOutStream,
-                                  TerrainChunkNetInStream>(desc.localId, SendType::Reliable, 0));
+    // AddEntityEvent
+    {
+        auto& desc = af.RegisterType<AddEntityEvent>();
+        desc.capabilities.Add<ReplicationCapability>(
+            MakeSimpleReplicationCapability<AddEntityEvent>(
+                desc.localId, InstallAddEntityHooks,
+                ReplicationMethod::SingleReliable));
+    }
+
+    // RemoveEntityEvent
+    {
+        auto& desc = af.RegisterType<RemoveEntityEvent>();
+        desc.capabilities.Add<ReplicationCapability>(
+            MakeSimpleReplicationCapability<RemoveEntityEvent>(
+                desc.localId, InstallRemoveEntityHooks,
+                ReplicationMethod::SingleReliable));
+    }
 }
 
-static void RegisterEntityReplication(AnythingFactory& af)
+template <typename TComponent>
+static void RegisterComponentEvents(AnythingFactory& af)
 {
-    auto& desc = af.RegisterType<ReplicatedTag>();
-    desc.capabilities.Add<ReplicationCapability>(
-        MakeReplicationCapability<EntityEventNetOutputStream, EntityEventNetInputStream>(desc.localId, SendType::Reliable, 0)
-    );
+    // AddComponentEvent<T>
+    {
+        auto& desc = af.template RegisterType<AddComponentEvent<TComponent>>();
+        desc.capabilities.template Add<ReplicationCapability>(
+            MakeSimpleReplicationCapability<AddComponentEvent<TComponent>>(
+                desc.localId, InstallAddComponentHooks<TComponent>,
+                ReplicationMethod::SingleSequenced));
+    }
+
+    // UpdateComponentEvent<T>
+    {
+        auto& desc =
+            af.template RegisterType<UpdateComponentEvent<TComponent>>();
+        desc.capabilities.template Add<ReplicationCapability>(
+            MakeSimpleReplicationCapability<UpdateComponentEvent<TComponent>>(
+                desc.localId, InstallUpdateComponentHooks<TComponent>,
+                ReplicationMethod::SingleSequenced));
+    }
+
+    // RemoveComponentEvent<T>
+    {
+        auto& desc =
+            af.template RegisterType<RemoveComponentEvent<TComponent>>();
+        desc.capabilities.template Add<ReplicationCapability>(
+            MakeSimpleReplicationCapability<RemoveComponentEvent<TComponent>>(
+                desc.localId, InstallRemoveComponentHooks<TComponent>,
+                ReplicationMethod::SingleSequenced));
+    }
 }
 
-template <typename TAdapter>
-static void RegisterLatestReplication(AnythingFactory& af)
+static void RegisterTerrainEvents(AnythingFactory& af)
 {
-    auto& desc = af.RegisterType<ReplicatedTag>();
-    desc.capabilities.Add<ReplicationCapability>(
-        MakeReplicationCapability<LatestEventNetOutputStream<TAdapter>, LatestEventNetInputStream<TAdapter>>(desc.localId, SendType::Reliable, 0)
-    );
-}
+    // AddChunkEvent
+    {
+        auto& desc = af.RegisterType<AddChunkEvent>();
+        desc.capabilities.Add<ReplicationCapability>(
+            MakeSimpleReplicationCapability<AddChunkEvent>(
+                desc.localId, InstallAddChunkHooks,
+                ReplicationMethod::SingleReliable));
+    }
 
-template <typename TComponent, size_t Capacity = 128>
-static void RegisterComponentReplication(AnythingFactory& af)
-{
-    auto& desc = af.RegisterType<TComponent>();
-    desc.capabilities.template Add<ReplicationCapability>(
-        MakeReplicationCapability<EntityEventNetOutputStream, EntityEventNetInputStream>(desc.localId, SendType::Sequenced, 1)
-    );
+    // RemoveChunkEvent
+    {
+        auto& desc = af.RegisterType<RemoveChunkEvent>();
+        desc.capabilities.Add<ReplicationCapability>(
+            MakeSimpleReplicationCapability<RemoveChunkEvent>(
+                desc.localId, InstallRemoveChunkHooks,
+                ReplicationMethod::SingleReliable));
+    }
+
+    // UpdateChunkEvent
+    {
+        auto& desc = af.RegisterType<UpdateChunkEvent>();
+        desc.capabilities.Add<ReplicationCapability>(
+            MakeSimpleReplicationCapability<UpdateChunkEvent>(
+                desc.localId, InstallUpdateChunkHooks,
+                ReplicationMethod::SingleReliable));
+    }
 }
 
 void game::net::RegisterReplications(AnythingFactory& af,
                                      ReplicationRegistry& rf)
 {
-    RegisterTerrainReplication(af);
-    RegisterEntityReplication(af);
-    RegisterComponentReplication<ComponentAABBCollider>(af);
-    RegisterComponentReplication<ComponentCamera>(af);
-    RegisterComponentReplication<ComponentPerspectiveCamera>(af);
-    RegisterComponentReplication<ComponentPhysicBody>(af);
-    RegisterComponentReplication<ComponentCreature>(af);
-    RegisterComponentReplication<ComponentPlayer>(af);
-    RegisterLatestReplication<PlayerInputLatestEventAdapter>(af);
+    RegisterEntityEvents(af);
+
+    RegisterComponentEvents<ComponentAABBCollider>(af);
+    rf.RegisterSnapshotComponent<ComponentAABBCollider>();
+
+    RegisterComponentEvents<ComponentCamera>(af);
+    rf.RegisterSnapshotComponent<ComponentCamera>();
+
+    RegisterComponentEvents<ComponentPerspectiveCamera>(af);
+    rf.RegisterSnapshotComponent<ComponentPerspectiveCamera>();
+
+    RegisterComponentEvents<ComponentPhysicBody>(af);
+    rf.RegisterSnapshotComponent<ComponentPhysicBody>();
+
+    RegisterComponentEvents<ComponentCreature>(af);
+    rf.RegisterSnapshotComponent<ComponentCreature>();
+
+    RegisterComponentEvents<ComponentPlayer>(af);
+    rf.RegisterSnapshotComponent<ComponentPlayer>();
+
+    RegisterTerrainEvents(af);
+
+    // Player input replication
+    {
+        auto& desc = af.RegisterType<PlayerInputReplicationEvent>();
+        desc.capabilities.Add<ReplicationCapability>(
+            MakeSimpleReplicationCapability<PlayerInputReplicationEvent>(
+                desc.localId, nullptr,
+                ReplicationMethod::SingleReliable));
+    }
+
     rf.RegisterFrom(af);
 }
