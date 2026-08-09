@@ -270,14 +270,4 @@ class DebugScene3 : public SceneExt
 };
 }  // namespace game
 
-namespace oge::runtime
-{
-template <>
-struct TypeName<game::DebugScene3>
-{
-    static constexpr std::string Get()
-    {
-        return "core::DebugScene3";
-    }
-};
-}  // namespace oge::runtime
+DECL_TYPE_NAME(game::DebugScene3, "core::DebugScene3")

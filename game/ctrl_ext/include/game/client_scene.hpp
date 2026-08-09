@@ -168,14 +168,4 @@ class ClientConnScene : public SceneExt
 };
 }  // namespace game
 
-namespace oge::runtime
-{
-template <>
-struct TypeName<game::ClientConnScene>
-{
-    static constexpr std::string Get()
-    {
-        return "core::ClientConnScene";
-    }
-};
-}  // namespace oge::runtime
+DECL_TYPE_NAME(game::ClientConnScene, "core::ClientConnScene")

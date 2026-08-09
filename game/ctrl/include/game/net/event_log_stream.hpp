@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "oge/event_stream.hpp"
+#include "oge/runtime/debug.hpp"
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
@@ -118,19 +119,19 @@ class EventLogStream
         uint32_t payloadSize;
         buffer.Read(payloadSize);
         auto [it, succ] = m_payloads.emplace(cursor, payloadSize);
-        assert(succ);
+        OGE_ASSERT(succ, "Failed to emplace payload at cursor {}", cursor);
         buffer.ReadRaw(it->second.data(), payloadSize);
     }
 
     Buffer EnqueueEvent(oge_id_type id, size_t initPayloadSize,
                         std::bitset<64> peerMask = ~std::bitset<64>{})
     {
-        assert(peerMask.any());
+        OGE_ASSERT(peerMask.any(), "EnqueueEvent called with empty peer mask");
         EventLogEntryMeta meta = {m_entries.HeadCursor(), id, 0, peerMask & m_activePeers};
         m_validSet.set(m_entries.HeadCursor() % Capacity, true);
         m_entries.Push(meta);
         auto [it, succ] = m_payloads.try_emplace(meta.cursor);
-        assert(succ);
+        OGE_ASSERT(succ, "Failed to emplace payload at cursor {}", meta.cursor);
         it->second.resize(initPayloadSize);
         return {it->second};
     }
@@ -212,8 +213,8 @@ class EventLogStream
                 m_payloads.erase(m_currentTail);
             }
 
-            assert(!m_validSet.test(m_currentTail) &&
-                   "unhandled event dies at boundry");
+            OGE_ASSERT(!m_validSet.test(m_currentTail),
+                       "unhandled event dies at boundary");
 
             ++m_currentTail;
         }

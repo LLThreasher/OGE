@@ -218,7 +218,8 @@ class DebugServerScene final : public Scene
         }
 
         m_netServer.Poll(m_serverEventDispatcher, f.dt);
-        assert(m_serverEventDispatcher.size() == 0);
+        OGE_ASSERT(m_serverEventDispatcher.size() == 0,
+                   "Event dispatcher not empty after poll");
         m_replicationRegistry.ProduceAll(m_netServer, m_world);
         Scene::Update(f, sctx);
     }
@@ -251,14 +252,4 @@ class DebugServerScene final : public Scene
 };
 }  // namespace game
 
-namespace oge::runtime
-{
-template <>
-struct TypeName<game::DebugServerScene>
-{
-    static constexpr std::string Get()
-    {
-        return "core::DebugServerScene";
-    }
-};
-}  // namespace oge::runtime
+DECL_TYPE_NAME(game::DebugServerScene, "core::DebugServerScene")

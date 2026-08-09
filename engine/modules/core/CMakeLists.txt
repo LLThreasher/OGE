@@ -38,14 +38,7 @@ add_library(oge::core ALIAS oge_core)
 # Tests
 # ---------------------------------------------------------------------------
 
-add_executable(datastruct_test
-    test/datastruct_test.cpp
+add_test_target(datastruct_test
+    SOURCES test/datastruct_test.cpp
+    LIBRARIES oge::core
 )
-
-target_link_libraries(datastruct_test PRIVATE oge::core)
-
-target_include_directories(datastruct_test PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-add_test(NAME datastruct_test COMMAND datastruct_test)

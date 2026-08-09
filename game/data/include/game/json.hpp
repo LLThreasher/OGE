@@ -53,59 +53,62 @@ T FromJson(const Value& json)
     return value;
 }
 
-inline Value ToJson(const bool& value)
-{
-    return value;
-}
+// -- Primitives -----------------------------------------------------------
+
+inline Value ToJson(const bool& value) { return value; }
 
 inline void FromJson(const Value& json, bool& value)
 {
-    value = std::get<Bool>(json);
+    if (auto* p = std::get_if<Bool>(&json))
+        value = *p;
+    else
+        throw std::runtime_error("JSON: expected bool");
 }
 
-inline Value ToJson(const std::string& value)
-{
-    return value;
-}
+inline Value ToJson(const std::string& value) { return value; }
 
 inline void FromJson(const Value& json, std::string& value)
 {
-    value = std::get<Str>(json);
+    if (auto* p = std::get_if<Str>(&json))
+        value = *p;
+    else
+        throw std::runtime_error("JSON: expected string");
 }
 
-inline Value ToJson(const std::pmr::string& value)
-{
-    return Str(value);
-}
+inline Value ToJson(const std::pmr::string& value) { return Str(value); }
 
 inline void FromJson(const Value& json, std::pmr::string& value)
 {
-    value = std::get<Str>(json);
+    if (auto* p = std::get_if<Str>(&json))
+        value = p->c_str();
+    else
+        throw std::runtime_error("JSON: expected string");
 }
 
-inline Value ToJson(const char* value)
-{
-    return Str{value};
-}
+inline Value ToJson(const char* value) { return Str{value}; }
 
-inline Value ToJson(const float& value)
-{
-    return static_cast<Float>(value);
-}
+inline Value ToJson(const float& value) { return static_cast<Float>(value); }
 
 inline void FromJson(const Value& json, float& value)
 {
-    value = static_cast<float>(std::get<Float>(json));
+    if (auto* p = std::get_if<Float>(&json))
+        value = static_cast<float>(*p);
+    else if (auto* p = std::get_if<Int>(&json))
+        value = static_cast<float>(*p);
+    else
+        throw std::runtime_error("JSON: expected number");
 }
 
-inline Value ToJson(const double& value)
-{
-    return static_cast<Float>(value);
-}
+inline Value ToJson(const double& value) { return static_cast<Float>(value); }
 
 inline void FromJson(const Value& json, double& value)
 {
-    value = std::get<Float>(json);
+    if (auto* p = std::get_if<Float>(&json))
+        value = *p;
+    else if (auto* p = std::get_if<Int>(&json))
+        value = static_cast<double>(*p);
+    else
+        throw std::runtime_error("JSON: expected number");
 }
 
 template <typename T>
@@ -119,20 +122,21 @@ template <typename T>
     requires std::is_integral_v<T> && (!std::is_same_v<T, bool>)
 void FromJson(const Value& json, T& value)
 {
-    value = static_cast<T>(std::get<Int>(json));
+    if (auto* p = std::get_if<Int>(&json))
+        value = static_cast<T>(*p);
+    else
+        throw std::runtime_error("JSON: expected integer");
 }
+
+// -- Arrays ---------------------------------------------------------------
 
 template <typename T>
 Value ToJson(const std::vector<T>& values)
 {
     Array array;
     array.reserve(values.size());
-
-    for (const auto& value : values)
-    {
-        array.push_back(ToJson(value));
-    }
-
+    for (const auto& v : values)
+        array.push_back(ToJson(v));
     return array;
 }
 
@@ -140,52 +144,41 @@ template <typename T>
 void FromJson(const Value& json, std::vector<T>& values)
 {
     const auto* array = std::get_if<Array>(&json);
-
     if (!array)
-    {
-        throw std::runtime_error("Expected JSON array");
-    }
-
+        throw std::runtime_error("JSON: expected array");
     values.clear();
     values.reserve(array->size());
-
     for (const auto& item : *array)
     {
-        T value{};
-        FromJson(item, value);
-        values.push_back(std::move(value));
+        T v{};
+        FromJson(item, v);
+        values.push_back(std::move(v));
     }
 }
 
-template <typename T, size_t size>
-Value ToJson(const std::array<T, size>& values)
+template <typename T, size_t N>
+Value ToJson(const std::array<T, N>& values)
 {
     Array array;
     array.reserve(values.size());
-
-    for (const auto& value : values)
-    {
-        array.push_back(ToJson(value));
-    }
-
+    for (const auto& v : values)
+        array.push_back(ToJson(v));
     return array;
 }
 
-template <typename T, size_t size>
-void FromJson(const Value& json, std::array<T, size>& values)
+template <typename T, size_t N>
+void FromJson(const Value& json, std::array<T, N>& values)
 {
     const auto* array = std::get_if<Array>(&json);
-
     if (!array)
+        throw std::runtime_error("JSON: expected array");
+    if (array->size() < N)
+        throw std::runtime_error("JSON: array too short");
+    for (size_t i = 0; i < N; ++i)
     {
-        throw std::runtime_error("Expected JSON array");
-    }
-
-    for (size_t i = 0; i < size; i++)
-    {
-        T value{};
-        FromJson(array->at(i), value);
-        values[i] = std::move(value);
+        T v{};
+        FromJson((*array)[i], v);
+        values[i] = std::move(v);
     }
 }
 
@@ -194,12 +187,8 @@ Value ToJson(const std::pmr::vector<T>& values)
 {
     Array array;
     array.reserve(values.size());
-
-    for (const auto& value : values)
-    {
-        array.push_back(ToJson(value));
-    }
-
+    for (const auto& v : values)
+        array.push_back(ToJson(v));
     return array;
 }
 
@@ -207,22 +196,19 @@ template <typename T>
 void FromJson(const Value& json, std::pmr::vector<T>& values)
 {
     const auto* array = std::get_if<Array>(&json);
-
     if (!array)
-    {
-        throw std::runtime_error("Expected JSON array");
-    }
-
+        throw std::runtime_error("JSON: expected array");
     values.clear();
     values.reserve(array->size());
-
     for (const auto& item : *array)
     {
-        T value{};
-        FromJson(item, value);
-        values.push_back(std::move(value));
+        T v{};
+        FromJson(item, v);
+        values.push_back(std::move(v));
     }
 }
+
+// -- Objects --------------------------------------------------------------
 
 template <typename T>
 void FromJson(const Value& json, T& value)
@@ -242,33 +228,23 @@ struct ObjectTraits
     static Value Serialize(const T& value)
     {
         Object object;
-
         JsonTraits<T>::VisitFields(
             value, [&](const char* name, const auto& field)
             { object.emplace(std::string{name}, ToJson(field)); });
-
         return object;
     }
 
     static void Deserialize(const Value& json, T& value)
     {
         const auto* object = std::get_if<Object>(&json);
-
         if (!object)
-        {
-            throw std::runtime_error("Expected JSON object");
-        }
-
+            throw std::runtime_error("JSON: expected object");
         JsonTraits<T>::VisitFields(value,
                                    [&](const char* name, auto& field)
                                    {
                                        auto it = object->find(name);
-                                       if (it == object->end())
-                                       {
-                                           return;
-                                       }
-
-                                       FromJson(it->second, field);
+                                       if (it != object->end())
+                                           FromJson(it->second, field);
                                    });
     }
 };

@@ -46,3 +46,21 @@ add_custom_command(TARGET ${TARGET} POST_BUILD
         ${ASSET_TARGET_DIR})
 
 endfunction()
+
+# ---------------------------------------------------------------------------
+# add_test_target(name SOURCES file... [LIBRARIES lib...])
+#
+# Creates a test executable and registers it with CTest.  Links
+# oge::test_support automatically.
+#
+# Usage:
+#   add_test_target(my_test SOURCES test/my_test.cpp LIBRARIES game::ctrl)
+# ---------------------------------------------------------------------------
+function(add_test_target NAME)
+    cmake_parse_arguments(ARG "" "" "SOURCES;LIBRARIES" ${ARGN})
+
+    add_executable(${NAME} ${ARG_SOURCES})
+    target_link_libraries(${NAME} PRIVATE oge::test_support ${ARG_LIBRARIES})
+    target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+    add_test(NAME ${NAME} COMMAND ${NAME})
+endfunction()

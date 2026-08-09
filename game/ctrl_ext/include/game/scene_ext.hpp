@@ -168,14 +168,4 @@ class SceneExt : public Scene
 };
 }  // namespace game
 
-namespace oge::runtime
-{
-template <>
-struct TypeName<game::SceneExt>
-{
-    static constexpr std::string Get()
-    {
-        return "core::SceneExt";
-    }
-};
-}  // namespace oge::runtime
+DECL_TYPE_NAME(game::SceneExt, "core::SceneExt")

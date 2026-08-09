@@ -37,14 +37,17 @@ add_library(game::headless ALIAS game_ctrl_native)
 
 enable_testing()
 
-add_executable(replication_events_test
-    test/replication_events_test.cpp
+add_test_target(replication_events_test
+    SOURCES test/replication_events_test.cpp
+    LIBRARIES game::ctrl
 )
 
-target_link_libraries(replication_events_test PRIVATE game::ctrl)
-
-target_include_directories(replication_events_test PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
+add_test_target(registry_bug_recreate_test
+    SOURCES test/registry_bug_recreate_test.cpp
+    LIBRARIES game::ctrl oge::platform::native
 )
 
-add_test(NAME replication_events_test COMMAND replication_events_test)
+add_test_target(scene_load_test
+    SOURCES test/scene_load_test.cpp
+    LIBRARIES game::ctrl oge::platform::native
+)

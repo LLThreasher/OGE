@@ -8,13 +8,15 @@
 #include "game/json.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/defs.hpp"
+#include "oge/runtime/oge_registry.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
 namespace game
 {
-using oge::runtime::oge_id_type;
 
-using BlockEntry = std::tuple<std::pmr::string, ::game::terrain::BlockConfig>;
+using oge::runtime::oge_id_type;
+using BlockEntry =
+    std::tuple<std::pmr::string, ::game::terrain::BlockConfig>;
 
 struct SceneConfig
 {
@@ -32,86 +34,97 @@ struct SceneConfig
         return loadMask == 0 && blocks.empty() && subsystems.empty() &&
                realtimeSubsystems.empty();
     }
-
     void clear()
     {
-        loadMask = 0;
-        blocks.clear();
-        terrainDesc = {};
-        subsystems.clear();
-        realtimeSubsystems.clear();
+        loadMask = 0; blocks.clear(); terrainDesc = {};
+        subsystems.clear(); realtimeSubsystems.clear();
     }
 };
 
-class GameWorld
-{
-   protected:
-    entt::registry& m_world;
-    input::EntityEventStream& m_entityEventStream;
-    input::EntityEventStream::Cursor m_eventCursor;
+// =========================================================================
+// GameWorld  —  OgeRegistry + entity event recording
+//
+// Inherits all of OgeRegistry's safe accessors.  Adds an optional
+// EntityEventStream for networked / authoritative mode.  Call
+// EnableEntityEvents() before create/destroy to record events.
+// =========================================================================
 
-   public:
-    using Entity = entt::entity;
-    GameWorld(entt::registry& world)
-        : m_world(world),
-          m_entityEventStream(m_world.ctx().emplace<input::EntityEventStream>())
-    {
-    }
-
-    template <typename T, typename... Args>
-    auto view()
-    {
-        return m_world.view<T, Args...>();
-    }
-
-    auto ctx()
-    {
-        return m_world.ctx();
-    }
-
-    template <typename T>
-    auto get(const Entity e)
-    {
-        return m_world.get<T>(e);
-    }
-
-    void ApplyEvents()
-    {
-        input::EntityEvent event;
-        while (m_entityEventStream.PollOne(m_eventCursor, event))
-        {
-            if (event.type == input::EntityEventType::Create)
-                auto _ = m_world.create(event.entity);
-            else if (event.type == input::EntityEventType::Destroy)
-                m_world.destroy(event.entity);
-        }
-    }
-};
-
-class AuthoritativeGameWorld : public GameWorld
+class GameWorld : public oge::runtime::OgeRegistry
 {
    public:
+    using OgeRegistry::Entity;
+
+    GameWorld() = default;
+    NO_COPY(GameWorld)
+
+    /// Enable entity event recording (networked / authoritative mode).
+    void EnableEntityEvents()
+    {
+        m_entityEventStream =
+            &Raw().ctx().template emplace<input::EntityEventStream>();
+    }
+    bool HasEntityEvents() const { return m_entityEventStream != nullptr; }
+
+    // -- entity lifecycle with optional event recording -------------------
+
     Entity create()
     {
-        auto res = m_world.create();
-        m_entityEventStream.Push({input::EntityEventType::Create, res});
-        m_entityEventStream.AdvanceCursor(m_eventCursor);
+        auto res = OgeRegistry::create();
+        if (m_entityEventStream)
+        {
+            m_entityEventStream->Push(
+                {input::EntityEventType::Create, res});
+            m_entityEventStream->AdvanceCursor(m_eventCursor);
+        }
+        return res;
+    }
+
+    Entity create(Entity hint)
+    {
+        auto res = OgeRegistry::create(hint);
+        if (m_entityEventStream)
+        {
+            m_entityEventStream->Push(
+                {input::EntityEventType::Create, res});
+            m_entityEventStream->AdvanceCursor(m_eventCursor);
+        }
         return res;
     }
 
     void destroy(Entity e)
     {
-        m_world.destroy(e);
-        m_entityEventStream.Push({input::EntityEventType::Destroy, e});
-        m_entityEventStream.AdvanceCursor(m_eventCursor);
+        OgeRegistry::destroy(e);
+        if (m_entityEventStream)
+        {
+            m_entityEventStream->Push(
+                {input::EntityEventType::Destroy, e});
+            m_entityEventStream->AdvanceCursor(m_eventCursor);
+        }
     }
 
-    template <typename T, typename... Args>
-    auto emplace(Entity e, Args... args)
+    void ApplyEvents()
     {
-        return m_world.emplace<T>(e, args...);
+        if (!m_entityEventStream) return;
+        input::EntityEvent event;
+        while (m_entityEventStream->PollOne(m_eventCursor, event))
+        {
+            if (event.type == input::EntityEventType::Create)
+                OgeRegistry::create(event.entity);
+            else if (event.type == input::EntityEventType::Destroy)
+                OgeRegistry::destroy(event.entity);
+        }
     }
+
+   private:
+    input::EntityEventStream* m_entityEventStream = nullptr;
+    input::EntityEventStream::Cursor m_eventCursor;
 };
+
+// =========================================================================
+// AuthoritativeGameWorld  —  convenience alias for server-side worlds
+// =========================================================================
+
+using AuthoritativeGameWorld = GameWorld;
 
 }  // namespace game
 

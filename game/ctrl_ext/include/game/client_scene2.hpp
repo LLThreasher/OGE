@@ -89,14 +89,4 @@ class ClientScene2 : public DebugScene3
 };
 }  // namespace game
 
-namespace oge::runtime
-{
-template <>
-struct TypeName<game::ClientScene2>
-{
-    static constexpr std::string Get()
-    {
-        return "core::ClientScene2";
-    }
-};
-}  // namespace oge::runtime
+DECL_TYPE_NAME(game::ClientScene2, "core::ClientScene2")

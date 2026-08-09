@@ -17,10 +17,12 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_mouse.h>
 
+#include "oge/assert.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/log.hpp"
 #include "oge/platform/sdl3/create_window.hpp"
 #include "oge/platform/spdlogger.hpp"
+#include "oge/platform/stacktrace.hpp"
 
 namespace oge::platform::sdl3
 {
@@ -58,6 +60,7 @@ static MouseButton GetEngineMouseButton(uint8_t sdlButton)
 SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
 {
     SetLogger(new SpdLogger());
+    oge::SetStackTraceFn(&oge::platform::PrintStackTrace);
     map[SDLK_ESCAPE] = KeyCode::KY_ESCAPE;
     map[SDLK_SPACE] = KeyCode::KY_SPACE;
     map[SDLK_0] = KeyCode::KY_0;

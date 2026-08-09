@@ -152,14 +152,20 @@ inline void DecompressChunk(const uint8_t* compressed, size_t compressedSize,
     size_t outOffset = 0;
     while (inOffset < compressedSize)
     {
-        assert(inOffset + 2 <= compressedSize);
+        OGE_ASSERT(inOffset + 2 <= compressedSize,
+                   "RLE decompression: unexpected end of data at offset {} / {}",
+                   inOffset, compressedSize);
         uint8_t count = compressed[inOffset++];
         uint8_t value = compressed[inOffset++];
-        assert(outOffset + count <= expectedSize);
+        OGE_ASSERT(outOffset + count <= expectedSize,
+                   "RLE decompression: output overflow at offset {} + {} > {}",
+                   outOffset, count, expectedSize);
         std::memset(out + outOffset, value, count);
         outOffset += count;
     }
-    assert(outOffset == expectedSize);
+    OGE_ASSERT(outOffset == expectedSize,
+               "RLE decompression: size mismatch (got {}, expected {})",
+               outOffset, expectedSize);
 }
 
 struct RemoveChunkEvent

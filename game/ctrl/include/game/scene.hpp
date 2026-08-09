@@ -34,6 +34,12 @@ class Scene : protected AppRuntime
     SceneConfig m_sceneConfig = {};
 
    public:
+    SceneConfig& GetConfig() { return m_sceneConfig; }
+    const SceneConfig& GetConfig() const { return m_sceneConfig; }
+
+    auto& GetWorld() { return m_world; }
+    const auto& GetWorld() const { return m_world; }
+
     struct Frame
     {
         float dt;
@@ -58,14 +64,4 @@ PlayerInfo LoadOrCreatePlayer();
 
 }  // namespace game
 
-namespace oge::runtime
-{
-template <>
-struct TypeName<game::Scene>
-{
-    static constexpr std::string Get()
-    {
-        return "core::Scene";
-    }
-};
-}  // namespace oge::runtime
+DECL_TYPE_NAME(game::Scene, "core::Scene")

@@ -30,3 +30,12 @@ PUBLIC oge::core oge::platform
 EnTT::EnTT
 PRIVATE
         enet)
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+add_test_target(oge_registry_test
+    SOURCES test/oge_registry_test.cpp
+    LIBRARIES oge::runtime
+)

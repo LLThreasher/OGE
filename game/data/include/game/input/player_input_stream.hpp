@@ -261,14 +261,4 @@ public:
 
 }  // namespace game::input
 
-namespace oge::runtime
-{
-template <>
-struct TypeName<game::input::PlayerInputStream>
-{
-    static constexpr std::string Get()
-    {
-        return "core::PlayerInputStream";
-    }
-};
-}  // namespace oge::runtime
+DECL_TYPE_NAME(game::input::PlayerInputStream, "core::PlayerInputStream")
