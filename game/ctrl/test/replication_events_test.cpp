@@ -125,13 +125,17 @@ TEST(snapshot_terrain){
     auto& terrain=w.ctx().get<game::terrain::TerrainView>();
     auto h=terrain.CreateChunk(oge::Point3{0,0,0});
     auto* chunk=terrain.GetChunk(h);
-    if(chunk){ chunk->state=game::terrain::ChunkState::Persistent; for(size_t i=0;i<game::terrain::CHUNK_SIZE_TOTAL;++i) chunk->data[i]=static_cast<uint32_t>(i); }
+    CHECK(chunk != nullptr);
+    chunk->state=game::terrain::ChunkState::Persistent;
+    for(size_t i=0;i<game::terrain::CHUNK_SIZE_TOTAL;++i) chunk->data[i]=static_cast<uint32_t>(i);
 
     game::net::ReplicationRegistry reg({w.ctx().get<game::net::EventLogStream<>>(), types});
     reg.GenerateSnapshot(2, w);
 
     std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp};
     CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(2,r));
+    // Verify the snapped event is an AddChunkEvent with correct coords
+    CHECK(r.entry.id == entt::type_hash<game::net::AddChunkEvent>::value());
 }
 
 // =========================================================================

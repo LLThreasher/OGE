@@ -1,6 +1,7 @@
 #pragma once
 
 #include "game/view/gfx/commands.hpp"
+#include "game/view/gfx/gizmo_commands.hpp"
 #include "oge/array_helper.hpp"
 #include "oge/point3.hpp"
 #include "oge/runtime/entt.hpp"
@@ -157,7 +158,7 @@ class ViewSubmissionGroup
 using SingleSubmissionQueue =
     oge::SubmissionGroup<CmdDrawSprite, CmdAddView, CmdDrawGeneralMeshOpaque,
                          CmdDrawTerrainMeshOpaque, CmdDrawDebugText,
-                         CmdDrawDebugRect>;
+                         CmdDrawDebugRect, CmdDrawWireCube, CmdDrawWireRect>;
 
 using SubmissionQueue = ViewSubmissionGroup<SingleSubmissionQueue>;
 

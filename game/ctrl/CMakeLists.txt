@@ -51,3 +51,8 @@ add_test_target(scene_load_test
     SOURCES test/scene_load_test.cpp
     LIBRARIES game::ctrl oge::platform::native
 )
+
+add_test_target(loopback_test
+    SOURCES test/loopback_test.cpp
+    LIBRARIES game::ctrl oge::platform::native
+)

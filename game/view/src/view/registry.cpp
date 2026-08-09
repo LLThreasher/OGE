@@ -10,5 +10,6 @@ void RegisterRenderers(AnythingFactory& af)
     af.RegisterDerived<Renderer, TerrainRenderer>();
     af.RegisterDerived<Renderer, CameraRenderer>();
     af.RegisterDerived<Renderer, UIRenderer>();
+    af.RegisterDerived<Renderer, GizmoRenderer>();
 }
 }  // namespace game::view

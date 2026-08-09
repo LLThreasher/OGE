@@ -77,17 +77,6 @@ void UIRenderer::onDetach(RendererState& ctx)
 
 void UIRenderer::onUpdate(FRendererState& f)
 {
-    auto& game = f.uiWorld;
-    for (auto [entity, rect] : game.view<UIRaycastTarget, ScreenRect>().each())
-    {
-        f.submissionQueue.Add<CmdDrawDebugRect>(
-            GameViewType::Overlay,
-            CmdDrawDebugRect{rect, game.all_of<UIDrag>(entity) ? GREEN
-                                   : game.all_of<UIRaycastHit>(entity)
-                                       ? RED
-                                       : WHITE});
-    }
-
     auto spQueue = f.submissionQueue.GetSingle(GameViewType::Overlay)
                        .View<oge::runtime::CmdDrawSprite>();
     for (auto [entity, uitext, rect] : game.view<UIText, ScreenRect>().each())

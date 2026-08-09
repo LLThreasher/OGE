@@ -5,9 +5,11 @@
 #include "game/view/gfx/commands.hpp"
 #include "game/view/gfx/gizmo_commands.hpp"
 #include "oge/graphics/backend.hpp"
+#include "oge/graphics/configs.hpp"
 #include "oge/math.hpp"
 #include "oge/runtime/gfx/draw_context.hpp"
 #include "oge/runtime/gfx/pass.hpp"
+#include "oge/runtime/gfx/uniform_arena.hpp"
 
 namespace game::view::gfx
 {
@@ -35,14 +37,14 @@ class GizmoPass : public RequiresVPTransform,
                   public Pass<CmdDrawWireCube, CmdDrawWireRect>
 {
    public:
+    static constexpr size_t MAX_GIZMO_VERTICES = 65536;
+
     using PushConstant = math::mat4;  // view-projection matrix
 
     struct GizmoVertex
     {
         math::vec3 position;
-        float _pad1;
         ColorRGBA8 color;
-        float _pad2[3];
     };
 
     void onAttach(InitDrawContext& ctx);
