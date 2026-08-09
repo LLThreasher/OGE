@@ -5,16 +5,30 @@
 #include "game/debug_scene.hpp"
 #include "game/minimal_scene.hpp"
 #include "game/scene_ext.hpp"
+#include "oge/log.hpp"
 #include "oge/platform/sdl3/create_window.hpp"
 #include "oge/platform/window.hpp"
 #include "oge/platform/window_app.hpp"
+
+#include <stdexcept>
+#include <string>
 
 using namespace oge::platform::sdl3;
 
 int main(int argc, char* argv[])
 {
-    (void)argc;
-    (void)argv;
+    // Scene to start with: argv[1] as short ("DebugScene3") or full
+    // ("core::DebugScene3") type name.  Defaults to DebugScene3.
+    std::string sceneName = "core::DebugScene3";
+    if (argc > 1)
+    {
+        std::string arg = argv[1];
+        if (arg.find("::") == std::string::npos)
+        {
+            arg = "core::" + arg;
+        }
+        sceneName = arg;
+    }
 
     // std::pmr::set_default_resource(std::pmr::null_memory_resource());
 #ifdef OGE_DEBUG
@@ -29,9 +43,15 @@ int main(int argc, char* argv[])
     app.RegisterScene<game::ClientScene2>();
     app.RegisterScene<game::DebugScene>();
 
-    app.SwitchToScene<game::DebugScene3>();
-    // app.SwitchToScene<game::ClientConnScene>(
-    //     {{"next_scene", app.Id<game::ClientScene2>()}});
+    try
+    {
+        app.SwitchToScene(sceneName);
+    }
+    catch (const std::out_of_range&)
+    {
+        LOG_WARN("Unknown scene '{}', falling back to core::SceneExt", sceneName);
+        app.SwitchToScene<game::SceneExt>();
+    }
     window->Run(app);
     return 0;
 }

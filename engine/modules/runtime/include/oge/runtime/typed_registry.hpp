@@ -160,6 +160,15 @@ class TypeRegistry
     {
         oge_id_type id = entt::hashed_string{name.data()}.value();
         familyLookup[std::string(name)] = id;
+
+        // record the name so name-based lookup works
+        std::string key{name};
+        if (!byName.contains(key))
+        {
+            descs.emplace_back(key, id);
+            byName.emplace(std::move(key), descs.size() - 1);
+            byId.emplace(id, descs.size() - 1);
+        }
         return id;
     }
 
@@ -193,16 +202,28 @@ class TypeRegistry
         std::string name = std::string(TypeName<T>::Get());
         oge_id_type id = Id<T>();
 
-        auto _it = byId.find(id);
-        if (_it != byId.end())
+        auto idIt = byId.find(id);  // exact duplicate
+        if (idIt != byId.end())
         {
-            return descs[_it->second];
+            return descs[idIt->second];
+        }
+
+        auto nameIt = byName.find(name);  // same name, different id
+        if (nameIt != byName.end())
+        {
+            // Replace the old entry's id (e.g. from RegisterFamily) with the
+            // correct type hash.
+            auto oldId = descs[nameIt->second].localId;
+            descs[nameIt->second].localId = id;
+            byId.erase(oldId);
+            byId.emplace(id, nameIt->second);
+            return descs[nameIt->second];
         }
 
         descs.emplace_back(name, id);
         TypeDescriptor& desc = descs.back();
 
-        auto [it, inserted] = byName.emplace(name, descs.size() - 1);
+        byName.emplace(name, descs.size() - 1);
         byId.emplace(id, descs.size() - 1);
 
         LOG_INFO("[TR] Registered type {} as {}", name, id);
@@ -268,11 +289,24 @@ class TypeRegistry
     entt::any Build(FamilyId family, oge_id_type typeId, entt::any def = {})
     {
         auto it = byId.find(typeId);
-        if (it == byId.end()) return nullptr;
+        if (it == byId.end()) return {};
 
         auto* factory = descs[it->second].capabilities.Get<FactoryCapability>();
 
-        if (!factory || factory->family != family) return nullptr;
+        if (!factory || factory->family != family) return {};
+
+        return factory->build(def, *this);
+    }
+
+    // Name-based build: one name has exactly one factory (enforced by the
+    // by-name reuse logic in RegisterType).
+    entt::any Build(std::string_view typeName, entt::any def = {})
+    {
+        auto it = byName.find(std::string(typeName));
+        if (it == byName.end()) return {};
+
+        auto* factory = descs[it->second].capabilities.Get<FactoryCapability>();
+        if (!factory) return {};
 
         return factory->build(def, *this);
     }

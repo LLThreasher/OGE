@@ -59,6 +59,12 @@ class SceneRunner
         m_nextScene = m_anyFactory.Id<TScene>();
     }
 
+    void SwitchToScene(std::string_view sceneName, json::Object sceneArgs = {})
+    {
+        m_nextSceneArgs = std::move(sceneArgs);
+        m_nextScene = m_anyFactory.Id(sceneName);
+    }
+
     template <typename T>
     oge_id_type Id()
     {

@@ -131,7 +131,7 @@ class DebugServerScene final : public Scene
         : Scene(def),
           m_netServer(m_ctx.any_ctx.Emplace<NetServer>()),
           m_replicationRegistry(net::ReplicationRegistry::Def{
-              m_world.ctx().emplace<net::EventLogStream<>>(),
+              m_world.ctx().emplace<net::EventLogStream<>>(true),
               m_ctx.any_factory})
     {
         m_serverEventDispatcher.sink<OnServerReceiveConnect>()
@@ -142,19 +142,19 @@ class DebugServerScene final : public Scene
             .connect<&DebugServerScene::onServerReceivePacket>(this);
         RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
 
-        m_sceneConfig.subsystems.push_back(Id<sim::SubsystemTerrain>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
+        // m_sceneConfig.subsystems.push_back(Id<sim::SubsystemTerrain>());
+        // m_sceneConfig.subsystems.push_back(
+        //     Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
+        // m_sceneConfig.subsystems.push_back(
+        //     Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
+        // m_sceneConfig.subsystems.push_back(
+        //     Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
+        // m_sceneConfig.subsystems.push_back(
+        //     Id<sim::SubsystemCreature<UpdateType::Realtime>>());
+        // m_sceneConfig.subsystems.push_back(
+        //     Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
+        // m_sceneConfig.subsystems.push_back(
+        //     Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
 
         Load();
 
@@ -171,15 +171,15 @@ class DebugServerScene final : public Scene
         }
         m_netServer.Initialize(port, maxClients, 3);
 
-        m_subsystems.SetUpdateInterval(1 / 20.f);
-        net::InstallComponentReplicationHooks<ComponentAABBCollider>(m_world);
-        net::InstallComponentReplicationHooks<ComponentPhysicBody>(m_world);
-        net::InstallComponentReplicationHooks<ComponentCreature>(m_world);
-        net::InstallComponentReplicationHooks<ComponentCamera>(m_world);
-        net::InstallComponentReplicationHooks<ComponentPerspectiveCamera>(
-            m_world);
-        net::InstallComponentReplicationHooks<ComponentPlayer>(m_world);
-        net::InstallEntityReplicationHooks(m_world);
+        // m_subsystems.SetUpdateInterval(1 / 20.f);
+        // net::InstallComponentReplicationHooks<ComponentAABBCollider>(m_world);
+        // net::InstallComponentReplicationHooks<ComponentPhysicBody>(m_world);
+        // net::InstallComponentReplicationHooks<ComponentCreature>(m_world);
+        // net::InstallComponentReplicationHooks<ComponentCamera>(m_world);
+        // net::InstallComponentReplicationHooks<ComponentPerspectiveCamera>(
+        //     m_world);
+        // net::InstallComponentReplicationHooks<ComponentPlayer>(m_world);
+        // net::InstallEntityReplicationHooks(m_world);
     }
 
     ~DebugServerScene()

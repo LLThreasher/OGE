@@ -42,6 +42,8 @@ void GizmoRenderer::onUpdate(FRendererState& f)
                                        : WHITE});
     }
 
+    if (!ui.Raw().owned<ViewPanel>()) return;
+
     // --- AABB wire cubes (3D) ---
     // Draw wireframe cubes around entities with AABB colliders.
     for (auto [e, viewPanel] : ui.view<ViewPanel>()->each())

@@ -47,6 +47,16 @@ struct EventLogEntryConstRef
     std::vector<std::byte>& payload;
 };
 
+// the event stream protocol follows a roughly consistent principle
+//   log cursor starts at 0. 
+//   only one authority peer is allowed. 
+//   authority peer writes the log cursor into packet,
+//   non-authority peer writes 0 for log cursor. 
+//   authority peer must maintain a full event log, including events
+//      every non-authoritative peer. 
+//   non-authoritative peer only maintain local events and remote events
+//      with its mask. local events may not have the same cursor slot as
+//      its replica on the authoritative log. 
 template <size_t Capacity = 4096>
 class EventLogStream
 {
@@ -58,6 +68,10 @@ class EventLogStream
     LogCursor m_currentTail = 1;
 
    public:
+    EventLogStream(bool authority = false)
+    {
+    }
+
     // this must be called at tick boundry
     void AddPeer(uint32_t peerId)
     {
@@ -72,7 +86,8 @@ class EventLogStream
 
     void SerializeEventMeta(Buffer& buffer, const EventLogEntryMeta& meta)
     {
-        buffer.Write(meta.cursor);
+        // a peer with no authority always write 0
+        buffer.Write<LogCursor>(meta.cursor);
         buffer.Write(meta.id);
     }
 
@@ -83,7 +98,8 @@ class EventLogStream
         return sizeof(uint32_t);
     }
 
-    void SerializeEventPayload(Buffer& buffer, const std::span<std::byte> payload)
+    void SerializeEventPayload(Buffer& buffer,
+                               const std::span<std::byte> payload)
     {
         uint32_t size = static_cast<uint32_t>(payload.size_bytes());
         buffer.Write(size);
@@ -107,11 +123,13 @@ class EventLogStream
         buffer.Read(meta.cursor);
         buffer.Read(meta.id);
 
-        while (m_entries.HeadCursor() != meta.cursor)
+        // if the local head is smaller, increment untill the proposed slot
+        while (m_entries.HeadCursor() < meta.cursor)
         {
             m_validSet.set(m_entries.HeadCursor() % Capacity, false);
             m_entries.Push({});
         }
+        // if the remote head is smaller, insert directly into loca head slot
         m_validSet.set(m_entries.HeadCursor() % Capacity, true);
         m_entries.Push(meta);
 
@@ -134,7 +152,8 @@ class EventLogStream
                         std::bitset<64> peerMask = ~std::bitset<64>{})
     {
         OGE_ASSERT(peerMask.any(), "EnqueueEvent called with empty peer mask");
-        EventLogEntryMeta meta = {m_entries.HeadCursor(), id, 0, peerMask & m_activePeers};
+        EventLogEntryMeta meta = {m_entries.HeadCursor(), id, 0,
+                                  peerMask & m_activePeers};
         m_validSet.set(m_entries.HeadCursor() % Capacity, true);
         m_entries.Push(meta);
         auto [it, succ] = m_payloads.try_emplace(meta.cursor);
@@ -143,7 +162,8 @@ class EventLogStream
         return {it->second};
     }
 
-    bool PeekEvent(uint32_t peer, EventLogEntryConstRef& out, LogCursor at = 0) const
+    bool PeekEvent(uint32_t peer, EventLogEntryConstRef& out,
+                   LogCursor at = 0) const
     {
         auto curosr = at == 0 ? m_currentTail : at;
         bool incrementTail = true;

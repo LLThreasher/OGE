@@ -80,7 +80,6 @@ class ClientScene2 : public DebugScene3
         {
             sctx.nextScene = Id<SceneExt>();
             sctx.nextSceneArgs = {};
-            return;
         }
         m_replicationRegistry.ProduceAll(m_client, m_world);
 

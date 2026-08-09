@@ -155,7 +155,7 @@
     },
     {
       "name": "apple-debug-asan",
-      "displayName": "Apple Silicon Debug",
+      "displayName": "Apple Silicon Debug w/ Asan",
       "description": "使用 Visual Studio 开发环境定向到 Apple Silicon (64 位)。(Debug)",
       "inherits": "macos-base",
       "cacheVariables": {

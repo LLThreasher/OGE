@@ -103,8 +103,8 @@ class ClientConnScene : public SceneExt
         auto it = def.args.find("next_scene");
         if (it == def.args.end())
         {
-            LOG_ERROR("next_scene not provided");
-            m_state = State::Timeout;
+            LOG_WARN("next_scene not provided, default to ClientScene2");
+            m_nextSene = Id("core::ClientScene2");
         }
         else
         {
