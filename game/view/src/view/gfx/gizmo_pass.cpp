@@ -97,20 +97,19 @@ void GizmoPass::onUpdate(DrawContext& ctx, View view,
 void GizmoPass::EmitWireCube(const CmdDrawWireCube& cube,
                              std::vector<GizmoVertex>& out)
 {
-    const float e = cube.extent;
-    const Point3& c = cube.center;
+    const auto& aabb = cube.aabb;
     const ColorRGBA8 col = cube.color;
 
-    // 8 corners of the cube
+    // 8 corners of the cube from AABB min/max
     math::vec3 corners[8] = {
-        math::vec3(c.x - e, c.y - e, c.z - e),  // 0
-        math::vec3(c.x + e, c.y - e, c.z - e),  // 1
-        math::vec3(c.x + e, c.y + e, c.z - e),  // 2
-        math::vec3(c.x - e, c.y + e, c.z - e),  // 3
-        math::vec3(c.x - e, c.y - e, c.z + e),  // 4
-        math::vec3(c.x + e, c.y - e, c.z + e),  // 5
-        math::vec3(c.x + e, c.y + e, c.z + e),  // 6
-        math::vec3(c.x - e, c.y + e, c.z + e),  // 7
+        math::vec3(aabb.min.x, aabb.min.y, aabb.min.z),  // 0
+        math::vec3(aabb.max.x, aabb.min.y, aabb.min.z),  // 1
+        math::vec3(aabb.max.x, aabb.max.y, aabb.min.z),  // 2
+        math::vec3(aabb.min.x, aabb.max.y, aabb.min.z),  // 3
+        math::vec3(aabb.min.x, aabb.min.y, aabb.max.z),  // 4
+        math::vec3(aabb.max.x, aabb.min.y, aabb.max.z),  // 5
+        math::vec3(aabb.max.x, aabb.max.y, aabb.max.z),  // 6
+        math::vec3(aabb.min.x, aabb.max.y, aabb.max.z),  // 7
     };
 
     // 12 lines (24 vertices) for the wireframe cube

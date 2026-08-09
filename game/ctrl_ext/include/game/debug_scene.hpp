@@ -76,8 +76,8 @@ class DebugScene3 : public SceneExt
         m_cross = m_uiWorld.create();
         m_uiWorld.emplace<ui::UIRect>(
             m_cross,
-            math::vec2{0.5f - 0.02f,
-                       0.5f - 0.02f * m_ctx.assets.backend.SwapchainAspect()},
+            math::vec2{0.5f - 0.01f,
+                       0.5f - 0.01f * m_ctx.assets.backend.SwapchainAspect()},
             math::vec2{0.02f, 0.02f * m_ctx.assets.backend.SwapchainAspect()});
         m_uiWorld.emplace<ui::UISprite>(m_cross, crossSprite);
         m_uiWorld.emplace<ui::UIZLevel>(m_cross, 1);
@@ -185,6 +185,7 @@ class DebugScene3 : public SceneExt
         m_renderers.AddStage<view::DebugInfoRenderer>(AF());
         m_renderers.AddStage<view::TerrainRenderer>(AF());
         m_renderers.AddStage<view::CameraRenderer>(AF());
+        m_renderers.AddStage<view::BlockHighlightRenderer>(AF());
 
         auto assets = AssetContext(m_ctx.any_ctx);
         auto& blks = m_world.ctx()

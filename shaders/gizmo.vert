@@ -6,7 +6,7 @@ layout(location = 1) in vec4 inColor;
 
 layout(location = 0) out vec4 v_Color;
 
-layout(set = 0, binding = 0) uniform UBO
+layout(push_constant) uniform PushConstants
 {
     mat4 uMVP;
 };

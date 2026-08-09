@@ -11,5 +11,6 @@ void RegisterRenderers(AnythingFactory& af)
     af.RegisterDerived<Renderer, CameraRenderer>();
     af.RegisterDerived<Renderer, UIRenderer>();
     af.RegisterDerived<Renderer, GizmoRenderer>();
+    af.RegisterDerived<Renderer, BlockHighlightRenderer>();
 }
 }  // namespace game::view

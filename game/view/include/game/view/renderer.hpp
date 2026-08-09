@@ -123,6 +123,14 @@ class GizmoRenderer : public Renderer
     void onDetach(RendererState&) override;
     void onUpdate(FRendererState&) override;
 };
+
+class BlockHighlightRenderer : public Renderer
+{
+   public:
+    void onAttach(RendererState&) override;
+    void onDetach(RendererState&) override;
+    void onUpdate(FRendererState&) override;
+};
 }  // namespace game::view
 
 namespace oge::runtime
@@ -171,6 +179,15 @@ struct TypeName<GizmoRenderer>
     static constexpr std::string Get()
     {
         return "core::GizmoRenderer";
+    }
+};
+
+template <>
+struct TypeName<BlockHighlightRenderer>
+{
+    static constexpr std::string Get()
+    {
+        return "core::BlockHighlightRenderer";
     }
 };
 }

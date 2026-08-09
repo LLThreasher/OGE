@@ -1,6 +1,7 @@
 #include "game/scene_ext.hpp"
 #include "game/json.hpp"
 #include "game/scene.hpp"
+#include "game/view/renderer.hpp"
 
 using namespace game;
 
@@ -14,6 +15,7 @@ SceneExt::SceneExt(const Def& def)
       m_squeue(m_ctx.memory.frameBuffer.Resource())
 {
     m_renderers.AddStage<view::UIRenderer>(AF());
+    m_renderers.AddStage<view::GizmoRenderer>(AF());
     m_viewExecutor.Attach(def.ctx.any_ctx);
 }
 

@@ -10,6 +10,7 @@
 #include "oge/aabb.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/math.hpp"
+#include "oge/point3.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
@@ -17,6 +18,7 @@ namespace game
 {
 namespace math = ::oge::math;
 using oge::AABB;
+using oge::Point3;
 
 struct DirtyTag
 {
@@ -140,6 +142,12 @@ struct ComponentPlayer
     static void DestroyPlayer(GameWorld& world, PlayerInfo info);
 };
 
+struct ComponentTargetBlock
+{
+    Point3 hitPos = {};   // integer block coords the player is looking at
+    bool valid = false;
+};
+
 struct DebugText
 {
     std::pmr::string text;
@@ -149,6 +157,7 @@ struct DebugText
 }  // namespace game
 
 DECL_TYPE_NAME(game::ComponentPlayer, "core::ComponentPlayer")
+DECL_TYPE_NAME(game::ComponentTargetBlock, "core::ComponentTargetBlock")
 DECL_TYPE_NAME(game::ComponentAABBCollider, "core::ComponentAABBCollider")
 DECL_TYPE_NAME(game::ComponentCamera, "core::ComponentCamera")
 DECL_TYPE_NAME(game::ComponentPerspectiveCamera, "core::ComponentPerspectiveCamera")

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "oge/aabb.hpp"
 #include "oge/color.hpp"
 #include "oge/math.hpp"
 #include "oge/point3.hpp"
@@ -9,6 +10,7 @@ namespace game::view::gfx
 {
 
 namespace math = ::oge::math;
+using oge::AABB;
 using oge::Point3;
 using oge::colors::ColorRGBA8;
 using oge::colors::RED;
@@ -23,12 +25,11 @@ using namespace oge::graphics::gpu_objects;
 // They use the GizmoPass which renders with the gizmo shader.
 // =========================================================================
 
-/// Axis-aligned wireframe cube centered at `center` with given `extent`
-/// (half-size).  Drawn with 12 lines (24 vertices).
+/// Axis-aligned wireframe cube defined by an AABB (min/max).
+/// Drawn with 12 lines (24 vertices).
 struct CmdDrawWireCube
 {
-    Point3 center;
-    float extent = 1.0f;
+    AABB aabb;
     ColorRGBA8 color = RED;
 };
 

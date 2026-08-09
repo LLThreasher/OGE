@@ -96,6 +96,9 @@ add_test_target(name SOURCES test/foo.cpp LIBRARIES game::ctrl oge::platform::na
 - [ ] the gizmo renderer should also draw aabb + component creature with draw gizmo cube cmd. 
 
 ## Adding New Features
+For step-by-step guides on adding **blocks, components, subsystems, renderers,
+and passes**, see [CONTRIBUTION.md](CONTRIBUTION.md).
+
 1. **New component type:** Add `DECL_TYPE_NAME` in the struct's header.  If it
    needs network replication, add `RegisterComponentEvents<T>` in
    `replication_registry.cpp` + `RegisterSnapshotComponent<T>`.

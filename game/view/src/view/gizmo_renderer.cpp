@@ -44,32 +44,15 @@ void GizmoRenderer::onUpdate(FRendererState& f)
 
     // --- AABB wire cubes (3D) ---
     // Draw wireframe cubes around entities with AABB colliders.
-    for (auto [entity, collider] :
-         game.view<ComponentAABBCollider>().each())
+    for (auto [e, viewPanel] : ui.view<ViewPanel>()->each())
     {
-        auto& aabb = collider.aabb;
-        Point3 center = Point3::FromVec3(
-            {(aabb.min.x + aabb.max.x) * 0.5f,
-             (aabb.min.y + aabb.max.y) * 0.5f,
-             (aabb.min.z + aabb.max.z) * 0.5f});
-        float extent = std::max(
-            {aabb.max.x - aabb.min.x, aabb.max.y - aabb.min.y,
-             aabb.max.z - aabb.min.z}) *
-                       0.5f;
-
-        f.submissionQueue.Add<CmdDrawWireCube>(
-            GameViewType::Overlay,
-            CmdDrawWireCube{center, extent, BLUE});
-    }
-
-    // --- Creature wire cubes (3D) ---
-    // Draw wireframe cubes around entities with Creature component.
-    for (auto [entity, creature] :
-         game.view<ComponentCreature>().each())
-    {
-        f.submissionQueue.Add<CmdDrawWireCube>(
-            GameViewType::Overlay,
-            CmdDrawWireCube{Point3{0, 0, 0}, 1.0f, GREEN});
+        for (auto [entity, collider, body] :
+            game.view<ComponentAABBCollider, ComponentPhysicBody>().each())
+        {
+            f.submissionQueue.Add<CmdDrawWireCube>(
+                viewPanel.activeSlot,
+                CmdDrawWireCube{collider.aabb + body.pos, BLUE});
+        }
     }
 }
 }  // namespace game::view

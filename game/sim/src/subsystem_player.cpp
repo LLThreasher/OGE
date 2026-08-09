@@ -117,6 +117,16 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                            1.65f,
                            (collider.aabb.min.z + collider.aabb.max.z) / 2.f};
             ctx.world.patch<ComponentCamera>(entity);
+
+            // Continuous block targeting for highlight rendering
+            auto raycastResult =
+                terrain.CastRay(camera.position, camera.forward);
+            if (raycastResult.has_value())
+                ctx.world.emplace_or_replace<ComponentTargetBlock>(
+                    entity, raycastResult->hitPos, true);
+            else
+                ctx.world.emplace_or_replace<ComponentTargetBlock>(
+                    entity, Point3{}, false);
         }
 
         if constexpr (variant == UpdateType::FixedStep)
