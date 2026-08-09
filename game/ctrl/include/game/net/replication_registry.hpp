@@ -13,11 +13,12 @@
 #include "game/net/replication_events.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/event_stream2.hpp"
-#include "oge/runtime/net_traits.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/net_server.hpp"
+#include "oge/runtime/net_traits.hpp"
 #include "oge/runtime/oge_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
 namespace game::net
@@ -105,11 +106,13 @@ struct ReplicationCapability : ICapability
     // this install a hook that collects information from world
     //  and submit to the event log stream in world.ctx()
     //  on update (entity(ReplicatedTag)/component/chunk/block)
-    using InstallHooksFn = void (*) (EventLogStream<>&, oge::runtime::OgeRegistryRef);
+    using InstallHooksFn = void (*)(EventLogStream<>&,
+                                    oge::runtime::OgeRegistryRef);
     InstallHooksFn installHooks = nullptr;
 
     // this apply a event in the event log stream
-    using ApplyFn = void (*) (EventLogStream<>&, oge::runtime::OgeRegistryRef, net::Buffer&);
+    using ApplyFn = void (*)(EventLogStream<>&, oge::runtime::OgeRegistryRef,
+                             net::Buffer&);
     ApplyFn apply = nullptr;
 };
 
@@ -134,8 +137,7 @@ ReplicationCapability MakeSimpleReplicationCapability(
     cap.installHooks = installHooks;
 
     cap.apply = [](EventLogStream<>& /*stream*/,
-                   oge::runtime::OgeRegistryRef world,
-                   net::Buffer& buffer)
+                   oge::runtime::OgeRegistryRef world, net::Buffer& buffer)
     {
         TEvent event{};
         net::Deserialize(buffer, event);
@@ -149,7 +151,9 @@ class PacketScheduler
 {
    public:
     virtual ~PacketScheduler() = default;
-    virtual void Reset() {}
+    virtual void Reset()
+    {
+    }
     virtual bool Schedule(const EventLogStream<>& stream,
                           const EncodeContext& ctx, PacketPlan& plan) = 0;
 };
@@ -313,9 +317,8 @@ class ReplicationRegistry
             for (auto& pdesc : plan.packets)
             {
                 EventLogEntry entry;
-                auto ok =
-                    m_eventStream->TryDequeueEvent(peerId, entry,
-                                                   pdesc.logPosition);
+                auto ok = m_eventStream->TryDequeueEvent(peerId, entry,
+                                                         pdesc.logPosition);
 
                 if (!ok) continue;
 
@@ -337,12 +340,11 @@ class ReplicationRegistry
                     {
                         auto packet = server.StartPacket(
                             m_eventStream->MetaSize() +
-                            m_eventStream->PayloadSizePrefixBytes() +
+                            m_eventStream->PayloadHeaderBytes() +
                             pdesc.payloadByteCount);
-                        m_eventStream->SerializeEventMeta(packet,
-                                                         entry.entry);
-                        m_eventStream->SerializeEventPayload(
-                            packet, entry.payload);
+                        m_eventStream->SerializeEventMeta(packet, entry.entry);
+                        m_eventStream->SerializeEventPayload(entry.entry.cursor, packet,
+                                                             entry.payload);
                         server.Send(peerState.peer.peer, packet,
                                     SendType::Reliable, 0);
                         break;
@@ -351,12 +353,11 @@ class ReplicationRegistry
                     {
                         auto packet = server.StartPacket(
                             m_eventStream->MetaSize() +
-                            m_eventStream->PayloadSizePrefixBytes() +
+                            m_eventStream->PayloadHeaderBytes() +
                             pdesc.payloadByteCount);
-                        m_eventStream->SerializeEventMeta(packet,
-                                                         entry.entry);
-                        m_eventStream->SerializeEventPayload(
-                            packet, entry.payload);
+                        m_eventStream->SerializeEventMeta(packet, entry.entry);
+                        m_eventStream->SerializeEventPayload(entry.entry.cursor, packet,
+                                                             entry.payload);
                         server.Send(peerState.peer.peer, packet,
                                     SendType::Sequenced, 0);
                         break;
@@ -365,17 +366,14 @@ class ReplicationRegistry
                     {
                         auto packet =
                             server.StartPacket(m_eventStream->MetaSize());
-                        m_eventStream->SerializeEventMeta(packet,
-                                                         entry.entry);
+                        m_eventStream->SerializeEventMeta(packet, entry.entry);
                         server.Send(peerState.peer.peer, packet,
                                     SendType::Reliable, 0);
                         auto payloadPacket = server.StartPacket(
-                            sizeof(entry.entry.cursor) +
-                            m_eventStream->PayloadSizePrefixBytes() +
+                            m_eventStream->PayloadHeaderBytes() +
                             pdesc.payloadByteCount);
-                        net::Serialize(payloadPacket, entry.entry.cursor);
                         m_eventStream->SerializeEventPayload(
-                            payloadPacket, entry.payload);
+                            entry.entry.cursor, payloadPacket, entry.payload);
                         server.Send(peerState.peer.peer, payloadPacket,
                                     SendType::Reliable, 1);
                         break;
@@ -385,7 +383,8 @@ class ReplicationRegistry
         }
     }
 
-    void HandleIncoming(PeerId peer, oge::runtime::OgeRegistryRef world, net::Buffer& buffer)
+    void HandleIncoming(PeerId peer, oge::runtime::OgeRegistryRef world,
+                        net::Buffer& buffer)
     {
         OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
         m_eventStream->DeserializeEvent(peer, buffer);
@@ -397,23 +396,25 @@ class ReplicationRegistry
     }
 
     // Store component-type info so the snapshot can iterate components.
-    using SnapshotComponentFn =
-        void (*)(EventLogStream<>&, oge::runtime::OgeRegistryRef, oge::runtime::OgeRegistryRef::Entity,
-                 const std::bitset<64>& peerMask);
+    using SnapshotComponentFn = void (*)(EventLogStream<>&,
+                                         oge::runtime::OgeRegistryRef,
+                                         oge::runtime::OgeRegistryRef::Entity,
+                                         const std::bitset<64>& peerMask);
 
     std::vector<SnapshotComponentFn> m_snapshotFns;
 
     template <typename T>
     static void SnapshotComponent(EventLogStream<>& stream,
-                                  oge::runtime::OgeRegistryRef world, oge::runtime::OgeRegistryRef::Entity e,
+                                  oge::runtime::OgeRegistryRef world,
+                                  oge::runtime::OgeRegistryRef::Entity e,
                                   const std::bitset<64>& peerMask)
     {
         if (!world.all_of<T>(e)) return;
 
         AddComponentEvent<T> evt{e, world.get<T>(e)};
-        auto buf = stream.EnqueueEvent(
-            entt::type_hash<AddComponentEvent<T>>::value(),
-            net::Size(evt), peerMask);
+        auto buf =
+            stream.EnqueueEvent(entt::type_hash<AddComponentEvent<T>>::value(),
+                                net::Size(evt), peerMask);
         net::Serialize(buf, evt);
     }
 
@@ -440,8 +441,8 @@ class ReplicationRegistry
         {
             AddEntityEvent evt{e};
             auto buf = m_eventStream->EnqueueEvent(
-                entt::type_hash<AddEntityEvent>::value(),
-                net::Size(evt), peerMask);
+                entt::type_hash<AddEntityEvent>::value(), net::Size(evt),
+                peerMask);
             net::Serialize(buf, evt);
 
             // All registered component types.
@@ -457,8 +458,7 @@ class ReplicationRegistry
             auto& terrain = world.ctx().get<terrain::TerrainView>();
 
             terrain::ChunkHandle cursor{};
-            while (const terrain::ChunkData* chunk =
-                       terrain.PollChunk(cursor))
+            while (const terrain::ChunkData* chunk = terrain.PollChunk(cursor))
             {
                 if (chunk->state != terrain::ChunkState::Persistent)
                 {
@@ -474,14 +474,15 @@ class ReplicationRegistry
                 }
 
                 auto buf = m_eventStream->EnqueueEvent(
-                    entt::type_hash<AddChunkEvent>::value(),
-                    net::Size(evt), peerMask);
+                    entt::type_hash<AddChunkEvent>::value(), net::Size(evt),
+                    peerMask);
                 net::Serialize(buf, evt);
             }
         }
     }
 
-    void AddPeer(PeerId id, ENetPeer* peer, oge::runtime::OgeRegistry* world = {})
+    void AddPeer(PeerId id, ENetPeer* peer,
+                 oge::runtime::OgeRegistry* world = {})
     {
         PeerState peerState{};
         peerState.peer = {peer, id};
@@ -512,6 +513,4 @@ void RegisterReplications(oge::runtime::AnythingFactory& af,
 
 }  // namespace game::net
 
-DECL_NET_OBJ(game::net::AdvanceTick, {
-    visit(self.tick);
-})
+DECL_NET_OBJ(game::net::AdvanceTick, { visit(self.tick); })

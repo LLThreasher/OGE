@@ -59,8 +59,35 @@ endfunction()
 function(add_test_target NAME)
     cmake_parse_arguments(ARG "" "" "SOURCES;LIBRARIES" ${ARGN})
 
+    # 1. Create the main executable target
     add_executable(${NAME} ${ARG_SOURCES})
     target_link_libraries(${NAME} PRIVATE oge::test_support ${ARG_LIBRARIES})
     target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
-    add_test(NAME ${NAME} COMMAND ${NAME})
+
+    # 2. Run the Python script to extract test names from the source files.
+    #    Build absolute paths so the script can find files regardless of
+    #    the working directory.
+    set(_abs_sources "")
+    foreach(_src ${ARG_SOURCES})
+        list(APPEND _abs_sources "${CMAKE_CURRENT_SOURCE_DIR}/${_src}")
+    endforeach()
+
+    execute_process(
+        COMMAND python3 "${CMAKE_SOURCE_DIR}/cmake/extract_tests.py" ${_abs_sources}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE EXTRACTED_TESTS
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        RESULT_VARIABLE _extract_ret
+    )
+
+    # 3. Register each extracted test case as an individual CTest entry.
+    if(_extract_ret EQUAL 0 AND EXTRACTED_TESTS)
+        foreach(TEST_NAME IN LISTS EXTRACTED_TESTS)
+            add_test(NAME "${NAME}::${TEST_NAME}" COMMAND ${NAME} --run-test=${TEST_NAME})
+        endforeach()
+    else()
+        # Fallback: register the executable itself as a single CTest test
+        # so the build doesn't break.
+        add_test(NAME ${NAME} COMMAND ${NAME})
+    endif()
 endfunction()

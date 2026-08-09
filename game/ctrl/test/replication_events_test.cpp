@@ -6,9 +6,8 @@
  * Run:   ctest -R replication_events_test
  */
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
+#include <test_macros.hpp>
+
 #include <vector>
 
 #include "game/components.hpp"
@@ -23,26 +22,26 @@
 #include "oge/runtime/net_traits.hpp"
 
 // ---------------------------------------------------------------------------
-// Minimal test harness
+// Test utilities (specific to this suite)
 // ---------------------------------------------------------------------------
 
-static int g_testsPassed = 0;
-static int g_testsFailed = 0;
+static std::vector<std::byte> S(size_t c = 65536)
+{
+    std::vector<std::byte> v;
+    v.reserve(c);
+    v.resize(v.capacity());
+    return v;
+}
 
-#define TEST(name)                                              \
-    static void name();                                         \
-    struct R_##name { R_##name() { g.push_back({#name, name}); } } r_##name; \
-    static void name()
-
-#define CHECK(expr) do { if (!(expr)) { std::fprintf(stderr,"  FAIL %s:%d: %s\n",__FILE__,__LINE__,#expr); ++g_testsFailed; return; } } while(0)
-#define CHECK_EQ(a,b) do { if(!((a)==(b))){ std::fprintf(stderr,"  FAIL %s:%d: %s != %s\n",__FILE__,__LINE__,#a,#b); ++g_testsFailed; return; } } while(0)
-
-struct TestEntry { const char* name; void (*fn)(); };
-static std::vector<TestEntry> g;
-
-static std::vector<std::byte> S(size_t c=65536){ std::vector<std::byte> v; v.reserve(c); v.resize(v.capacity()); return v; }
-
-template<typename T> static void RT(const T& o, T& d){ auto s=S(); oge::runtime::net::Buffer b(s); oge::runtime::net::Serialize(b,o); b.ToReadOnly(); oge::runtime::net::Deserialize(b,d); }
+template <typename T>
+static void RT(const T& o, T& d)
+{
+    auto s = S();
+    oge::runtime::net::Buffer b(s);
+    oge::runtime::net::Serialize(b, o);
+    b.ToReadOnly();
+    oge::runtime::net::Deserialize(b, d);
+}
 
 // =========================================================================
 // Serialization round-trips
@@ -384,12 +383,4 @@ TEST(rollback_chunk_compare){
     CHECK(!game::net::ChunkCompareFn(b1, b3));
 }
 
-// =========================================================================
-// Main
-// =========================================================================
-int main(){
-    std::fprintf(stdout,"=== Replication Events Tests ===\n");
-    for(auto& e:g){ int b=g_testsFailed; e.fn(); if(g_testsFailed==b){ ++g_testsPassed; std::fprintf(stdout,"  PASS %s\n",e.name); } }
-    std::fprintf(stdout,"\nResults: %d passed, %d failed\n",g_testsPassed,g_testsFailed);
-    return g_testsFailed>0?EXIT_FAILURE:EXIT_SUCCESS;
-}
+RUN_TESTS("Replication Events Tests")
