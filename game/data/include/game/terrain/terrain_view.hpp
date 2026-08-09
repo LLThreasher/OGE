@@ -13,8 +13,7 @@
 #include "oge/math.hpp"
 #include "oge/point3.hpp"
 #include "oge/pool.hpp"
-#include "oge/runtime/entt.hpp"
-#include "oge/runtime/typed_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 #include "oge/macros.hpp"
 
 namespace game

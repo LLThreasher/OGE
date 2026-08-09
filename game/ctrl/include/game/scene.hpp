@@ -2,10 +2,7 @@
 
 #include <uuid.h>
 
-#include <array>
 #include <cstddef>
-#include <cstring>
-#include <vector>
 
 #include "game/app_context.hpp"
 #include "game/components.hpp"
@@ -13,10 +10,7 @@
 #include "game/json.hpp"
 #include "game/scene_runner.hpp"
 #include "game/sim/subsystem.hpp"
-#include "oge/log.hpp"
-#include "oge/math.hpp"
-#include "oge/platform/io.hpp"
-#include "oge/runtime/typed_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 
 namespace game
 {

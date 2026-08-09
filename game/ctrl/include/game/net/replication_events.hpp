@@ -15,6 +15,8 @@
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/net_traits.hpp"
 #include "oge/runtime/oge_registry.hpp"
+#include "game/components.hpp"
+#include "game/components_net.hpp"
 
 // =========================================================================
 // NetTraits for entt::entity

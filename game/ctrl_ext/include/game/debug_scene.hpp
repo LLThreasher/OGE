@@ -8,6 +8,7 @@
 #include "game/events.hpp"
 #include "game/game_world.hpp"
 #include "game/input/input_source.hpp"
+#include "game/input/net.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/scene.hpp"
 #include "game/scene_ext.hpp"
@@ -22,7 +23,7 @@
 #include "oge/log.hpp"
 #include "oge/math.hpp"
 #include "oge/runtime/asset_ctx.hpp"
-#include "oge/runtime/typed_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 
 namespace game
 {

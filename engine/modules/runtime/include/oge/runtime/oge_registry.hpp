@@ -1,14 +1,12 @@
 #pragma once
 
 #include <cstddef>
-#include <memory>
 #include <type_traits>
 
-#include "entt/entity/fwd.hpp"
 #include "oge/macros.hpp"
 #include "oge/runtime/debug.hpp"
 #include "oge/runtime/entt.hpp"
-#include "oge/runtime/typed_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 
 namespace oge::runtime
 {

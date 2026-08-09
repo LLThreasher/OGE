@@ -1,16 +1,13 @@
 #pragma once
 
 #include <string>
-#include <tuple>
 #include <vector>
 
-#include "game/components.hpp"
-#include "game/input/entity_event_stream.hpp"
 #include "game/json.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/defs.hpp"
 #include "oge/runtime/oge_registry.hpp"
-#include "oge/runtime/typed_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 
 namespace game
 {

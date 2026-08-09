@@ -3,10 +3,8 @@
 #include <string>
 
 #include "oge/event_stream.hpp"
-#include "oge/runtime/entt.hpp"
-#include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/oge_registry.hpp"
-#include "oge/runtime/typed_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 #include "game/input/net.hpp"
 
 namespace game::input

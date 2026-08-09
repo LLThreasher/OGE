@@ -6,6 +6,7 @@
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
+#include "oge/platform/io.hpp"
 
 using namespace game;
 

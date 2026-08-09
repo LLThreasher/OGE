@@ -2,11 +2,10 @@
 
 #include <cassert>
 #include <cstdint>
-#include <vector>
 
 #include "oge/event_stream.hpp"
 #include "oge/math.hpp"
-#include "oge/runtime/typed_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 
 namespace game::input
 {

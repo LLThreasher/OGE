@@ -1,31 +1,22 @@
 #pragma once
 
-#include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <deque>
 #include <limits>
 #include <memory>
-#include <optional>
-#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
 #include "game/app_context.hpp"
-#include "game/components.hpp"
-#include "game/components_net.hpp"
 #include "game/input/entity_event_stream.hpp"
-#include "game/input/net.hpp"
 #include "game/net/event_log_stream.hpp"
 #include "game/net/replication_events.hpp"
-#include "game/terrain/terrain_view.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/event_stream2.hpp"
-#include "oge/log.hpp"
+#include "oge/runtime/net_traits.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/net_server.hpp"
-#include "oge/runtime/net_traits.hpp"
 #include "oge/runtime/oge_registry.hpp"
 #include "oge/runtime/typed_registry.hpp"
 

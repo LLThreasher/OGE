@@ -9,7 +9,7 @@
 #include "game/input/player_input_stream.hpp"
 #include "oge/math.hpp"
 #include "oge/runtime/net_traits.hpp"
-#include "oge/runtime/typed_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 
 namespace game
 {

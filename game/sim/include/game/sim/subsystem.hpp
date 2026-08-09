@@ -1,20 +1,16 @@
 #pragma once
 
-#include <format>
 #include <iterator>
-#include <memory_resource>
 #include <string>
 
 #include "game/components.hpp"
 #include "game/frame_perf.hpp"  // debug info pass
 #include "game/game_world.hpp"
-#include "game/input/player_input_stream.hpp"
 #include "game/memory_context.hpp"
 #include "oge/platform/perf.hpp"
 #include "oge/runtime/asset_manager.hpp"
-#include "oge/runtime/entt.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
-#include "oge/runtime/typed_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 
 namespace game::sim
 {
