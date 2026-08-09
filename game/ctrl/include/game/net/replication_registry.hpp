@@ -26,6 +26,7 @@
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/net_server.hpp"
 #include "oge/runtime/net_traits.hpp"
+#include "oge/runtime/oge_registry.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
 namespace game::net
@@ -303,7 +304,7 @@ class ReplicationRegistry
     void ProduceAll(oge::runtime::NetPacketSender& server,
                     entt::registry& world)
     {
-        assert(m_eventStream != nullptr);
+        OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
 
         for (auto& [peerId, peerState] : m_peers)
         {
@@ -390,7 +391,7 @@ class ReplicationRegistry
 
     void HandleIncoming(PeerId peer, entt::registry& world, net::Buffer& buffer)
     {
-        assert(m_eventStream != nullptr);
+        OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
         m_eventStream->DeserializeEvent(peer, buffer);
     }
 
@@ -430,9 +431,9 @@ class ReplicationRegistry
     // Generate a snapshot of the current world state for a newly joined
     // peer.  Pushes AddEntity / AddComponent / AddChunk events with a
     // receive mask that only targets this peer.
-    void GenerateSnapshot(PeerId peerId, entt::registry& world)
+    void GenerateSnapshot(PeerId peerId, oge::runtime::OgeRegistryRef world)
     {
-        assert(m_eventStream != nullptr);
+        OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
 
         std::bitset<64> peerMask{};
         peerMask.set(peerId);
@@ -484,7 +485,7 @@ class ReplicationRegistry
         }
     }
 
-    void AddPeer(PeerId id, ENetPeer* peer, entt::registry* world = nullptr)
+    void AddPeer(PeerId id, ENetPeer* peer, oge::runtime::OgeRegistryRef world = {})
     {
         PeerState peerState{};
         peerState.peer = {peer, id};
@@ -494,7 +495,7 @@ class ReplicationRegistry
 
         if (world != nullptr)
         {
-            GenerateSnapshot(id, *world);
+            GenerateSnapshot(id, world);
         }
     }
 

@@ -31,14 +31,7 @@ add_library(game::sim ALIAS game_sim)
 # Tests
 # ---------------------------------------------------------------------------
 
-add_executable(sim_physics_test
-    test/subsystem_physics_test.cpp
+add_test_target(sim_physics_test
+    SOURCES test/subsystem_physics_test.cpp
+    LIBRARIES game_sim
 )
-
-target_link_libraries(sim_physics_test PRIVATE game_sim)
-
-target_include_directories(sim_physics_test PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-)
-
-add_test(NAME sim_physics_test COMMAND sim_physics_test)

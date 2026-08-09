@@ -148,61 +148,10 @@ struct DebugText
 
 }  // namespace game
 
-namespace oge::runtime
-{
-template <>
-struct TypeName<game::ReplicatedTag>
-{
-    static constexpr std::string Get()
-    {
-        return "core::ReplicatedTag";
-    }
-};
-
-template <>
-struct TypeName<game::ComponentPlayer>
-{
-    static constexpr std::string Get()
-    {
-        return "core::ComponentPlayer";
-    }
-};
-
-template <>
-struct TypeName<game::ComponentAABBCollider>
-{
-    static constexpr std::string Get()
-    {
-        return "core::ComponentAABBCollider";
-    }
-};
-
-template <>
-struct TypeName<game::ComponentCamera>
-{
-    static constexpr std::string Get()
-    {
-        return "core::ComponentCamera";
-    }
-};
-
-template <>
-struct TypeName<game::ComponentPerspectiveCamera>
-{
-    static constexpr std::string Get()
-    {
-        return "core::ComponentPerspectiveCamera";
-    }
-};
-
-template <>
-struct TypeName<game::ComponentCreature>
-{
-    static constexpr std::string Get()
-    {
-        return "core::ComponentCreature";
-    }
-};
-}  // namespace oge::runtime
-
+DECL_TYPE_NAME(game::ReplicatedTag, "core::ReplicatedTag")
+DECL_TYPE_NAME(game::ComponentPlayer, "core::ComponentPlayer")
+DECL_TYPE_NAME(game::ComponentAABBCollider, "core::ComponentAABBCollider")
+DECL_TYPE_NAME(game::ComponentCamera, "core::ComponentCamera")
+DECL_TYPE_NAME(game::ComponentPerspectiveCamera, "core::ComponentPerspectiveCamera")
+DECL_TYPE_NAME(game::ComponentCreature, "core::ComponentCreature")
 DECL_TYPE_NAME(game::ComponentPhysicBody, "core::ComponentPhysicBody")

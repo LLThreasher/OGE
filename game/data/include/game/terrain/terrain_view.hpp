@@ -314,14 +314,4 @@ class TerrainView
 }  // namespace terrain
 }  // namespace game
 
-namespace oge::runtime
-{
-template <>
-struct TypeName<::game::terrain::TerrainView>
-{
-    static constexpr std::string Get()
-    {
-        return "core::TerrainView";
-    }
-};
-}  // namespace oge::runtime
+DECL_TYPE_NAME(::game::terrain::TerrainView, "core::TerrainView")

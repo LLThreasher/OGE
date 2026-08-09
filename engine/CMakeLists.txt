@@ -53,6 +53,7 @@ add_subdirectory(modules/core)
 add_subdirectory(modules/platform)
 add_subdirectory(modules/platform_native)
 add_subdirectory(modules/runtime)
+add_subdirectory(modules/test_support)
 
 if(BUILD_WINDOW)
 add_subdirectory(modules/graphics)

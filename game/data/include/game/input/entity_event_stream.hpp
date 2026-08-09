@@ -378,17 +378,10 @@ struct ComponentDeltaStream
 };
 }  // namespace game::input
 
+DECL_TYPE_NAME(game::input::EntityEventStream, "core::EntityEventStream")
+
 namespace oge::runtime
 {
-template <>
-struct TypeName<game::input::EntityEventStream>
-{
-    static constexpr std::string Get()
-    {
-        return "core::EntityEventStream";
-    }
-};
-
 template <typename T, size_t capacity>
 struct TypeName<game::input::ComponentDeltaStream<T, capacity>>
 {

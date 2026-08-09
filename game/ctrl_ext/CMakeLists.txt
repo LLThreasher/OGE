@@ -32,3 +32,12 @@ PUBLIC
 
 add_library(game::ctrl_ext ALIAS game_ctrl_ext)
 add_library(game::gui ALIAS game_ctrl_ext)
+
+# ---------------------------------------------------------------------------
+# Tests
+# ---------------------------------------------------------------------------
+
+add_test_target(debug_scene3_test
+    SOURCES test/debug_scene3_test.cpp
+    LIBRARIES game_ctrl_ext oge::platform::native
+)
