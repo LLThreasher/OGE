@@ -10,7 +10,6 @@ namespace game::view
 {
 using oge::runtime::ui::UIRaycastHit;
 using oge::runtime::ui::UIRaycastTarget;
-using oge::runtime::ui::UIDrag;
 using namespace ui;
 
 void GizmoRenderer::onAttach(RendererState& ctx)
@@ -49,11 +48,10 @@ void GizmoRenderer::onUpdate(FRendererState& f)
          game.view<ComponentAABBCollider>().each())
     {
         auto& aabb = collider.aabb;
-        Point3 center{
-            (aabb.min.x + aabb.max.x) * 0.5f,
-            (aabb.min.y + aabb.max.y) * 0.5f,
-            (aabb.min.z + aabb.max.z) * 0.5f,
-        };
+        Point3 center = Point3::FromVec3(
+            {(aabb.min.x + aabb.max.x) * 0.5f,
+             (aabb.min.y + aabb.max.y) * 0.5f,
+             (aabb.min.z + aabb.max.z) * 0.5f});
         float extent = std::max(
             {aabb.max.x - aabb.min.x, aabb.max.y - aabb.min.y,
              aabb.max.z - aabb.min.z}) *
@@ -61,7 +59,7 @@ void GizmoRenderer::onUpdate(FRendererState& f)
 
         f.submissionQueue.Add<CmdDrawWireCube>(
             GameViewType::Overlay,
-            CmdDrawWireCube{center, extent, colors::BLUE});
+            CmdDrawWireCube{center, extent, BLUE});
     }
 
     // --- Creature wire cubes (3D) ---
@@ -71,7 +69,7 @@ void GizmoRenderer::onUpdate(FRendererState& f)
     {
         f.submissionQueue.Add<CmdDrawWireCube>(
             GameViewType::Overlay,
-            CmdDrawWireCube{Point3{0, 0, 0}, 1.0f, colors::GREEN});
+            CmdDrawWireCube{Point3{0, 0, 0}, 1.0f, GREEN});
     }
 }
 }  // namespace game::view

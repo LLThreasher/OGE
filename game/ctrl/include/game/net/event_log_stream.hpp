@@ -76,9 +76,16 @@ class EventLogStream
         buffer.Write(meta.id);
     }
 
+    // SerializeEventPayload prefixes the payload with its byte size (uint32_t).
+    // Packet allocations must reserve these extra bytes (see ProduceAll).
+    static constexpr size_t PayloadSizePrefixBytes()
+    {
+        return sizeof(uint32_t);
+    }
+
     void SerializeEventPayload(Buffer& buffer, const std::span<std::byte> payload)
     {
-        uint64_t size = payload.size_bytes();
+        uint32_t size = static_cast<uint32_t>(payload.size_bytes());
         buffer.Write(size);
         buffer.WriteRaw(payload.data(), size);
     }
