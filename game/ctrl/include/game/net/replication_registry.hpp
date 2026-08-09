@@ -208,8 +208,10 @@ class SimplePacketScheduler : public PacketScheduler
                 break;
             }
 
-            // Estimate: entry payload size + per-packet header
-            size_t entryBytes = ref.payload.size() + headerBytes;
+            // Estimate: per-packet header + payload size prefix + payload
+            size_t entryBytes = headerBytes +
+                                EventLogStream<>::PayloadSizePrefixBytes() +
+                                ref.payload.size();
 
             if (m_maxBytesPerFrame > 0 &&
                 usedBytes + entryBytes > m_maxBytesPerFrame)
@@ -344,6 +346,7 @@ class ReplicationRegistry
                     {
                         auto packet = server.StartPacket(
                             m_eventStream->MetaSize() +
+                            m_eventStream->PayloadSizePrefixBytes() +
                             pdesc.payloadByteCount);
                         m_eventStream->SerializeEventMeta(packet,
                                                          entry.entry);
@@ -357,6 +360,7 @@ class ReplicationRegistry
                     {
                         auto packet = server.StartPacket(
                             m_eventStream->MetaSize() +
+                            m_eventStream->PayloadSizePrefixBytes() +
                             pdesc.payloadByteCount);
                         m_eventStream->SerializeEventMeta(packet,
                                                          entry.entry);
@@ -376,6 +380,7 @@ class ReplicationRegistry
                                     SendType::Reliable, 0);
                         auto payloadPacket = server.StartPacket(
                             sizeof(entry.entry.cursor) +
+                            m_eventStream->PayloadSizePrefixBytes() +
                             pdesc.payloadByteCount);
                         net::Serialize(payloadPacket, entry.entry.cursor);
                         m_eventStream->SerializeEventPayload(

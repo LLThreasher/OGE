@@ -15,6 +15,8 @@
 #include "oge/runtime/net_server.hpp"
 #include "test_macros.hpp"
 
+namespace net = oge::runtime::net;
+
 namespace
 {
 constexpr uint16_t TEST_PORT = 23402;
@@ -56,8 +58,11 @@ struct LoopbackHarness
         game::net::RegisterReplications(types, serverReg);
         game::net::RegisterReplications(types, clientReg);
 
-        // Install hooks on server world so entity creation triggers replication.
+        // Install hooks on server world so entity/component creation triggers
+        // replication (mirrors server_scene.hpp).
         game::net::InstallEntityReplicationHooks(serverWorld);
+        game::net::InstallComponentReplicationHooks<game::ComponentCreature>(
+            serverWorld);
 
         serverDispatcher
             .sink<oge::runtime::OnServerReceiveConnect>()
@@ -138,6 +143,19 @@ struct LoopbackHarness
         }
         return true;
     }
+
+    // Poll both sides until `done` returns true, bounded to maxPolls so a
+    // missed event fails the test instead of hanging the binary.
+    template <typename Fn>
+    bool pumpUntil(Fn&& done, int maxPolls = 200)
+    {
+        for (int i = 0; i < maxPolls; ++i)
+        {
+            poll();
+            if (done()) return true;
+        }
+        return false;
+    }
 };
 
 // =============================================================================
@@ -187,18 +205,95 @@ TEST(loopback_hooks_fire_multiple_entities)
         h.serverWorld.emplace<game::ReplicatedTag>(e);
     }
 
+    // PeekEvent(at=0) always restarts at the stream tail, so advance the
+    // cursor explicitly (same idiom as el_peek_cursor).
     auto& stream =
         h.serverWorld.ctx().get<game::net::EventLogStream<>>();
     std::vector<std::byte> dp;
     game::net::EventLogEntryConstRef r{{}, dp};
     int count = 0;
-    while (stream.PeekEvent(0, r))
+    for (game::net::LogCursor cursor = 0; stream.PeekEvent(0, r, cursor);)
     {
         if (r.entry.id == entt::type_hash<game::net::AddEntityEvent>::value())
             ++count;
-        r.entry.cursor++;
+        cursor = r.entry.cursor + 1;
     }
     CHECK(count >= N);
+}
+
+// =============================================================================
+// Wire delivery: server event → ENet packet → client event stream
+// =============================================================================
+
+TEST(loopback_wire_delivers_add_entity)
+{
+    LoopbackHarness h;
+    CHECK(h.start());
+    CHECK(h.waitForHandshake());
+
+    // Create a replicated entity on the server; the hook enqueues an
+    // AddEntityEvent which must travel over ENet into the client stream.
+    auto e = h.serverWorld.create();
+    h.serverWorld.emplace<game::ReplicatedTag>(e);
+
+    auto& clientStream =
+        h.clientWorld.ctx().get<game::net::EventLogStream<>>();
+    std::vector<std::byte> dp;
+    game::net::EventLogEntryConstRef r{{}, dp};
+    CHECK(h.pumpUntil([&] { return clientStream.PeekEvent(0, r); }));
+
+    CHECK(r.entry.id == entt::type_hash<game::net::AddEntityEvent>::value());
+    CHECK_EQ(r.entry.cursor, 1u);  // first event of the stream
+
+    // The payload must round-trip the entity id.
+    game::net::AddEntityEvent evt;
+    net::Buffer payloadBuf{r.payload};
+    payloadBuf.ToReadOnly();
+    net::Deserialize(payloadBuf, evt);
+    CHECK_EQ(evt.entity, e);
+}
+
+TEST(loopback_wire_delivers_add_component)
+{
+    LoopbackHarness h;
+    CHECK(h.start());
+    CHECK(h.waitForHandshake());
+
+    // ReplicatedTag + ComponentCreature → AddEntityEvent + AddComponentEvent.
+    auto e = h.serverWorld.create();
+    h.serverWorld.emplace<game::ReplicatedTag>(e);
+    game::ComponentCreature creature{};
+    creature.maxSpeed = 12.5f;
+    creature.moveOrder = {3.f, 0.f, 4.f};
+    h.serverWorld.emplace<game::ComponentCreature>(e, creature);
+
+    auto& clientStream =
+        h.clientWorld.ctx().get<game::net::EventLogStream<>>();
+    std::vector<std::byte> dp;
+    game::net::EventLogEntryConstRef r{{}, dp};
+    // PeekEvent(at=0) restarts at the tail, so advance the cursor explicitly.
+    game::net::LogCursor cursor = 0;
+    CHECK(h.pumpUntil([&] {
+        while (clientStream.PeekEvent(0, r, cursor))
+        {
+            cursor = r.entry.cursor + 1;
+            if (r.entry.id ==
+                entt::type_hash<
+                    game::net::AddComponentEvent<game::ComponentCreature>>::
+                    value())
+                return true;
+        }
+        return false;
+    }));
+
+    game::net::AddComponentEvent<game::ComponentCreature> evt;
+    net::Buffer payloadBuf{r.payload};
+    payloadBuf.ToReadOnly();
+    net::Deserialize(payloadBuf, evt);
+    CHECK_EQ(evt.entity, e);
+    // Only the fields declared in DECL_NET_OBJ(ComponentCreature) travel.
+    CHECK_EQ(evt.component.maxSpeed, creature.maxSpeed);
+    CHECK_EQ(evt.component.initJumpSpeed, creature.initJumpSpeed);
 }
 
 RUN_TESTS("Loopback Integration Tests")

@@ -77,6 +77,7 @@ void UIRenderer::onDetach(RendererState& ctx)
 
 void UIRenderer::onUpdate(FRendererState& f)
 {
+    auto& game = f.uiWorld;
     auto spQueue = f.submissionQueue.GetSingle(GameViewType::Overlay)
                        .View<oge::runtime::CmdDrawSprite>();
     for (auto [entity, uitext, rect] : game.view<UIText, ScreenRect>().each())
