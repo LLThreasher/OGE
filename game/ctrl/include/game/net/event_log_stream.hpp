@@ -11,7 +11,7 @@
 #include "oge/event_stream.hpp"
 #include "oge/runtime/debug.hpp"
 #include "oge/runtime/net_serializer.hpp"
-#include "oge/runtime/typed_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 
 namespace game::net
 {

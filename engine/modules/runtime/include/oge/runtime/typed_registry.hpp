@@ -12,35 +12,19 @@
 #include <unordered_map>
 
 #include "oge/log.hpp"
-#include "oge/runtime/entt.hpp"
+#include "oge/runtime/oge_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 
 namespace oge::runtime
 {
-using oge_id_type = entt::id_type;
-
-template <typename T>
-struct TypeName
-{
-    static constexpr std::string Get();
-};
-
-#define DECL_TYPE_NAME(Type, Name)         \
-    template <>                            \
-    struct ::oge::runtime::TypeName<Type>  \
-    {                                      \
-        static constexpr std::string Get() \
-        {                                  \
-            return Name;                   \
-        }                                  \
-    };
 
 class OGEContextReadOnly
 {
    protected:
-    entt::registry& m_registry;
+    OgeRegistryRef m_registry;
 
    public:
-    OGEContextReadOnly(entt::registry& registry) : m_registry(registry)
+    OGEContextReadOnly(OgeRegistryRef registry) : m_registry(registry)
     {
     }
 
@@ -60,6 +44,10 @@ class OGEContextReadOnly
 class OGEContext : public OGEContextReadOnly
 {
    public:
+    OGEContext(OgeRegistryRef ref) : OGEContextReadOnly(ref)
+    {
+    }
+
     template <typename T, typename... Args>
     T& Emplace(Args... args)
     {

@@ -144,3 +144,4 @@ shader_cache/
 AGI_trace/
 
 .clangd
+.claude/

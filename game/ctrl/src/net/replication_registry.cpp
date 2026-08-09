@@ -3,8 +3,8 @@
 #include "game/app_context.hpp"
 #include "game/input/net.hpp"
 #include "game/net/replication_events.hpp"
-#include "game/terrain/terrain_view.hpp"
-#include "oge/runtime/net_packet_sender.hpp"
+#include "game/components.hpp"
+#include "game/components_net.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
 using game::AnythingFactory;
