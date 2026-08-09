@@ -20,7 +20,7 @@ namespace game
 {
 Server::Server(float tickInterval)
     : m_tick(tickInterval),
-      m_ctx(m_metaWorld),
+      m_ctx(m_metaWorld.Raw()),
       m_am(m_ctx.Emplace<AssetManager>())
 {
     using namespace sim;

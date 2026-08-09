@@ -9,8 +9,8 @@
 #include "oge/runtime/typed_registry.hpp"
 
 #define INIT \
-    entt::registry rawReg; \
-    oge::runtime::OGEContext octx(rawReg); \
+    oge::runtime::OgeRegistry rawReg; \
+    oge::runtime::OGEContext octx(rawReg.Raw()); \
     oge::runtime::TypeRegistry types(octx); \
     entt::dispatcher events; \
     game::MemoryContext mem{{}, {64 * 1024, 1.f}, {64 * 1024, 0.1f}}; \

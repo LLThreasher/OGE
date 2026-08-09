@@ -4,6 +4,7 @@
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/log.hpp"
 #include "oge/point2.hpp"
+#include "oge/runtime/oge_registry.hpp"
 #include "oge/runtime/ui/objects.hpp"
 
 namespace game::ui
@@ -19,27 +20,27 @@ void UIDrag::UpdateDrag(math::vec2 pos, entt::entity onTopOf, float dt)
     maxDragDelta.y = math::max(maxDragDelta.y, totalOffset.y);
 }
 
-bool UIDrag::IsHold(const entt::registry& world, int pixelRadiusSqr) const
+bool UIDrag::IsHold(const OgeRegistryRef world, int pixelRadiusSqr) const
 {
     auto diff = ui::RelSpaceToScreenSpace(world, maxDragDelta);
     auto len = diff.x * diff.x + diff.y * diff.y;
     return len < pixelRadiusSqr;
 }
 
-bool UIDrag::IsClick(const entt::registry& world, float duration,
+bool UIDrag::IsClick(const OgeRegistryRef world, float duration,
                      int pixelRadiusSqr) const
 {
     if (deltaTime > duration) return false;
     return IsHold(world, pixelRadiusSqr);
 }
 
-bool IsButtonClicked(const entt::registry& game, entt::entity button)
+bool IsButtonClicked(const OgeRegistryRef game, entt::entity button)
 {
     math::vec2 clickPos;
     return IsButtonClicked(game, button, clickPos);
 }
 
-bool IsButtonClicked(const entt::registry& game, entt::entity button,
+bool IsButtonClicked(const OgeRegistryRef game, entt::entity button,
                      math::vec2& clickPos)
 {
     if (auto drag = game.try_get<UIDrag>(button))
@@ -54,13 +55,13 @@ bool IsButtonClicked(const entt::registry& game, entt::entity button,
     return false;
 }
 
-bool IsDragReleasedSrc(const entt::registry& game, entt::entity src)
+bool IsDragReleasedSrc(const oge::runtime::OgeRegistryRef game, entt::entity src)
 {
     return game.all_of<UIDragReleaseFinished>(src);
 }
 
 std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragSrc(
-    const entt::registry& game, entt::entity e)
+    const oge::runtime::OgeRegistryRef game, entt::entity e)
 {
     if (auto drag = game.try_get<UIDrag>(e))
     {
@@ -73,7 +74,7 @@ std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragSrc(
 }
 
 std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragDst(
-    const entt::registry& game, entt::entity e)
+    const OgeRegistryRef game, entt::entity e)
 {
     if (auto dragRel = game.try_get<UIDragReleaseDst>(e))
     {

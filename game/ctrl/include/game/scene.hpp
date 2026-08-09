@@ -27,7 +27,7 @@ using oge::runtime::OGEContext;
 class Scene : protected AppRuntime
 {
    protected:
-    entt::registry m_world;
+    GameWorld m_world;
     sim::SubsystemPipeline m_subsystems;
     sim::RealtimeSubsystemPipeline m_realtimeSubsystems;
 

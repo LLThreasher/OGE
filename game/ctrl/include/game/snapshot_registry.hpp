@@ -11,10 +11,10 @@ using oge::runtime::TypeRegistry;
 
 struct SnapshotCapability : ICapability
 {
-    using CaptureFn = void (*)(entt::registry&, entt::any&);
-    using RestoreFn = void (*)(entt::registry&, const entt::any&);
+    using CaptureFn = void (*)(oge::runtime::OgeRegistryRef, entt::any&);
+    using RestoreFn = void (*)(oge::runtime::OgeRegistryRef, const entt::any&);
     using CreateStateFn = entt::any (*)();
-    using HashFn = uint64_t (*)(entt::registry&);
+    using HashFn = uint64_t (*)(oge::runtime::OgeRegistryRef);
 
     FamilyId family;
 
@@ -56,7 +56,7 @@ public:
         }
     }
 
-    void CaptureTick(entt::registry& world, uint32_t tick)
+    void CaptureTick(oge::runtime::OgeRegistryRef world, uint32_t tick)
     {
         TickState ts;
         ts.tick = tick;
@@ -106,7 +106,7 @@ public:
         return 0;
     }
 
-    bool RestoreTick(entt::registry& world, uint32_t tick)
+    bool RestoreTick(oge::runtime::OgeRegistryRef world, uint32_t tick)
     {
         for (auto& ts : m_history)
         {

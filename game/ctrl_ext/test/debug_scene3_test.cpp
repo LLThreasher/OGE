@@ -21,8 +21,8 @@ TEST(inheritance) {
 }
 
 TEST(default_scene_config) {
-    entt::registry dummyReg;
-    oge::runtime::OGEContext octx(dummyReg);
+    oge::runtime::OgeRegistry dummyReg;
+    oge::runtime::OGEContext octx(dummyReg.Raw());
     oge::runtime::TypeRegistry types(octx);
     auto cfg = game::GetDefaultSceneConfig(types);
     CHECK(!cfg.subsystems.empty());

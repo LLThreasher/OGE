@@ -13,7 +13,7 @@
 
 namespace game
 {
-entt::entity ComponentPlayer::CreatePlayer(entt::registry& world,
+entt::entity ComponentPlayer::CreatePlayer(GameWorld& world,
                                            PlayerInfo info, entt::entity hint)
 {
     entt::entity res;
@@ -38,7 +38,7 @@ entt::entity ComponentPlayer::CreatePlayer(entt::registry& world,
     return res;
 }
 
-void ComponentPlayer::DestroyPlayer(entt::registry& world, PlayerInfo info)
+void ComponentPlayer::DestroyPlayer(GameWorld& world, PlayerInfo info)
 {
     for (auto [e, player] : world.view<ComponentPlayer>()->each())
     {

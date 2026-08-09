@@ -117,14 +117,6 @@ TEST(raw_access) {
     CHECK(reg.Raw().valid(e));
 }
 
-// -- implicit conversion --
-TEST(implicit_conv) {
-    oge::runtime::OgeRegistry reg;
-    entt::registry& raw = reg;
-    auto e = raw.create();
-    CHECK(raw.valid(e));
-}
-
 // -- clear --
 TEST(clear) {
     oge::runtime::OgeRegistry reg;

@@ -13,7 +13,7 @@ using oge::I16Point2;
 using oge::U16Point2;
 using namespace ui;
 
-static void onCreateUIRect(entt::registry& gameWorld, entt::entity entity)
+static void onCreateUIRect(oge::runtime::OgeRegistryRef gameWorld, entt::entity entity)
 {
     gameWorld.emplace_or_replace<ScreenRect>(
         entity, UIRectToScreenRect(gameWorld, entity));
@@ -23,12 +23,12 @@ static void onCreateUIRect(entt::registry& gameWorld, entt::entity entity)
     }
 }
 
-static void onUpdateUIRect(entt::registry& gameWorld, entt::entity entity)
+static void onUpdateUIRect(oge::runtime::OgeRegistryRef gameWorld, entt::entity entity)
 {
     UpdateUIRectToScreenRect(gameWorld, entity);
 }
 
-static void onDestroyUIRect(entt::registry& gameWorld, entt::entity entity)
+static void onDestroyUIRect(oge::runtime::OgeRegistryRef gameWorld, entt::entity entity)
 {
     for (auto [e, p] : gameWorld.view<UIParent>().each())
     {
@@ -39,7 +39,7 @@ static void onDestroyUIRect(entt::registry& gameWorld, entt::entity entity)
     }
 }
 
-static void onSurfaceRecreate(entt::registry& world,
+static void onSurfaceRecreate(oge::runtime::OgeRegistryRef world,
                               SurfaceRecreateEvent& event)
 {
     world.clear<ScreenRect>();

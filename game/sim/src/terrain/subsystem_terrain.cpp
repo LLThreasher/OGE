@@ -25,7 +25,7 @@ void SubsystemTerrain::onDetach(GameState& ctx)
     m_createPlayerConnection.release();
 }
 
-void SubsystemTerrain::onPlayerCreated(entt::registry& world,
+void SubsystemTerrain::onPlayerCreated(oge::runtime::OgeRegistryRef world,
                                        entt::entity entity)
 {
     auto pos = world.get<ComponentCamera>(entity).position;

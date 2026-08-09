@@ -36,7 +36,7 @@ class SceneRunner
 {
    public:
     SceneRunner()
-        : m_ctx(m_metaWorld),
+        : m_ctx(m_metaWorld.Raw()),
           m_anyFactory(m_ctx),
           m_appCtx(m_ctx, m_anyFactory, m_events, m_memory)
     {
@@ -97,7 +97,7 @@ class SceneRunner
     }
 
    protected:
-    entt::registry m_metaWorld;
+    oge::runtime::OgeRegistry m_metaWorld;
     OGEContext m_ctx;
     AnythingFactory m_anyFactory;
     entt::dispatcher m_events;

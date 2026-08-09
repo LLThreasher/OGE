@@ -23,7 +23,7 @@ using BlockEntry =
         {"wood", {"Wood", "wood_plank.png", 1}},
         {"stone", {"Stone", "green_stone.png", 1}},
     };
-    entt::registry m_world;
+    oge::runtime::OgeRegistry m_world;
     auto& blocks = m_world.ctx().emplace<::game::terrain::BlockRegistry>();
     for (const auto& [name, config] : blocksEntries)
     {
@@ -45,7 +45,7 @@ using BlockEntry =
         {"wood", {"Wood", "wood_plank.png", 1}},
         {"stone", {"Stone", "green_stone.png", 1}},
     };
-    entt::registry reg;
+    oge::runtime::OgeRegistry reg;
     oge::runtime::OgeRegistryRef m_world{reg};
     auto& blocks = m_world.ctx().emplace<::game::terrain::BlockRegistry>();
     for (const auto& [name, config] : blocksEntries)

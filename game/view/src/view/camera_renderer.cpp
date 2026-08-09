@@ -11,8 +11,8 @@
 namespace game::view
 {
 using namespace ui;
-static void onCameraCreated(entt::registry& renderWorld,
-                            entt::registry& gameWorld, entt::entity e)
+static void onCameraCreated(oge::runtime::OgeRegistryRef renderWorld,
+                            oge::runtime::OgeRegistryRef gameWorld, entt::entity e)
 {
     if (!renderWorld.valid(e))
     {
@@ -44,8 +44,8 @@ void CameraRenderer::onAttach(RendererState& ctx)
     //     ctx.renderWorld);
 }
 
-void CameraRenderer::onViewPanelUpdate(entt::registry& world,
-                                       entt::registry& uiWorld,
+void CameraRenderer::onViewPanelUpdate(oge::runtime::OgeRegistryRef world,
+                                       oge::runtime::OgeRegistryRef uiWorld,
                                        entt::entity entity)
 {
     auto [vp, rect] = uiWorld.try_get<ViewPanel, ScreenRect>(entity);

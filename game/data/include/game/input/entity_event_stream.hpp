@@ -5,6 +5,7 @@
 #include "oge/event_stream.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/net_serializer.hpp"
+#include "oge/runtime/oge_registry.hpp"
 #include "oge/runtime/typed_registry.hpp"
 #include "game/input/net.hpp"
 
@@ -12,7 +13,7 @@ namespace game::input
 {
 
 inline void EnsureEntity(
-    entt::registry& world,
+    oge::runtime::OgeRegistryRef world,
     entt::entity entity)
 {
     if (entity == entt::null)
@@ -28,7 +29,7 @@ inline void EnsureEntity(
 }
 
 inline void EnsureReplicatedEntity(
-    entt::registry& world,
+    oge::runtime::OgeRegistryRef world,
     entt::entity entity)
 {
     EnsureEntity(world, entity);
@@ -71,7 +72,7 @@ class EntityEventStream
 
     using Base::Base;
 
-    static void RegisterHooks(entt::registry& world)
+    static void RegisterHooks(oge::runtime::OgeRegistryRef world)
     {
         if (!world.ctx().contains<EntityEventStream>())
         {
@@ -83,7 +84,7 @@ class EntityEventStream
         */
         world.on_construct<ReplicatedTag>()
             .template connect<
-                +[](entt::registry& world, entt::entity entity)
+                +[](oge::runtime::OgeRegistryRef world, entt::entity entity)
                 {
                     auto& stream =
                         world.ctx()
@@ -100,7 +101,7 @@ class EntityEventStream
         */
         world.on_destroy<ReplicatedTag>()
             .template connect<
-                +[](entt::registry& world, entt::entity entity)
+                +[](oge::runtime::OgeRegistryRef world, entt::entity entity)
                 {
                     auto& stream =
                         world.ctx()
@@ -114,7 +115,7 @@ class EntityEventStream
     }
 
     static void Apply(
-        entt::registry& world,
+        oge::runtime::OgeRegistryRef world,
         Cursor& cursor)
     {
         auto& stream =
@@ -129,7 +130,7 @@ class EntityEventStream
     }
 
     static void Apply(
-        entt::registry& world,
+        oge::runtime::OgeRegistryRef world,
         const Event& event)
     {
         if (event.entity == entt::null)
@@ -199,7 +200,7 @@ class ComponentEventStream
 
     using Base::Base;
 
-    static void RegisterHooks(entt::registry& world)
+    static void RegisterHooks(oge::runtime::OgeRegistryRef world)
     {
         if (!world.ctx().contains<ComponentEventStream<T, Capacity>>())
         {
@@ -212,7 +213,7 @@ class ComponentEventStream
         */
         world.on_construct<ReplicatedTag>()
             .template connect<
-                +[](entt::registry& world, entt::entity entity)
+                +[](oge::runtime::OgeRegistryRef world, entt::entity entity)
                 {
                     if (!world.template all_of<T>(entity))
                     {
@@ -237,7 +238,7 @@ class ComponentEventStream
         */
         world.on_construct<T>()
             .template connect<
-                +[](entt::registry& world, entt::entity entity)
+                +[](oge::runtime::OgeRegistryRef world, entt::entity entity)
                 {
                     if (!world.template all_of<ReplicatedTag>(entity))
                     {
@@ -262,7 +263,7 @@ class ComponentEventStream
         */
         world.on_update<T>()
             .template connect<
-                +[](entt::registry& world, entt::entity entity)
+                +[](oge::runtime::OgeRegistryRef world, entt::entity entity)
                 {
                     if (!world.template all_of<ReplicatedTag>(entity))
                     {
@@ -287,7 +288,7 @@ class ComponentEventStream
         */
         world.on_destroy<T>()
             .template connect<
-                +[](entt::registry& world, entt::entity entity)
+                +[](oge::runtime::OgeRegistryRef world, entt::entity entity)
                 {
                     if (!world.template all_of<ReplicatedTag>(entity))
                     {
@@ -306,7 +307,7 @@ class ComponentEventStream
     }
 
     static void Apply(
-        entt::registry& world,
+        oge::runtime::OgeRegistryRef world,
         Cursor& cursor)
     {
         auto& stream =
@@ -321,7 +322,7 @@ class ComponentEventStream
     }
 
     static void Apply(
-        entt::registry& world,
+        oge::runtime::OgeRegistryRef world,
         const Event& event)
     {
         if (event.entity == entt::null)

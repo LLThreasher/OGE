@@ -1,10 +1,11 @@
 #include "oge/runtime/entt.hpp"
+#include "oge/runtime/oge_registry.hpp"
 #include "oge/runtime/ui/objects.hpp"
 
 namespace oge::runtime::ui
 {
 
-entt::entity CastRayScreenSpace(const entt::registry& gameWorld, math::vec2 pos)
+entt::entity CastRayScreenSpace(const OgeRegistryRef gameWorld, math::vec2 pos)
 {
     entt::entity resultEntity = entt::null;
     int maxZLevel = -1;
@@ -28,12 +29,12 @@ entt::entity CastRayScreenSpace(const entt::registry& gameWorld, math::vec2 pos)
     return resultEntity;
 }
 
-entt::entity CastRayRelSpace(const entt::registry& gameWorld, math::vec2 pos)
+entt::entity CastRayRelSpace(const OgeRegistryRef gameWorld, math::vec2 pos)
 {
     return CastRayScreenSpace(gameWorld, RelSpaceToScreenSpace(gameWorld, pos));
 }
 
-ScreenRect UIRectToScreenRect(const entt::registry& world, entt::entity rect)
+ScreenRect UIRectToScreenRect(const OgeRegistryRef world, entt::entity rect)
 {
     if (auto sr = world.try_get<ScreenRect>(rect))
     {
@@ -58,7 +59,7 @@ ScreenRect UIRectToScreenRect(const entt::registry& world, entt::entity rect)
     }
 }
 
-void UpdateUIRectToScreenRect(entt::registry& world, entt::entity rect)
+void UpdateUIRectToScreenRect(OgeRegistryRef world, entt::entity rect)
 {
     if (!world.all_of<ScreenRect>(rect)) return;
     assert(world.all_of<UIRect>(rect));
@@ -89,21 +90,21 @@ math::vec2 ScreenSpaceToRelSpace(const ScreenRect rect, math::vec2 screenPos)
            static_cast<math::vec2>(rect.extent);
 }
 
-math::vec2 ScreenSpaceToRelSpace(const entt::registry& world,
+math::vec2 ScreenSpaceToRelSpace(const OgeRegistryRef world,
                                  entt::entity rectEntity, math::vec2 screenPos)
 {
     auto rect = UIRectToScreenRect(world, rectEntity);
     return ScreenSpaceToRelSpace(rect, screenPos);
 }
 
-math::vec2 ScreenSpaceToRelSpace(const entt::registry& world,
+math::vec2 ScreenSpaceToRelSpace(const OgeRegistryRef world,
                                  math::vec2 screenPos)
 {
     auto rectE = world.view<UIRoot>().front();
     return ScreenSpaceToRelSpace(world, rectE, screenPos);
 }
 
-Point2 RelSpaceToScreenSpace(const entt::registry& world, math::vec2 relPos)
+Point2 RelSpaceToScreenSpace(const OgeRegistryRef world, math::vec2 relPos)
 {
     auto root = world.view<UIRoot>().front();
     auto rect = UIRectToScreenRect(world, root);

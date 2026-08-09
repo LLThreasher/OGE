@@ -22,9 +22,9 @@ namespace game::view
 
 struct RendererState
 {
-    entt::registry& world;
-    entt::registry& uiWorld;
-    entt::registry& renderWorld;
+    oge::runtime::OgeRegistryRef world;
+    oge::runtime::OgeRegistryRef uiWorld;
+    oge::runtime::OgeRegistryRef renderWorld;
     entt::dispatcher& events;
     MemoryContext& memory;
     AssetContext assets;
@@ -44,9 +44,9 @@ struct FRendererState
     float alpha;
     AssetContext& assets;
     SubmissionQueue& submissionQueue;
-    const entt::registry& world;
-    const entt::registry& uiWorld;
-    entt::registry& renderWorld;
+    const oge::runtime::OgeRegistryRef world;
+    const oge::runtime::OgeRegistryRef uiWorld;
+    oge::runtime::OgeRegistryRef renderWorld;
     entt::dispatcher& events;
     MemoryContext& memory;
 
@@ -100,7 +100,7 @@ class DebugInfoRenderer : public Renderer
 
 class CameraRenderer : public Renderer
 {
-    static void onViewPanelUpdate(entt::registry& gameWorld, entt::registry& uiWorld, entt::entity entity);
+    static void onViewPanelUpdate(oge::runtime::OgeRegistryRef gameWorld, oge::runtime::OgeRegistryRef uiWorld, entt::entity entity);
 
    public:
     void onAttach(RendererState&) override;
