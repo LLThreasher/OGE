@@ -15,7 +15,7 @@ using namespace input;
 class SDL3GameWindow : public Window
 {
    public:
-    SDL3GameWindow(std::string name, int width, int height);
+    SDL3GameWindow(std::string name, uint64_t width, uint64_t height);
     ~SDL3GameWindow();
 
     void Run(WindowApp&) override;

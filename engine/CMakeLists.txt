@@ -69,3 +69,5 @@ endif()
 # if(BUILD_METAL)
 # add_subdirectory(modules/graphics_metal)
 # endif()
+
+add_subdirectory(modules/api)

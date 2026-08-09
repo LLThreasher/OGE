@@ -1,6 +1,7 @@
 #include <cstddef>
 #include <functional>
 #include <memory>
+#include <string_view>
 
 #include "SDL3/SDL_events.h"
 #include "SDL3/SDL_timer.h"
@@ -57,7 +58,7 @@ static MouseButton GetEngineMouseButton(uint8_t sdlButton)
     }
 }
 
-SDL3GameWindow::SDL3GameWindow(std::string name, int width, int height)
+SDL3GameWindow::SDL3GameWindow(std::string name, uint64_t width, uint64_t height)
 {
     SetLogger(new SpdLogger());
     oge::SetStackTraceFn(&oge::platform::PrintStackTrace);
@@ -329,9 +330,9 @@ void SDL3GameWindow::Run(WindowApp& app)
     SDL_Quit();
 }
 
-std::unique_ptr<Window> CreateSDL3Window(const std::string& title, int width,
-                                         int height)
+std::unique_ptr<Window> CreateSDL3Window(std::string_view title, uint64_t width,
+                                         uint64_t height)
 {
-    return std::make_unique<SDL3GameWindow>(title, width, height);
+    return std::make_unique<SDL3GameWindow>(std::string(title), width, height);
 }
 }  // namespace oge::platform::sdl3

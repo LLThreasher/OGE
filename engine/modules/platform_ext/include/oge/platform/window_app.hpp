@@ -2,6 +2,7 @@
 
 #include <cinttypes>
 #include <functional>
+#include <string_view>
 
 #include "oge/flag_helper.hpp"
 #include "oge/input/raw_input_stream.hpp"
@@ -23,6 +24,7 @@ using InputProvider =
 class WindowApp
 {
    public:
+    virtual ~WindowApp() = default;
     virtual void Initialize(WindowHandle& handle) = 0;
     virtual AppFrameAction Update(float dt, InputProvider pollInputs) = 0;
     virtual void Shutdown() = 0;
@@ -30,4 +32,11 @@ class WindowApp
     virtual void OnWindowRecreate(WindowHandle&) = 0;
     virtual void OnResize(int width, int height) = 0;
 };
+
+using WindowAppFactory = std::unique_ptr<WindowApp> (*)();
+
+void RegisterWindowAppFactory(std::string_view name,
+                           WindowAppFactory factory);
+
+std::unique_ptr<WindowApp> CreateWindowApp(std::string_view name);
 }  // namespace oge::platform

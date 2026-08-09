@@ -1,0 +1,65 @@
+#include "oge/__api__.h"
+
+#include <memory>
+#include <vector>
+
+#include "oge/platform/sdl3/create_window.hpp"
+#include "oge/platform/window.hpp"
+#include "oge/platform/window_app.hpp"
+
+struct Window
+{
+    std::unique_ptr<oge::platform::Window> ptr;
+};
+
+struct WindowApp
+{
+    std::unique_ptr<oge::platform::WindowApp> ptr;
+};
+
+// 2. The C API Implementation bindings
+extern "C"
+{
+    Window_t* OGE_Window_Create(const char* backend, const char* name,
+                                size_t width, size_t height)
+    {
+        return reinterpret_cast<Window_t*>(new Window{
+            oge::platform::CreateWindow(backend, name, width, height)});
+    }
+
+    void OGE_Window_Destroy(Window_t* instance)
+    {
+        if (instance)
+        {
+            // Cast back to the real class type and safely delete
+            delete reinterpret_cast<Window*>(instance);
+        }
+    }
+
+    void OGE_Window_Run(Window_t* instance, WindowApp_t* app)
+    {
+        if (instance && app)
+        {
+            instance->ptr->Run(*app->ptr.get());
+        }
+    }
+
+    WindowApp_t* OGE_App_Create(const char* name)
+    {
+        return reinterpret_cast<WindowApp_t*>(
+            new WindowApp{oge::platform::CreateWindowApp(name)});
+    }
+
+    void OGE_App_Destroy(WindowApp_t* instance)
+    {
+        if (instance)
+        {
+            delete reinterpret_cast<WindowApp*>(instance);
+        }
+    }
+
+    void OGE_Init(void)
+    {
+        oge::platform::RegisterWindowFactory("SDL3", &oge::platform::sdl3::CreateSDL3Window);
+    }
+}  // extern "C"
