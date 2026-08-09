@@ -5,6 +5,7 @@
 #include "game/scene.hpp"
 #include "game/scene_runner.hpp"
 #include "game/view/gfx/debug_info_pass.hpp"
+#include "game/view/gfx/gizmo_pass.hpp"
 #include "game/view/gfx/terrain_pass2.hpp"
 #include "game/view/gfx/ui_pass.hpp"
 #include "game/view/gfx/view_executor.hpp"
@@ -19,6 +20,7 @@
 namespace game
 {
 using ::game::view::gfx::DebugInfoPass;
+using ::game::view::gfx::GizmoPass;
 using ::game::view::gfx::TerrainPass2;
 using ::game::view::gfx::UIPass;
 using oge::input::RawInputStream;
@@ -29,7 +31,7 @@ using oge::runtime::OGEContext;
 class SceneExt : public Scene
 {
     using ViewExecutor =
-        view::ViewExecutor<TerrainPass2, UIPass, DebugInfoPass>;
+        view::ViewExecutor<TerrainPass2, UIPass, DebugInfoPass, GizmoPass>;
 
     struct Ctx : AppContext
     {

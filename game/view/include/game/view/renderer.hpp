@@ -115,6 +115,14 @@ class UIRenderer : public Renderer
     void onDetach(RendererState&) override;
     void onUpdate(FRendererState&) override;
 };
+
+class GizmoRenderer : public Renderer
+{
+   public:
+    void onAttach(RendererState&) override;
+    void onDetach(RendererState&) override;
+    void onUpdate(FRendererState&) override;
+};
 }  // namespace game::view
 
 namespace oge::runtime
@@ -154,6 +162,15 @@ struct TypeName<UIRenderer>
     static constexpr std::string Get()
     {
         return "core::UIRenderer";
+    }
+};
+
+template <>
+struct TypeName<GizmoRenderer>
+{
+    static constexpr std::string Get()
+    {
+        return "core::GizmoRenderer";
     }
 };
 }
