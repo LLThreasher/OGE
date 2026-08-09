@@ -11,7 +11,7 @@ using namespace game::net;
 // =========================================================================
 
 std::pmr::vector<std::byte> game::net::EntitySnapshotFn(
-    const entt::registry& world)
+    const oge::runtime::OgeRegistryRef world)
 {
     std::pmr::vector<std::byte> out;
     out.reserve(4096);
@@ -33,7 +33,7 @@ std::pmr::vector<std::byte> game::net::EntitySnapshotFn(
     return out;
 }
 
-void game::net::EntityRollbackFn(entt::registry& world, net::Buffer& payload)
+void game::net::EntityRollbackFn(oge::runtime::OgeRegistryRef world, net::Buffer& payload)
 {
     // Read the snapshot: count then entity list.
     uint32_t count = 0;
@@ -92,7 +92,7 @@ bool game::net::EntityCompareFn(net::Buffer& a, net::Buffer& b)
 // =========================================================================
 
 std::pmr::vector<std::byte> game::net::ChunkSnapshotFn(
-    const entt::registry& world)
+    const oge::runtime::OgeRegistryRef world)
 {
     std::pmr::vector<std::byte> out;
     out.reserve(65536);
@@ -140,7 +140,7 @@ std::pmr::vector<std::byte> game::net::ChunkSnapshotFn(
     return out;
 }
 
-void game::net::ChunkRollbackFn(entt::registry& world, net::Buffer& payload)
+void game::net::ChunkRollbackFn(oge::runtime::OgeRegistryRef world, net::Buffer& payload)
 {
     if (!world.ctx().contains<terrain::TerrainView>()) return;
 

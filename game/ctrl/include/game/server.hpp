@@ -15,7 +15,7 @@ using oge::runtime::AssetManager;
 class Server : public SceneRunner<DebugServerScene>
 {
     oge::runtime::BlockingTickScheduler m_tick;
-    entt::registry m_metaWorld;
+    oge::runtime::OgeRegistry m_metaWorld;
     OGEContext m_ctx;
 
     AssetManager& m_am;

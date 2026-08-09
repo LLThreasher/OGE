@@ -9,6 +9,7 @@
 #include "game/input/player_input_stream.hpp"
 #include "oge/math.hpp"
 #include "oge/runtime/net_traits.hpp"
+#include "oge/runtime/typed_registry.hpp"
 
 namespace game
 {
@@ -16,6 +17,8 @@ struct ReplicatedTag
 {
 };
 }  // namespace game
+
+DECL_TYPE_NAME(game::ReplicatedTag, "core::ReplicatedTag")
 
 namespace game::input::net
 {

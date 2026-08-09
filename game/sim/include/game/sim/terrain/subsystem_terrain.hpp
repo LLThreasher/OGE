@@ -64,8 +64,8 @@ class SubsystemTerrain : public Subsystem
     // FrameOutputData& fd) override;
 
    private:
-    void onPlayerCreated(entt::registry& world, entt::entity entity);
-    void onPlayerDestroyed(entt::registry& world, entt::entity entity);
+    void onPlayerCreated(oge::runtime::OgeRegistryRef world, entt::entity entity);
+    void onPlayerDestroyed(oge::runtime::OgeRegistryRef world, entt::entity entity);
     TerrainGenerator m_terrainGenerator;
     TerrainUpdateScheduler m_terrainUpdateScheduler;
     entt::connection m_createPlayerConnection;

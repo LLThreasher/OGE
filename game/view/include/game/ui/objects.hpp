@@ -2,6 +2,8 @@
 
 #include "oge/math.hpp"
 #include "oge/runtime/entt.hpp"
+#include "oge/runtime/oge_registry.hpp"
+#include "oge/runtime/typed_registry.hpp"
 #include "oge/runtime/ui/objects.hpp"
 
 
@@ -11,12 +13,13 @@ namespace math = ::oge::math;
 using namespace oge::runtime::ui;
 
 using oge::runtime::AssetContext;
+using oge::runtime::OgeRegistryRef;
 
-entt::entity CreateGameView(entt::registry& game, UIRect rect,
+entt::entity CreateGameView(OgeRegistryRef game, UIRect rect,
                             entt::entity camera = entt::null);
-entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset,
+entt::entity CreateTerminalPanel(OgeRegistryRef game, AssetContext& asset,
                                  UIRect rect);
-entt::entity CreateButton(entt::registry& game, AssetContext& asset,
+entt::entity CreateButton(OgeRegistryRef game, AssetContext& asset,
                           UIRect rect);
 
 struct UICursor
@@ -35,8 +38,8 @@ struct UIDrag
     math::vec2 maxDragDelta = {};
 
     void UpdateDrag(math::vec2 pos, entt::entity onTopOf, float dt);
-    bool IsHold(const entt::registry& world, int pixelRadiusSqr = 200) const;
-    bool IsClick(const entt::registry& world, float duration = 0.25f,
+    bool IsHold(const OgeRegistryRef world, int pixelRadiusSqr = 200) const;
+    bool IsClick(const OgeRegistryRef world, float duration = 0.25f,
                  int pixelRadiusSqr = 200) const;
 };
 
@@ -49,7 +52,7 @@ struct UIDragReleaseDst
 {
     entt::entity dragStart;
 
-    const UIDrag& GetDrag(const entt::registry& world) const;
+    const UIDrag& GetDrag(const OgeRegistryRef world) const;
 };
 
 struct UIDragReleaseInfo
@@ -59,12 +62,16 @@ struct UIDragReleaseInfo
     entt::entity end;
 };
 
-bool IsButtonClicked(const entt::registry& game, entt::entity button);
-bool IsButtonClicked(const entt::registry& game, entt::entity button,
+bool IsButtonClicked(const OgeRegistryRef game, entt::entity button);
+bool IsButtonClicked(const OgeRegistryRef game, entt::entity button,
                      math::vec2& clickPos);
-bool IsDragReleasedSrc(const entt::registry& game, entt::entity src);
+bool IsDragReleasedSrc(const OgeRegistryRef game, entt::entity src);
 std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragSrc(
-    const entt::registry& game, entt::entity e);
+    const OgeRegistryRef game, entt::entity e);
 std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragDst(
-    const entt::registry& game, entt::entity e);
+    const OgeRegistryRef game, entt::entity e);
 }  // namespace game::ui
+
+DECL_TYPE_NAME(::game::ui::UIDragReleaseDst, "core::UIDragReleaseDst")
+DECL_TYPE_NAME(::game::ui::UIDragReleaseFinished, "core::UIDragReleaseFinished")
+DECL_TYPE_NAME(::game::ui::UIDrag, "core::UIDrag")

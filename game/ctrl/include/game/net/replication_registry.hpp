@@ -114,11 +114,11 @@ struct ReplicationCapability : ICapability
     // this install a hook that collects information from world
     //  and submit to the event log stream in world.ctx()
     //  on update (entity(ReplicatedTag)/component/chunk/block)
-    using InstallHooksFn = void (*) (EventLogStream<>&, entt::registry&);
+    using InstallHooksFn = void (*) (EventLogStream<>&, oge::runtime::OgeRegistryRef);
     InstallHooksFn installHooks = nullptr;
 
     // this apply a event in the event log stream
-    using ApplyFn = void (*) (EventLogStream<>&, entt::registry&, net::Buffer&);
+    using ApplyFn = void (*) (EventLogStream<>&, oge::runtime::OgeRegistryRef, net::Buffer&);
     ApplyFn apply = nullptr;
 };
 
@@ -143,7 +143,7 @@ ReplicationCapability MakeSimpleReplicationCapability(
     cap.installHooks = installHooks;
 
     cap.apply = [](EventLogStream<>& /*stream*/,
-                   entt::registry& world,
+                   oge::runtime::OgeRegistryRef world,
                    net::Buffer& buffer)
     {
         TEvent event{};
@@ -302,7 +302,7 @@ class ReplicationRegistry
     }
 
     void ProduceAll(oge::runtime::NetPacketSender& server,
-                    entt::registry& world)
+                    oge::runtime::OgeRegistryRef world)
     {
         OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
 
@@ -389,27 +389,27 @@ class ReplicationRegistry
         }
     }
 
-    void HandleIncoming(PeerId peer, entt::registry& world, net::Buffer& buffer)
+    void HandleIncoming(PeerId peer, oge::runtime::OgeRegistryRef world, net::Buffer& buffer)
     {
         OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
         m_eventStream->DeserializeEvent(peer, buffer);
     }
 
-    void AdvancePeerTick(PeerId peer, entt::registry& world)
+    void AdvancePeerTick(PeerId peer, oge::runtime::OgeRegistryRef world)
     {
         ++m_currentTick;
     }
 
     // Store component-type info so the snapshot can iterate components.
     using SnapshotComponentFn =
-        void (*)(EventLogStream<>&, entt::registry&, entt::entity,
+        void (*)(EventLogStream<>&, oge::runtime::OgeRegistryRef, oge::runtime::OgeRegistryRef::Entity,
                  const std::bitset<64>& peerMask);
 
     std::vector<SnapshotComponentFn> m_snapshotFns;
 
     template <typename T>
     static void SnapshotComponent(EventLogStream<>& stream,
-                                  entt::registry& world, entt::entity e,
+                                  oge::runtime::OgeRegistryRef world, oge::runtime::OgeRegistryRef::Entity e,
                                   const std::bitset<64>& peerMask)
     {
         if (!world.all_of<T>(e)) return;
@@ -485,7 +485,7 @@ class ReplicationRegistry
         }
     }
 
-    void AddPeer(PeerId id, ENetPeer* peer, oge::runtime::OgeRegistryRef world = {})
+    void AddPeer(PeerId id, ENetPeer* peer, oge::runtime::OgeRegistry* world = {})
     {
         PeerState peerState{};
         peerState.peer = {peer, id};
@@ -495,7 +495,7 @@ class ReplicationRegistry
 
         if (world != nullptr)
         {
-            GenerateSnapshot(id, world);
+            GenerateSnapshot(id, *world);
         }
     }
 

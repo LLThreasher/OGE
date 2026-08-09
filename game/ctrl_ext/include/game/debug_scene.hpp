@@ -121,7 +121,7 @@ class DebugScene3 : public SceneExt
         m_moveWidget = mvWidget;
     }
 
-    void onConstructPlayer(entt::registry& world, entt::entity e)
+    void onConstructPlayer(oge::runtime::OgeRegistryRef world, entt::entity e)
     {
         LOG_INFO(
             "entity {}: check player id {} against {}", (uint64_t)e,
@@ -211,7 +211,7 @@ class DebugScene3 : public SceneExt
                         m_world.get<ComponentCamera>(m_player);
                     cam.position = {20.f, 20.f, 20.f};
                 }
-                onConstructPlayer(m_world, m_player);
+                onConstructPlayer(m_world.Raw(), m_player);
             }
         }
 

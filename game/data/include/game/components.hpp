@@ -135,9 +135,9 @@ struct ComponentPlayer
     float lastActionTime = 0.f;
     input::PlayerInputStream::Cursor inputCursor{};
 
-    static entt::entity CreatePlayer(entt::registry& world, PlayerInfo info,
+    static entt::entity CreatePlayer(GameWorld& world, PlayerInfo info,
                                      entt::entity hint = entt::null);
-    static void DestroyPlayer(entt::registry& world, PlayerInfo info);
+    static void DestroyPlayer(GameWorld& world, PlayerInfo info);
 };
 
 struct DebugText
@@ -148,10 +148,11 @@ struct DebugText
 
 }  // namespace game
 
-DECL_TYPE_NAME(game::ReplicatedTag, "core::ReplicatedTag")
 DECL_TYPE_NAME(game::ComponentPlayer, "core::ComponentPlayer")
 DECL_TYPE_NAME(game::ComponentAABBCollider, "core::ComponentAABBCollider")
 DECL_TYPE_NAME(game::ComponentCamera, "core::ComponentCamera")
 DECL_TYPE_NAME(game::ComponentPerspectiveCamera, "core::ComponentPerspectiveCamera")
 DECL_TYPE_NAME(game::ComponentCreature, "core::ComponentCreature")
 DECL_TYPE_NAME(game::ComponentPhysicBody, "core::ComponentPhysicBody")
+DECL_TYPE_NAME(game::UpdateTag<game::UpdateType::FixedStep>, "core::UpdateTag<FixedStep>")
+DECL_TYPE_NAME(game::UpdateTag<game::UpdateType::Realtime>, "core::UpdateTag<Realtime>")

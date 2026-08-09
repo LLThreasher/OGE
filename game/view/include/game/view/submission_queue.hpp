@@ -5,6 +5,7 @@
 #include "oge/point3.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/objects_ext.hpp"
+#include "oge/runtime/typed_registry.hpp"
 #include "oge/submission_group.hpp"
 
 namespace game::view
@@ -161,3 +162,5 @@ using SingleSubmissionQueue =
 using SubmissionQueue = ViewSubmissionGroup<SingleSubmissionQueue>;
 
 }  // namespace game::view
+
+DECL_TYPE_NAME(game::view::ViewPanel, "core::ViewPanel")

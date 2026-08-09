@@ -123,8 +123,8 @@ class TerrainMeshScheduler
                                const ChunkEventStream& events);
     void SubmitVisibleChunks(const TerrainData& data,
                              TerrainPresentationData& pdata,
-                             const entt::registry& uiWorld,
-                             const entt::registry& gameWorld,
+                             const oge::runtime::OgeRegistryRef uiWorld,
+                             const oge::runtime::OgeRegistryRef gameWorld,
                              ViewSubmissionGroup<View> fd);
 
    private:

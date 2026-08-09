@@ -14,6 +14,7 @@
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/net_traits.hpp"
+#include "oge/runtime/oge_registry.hpp"
 
 // =========================================================================
 // NetTraits for entt::entity
@@ -59,6 +60,7 @@ namespace game::net
 
 namespace net = oge::runtime::net;
 using oge::runtime::oge_id_type;
+using oge::runtime::OgeRegistryRef;
 
 // =========================================================================
 // Entity events
@@ -221,7 +223,7 @@ struct TerrainReplicationState
 // Accessor for the EventLogStream stored in world.ctx()
 // ---------------------------------------------------------------------------
 
-inline EventLogStream<>& GetReplicationStream(entt::registry& world)
+inline EventLogStream<>& GetReplicationStream(OgeRegistryRef world)
 {
     return world.ctx().get<EventLogStream<>>();
 }
@@ -231,7 +233,7 @@ inline EventLogStream<>& GetReplicationStream(entt::registry& world)
 // ---------------------------------------------------------------------------
 
 template <typename TEvent>
-void PushReplicationEvent(entt::registry& world, const TEvent& event)
+void PushReplicationEvent(OgeRegistryRef world, const TEvent& event)
 {
     auto& stream = GetReplicationStream(world);
     oge_id_type eventId = entt::type_hash<TEvent>::value();
@@ -244,28 +246,28 @@ void PushReplicationEvent(entt::registry& world, const TEvent& event)
 // Entity hook installers (one per event type)
 // =========================================================================
 
-inline void InstallAddEntityHooks(EventLogStream<>&, entt::registry& world)
+inline void InstallAddEntityHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     world.on_construct<ReplicatedTag>()
         .template connect<
-            +[](entt::registry& world, entt::entity entity)
+            +[](OgeRegistryRef world, entt::entity entity)
             {
                 PushReplicationEvent(world, AddEntityEvent{entity});
             }>();
 }
 
-inline void InstallRemoveEntityHooks(EventLogStream<>&, entt::registry& world)
+inline void InstallRemoveEntityHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     world.on_destroy<ReplicatedTag>()
         .template connect<
-            +[](entt::registry& world, entt::entity entity)
+            +[](OgeRegistryRef world, entt::entity entity)
             {
                 PushReplicationEvent(world, RemoveEntityEvent{entity});
             }>();
 }
 
 // Convenience: install both entity hooks at once (used from server_scene)
-inline void InstallEntityReplicationHooks(entt::registry& world)
+inline void InstallEntityReplicationHooks(OgeRegistryRef world)
 {
     InstallAddEntityHooks(GetReplicationStream(world), world);
     InstallRemoveEntityHooks(GetReplicationStream(world), world);
@@ -276,12 +278,12 @@ inline void InstallEntityReplicationHooks(entt::registry& world)
 // =========================================================================
 
 template <typename T>
-void InstallAddComponentHooks(EventLogStream<>&, entt::registry& world)
+void InstallAddComponentHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     // Component added to an already-replicated entity.
     world.template on_construct<T>()
         .template connect<
-            +[](entt::registry& world, entt::entity entity)
+            +[](OgeRegistryRef world, entt::entity entity)
             {
                 if (!world.all_of<ReplicatedTag>(entity))
                 {
@@ -295,7 +297,7 @@ void InstallAddComponentHooks(EventLogStream<>&, entt::registry& world)
     // ReplicatedTag added to an entity that already has T.
     world.on_construct<ReplicatedTag>()
         .template connect<
-            +[](entt::registry& world, entt::entity entity)
+            +[](OgeRegistryRef world, entt::entity entity)
             {
                 if (!world.template all_of<T>(entity))
                 {
@@ -308,11 +310,11 @@ void InstallAddComponentHooks(EventLogStream<>&, entt::registry& world)
 }
 
 template <typename T>
-void InstallUpdateComponentHooks(EventLogStream<>&, entt::registry& world)
+void InstallUpdateComponentHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     world.template on_update<T>()
         .template connect<
-            +[](entt::registry& world, entt::entity entity)
+            +[](OgeRegistryRef world, entt::entity entity)
             {
                 if (!world.all_of<ReplicatedTag>(entity))
                 {
@@ -325,11 +327,11 @@ void InstallUpdateComponentHooks(EventLogStream<>&, entt::registry& world)
 }
 
 template <typename T>
-void InstallRemoveComponentHooks(EventLogStream<>&, entt::registry& world)
+void InstallRemoveComponentHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     world.template on_destroy<T>()
         .template connect<
-            +[](entt::registry& world, entt::entity entity)
+            +[](OgeRegistryRef world, entt::entity entity)
             {
                 if (!world.all_of<ReplicatedTag>(entity))
                 {
@@ -344,7 +346,7 @@ void InstallRemoveComponentHooks(EventLogStream<>&, entt::registry& world)
 // Convenience: install all component hooks for T at once (used from
 // server_scene)
 template <typename T>
-void InstallComponentReplicationHooks(entt::registry& world)
+void InstallComponentReplicationHooks(oge::runtime::OgeRegistryRef world)
 {
     auto& stream = GetReplicationStream(world);
     InstallAddComponentHooks<T>(stream, world);
@@ -359,7 +361,7 @@ void InstallComponentReplicationHooks(entt::registry& world)
 // PollTerrainChunkEvents (called each tick) does the actual work.
 // =========================================================================
 
-inline void InstallAddChunkHooks(EventLogStream<>&, entt::registry& world)
+inline void InstallAddChunkHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     if (!world.ctx().contains<TerrainReplicationState>())
         world.ctx().emplace<TerrainReplicationState>();
@@ -367,7 +369,7 @@ inline void InstallAddChunkHooks(EventLogStream<>&, entt::registry& world)
     state.initialized = true;
 }
 
-inline void InstallRemoveChunkHooks(EventLogStream<>&, entt::registry& world)
+inline void InstallRemoveChunkHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     if (!world.ctx().contains<TerrainReplicationState>())
         world.ctx().emplace<TerrainReplicationState>();
@@ -375,7 +377,7 @@ inline void InstallRemoveChunkHooks(EventLogStream<>&, entt::registry& world)
     state.initialized = true;
 }
 
-inline void InstallUpdateChunkHooks(EventLogStream<>&, entt::registry& world)
+inline void InstallUpdateChunkHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     if (!world.ctx().contains<TerrainReplicationState>())
         world.ctx().emplace<TerrainReplicationState>();
@@ -383,7 +385,7 @@ inline void InstallUpdateChunkHooks(EventLogStream<>&, entt::registry& world)
     state.initialized = true;
 }
 
-inline void InstallTerrainReplicationHooks(entt::registry& world)
+inline void InstallTerrainReplicationHooks(OgeRegistryRef world)
 {
     auto& stream = GetReplicationStream(world);
     InstallAddChunkHooks(stream, world);
@@ -393,7 +395,7 @@ inline void InstallTerrainReplicationHooks(entt::registry& world)
 
 // Call this each tick (e.g. from a subsystem) to flush terrain events into
 // the replication stream.
-inline void PollTerrainChunkEvents(entt::registry& world)
+inline void PollTerrainChunkEvents(OgeRegistryRef world)
 {
     if (!world.ctx().contains<TerrainReplicationState>())
     {
@@ -487,14 +489,14 @@ inline void PollTerrainChunkEvents(entt::registry& world)
 // bookkeeping, then call PollPlayerInputs each tick.
 // =========================================================================
 
-inline void InstallPlayerInputReplicationHooks(entt::registry& world)
+inline void InstallPlayerInputReplicationHooks(OgeRegistryRef world)
 {
     if (!world.ctx().contains<PlayerInputReplicationState>())
         world.ctx().emplace<PlayerInputReplicationState>();
 }
 
 // Register a player's input stream so it is polled each tick.
-inline void RegisterPlayerInputStream(entt::registry& world,
+inline void RegisterPlayerInputStream(OgeRegistryRef world,
                                       entt::entity player,
                                       input::PlayerInputStream* stream)
 {
@@ -512,7 +514,7 @@ inline void RegisterPlayerInputStream(entt::registry& world,
 }
 
 // Stop polling a player's input stream.
-inline void UnregisterPlayerInputStream(entt::registry& world,
+inline void UnregisterPlayerInputStream(OgeRegistryRef world,
                                         entt::entity player)
 {
     if (!world.ctx().contains<PlayerInputReplicationState>())
@@ -527,7 +529,7 @@ inline void UnregisterPlayerInputStream(entt::registry& world,
 
 // Call this each tick to flush player input frames into the replication
 // stream.  All input is sent through the reliable channel.
-inline void PollPlayerInputs(entt::registry& world)
+inline void PollPlayerInputs(OgeRegistryRef world)
 {
     if (!world.ctx().contains<PlayerInputReplicationState>())
     {
@@ -587,7 +589,7 @@ inline void PollPlayerInputs(entt::registry& world)
 // Player input apply function
 // =========================================================================
 
-inline void ApplyEvent(entt::registry& world,
+inline void ApplyEvent(OgeRegistryRef world,
                        const PlayerInputReplicationEvent& event)
 {
     if (!world.ctx().contains<PlayerInputReplicationState>())
@@ -628,7 +630,7 @@ inline void ApplyEvent(entt::registry& world,
 // Entity apply functions
 // =========================================================================
 
-inline void ApplyEvent(entt::registry& world, const AddEntityEvent& event)
+inline void ApplyEvent(OgeRegistryRef world, const AddEntityEvent& event)
 {
     if (event.entity == entt::null)
     {
@@ -647,7 +649,7 @@ inline void ApplyEvent(entt::registry& world, const AddEntityEvent& event)
     }
 }
 
-inline void ApplyEvent(entt::registry& world, const RemoveEntityEvent& event)
+inline void ApplyEvent(OgeRegistryRef world, const RemoveEntityEvent& event)
 {
     if (event.entity == entt::null)
     {
@@ -665,7 +667,7 @@ inline void ApplyEvent(entt::registry& world, const RemoveEntityEvent& event)
 // =========================================================================
 
 template <typename T>
-void ApplyEvent(entt::registry& world, const AddComponentEvent<T>& event)
+void ApplyEvent(OgeRegistryRef world, const AddComponentEvent<T>& event)
 {
     if (event.entity == entt::null)
     {
@@ -682,7 +684,7 @@ void ApplyEvent(entt::registry& world, const AddComponentEvent<T>& event)
 }
 
 template <typename T>
-void ApplyEvent(entt::registry& world, const UpdateComponentEvent<T>& event)
+void ApplyEvent(OgeRegistryRef world, const UpdateComponentEvent<T>& event)
 {
     if (event.entity == entt::null)
     {
@@ -698,7 +700,7 @@ void ApplyEvent(entt::registry& world, const UpdateComponentEvent<T>& event)
 }
 
 template <typename T>
-void ApplyEvent(entt::registry& world, const RemoveComponentEvent<T>& event)
+void ApplyEvent(OgeRegistryRef world, const RemoveComponentEvent<T>& event)
 {
     if (event.entity == entt::null)
     {
@@ -716,7 +718,7 @@ void ApplyEvent(entt::registry& world, const RemoveComponentEvent<T>& event)
 // Chunk apply functions
 // =========================================================================
 
-inline void ApplyEvent(entt::registry& world, const AddChunkEvent& event)
+inline void ApplyEvent(OgeRegistryRef world, const AddChunkEvent& event)
 {
     auto& terrain = world.ctx().get<terrain::TerrainView>();
 
@@ -747,7 +749,7 @@ inline void ApplyEvent(entt::registry& world, const AddChunkEvent& event)
     terrain.UpgradeChunk(handle, terrain::ChunkState::Persistent);
 }
 
-inline void ApplyEvent(entt::registry& world, const RemoveChunkEvent& event)
+inline void ApplyEvent(OgeRegistryRef world, const RemoveChunkEvent& event)
 {
     auto& terrain = world.ctx().get<terrain::TerrainView>();
 
@@ -761,7 +763,7 @@ inline void ApplyEvent(entt::registry& world, const RemoveChunkEvent& event)
     terrain.DowngradeChunk(handle, terrain::ChunkState::InvalidLighting);
 }
 
-inline void ApplyEvent(entt::registry& world, const UpdateChunkEvent& event)
+inline void ApplyEvent(OgeRegistryRef world, const UpdateChunkEvent& event)
 {
     auto& terrain = world.ctx().get<terrain::TerrainView>();
 

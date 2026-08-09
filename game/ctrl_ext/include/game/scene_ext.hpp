@@ -12,6 +12,7 @@
 #include "game/view/submission_queue.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/runtime/asset_ctx.hpp"
+#include "oge/runtime/oge_registry.hpp"
 #include "oge/runtime/typed_registry.hpp"
 #include "oge/runtime/ui/objects.hpp"
 
@@ -52,8 +53,8 @@ class SceneExt : public Scene
 
     input::InputPipeline m_inputs;
 
-    entt::registry m_uiWorld;
-    entt::registry m_renderWorld;
+    oge::runtime::OgeRegistry m_uiWorld;
+    oge::runtime::OgeRegistry m_renderWorld;
     view::RenderPipeline m_renderers;
 
     view::SubmissionQueue m_squeue;

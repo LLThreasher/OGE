@@ -46,11 +46,11 @@ struct RollbackCapability : ICapability
 
     // Serialise the portion of world state relevant to this event family.
     using SnapshotFn = std::pmr::vector<std::byte> (*)(
-        const entt::registry& world);
+        const oge::runtime::OgeRegistryRef world);
     SnapshotFn takeSnapshot = nullptr;
 
     // Restore world state from a previously taken snapshot.
-    using RollbackFn = void (*)(entt::registry& world, net::Buffer& payload);
+    using RollbackFn = void (*)(oge::runtime::OgeRegistryRef world, net::Buffer& payload);
     RollbackFn rollback = nullptr;
 
     // Compare two delta payloads.  The caller guarantees that getRegionKey
@@ -64,8 +64,8 @@ struct RollbackCapability : ICapability
 // =========================================================================
 
 // --- Entity snapshot / rollback / compare / region key ---
-std::pmr::vector<std::byte> EntitySnapshotFn(const entt::registry& world);
-void EntityRollbackFn(entt::registry& world, net::Buffer& payload);
+std::pmr::vector<std::byte> EntitySnapshotFn(const oge::runtime::OgeRegistryRef world);
+void EntityRollbackFn(oge::runtime::OgeRegistryRef world, net::Buffer& payload);
 bool EntityCompareFn(net::Buffer& a, net::Buffer& b);
 
 // Region key for entity events: entity id is the first field.
@@ -80,7 +80,7 @@ inline uint64_t EntityRegionKey(net::Buffer& p)
 
 // --- Component snapshot / rollback (per T) ---
 template <typename T>
-std::pmr::vector<std::byte> ComponentSnapshotFn(const entt::registry& world)
+std::pmr::vector<std::byte> ComponentSnapshotFn(const oge::runtime::OgeRegistryRef world)
 {
     std::pmr::vector<std::byte> out;
     auto view = world.view<ReplicatedTag, const T>();
@@ -102,7 +102,7 @@ std::pmr::vector<std::byte> ComponentSnapshotFn(const entt::registry& world)
 }
 
 template <typename T>
-void ComponentRollbackFn(entt::registry& world, net::Buffer& payload)
+void ComponentRollbackFn(oge::runtime::OgeRegistryRef world, net::Buffer& payload)
 {
     // Remove existing T components from replicated entities.
     auto existing = world.view<ReplicatedTag, T>();
@@ -147,8 +147,8 @@ uint64_t ComponentRegionKey(net::Buffer& p)
 }
 
 // --- Terrain chunk snapshot / rollback ---
-std::pmr::vector<std::byte> ChunkSnapshotFn(const entt::registry& world);
-void ChunkRollbackFn(entt::registry& world, net::Buffer& payload);
+std::pmr::vector<std::byte> ChunkSnapshotFn(const oge::runtime::OgeRegistryRef world);
+void ChunkRollbackFn(oge::runtime::OgeRegistryRef world, net::Buffer& payload);
 bool ChunkCompareFn(net::Buffer& a, net::Buffer& b);
 
 // Region key for chunk events: hash of coords (first 3 int32_t fields).

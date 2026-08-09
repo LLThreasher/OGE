@@ -8,7 +8,7 @@ namespace game::ui
 {
 using namespace oge;
 
-entt::entity CreateButton(entt::registry& game, AssetContext& asset,
+entt::entity CreateButton(OgeRegistryRef game, AssetContext& asset,
                           UIRect rect)
 {
     auto res = game.create();
@@ -18,7 +18,7 @@ entt::entity CreateButton(entt::registry& game, AssetContext& asset,
     return res;
 }
 
-entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset,
+entt::entity CreateTerminalPanel(OgeRegistryRef game, AssetContext& asset,
                                  UIRect rect)
 {
     auto view = game.create();
@@ -41,7 +41,7 @@ entt::entity CreateTerminalPanel(entt::registry& game, AssetContext& asset,
     return res;
 }
 
-entt::entity CreateGameView(entt::registry& game, const UIRect rect,
+entt::entity CreateGameView(OgeRegistryRef game, const UIRect rect,
                             entt::entity camera)
 {
     std::unordered_set freeSlots{

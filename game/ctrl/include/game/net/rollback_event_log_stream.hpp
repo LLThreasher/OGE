@@ -75,7 +75,7 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
 
     Tick CurrentTick() const { return m_currentTick; }
 
-    void AdvanceTick(entt::registry& world)
+    void AdvanceTick(oge::runtime::OgeRegistryRef world)
     {
         ++m_currentTick;
 
@@ -132,7 +132,7 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
 
     // Compare predicted events against server events.  If they diverge,
     // roll back to the latest snapshot.  Returns true if consistent.
-    bool Validate(entt::registry& world)
+    bool Validate(oge::runtime::OgeRegistryRef world)
     {
         if (m_snapshots.empty()) return true;
 
@@ -187,7 +187,7 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
 
     // ---------- Rollback ----------
 
-    void RollbackToLatest(entt::registry& world)
+    void RollbackToLatest(oge::runtime::OgeRegistryRef world)
     {
         if (m_snapshots.empty()) return;
 
@@ -214,7 +214,7 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
     size_t PredictedCount() const { return m_predictedEvents.size(); }
 
    private:
-    void TakeSnapshot(entt::registry& world)
+    void TakeSnapshot(oge::runtime::OgeRegistryRef world)
     {
         SnapshotPoint snap{};
         snap.streamCursor = this->m_currentTail;

@@ -4,6 +4,7 @@
 #include <tuple>
 #include <vector>
 
+#include "game/components.hpp"
 #include "game/input/entity_event_stream.hpp"
 #include "game/json.hpp"
 #include "game/terrain/block_registry.hpp"
@@ -57,67 +58,17 @@ class GameWorld : public oge::runtime::OgeRegistry
     GameWorld() = default;
     NO_COPY(GameWorld)
 
-    /// Enable entity event recording (networked / authoritative mode).
-    void EnableEntityEvents()
+    template <typename T, typename Fn>
+    auto patch(Entity e, Fn fn)
     {
-        m_entityEventStream =
-            &Raw().ctx().template emplace<input::EntityEventStream>();
-    }
-    bool HasEntityEvents() const { return m_entityEventStream != nullptr; }
-
-    // -- entity lifecycle with optional event recording -------------------
-
-    Entity create()
-    {
-        auto res = OgeRegistry::create();
-        if (m_entityEventStream)
-        {
-            m_entityEventStream->Push(
-                {input::EntityEventType::Create, res});
-            m_entityEventStream->AdvanceCursor(m_eventCursor);
-        }
-        return res;
+        return Raw().patch<T>(e, fn);
     }
 
-    Entity create(Entity hint)
+    template <typename T>
+    auto patch(Entity e)
     {
-        auto res = OgeRegistry::create(hint);
-        if (m_entityEventStream)
-        {
-            m_entityEventStream->Push(
-                {input::EntityEventType::Create, res});
-            m_entityEventStream->AdvanceCursor(m_eventCursor);
-        }
-        return res;
+        return Raw().patch<T>(e);
     }
-
-    void destroy(Entity e)
-    {
-        OgeRegistry::destroy(e);
-        if (m_entityEventStream)
-        {
-            m_entityEventStream->Push(
-                {input::EntityEventType::Destroy, e});
-            m_entityEventStream->AdvanceCursor(m_eventCursor);
-        }
-    }
-
-    void ApplyEvents()
-    {
-        if (!m_entityEventStream) return;
-        input::EntityEvent event;
-        while (m_entityEventStream->PollOne(m_eventCursor, event))
-        {
-            if (event.type == input::EntityEventType::Create)
-                OgeRegistry::create(event.entity);
-            else if (event.type == input::EntityEventType::Destroy)
-                OgeRegistry::destroy(event.entity);
-        }
-    }
-
-   private:
-    input::EntityEventStream* m_entityEventStream = nullptr;
-    input::EntityEventStream::Cursor m_eventCursor;
 };
 
 // =========================================================================

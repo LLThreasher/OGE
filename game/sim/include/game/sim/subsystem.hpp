@@ -7,6 +7,7 @@
 
 #include "game/components.hpp"
 #include "game/frame_perf.hpp"  // debug info pass
+#include "game/game_world.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/memory_context.hpp"
 #include "oge/platform/perf.hpp"
@@ -21,7 +22,7 @@ using namespace oge::runtime;
 
 struct GameState
 {
-    entt::registry& world;
+    GameWorld& world;
     entt::dispatcher& events;
     MemoryContext& memory;
 };

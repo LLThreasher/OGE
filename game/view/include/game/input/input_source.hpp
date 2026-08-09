@@ -5,6 +5,7 @@
 #include "game/input/window_ctx.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/runtime/entt.hpp"
+#include "oge/runtime/oge_registry.hpp"
 #include "oge/runtime/staged_scheduler.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
@@ -20,7 +21,7 @@ using oge::runtime::Stage;
 struct InputContext
 {
     WindowCtx& windowCtx;
-    entt::registry& uiWorld;
+    oge::runtime::OgeRegistryRef uiWorld;
 };
 
 struct InputFrame
@@ -33,7 +34,7 @@ struct FInputContext
 {
     float dt;
     const RawInputStream& raw;
-    entt::registry& uiWorld;
+    oge::runtime::OgeRegistryRef uiWorld;
 
     FInputContext(InputFrame& f, InputContext& ctx)
         : dt(f.dt), raw(f.raw), uiWorld(ctx.uiWorld)

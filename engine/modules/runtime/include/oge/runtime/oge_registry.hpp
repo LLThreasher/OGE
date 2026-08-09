@@ -4,6 +4,7 @@
 #include <memory>
 #include <type_traits>
 
+#include "entt/entity/fwd.hpp"
 #include "oge/macros.hpp"
 #include "oge/runtime/debug.hpp"
 #include "oge/runtime/entt.hpp"
@@ -19,15 +20,276 @@ namespace oge::runtime
 // inline so the compiler fully elides the wrapper in release builds.
 // =========================================================================
 
-class OgeRegistryRef
+// #define CHECK_NULL_REGISTRY(fn) OGE_ASSERT(m_registry != nullptr, #fn "()
+// called on nullptr")
+#define CHECK_NULL_REGISTRY(fn)
+
+template <typename Impl>
+class OgeRegistryABC
 {
    public:
     using Entity = entt::entity;
 
-    OgeRegistryRef(entt::registry* registry = nullptr) : m_registry(registry)
+    entt::registry& Raw()
+    {
+        CHECK_NULL_REGISTRY(Raw);
+        return static_cast<Impl*>(this)->Raw();
+    }
+    const entt::registry& Raw() const
+    {
+        CHECK_NULL_REGISTRY(Raw);
+        return static_cast<const Impl*>(this)->Raw();
+    }
+
+    decltype(auto) ctx()
+    {
+        CHECK_NULL_REGISTRY(ctx);
+        return Raw().ctx();
+    }
+    decltype(auto) ctx() const
+    {
+        CHECK_NULL_REGISTRY(ctx);
+        return Raw().ctx();
+    }
+
+    // -- entity lifecycle -------------------------------------------------
+
+    Entity create()
+    {
+        CHECK_NULL_REGISTRY(create);
+        return Raw().create();
+    }
+    Entity create(Entity hint)
+    {
+        CHECK_NULL_REGISTRY(create);
+        return Raw().create(hint);
+    }
+
+    void destroy(Entity e)
+    {
+        CHECK_NULL_REGISTRY(destroy);
+        OGE_ASSERT(valid(e), "destroy() on invalid entity {}",
+                   static_cast<uint32_t>(e));
+        Raw().destroy(e);
+    }
+
+    bool valid(Entity e) const
+    {
+        CHECK_NULL_REGISTRY(valid);
+        return Raw().valid(e);
+    }
+
+    // -- views ------------------------------------------------------------
+
+    template <typename... Comp, typename... Exclude>
+    auto view(entt::exclude_t<Exclude...> excl = entt::exclude_t<Exclude...>{})
+    {
+        CHECK_NULL_REGISTRY(view);
+        return Raw().template view<Comp...>(excl);
+    }
+
+    template <typename... Comp, typename... Exclude>
+    auto view(
+        entt::exclude_t<Exclude...> excl = entt::exclude_t<Exclude...>{}) const
+    {
+        CHECK_NULL_REGISTRY(view);
+        return Raw().template view<const Comp...>(excl);
+    }
+
+    // -- component access -------------------------------------------------
+
+    template <typename T>
+    T& get(Entity e)
+    {
+        CHECK_NULL_REGISTRY(get);
+        using RawT = std::remove_const_t<T>;
+        OGE_ASSERT(valid(e), "get<{}>() on invalid entity {}",
+                   TypeName<RawT>::Get(), static_cast<uint32_t>(e));
+        OGE_ASSERT(all_of<RawT>(e),
+                   "get<{}>() on entity {} lacks the component",
+                   TypeName<RawT>::Get(), static_cast<uint32_t>(e));
+        return Raw().template get<T>(e);
+    }
+
+    template <typename T>
+    const T& get(Entity e) const
+    {
+        CHECK_NULL_REGISTRY(get);
+        using RawT = std::remove_const_t<T>;
+        OGE_ASSERT(valid(e), "const get<{}>() on invalid entity {}",
+                   TypeName<RawT>::Get(), static_cast<uint32_t>(e));
+        OGE_ASSERT(all_of<RawT>(e),
+                   "const get<{}>() on entity {} lacks the component",
+                   TypeName<RawT>::Get(), static_cast<uint32_t>(e));
+        return Raw().template get<T>(e);
+    }
+
+    template <typename T>
+    T* try_get(Entity e)
+    {
+        CHECK_NULL_REGISTRY(try_get);
+        return Raw().template try_get<T>(e);
+    }
+
+    template <typename T>
+    const T* try_get(Entity e) const
+    {
+        CHECK_NULL_REGISTRY(try_get);
+        return Raw().template try_get<T>(e);
+    }
+
+    template <typename T1, typename T2, typename... Rest>
+        requires (sizeof...(Rest) >= 0)
+    auto try_get(Entity e)
+    {
+        CHECK_NULL_REGISTRY(try_get);
+        return Raw().template try_get<T1, T2, Rest...>(e);
+    }
+
+    template <typename T1, typename T2, typename... Rest>
+        requires (sizeof...(Rest) >= 0)
+    auto try_get(Entity e) const
+    {
+        CHECK_NULL_REGISTRY(try_get);
+        return Raw().template try_get<T1, T2, Rest...>(e);
+    }
+
+    // -- component queries ------------------------------------------------
+
+    template <typename T>
+    bool all_of(Entity e) const
+    {
+        CHECK_NULL_REGISTRY(all_of);
+        return Raw().template all_of<T>(e);
+    }
+
+    template <typename... Comp>
+    bool any_of(Entity e) const
+    {
+        CHECK_NULL_REGISTRY(any_of);
+        return Raw().template any_of<Comp...>(e);
+    }
+
+    // -- component mutation -----------------------------------------------
+
+    template <typename T, typename... Args>
+    decltype(auto) emplace(Entity e, Args&&... args)
+    {
+        CHECK_NULL_REGISTRY(emplace);
+        OGE_ASSERT(valid(e), "emplace<{}>() on invalid entity {}",
+                   TypeName<T>::Get(), static_cast<uint32_t>(e));
+        return Raw().template emplace<T>(e, std::forward<Args>(args)...);
+    }
+
+    template <typename T, typename... Args>
+    decltype(auto) emplace_or_replace(Entity e, Args&&... args)
+    {
+        CHECK_NULL_REGISTRY(emplace_or_replace);
+        OGE_ASSERT(valid(e), "emplace_or_replace<{}>() on invalid entity {}",
+                   TypeName<T>::Get(), static_cast<uint32_t>(e));
+        return Raw().template emplace_or_replace<T>(
+            e, std::forward<Args>(args)...);
+    }
+
+    template <typename T>
+    void remove(Entity e)
+    {
+        CHECK_NULL_REGISTRY(remove);
+        OGE_ASSERT(valid(e), "remove<{}>() on invalid entity {}",
+                   TypeName<T>::Get(), static_cast<uint32_t>(e));
+        Raw().template remove<T>(e);
+    }
+
+    void clear()
+    {
+        CHECK_NULL_REGISTRY(clear);
+        Raw().clear();
+    }
+
+    // -- signals ----------------------------------------------------------
+
+    template <typename T>
+    auto on_construct()
+    {
+        CHECK_NULL_REGISTRY(remove);
+        return Raw().template on_construct<T>();
+    }
+
+    template <typename T>
+    auto on_update()
+    {
+        CHECK_NULL_REGISTRY(on_update);
+        return Raw().template on_update<T>();
+    }
+
+    template <typename T>
+    auto on_destroy()
+    {
+        CHECK_NULL_REGISTRY(on_destroy);
+        return Raw().template on_destroy<T>();
+    }
+
+    template <typename T>
+    auto erase(Entity e)
+    {
+        CHECK_NULL_REGISTRY(erase);
+        return Raw().template erase<T>(e);
+    }
+
+    template <typename T>
+    auto clear()
+    {
+        CHECK_NULL_REGISTRY(clear);
+        return Raw().template clear<T>();
+    }
+};
+
+class OgeRegistry : public OgeRegistryABC<OgeRegistry>
+{
+public:
+    OgeRegistry() = default;
+    NO_COPY(OgeRegistry)
+
+    entt::registry& Raw()
+    {
+        return m_registry;
+    }
+    const entt::registry& Raw() const
+    {
+        return m_registry;
+    }
+
+   private:
+    entt::registry m_registry;
+};
+
+class OgeRegistryRef : public OgeRegistryABC<OgeRegistryRef>
+{
+public:
+    OgeRegistryRef(OgeRegistry& ref) : m_registry(ref.Raw())
     {
     }
-    OgeRegistryRef(entt::registry& registry) : m_registry(&registry)
+    OgeRegistryRef(entt::registry& ref) : m_registry(ref)
+    {
+    }
+
+    entt::registry& Raw()
+    {
+        return m_registry;
+    }
+    const entt::registry& Raw() const
+    {
+        return m_registry;
+    }
+
+   private:
+    entt::registry& m_registry;
+};
+
+class OgeRegistryPtr : public OgeRegistryABC<OgeRegistryRef>
+{
+public:
+    OgeRegistryPtr(entt::registry* ref) : m_registry(ref)
     {
     }
 
@@ -44,177 +306,9 @@ class OgeRegistryRef
     {
         return *m_registry;
     }
-    operator entt::registry&()
-    {
-        return *m_registry;
-    }
-    operator const entt::registry&() const
-    {
-        return *m_registry;
-    }
-
-    decltype(auto) ctx() { return m_registry->ctx(); }
-    decltype(auto) ctx() const { return m_registry->ctx(); }
-
-    // -- entity lifecycle -------------------------------------------------
-
-    Entity create()
-    {
-        return m_registry->create();
-    }
-    Entity create(Entity hint)
-    {
-        return m_registry->create(hint);
-    }
-
-    void destroy(Entity e)
-    {
-        OGE_ASSERT(valid(e), "destroy() on invalid entity {}",
-                   static_cast<uint32_t>(e));
-        m_registry->destroy(e);
-    }
-
-    bool valid(Entity e) const
-    {
-        return m_registry->valid(e);
-    }
-
-    // -- views ------------------------------------------------------------
-
-    template <typename... Comp, typename... Exclude>
-    auto view(entt::exclude_t<Exclude...> excl = entt::exclude_t<Exclude...>{})
-    {
-        return m_registry->view<Comp...>(excl);
-    }
-
-    template <typename... Comp, typename... Exclude>
-    auto view(
-        entt::exclude_t<Exclude...> excl = entt::exclude_t<Exclude...>{}) const
-    {
-        return m_registry->view<const Comp...>(excl);
-    }
-
-    // -- component access -------------------------------------------------
-
-    template <typename T>
-    T& get(Entity e)
-    {
-        using RawT = std::remove_const_t<T>;
-        OGE_ASSERT(valid(e), "get<{}>() on invalid entity {}",
-                   TypeName<RawT>::Get(), static_cast<uint32_t>(e));
-        OGE_ASSERT(all_of<RawT>(e),
-                   "get<{}>() on entity {} lacks the component",
-                   TypeName<RawT>::Get(), static_cast<uint32_t>(e));
-        return m_registry->template get<T>(e);
-    }
-
-    template <typename T>
-    const T& get(Entity e) const
-    {
-        using RawT = std::remove_const_t<T>;
-        OGE_ASSERT(valid(e), "const get<{}>() on invalid entity {}",
-                   TypeName<RawT>::Get(), static_cast<uint32_t>(e));
-        OGE_ASSERT(all_of<RawT>(e),
-                   "const get<{}>() on entity {} lacks the component",
-                   TypeName<RawT>::Get(), static_cast<uint32_t>(e));
-        return m_registry->template get<T>(e);
-    }
-
-    template <typename T>
-    T* try_get(Entity e)
-    {
-        return m_registry->template try_get<T>(e);
-    }
-
-    template <typename T>
-    const T* try_get(Entity e) const
-    {
-        return m_registry->template try_get<T>(e);
-    }
-
-    // -- component queries ------------------------------------------------
-
-    template <typename T>
-    bool all_of(Entity e) const
-    {
-        return m_registry->template all_of<T>(e);
-    }
-
-    template <typename... Comp>
-    bool any_of(Entity e) const
-    {
-        return m_registry->template any_of<Comp...>(e);
-    }
-
-    // -- component mutation -----------------------------------------------
-
-    template <typename T, typename... Args>
-    decltype(auto) emplace(Entity e, Args&&... args)
-    {
-        OGE_ASSERT(valid(e), "emplace<{}>() on invalid entity {}",
-                   TypeName<T>::Get(), static_cast<uint32_t>(e));
-        return m_registry->template emplace<T>(e, std::forward<Args>(args)...);
-    }
-
-    template <typename T, typename... Args>
-    decltype(auto) emplace_or_replace(Entity e, Args&&... args)
-    {
-        OGE_ASSERT(valid(e), "emplace_or_replace<{}>() on invalid entity {}",
-                   TypeName<T>::Get(), static_cast<uint32_t>(e));
-        return m_registry->template emplace_or_replace<T>(
-            e, std::forward<Args>(args)...);
-    }
-
-    template <typename T>
-    void remove(Entity e)
-    {
-        OGE_ASSERT(valid(e), "remove<{}>() on invalid entity {}",
-                   TypeName<T>::Get(), static_cast<uint32_t>(e));
-        m_registry->template remove<T>(e);
-    }
-
-    void clear()
-    {
-        m_registry->clear();
-    }
-
-    // -- signals ----------------------------------------------------------
-
-    template <typename T>
-    auto on_construct()
-    {
-        return m_registry->template on_construct<T>();
-    }
-
-    template <typename T>
-    auto on_update()
-    {
-        return m_registry->template on_update<T>();
-    }
-
-    template <typename T>
-    auto on_destroy()
-    {
-        return m_registry->template on_destroy<T>();
-    }
-
-   protected:
-    entt::registry* m_registry = nullptr;
-};
-
-class OgeRegistry : public OgeRegistryRef
-{
-   public:
-    OgeRegistry()
-        : OgeRegistryRef(nullptr)
-        , m_owned(std::make_unique<entt::registry>())
-    {
-        m_registry = m_owned.get();
-    }
-    NO_COPY(OgeRegistry)
 
    private:
-    std::unique_ptr<entt::registry> m_owned;
+    entt::registry* m_registry = nullptr;
 };
 
 }  // namespace oge::runtime

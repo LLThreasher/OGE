@@ -59,19 +59,19 @@ TEST(chunk_update_rt){ game::net::UpdateChunkEvent o{}; o.coords=oge::Point3{0,0
 // =========================================================================
 // Apply tests
 // =========================================================================
-TEST(entity_add_apply){ entt::registry w; game::net::ApplyEvent(w,game::net::AddEntityEvent{entt::entity{100}}); CHECK(w.valid(entt::entity{100})); CHECK(w.all_of<game::ReplicatedTag>(entt::entity{100})); }
-TEST(entity_remove_apply){ entt::registry w; auto e=w.create(); w.emplace<game::ReplicatedTag>(e); game::net::ApplyEvent(w,game::net::RemoveEntityEvent{e}); CHECK(!w.valid(e)); }
-TEST(comp_add_apply){ entt::registry w; auto e=w.create(); game::ComponentCamera cam{}; cam.position=oge::math::vec3{1,2,3}; game::net::ApplyEvent(w,game::net::AddComponentEvent<game::ComponentCamera>{e,cam}); CHECK(w.all_of<game::ComponentCamera>(e)); CHECK(w.get<game::ComponentCamera>(e).position.x==1.f); }
-TEST(comp_update_apply){ entt::registry w; auto e=w.create(); w.emplace<game::ComponentCamera>(e); game::ComponentCamera cam{}; cam.position=oge::math::vec3{10,20,30}; game::net::ApplyEvent(w,game::net::UpdateComponentEvent<game::ComponentCamera>{e,cam}); CHECK(w.get<game::ComponentCamera>(e).position.x==10.f); }
-TEST(comp_remove_apply){ entt::registry w; auto e=w.create(); w.emplace<game::ComponentCamera>(e); game::net::ApplyEvent(w,game::net::RemoveComponentEvent<game::ComponentCamera>{e}); CHECK(!w.all_of<game::ComponentCamera>(e)); }
-TEST(cap_apply){ entt::registry w; game::net::AddEntityEvent oe{entt::entity{77}}; auto s=S(); oge::runtime::net::Buffer b(s); oge::runtime::net::Serialize(b,oe); b.ToReadOnly(); auto cap=game::net::MakeSimpleReplicationCapability<game::net::AddEntityEvent>(0,nullptr); game::net::EventLogStream<> ds{}; cap.apply(ds,w,b); CHECK(w.valid(entt::entity{77})); }
+TEST(entity_add_apply){ oge::runtime::OgeRegistry w; game::net::ApplyEvent(w,game::net::AddEntityEvent{entt::entity{100}}); CHECK(w.valid(entt::entity{100})); CHECK(w.all_of<game::ReplicatedTag>(entt::entity{100})); }
+TEST(entity_remove_apply){ oge::runtime::OgeRegistry w; auto e=w.create(); w.emplace<game::ReplicatedTag>(e); game::net::ApplyEvent(w,game::net::RemoveEntityEvent{e}); CHECK(!w.valid(e)); }
+TEST(comp_add_apply){ oge::runtime::OgeRegistry w; auto e=w.create(); game::ComponentCamera cam{}; cam.position=oge::math::vec3{1,2,3}; game::net::ApplyEvent(w,game::net::AddComponentEvent<game::ComponentCamera>{e,cam}); CHECK(w.all_of<game::ComponentCamera>(e)); CHECK(w.get<game::ComponentCamera>(e).position.x==1.f); }
+TEST(comp_update_apply){ oge::runtime::OgeRegistry w; auto e=w.create(); w.emplace<game::ComponentCamera>(e); game::ComponentCamera cam{}; cam.position=oge::math::vec3{10,20,30}; game::net::ApplyEvent(w,game::net::UpdateComponentEvent<game::ComponentCamera>{e,cam}); CHECK(w.get<game::ComponentCamera>(e).position.x==10.f); }
+TEST(comp_remove_apply){ oge::runtime::OgeRegistry w; auto e=w.create(); w.emplace<game::ComponentCamera>(e); game::net::ApplyEvent(w,game::net::RemoveComponentEvent<game::ComponentCamera>{e}); CHECK(!w.all_of<game::ComponentCamera>(e)); }
+TEST(cap_apply){ oge::runtime::OgeRegistry w; game::net::AddEntityEvent oe{entt::entity{77}}; auto s=S(); oge::runtime::net::Buffer b(s); oge::runtime::net::Serialize(b,oe); b.ToReadOnly(); auto cap=game::net::MakeSimpleReplicationCapability<game::net::AddEntityEvent>(0,nullptr); game::net::EventLogStream<> ds{}; cap.apply(ds,w,b); CHECK(w.valid(entt::entity{77})); }
 
 // =========================================================================
 // Hook tests
 // =========================================================================
-TEST(hooks_entity_construct){ entt::registry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallAddEntityHooks(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
-TEST(hooks_entity_destroy){ entt::registry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallRemoveEntityHooks(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); w.remove<game::ReplicatedTag>(e); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
-TEST(hooks_comp_construct){ entt::registry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallAddComponentHooks<game::ComponentCamera>(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); w.emplace<game::ComponentCamera>(e); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
+TEST(hooks_entity_construct){ oge::runtime::OgeRegistry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallAddEntityHooks(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
+TEST(hooks_entity_destroy){ oge::runtime::OgeRegistry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallRemoveEntityHooks(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); w.remove<game::ReplicatedTag>(e); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
+TEST(hooks_comp_construct){ oge::runtime::OgeRegistry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallAddComponentHooks<game::ComponentCamera>(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); w.emplace<game::ComponentCamera>(e); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
 
 // =========================================================================
 // EventLogStream tests
@@ -92,11 +92,11 @@ TEST(sched_empty){ game::net::EventLogStream<> s; s.AddPeer(0); game::net::Simpl
 // Snapshot tests (use Registry with proper TypeRegistry)
 // =========================================================================
 TEST(snapshot_entity){
-    entt::registry w;
+    oge::runtime::OgeRegistry w;
     w.ctx().emplace<game::net::EventLogStream<>>();
     w.ctx().get<game::net::EventLogStream<>>().AddPeer(5);
 
-    oge::runtime::OGEContext octx(w);
+    oge::runtime::OGEContext octx(w.Raw());
     oge::runtime::TypeRegistry types(octx);
 
     auto e1=w.create(); w.emplace<game::ReplicatedTag>(e1);
@@ -114,12 +114,12 @@ TEST(snapshot_entity){
 }
 
 TEST(snapshot_terrain){
-    entt::registry w;
+    oge::runtime::OgeRegistry w;
     w.ctx().emplace<game::net::EventLogStream<>>();
     w.ctx().get<game::net::EventLogStream<>>().AddPeer(2);
     w.ctx().emplace<game::terrain::TerrainView>();
 
-    oge::runtime::OGEContext octx(w);
+    oge::runtime::OGEContext octx(w.Raw());
     oge::runtime::TypeRegistry types(octx);
 
     auto& terrain=w.ctx().get<game::terrain::TerrainView>();
@@ -159,8 +159,8 @@ TEST(compress_empty){ auto rle=game::net::CompressChunk(nullptr,0); CHECK(rle.em
 // ReplicationRegistry tests
 // =========================================================================
 TEST(reg_add_remove_peer){
-    entt::registry w; w.ctx().emplace<game::net::EventLogStream<>>();
-    oge::runtime::OGEContext octx(w); oge::runtime::TypeRegistry types(octx);
+    oge::runtime::OgeRegistry w; w.ctx().emplace<game::net::EventLogStream<>>();
+    oge::runtime::OGEContext octx(w.Raw()); oge::runtime::TypeRegistry types(octx);
     game::net::ReplicationRegistry reg({w.ctx().get<game::net::EventLogStream<>>(),types});
     reg.AddPeer(0,nullptr); CHECK_EQ(reg.Peers().size(),1);
     reg.RemovePeer(0); CHECK(reg.Peers().empty());
@@ -199,7 +199,7 @@ TEST(rollback_predicted_gated){
 }
 
 TEST(rollback_snapshot_entity){
-    entt::registry w;
+    oge::runtime::OgeRegistry w;
     auto e1 = w.create(); w.emplace<game::ReplicatedTag>(e1);
     auto e2 = w.create(); w.emplace<game::ReplicatedTag>(e2);
 
@@ -208,7 +208,7 @@ TEST(rollback_snapshot_entity){
 }
 
 TEST(rollback_rollback_entity){
-    entt::registry w;
+    oge::runtime::OgeRegistry w;
     auto e1 = w.create(); w.emplace<game::ReplicatedTag>(e1);
     auto e2 = w.create(); w.emplace<game::ReplicatedTag>(e2);
 
@@ -233,7 +233,7 @@ TEST(rollback_rollback_entity){
 }
 
 TEST(rollback_snapshot_component){
-    entt::registry w;
+    oge::runtime::OgeRegistry w;
     auto e = w.create(); w.emplace<game::ReplicatedTag>(e);
     game::ComponentCamera cam{}; cam.position = oge::math::vec3{1,2,3};
     w.emplace<game::ComponentCamera>(e, cam);
@@ -243,7 +243,7 @@ TEST(rollback_snapshot_component){
 }
 
 TEST(rollback_rollback_component){
-    entt::registry w;
+    oge::runtime::OgeRegistry w;
     auto e = w.create(); w.emplace<game::ReplicatedTag>(e);
     game::ComponentCamera cam{}; cam.position = oge::math::vec3{1,2,3};
     w.emplace<game::ComponentCamera>(e, cam);
@@ -265,7 +265,7 @@ TEST(rollback_rollback_component){
 }
 
 TEST(rollback_snapshot_chunk){
-    entt::registry w;
+    oge::runtime::OgeRegistry w;
     w.ctx().emplace<game::terrain::TerrainView>();
     auto& terrain = w.ctx().get<game::terrain::TerrainView>();
     auto h = terrain.CreateChunk(oge::Point3{0,0,0});
@@ -277,7 +277,7 @@ TEST(rollback_snapshot_chunk){
 }
 
 TEST(rollback_rollback_chunk){
-    entt::registry w;
+    oge::runtime::OgeRegistry w;
     w.ctx().emplace<game::terrain::TerrainView>();
     auto& terrain = w.ctx().get<game::terrain::TerrainView>();
     auto h = terrain.CreateChunk(oge::Point3{0,0,0});
@@ -301,7 +301,7 @@ TEST(rollback_rollback_chunk){
 }
 
 TEST(rollback_stream_advance_tick){
-    entt::registry w;
+    oge::runtime::OgeRegistry w;
     w.ctx().emplace<game::net::EventLogStream<>>();
 
     game::net::RollbackEventLogStream<> stream;
@@ -322,7 +322,7 @@ TEST(rollback_stream_advance_tick){
 }
 
 TEST(rollback_stream_validate){
-    entt::registry w;
+    oge::runtime::OgeRegistry w;
     game::net::RollbackEventLogStream<> stream;
     stream.m_snapshotInterval = 1;
     stream.AddPeer(0);  // peer 0 must be active for PeekEvent to work
