@@ -48,7 +48,7 @@ class ClientScene2 : public DebugScene3
         : DebugScene3(def),
           m_client(*m_ctx.any_ctx.Get<NetClient>()),
           m_replicationRegistry(::game::net::ReplicationRegistry::Def{
-              m_world.ctx().emplace<::game::net::EventLogStream<>>(),
+              m_world.ctx().emplace<::game::net::EventLogStream<>>(&m_ctx.any_factory),
               m_ctx.any_factory})
     {
         LOG_INFO("client scene loaded");
@@ -57,7 +57,7 @@ class ClientScene2 : public DebugScene3
             .connect<&ClientScene2::onRecievePacket>(this);
         m_clientDispatcher.sink<OnClientDisconnected>()
             .connect<&ClientScene2::onDisconnected>(this);
-        m_replicationRegistry.AddPeer(0, m_client.Host());
+        m_replicationRegistry.AddPeer(0, m_client.Host(), &m_world);
 
         ::game::net::InstallEntityReplicationHooks(m_world);
 

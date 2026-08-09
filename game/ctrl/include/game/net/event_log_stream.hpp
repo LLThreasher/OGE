@@ -8,7 +8,9 @@
 #include <unordered_map>
 #include <vector>
 
+#include "game/app_context.hpp"
 #include "oge/event_stream.hpp"
+#include "oge/log.hpp"
 #include "oge/runtime/debug.hpp"
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/type_name.hpp"
@@ -47,6 +49,8 @@ struct EventLogEntryConstRef
     std::vector<std::byte>& payload;
 };
 
+constexpr uint32_t MyPeerId = 63;
+
 // the event stream protocol follows a roughly consistent principle
 //   log cursor starts at 0. 
 //   only one authority peer is allowed. 
@@ -66,9 +70,10 @@ class EventLogStream
     std::bitset<64> m_activePeers = {};
     std::unordered_map<LogCursor, std::vector<std::byte>> m_payloads;
     LogCursor m_currentTail = 1;
+    AnythingFactory* m_af;
 
    public:
-    EventLogStream(bool authority = false)
+    EventLogStream(AnythingFactory* af = nullptr, bool authority = false) : m_af(af)
     {
     }
 
@@ -86,7 +91,8 @@ class EventLogStream
 
     void SerializeEventMeta(Buffer& buffer, const EventLogEntryMeta& meta)
     {
-        // a peer with no authority always write 0
+        LOG_DEBUG("serialize event {} at slot {}", m_af->GetDescriptor(meta.id)->name, meta.cursor);
+        
         buffer.Write<LogCursor>(meta.cursor);
         buffer.Write(meta.id);
     }
@@ -119,9 +125,10 @@ class EventLogStream
 
     void DeserializeEvent(uint32_t peerId, Buffer& buffer)
     {
-        EventLogEntryMeta meta;
+        EventLogEntryMeta meta{};
         buffer.Read(meta.cursor);
         buffer.Read(meta.id);
+        meta.recieveMask = {};
 
         // if the local head is smaller, increment untill the proposed slot
         while (m_entries.HeadCursor() < meta.cursor)
@@ -132,6 +139,8 @@ class EventLogStream
         // if the remote head is smaller, insert directly into loca head slot
         m_validSet.set(m_entries.HeadCursor() % Capacity, true);
         m_entries.Push(meta);
+
+        LOG_DEBUG("deserialize event {} at slot {}", m_af->GetDescriptor(meta.id)->name, meta.cursor);
 
         if (!buffer.IsEmpty())
         {
@@ -151,6 +160,8 @@ class EventLogStream
     Buffer EnqueueEvent(oge_id_type id, size_t initPayloadSize,
                         std::bitset<64> peerMask = ~std::bitset<64>{})
     {
+        // if (m_af)
+        //     LOG_DEBUG("enqueue event {} with mask {}", m_af->GetDescriptor(id)->name, (peerMask & m_activePeers).to_ullong());
         OGE_ASSERT(peerMask.any(), "EnqueueEvent called with empty peer mask");
         EventLogEntryMeta meta = {m_entries.HeadCursor(), id, 0,
                                   peerMask & m_activePeers};

@@ -498,6 +498,7 @@ class ReplicationRegistry
     void RemovePeer(PeerId peer)
     {
         m_peers.erase(peer);
+        m_eventStream->RemovePeer(peer);
     }
 
     auto& Peers() const

@@ -112,7 +112,8 @@ class ClientConnScene : public SceneExt
         }
         m_playerInfo = LoadOrCreatePlayer();
 
-        uint16_t port = 23400;
+        // uint16_t port = 23400;
+        uint16_t port = 23401;
         std::string_view ip = "localhost";
         {
             auto it = def.args.find("port");

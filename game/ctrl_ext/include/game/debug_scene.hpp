@@ -71,8 +71,8 @@ class DebugScene3 : public SceneExt
                       .vfov = widgetInputDef.vfov / (float)extent.y});
 
         // put something in the middle of the screen
-        ui::UISprite crossSprite{.sprite =
-                                     m_ctx.assets.LoadTexture("cursors/dot_large.png")};
+        ui::UISprite crossSprite{
+            .sprite = m_ctx.assets.LoadTexture("cursors/dot_large.png")};
         m_cross = m_uiWorld.create();
         m_uiWorld.emplace<ui::UIRect>(
             m_cross,
@@ -249,24 +249,26 @@ class DebugScene3 : public SceneExt
 
     void Update(Frame f, SceneContext sctx) override
     {
-        if (m_waitPlayer) return;
         using oge::input::KeyCode;
+        if (!m_waitPlayer)
+        {
+            auto& keys = f.is.ActiveKeys();
+            if (keys.contains(KeyCode::KY_G) && !usingKeyMouse)
+            {
+                usingKeyMouse = true;
+                m_nextShowingCursor = false;
+                ClearInputs();
+                AddKeyMouseInput();
+            }
+            else if (keys.contains(KeyCode::KY_ESCAPE) && usingKeyMouse)
+            {
+                usingKeyMouse = false;
+                m_nextShowingCursor = true;
+                ClearInputs();
+                AddWidgetInput();
+            }
+        }
 
-        auto& keys = f.is.ActiveKeys();
-        if (keys.contains(KeyCode::KY_G) && !usingKeyMouse)
-        {
-            usingKeyMouse = true;
-            m_nextShowingCursor = false;
-            ClearInputs();
-            AddKeyMouseInput();
-        }
-        else if (keys.contains(KeyCode::KY_ESCAPE) && usingKeyMouse)
-        {
-            usingKeyMouse = false;
-            m_nextShowingCursor = true;
-            ClearInputs();
-            AddWidgetInput();
-        }
         SceneExt::Update(std::move(f), sctx);
     }
 };
