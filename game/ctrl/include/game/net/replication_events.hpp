@@ -489,12 +489,6 @@ inline void PollTerrainChunkEvents(OgeRegistryRef world)
 // bookkeeping, then call PollPlayerInputs each tick.
 // =========================================================================
 
-inline void InstallPlayerInputReplicationHooks(OgeRegistryRef world)
-{
-    if (!world.ctx().contains<PlayerInputReplicationState>())
-        world.ctx().emplace<PlayerInputReplicationState>();
-}
-
 // Register a player's input stream so it is polled each tick.
 inline void RegisterPlayerInputStream(OgeRegistryRef world,
                                       entt::entity player,
@@ -525,6 +519,48 @@ inline void UnregisterPlayerInputStream(OgeRegistryRef world,
     auto& state = world.ctx().get<PlayerInputReplicationState>();
     state.streams.erase(player);
     state.cursors.erase(player);
+}
+
+inline void InstallPlayerInputReplicationHooks(OgeRegistryRef world)
+{
+    if (world.ctx().contains<PlayerInputReplicationState>())
+    {
+        return;
+    }
+    world.ctx().emplace<PlayerInputReplicationState>();
+
+    // Auto-register each player's input stream so it is polled (client) and
+    // receives replicated input (server).  Creation order differs between
+    // sides — the server's CreatePlayer emplaces the stream before
+    // ComponentPlayer, the client's DebugVoxelView emplaces it after — so
+    // cover both orderings.
+    world.on_construct<input::PlayerInputStream>()
+        .template connect<+[](OgeRegistryRef world, entt::entity entity)
+        {
+            if (world.all_of<ComponentPlayer>(entity))
+            {
+                RegisterPlayerInputStream(
+                    world, entity,
+                    &world.template get<input::PlayerInputStream>(entity));
+            }
+        }>();
+    world.on_construct<ComponentPlayer>()
+        .template connect<+[](OgeRegistryRef world, entt::entity entity)
+        {
+            if (world.all_of<input::PlayerInputStream>(entity))
+            {
+                RegisterPlayerInputStream(
+                    world, entity,
+                    &world.template get<input::PlayerInputStream>(entity));
+            }
+        }>();
+    // Drop the stream pointer when the component goes away so
+    // PollPlayerInputs / ApplyEvent never dereference a dangling pointer.
+    world.on_destroy<input::PlayerInputStream>()
+        .template connect<+[](OgeRegistryRef world, entt::entity entity)
+        {
+            UnregisterPlayerInputStream(world, entity);
+        }>();
 }
 
 // Call this each tick to flush player input frames into the replication

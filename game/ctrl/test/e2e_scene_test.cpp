@@ -389,6 +389,105 @@ TEST(e2e_update_chunk_replicates)
 }
 
 // =============================================================================
+// Player input replication
+//
+// The client player's input stream is replicated to the server as
+// PlayerInputReplicationEvent (packed with game::input::net::PackFrame).
+// ClientScene2 installs the input hooks and calls PollPlayerInputs each tick;
+// DebugServerScene installs the same hooks so ApplyEvent can insert the
+// incoming frame into the server player's stream.
+//
+// The harness has no DebugVoxelView, so the test creates the player's
+// PlayerInputStream component manually (as DebugVoxelView does) — the
+// on_construct hook auto-registers it.  Then dummy input is injected and the
+// test verifies the server's stream contains the same packed content.
+// =============================================================================
+
+TEST(e2e_player_input_replicates)
+{
+    NetSceneHarness h;
+    CHECK(h.start());
+    CHECK(h.waitForHandshake());
+
+    // Wait for the player entity to replicate to the client.
+    entt::entity clientPlayer = entt::null;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                clientPlayer = e;
+                return true;
+            }
+            return false;
+        },
+        400));
+    CHECK(clientPlayer != entt::null);
+
+    // Wire up the local player's input stream (DebugVoxelView does this in
+    // the real app; ClientScene2's hooks auto-register it on construct).
+    auto& cw = h.clientWorld();
+    cw.emplace<game::input::PlayerInputStream>(clientPlayer);
+    auto& clientStream =
+        cw.get<game::input::PlayerInputStream>(clientPlayer);
+
+    // Inject dummy input: a jump action at a screen position plus a movement
+    // delta.  Actions land in the stream immediately; the move delta needs
+    // AdvanceTick to flush the pending per-tick value.
+    clientStream.InsertAction(game::input::PlayerInputEvent{
+        game::math::vec2{0.25f, 0.5f}, game::input::PlayerAction::Jump});
+    clientStream.InsertMoveDelta(game::math::vec2{0.5f, 0.25f});
+    clientStream.AdvanceTick();
+
+    // The server must receive the input in its player's stream with the same
+    // packed frame content (action mask + quantized positions).
+    bool receivedAction = false;
+    bool receivedMove = false;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& sw = h.serverWorld();
+            for (auto [e, player] : sw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                auto& stream = sw.get<game::input::PlayerInputStream>(e);
+
+                // Read from the very first event: cursor 1, not the default
+                // 0 (a zero cursor snaps to the frontier and skips all).
+                game::input::PlayerInputStream::Cursor c{};
+                c.actionCursor = 1;
+                c.moveCursor = 1;
+                c.aimCursor = 1;
+
+                game::input::PlayerInputEvent action;
+                while (stream.PollAction(c, action))
+                {
+                    if (action.get<game::input::PlayerAction::Jump>())
+                    {
+                        receivedAction = true;
+                    }
+                }
+                game::math::vec2 move{};
+                while (stream.PollMoveDelta(c, move))
+                {
+                    // Quantized through SNorm8, so check sign/magnitude
+                    // rather than exact equality.
+                    receivedMove = move.x > 0.4f && move.y > 0.2f;
+                }
+
+                if (receivedAction && receivedMove) return true;
+            }
+            return false;
+        },
+        400));
+
+    CHECK(receivedAction);
+    CHECK(receivedMove);
+}
+
+// =============================================================================
 // Stability — run many frames after handshake
 // =============================================================================
 

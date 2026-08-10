@@ -88,6 +88,83 @@ TEST(el_enqueue_peek){ game::net::EventLogStream<> s; s.AddPeer(0); auto b=s.Enq
 TEST(el_dequeue){ game::net::EventLogStream<> s; s.AddPeer(0); auto b=s.EnqueueEvent(100,4); b.Write<uint32_t>(12345); game::net::EventLogEntry e; CHECK(s.TryDequeueEvent(0,e)); CHECK_EQ(e.entry.id,100); }
 TEST(el_multi_peer){ game::net::EventLogStream<> s; s.AddPeer(0); s.AddPeer(1); auto b1=s.EnqueueEvent(1,4,std::bitset<64>{}.set(0)); b1.Write<uint32_t>(111); auto b2=s.EnqueueEvent(2,4,std::bitset<64>{}.set(1)); b2.Write<uint32_t>(222); game::net::EventLogEntry e; CHECK(s.TryDequeueEvent(0,e)); CHECK_EQ(e.entry.id,1); CHECK(s.TryDequeueEvent(1,e)); CHECK_EQ(e.entry.id,2); }
 TEST(el_peek_cursor){ game::net::EventLogStream<> s; s.AddPeer(0); s.EnqueueEvent(1,4).Write<uint32_t>(111); s.EnqueueEvent(2,4).Write<uint32_t>(222); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(s.PeekEvent(0,r)); CHECK_EQ(r.entry.id,1); CHECK(s.PeekEvent(0,r,r.entry.cursor+1)); CHECK_EQ(r.entry.id,2); }
+TEST(el_deserialize_stale_claim)
+{
+    // Regression: a sender behind the local log (e.g. client input arriving
+    // while the server generated events the client has not seen yet) claims
+    // a cursor the local log already passed.  The event must be appended at
+    // the local head with the local cursor — keying the payload at the
+    // stale claim would collide with the local event still occupying that
+    // slot ("Failed to emplace payload at cursor").
+    oge::runtime::OgeRegistry reg;
+    oge::runtime::OGEContext ctx(reg);
+    oge::runtime::TypeRegistry af(ctx);
+    af.RegisterType<game::net::AddEntityEvent>();  // debug-log name lookup
+
+    game::net::EventLogStream<> s(&af);
+    s.AddPeer(0);
+
+    // Local events occupy cursors 1..5 with payloads still in flight.
+    for (uint32_t i = 1; i <= 5; ++i)
+        s.EnqueueEvent(1000 + i, 4).Write<uint32_t>(i);
+
+    // Remote event claiming cursor 3 — stale, since the local head is 6.
+    game::net::EventLogEntryMeta meta{};
+    meta.id = entt::type_hash<game::net::AddEntityEvent>::value();
+    meta.cursor = 3;
+    std::vector<std::byte> payload(4);
+
+    auto s2 = S();
+    oge::runtime::net::Buffer buf(s2);
+    s.SerializeEventMeta(buf, meta);
+    s.SerializeEventPayload(meta.cursor, buf, payload);
+    buf.ToReadOnly();
+
+    auto received = s.DeserializeEvent(0, buf);
+
+    // Appended at the local head with the local cursor; payload keyed there.
+    CHECK_EQ(received.cursor, uint64_t{6});
+    CHECK_EQ(received.id, meta.id);
+    const auto* entry = s.GetEntry(6);
+    CHECK(entry != nullptr);
+    CHECK_EQ(entry->id, meta.id);
+    auto* rpayload = s.GetPayload(6);
+    CHECK(rpayload != nullptr);
+    CHECK_EQ(rpayload->size(), 4u);
+
+    // The local event at the claimed cursor must be untouched.
+    const auto* localEntry = s.GetEntry(3);
+    CHECK(localEntry != nullptr);
+    CHECK_EQ(localEntry->id, 1003u);
+}
+TEST(el_deserialize_fresh_claim)
+{
+    // A claim at the local head keeps its slot: the entry and payload land
+    // at the claimed cursor.
+    oge::runtime::OgeRegistry reg;
+    oge::runtime::OGEContext ctx(reg);
+    oge::runtime::TypeRegistry af(ctx);
+    af.RegisterType<game::net::AddEntityEvent>();
+
+    game::net::EventLogStream<> s(&af);
+    s.AddPeer(0);
+
+    game::net::EventLogEntryMeta meta{};
+    meta.id = entt::type_hash<game::net::AddEntityEvent>::value();
+    meta.cursor = 1;  // local head is 1
+    std::vector<std::byte> payload(4);
+
+    auto s2 = S();
+    oge::runtime::net::Buffer buf(s2);
+    s.SerializeEventMeta(buf, meta);
+    s.SerializeEventPayload(meta.cursor, buf, payload);
+    buf.ToReadOnly();
+
+    auto received = s.DeserializeEvent(0, buf);
+
+    CHECK_EQ(received.cursor, uint64_t{1});
+    CHECK(s.GetPayload(1) != nullptr);
+}
 
 // =========================================================================
 // PacketScheduler tests

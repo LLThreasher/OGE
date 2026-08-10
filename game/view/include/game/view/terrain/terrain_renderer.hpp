@@ -12,7 +12,6 @@
 #include <vector>
 
 #include "defs_ext.hpp"
-#include "entt/signal/fwd.hpp"
 #include "game/game_world.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/terrain_view.hpp"

@@ -139,10 +139,8 @@ class InputPipeline : public FramePipeline<InputSource, InputFrame>
 
 namespace oge::runtime
 {
-using namespace game::input;
-
 template <>
-struct TypeName<InputSource>
+struct TypeName<::game::input::InputSource>
 {
     static constexpr std::string Get()
     {
@@ -151,7 +149,7 @@ struct TypeName<InputSource>
 };
 
 template <>
-struct TypeName<UIDragInput>
+struct TypeName<::game::input::UIDragInput>
 {
     static constexpr std::string Get()
     {
@@ -160,7 +158,7 @@ struct TypeName<UIDragInput>
 };
 
 template <>
-struct TypeName<WidgetInput>
+struct TypeName<::game::input::WidgetInput>
 {
     static constexpr std::string Get()
     {
@@ -169,7 +167,7 @@ struct TypeName<WidgetInput>
 };
 
 template <>
-struct TypeName<KeyMouseInput>
+struct TypeName<::game::input::KeyMouseInput>
 {
     static constexpr std::string Get()
     {

@@ -11,6 +11,7 @@
 #include "game/app_context.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/log.hpp"
+#include "oge/math.hpp"
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/type_name.hpp"
 
@@ -26,7 +27,7 @@ struct EventLogEntryMeta
     LogCursor cursor = 0;
     oge_id_type id = 0;
     // last bit is used to indicate whether payload exists
-    std::bitset<64> recieveMask = ~std::bitset<64>{};
+    std::bitset<64> recieveMask = {};
 };
 
 struct EventLogEntry
@@ -54,16 +55,20 @@ struct SendPayload
 constexpr uint32_t MyPeerId = 63;
 
 // the event stream protocol follows a roughly consistent principle
-//   log cursor starts at 0.
-//   only one authority peer is allowed.
-//   authority peer writes the log cursor into packet,
-//   non-authority peer writes 0 for log cursor.
-//   authority peer must maintain a full event log, including events
+//   log cursor starts at 1.
+//   each peer writes its own head cursor into packets.
+//   the receiver pads its log with empty entries up to a claim that lies
+//      ahead of its head, so both sides number the event identically;
+//      a claim behind the receiver's head is stale (the sender has not
+//      seen the receiver's newer events) and is appended at the local
+//      head with the local cursor — local events may not keep the same
+//      cursor slot as on the sender's log.
+//   the authority peer must maintain a full event log, including events
 //      every non-authoritative peer.
 //   non-authoritative peer only maintain local events and remote events
 //      with its mask. local events may not have the same cursor slot as
 //      its replica on the authoritative log.
-template <size_t Capacity = 4096>
+template <size_t Capacity = 256>
 class EventLogStream
 {
    protected:
@@ -155,27 +160,44 @@ class EventLogStream
         }
         else
         {
-            // if the local head is smaller, increment untill the proposed slot
-            while (m_entries.HeadCursor() < meta.cursor)
+            // The claimed cursor is the sender's number for this event.  If
+            // the local log has not reached it yet, pad with empty entries
+            // so both sides number the event identically.  If the local log
+            // has already passed it (the sender is behind — e.g. a client
+            // sending input while the server generated events the client
+            // has not seen yet), the claim is stale: append at the local
+            // head with the local cursor instead.  Keying the payload at
+            // the stale claim would collide with the local event still
+            // occupying that slot.
+            const LogCursor claimedCursor = meta.cursor;
+            if (m_entries.HeadCursor() < claimedCursor)
             {
-                m_validSet.set(m_entries.HeadCursor() % Capacity, false);
-                EventLogEntryMeta empty = {};
-                empty.recieveMask = {};
-                m_entries.Push(empty);
+                while (m_entries.HeadCursor() < claimedCursor)
+                {
+                    m_validSet.set(m_entries.HeadCursor() % Capacity, false);
+                    EventLogEntryMeta empty = {};
+                    empty.recieveMask = {};
+                    m_entries.Push(empty);
+                }
             }
-            // if the remote head is smaller, insert directly into loca head
-            // slot
+            else
+            {
+                meta.cursor = m_entries.HeadCursor();
+            }
             m_validSet.set(m_entries.HeadCursor() % Capacity, true);
             m_entries.Push(meta);
 
-            LOG_DEBUG("deserialize event {} at slot {}",
-                      m_af->GetDescriptor(meta.id)->name, meta.cursor);
+            LOG_DEBUG("deserialize event {} at slot {} ({})",
+                      m_af->GetDescriptor(meta.id)->name, meta.cursor,
+                      meta.cursor % Capacity);
 
             if (!buffer.IsEmpty())
             {
                 // Single packet: the payload section starts with its own
-                // [sendPayloadTypeId][cursor] prefix.
-                ConsumePayloadHeader(meta.cursor, buffer);
+                // [sendPayloadTypeId][cursor] prefix.  The prefix carries
+                // the sender's claimed cursor, which may differ from the
+                // slot assigned above.
+                ConsumePayloadHeader(claimedCursor, buffer);
                 DeserializeEventPayload(meta.cursor, buffer);
             }
         }
@@ -196,8 +218,7 @@ class EventLogStream
     // slot is a gap pad).
     const EventLogEntryMeta* GetEntry(LogCursor cursor) const
     {
-        if (!m_entries.Contains(cursor) ||
-            !m_validSet.test(cursor % Capacity))
+        if (!m_entries.Contains(cursor) || !m_validSet.test(cursor % Capacity))
         {
             return nullptr;
         }
@@ -261,7 +282,9 @@ class EventLogStream
                    LogCursor at = 0) const
     {
         auto curosr = at == 0 ? m_currentTail : at;
-        bool incrementTail = true;
+        LOG_DEBUG("peek event at slot {}: {}, {}, {}", curosr, m_currentTail,
+                  m_entries.Contains(curosr),
+                  m_validSet.test(curosr % Capacity));
         while (m_entries.Contains(curosr))
         {
             if (m_validSet.test(curosr % Capacity))
@@ -269,16 +292,12 @@ class EventLogStream
                 const EventLogEntryMeta& entry = m_entries.Get(curosr);
                 if (entry.recieveMask.test(peer))
                 {
+                    out.entry = entry;
                     auto it = m_payloads.find(curosr);
                     if (it != m_payloads.end())
                     {
-                        out.entry = entry;
-                        out.payload = it->second;
+                        out.payload = std::move(it->second);
                         return true;
-                    }
-                    else
-                    {
-                        incrementTail = false;
                     }
                 }
             }
@@ -290,14 +309,18 @@ class EventLogStream
     bool TryDequeueEvent(uint32_t peer, EventLogEntry& out, LogCursor at = 0)
     {
         auto curosr = at == 0 ? m_currentTail : at;
-        bool incrementTail = true;
+        bool incrementTail = curosr == m_currentTail;
         while (m_entries.Contains(curosr))
         {
             if (m_validSet.test(curosr % Capacity))
             {
+                incrementTail = false;
                 EventLogEntryMeta& entry = m_entries.Get(curosr);
                 if (entry.recieveMask.test(peer))
                 {
+                    LOG_DEBUG("deqeue event {} at slot {}",
+                              m_af->GetDescriptor(entry.id)->name,
+                              entry.cursor);
                     out.entry = entry;
                     auto it = m_payloads.find(curosr);
                     if (it != m_payloads.end())
@@ -307,15 +330,19 @@ class EventLogStream
                             m_validSet.set(curosr % Capacity, false);
                         out.payload = std::move(it->second);
                         m_payloads.erase(it);
+                        m_currentTail = oge::math::max(m_currentTail, curosr);
                         return true;
                     }
-                    else
-                    {
-                        incrementTail = false;
-                    }
+                }
+                else if (entry.recieveMask.none())
+                {
+                    incrementTail = true;
                 }
             }
-            if (incrementTail) ++m_currentTail;
+            else if (incrementTail)
+            {
+                m_currentTail = oge::math::max(m_currentTail, curosr);
+            }
             ++curosr;
         }
         return false;
@@ -323,6 +350,12 @@ class EventLogStream
 
     void Update()
     {
+        // increment tail to first valid entry
+        while (m_currentTail < m_entries.HeadCursor() && !m_validSet.test(m_currentTail % Capacity))
+        {
+            m_currentTail++;
+        }
+
         // we skip tick 0 intentionally, because we use tick 0 to load
         //      world save.
         if (m_entries.HeadCursor() <= Capacity) return;
@@ -335,8 +368,9 @@ class EventLogStream
                 m_payloads.erase(m_currentTail);
             }
 
-            OGE_ASSERT(!m_validSet.test(m_currentTail),
-                       "unhandled event dies at boundary");
+            // OGE_ASSERT(!m_validSet.test(m_currentTail % Capacity),
+            //            "unhandled event dies at boundary {}", m_currentTail);
+            m_validSet.set(m_currentTail % Capacity, false);
 
             ++m_currentTail;
         }

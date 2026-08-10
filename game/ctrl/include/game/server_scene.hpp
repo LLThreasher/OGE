@@ -35,6 +35,7 @@ class DebugServerScene final : public Scene
     float m_pendingConnTimeout = 0.f;
     float m_pendingConn2Timeout = 0.f;
     std::deque<PlayerInfo> m_playerEntries;
+    net::EventLogStream<>& m_eventLogStream;
     net::ReplicationRegistry m_replicationRegistry;
 
     void onServerRecieveConnect(OnServerReceiveConnect c)
@@ -140,8 +141,9 @@ class DebugServerScene final : public Scene
     DebugServerScene(const Def& def)
         : Scene(def),
           m_netServer(m_ctx.any_ctx.Emplace<NetServer>()),
+          m_eventLogStream(m_world.ctx().emplace<net::EventLogStream<>>(&m_ctx.any_factory)),
           m_replicationRegistry(net::ReplicationRegistry::Def{
-              m_world.ctx().emplace<net::EventLogStream<>>(&m_ctx.any_factory),
+              m_eventLogStream,
               m_ctx.any_factory})
     {
         m_serverEventDispatcher.sink<OnServerReceiveConnect>()
@@ -192,6 +194,7 @@ class DebugServerScene final : public Scene
         net::InstallComponentReplicationHooks<ComponentPlayer>(m_world);
         net::InstallEntityReplicationHooks(m_world);
         net::InstallTerrainReplicationHooks(m_world);
+        net::InstallPlayerInputReplicationHooks(m_world);
     }
 
     ~DebugServerScene()
@@ -231,6 +234,7 @@ class DebugServerScene final : public Scene
         m_netServer.Poll(m_serverEventDispatcher, f.dt);
         OGE_ASSERT(m_serverEventDispatcher.size() == 0,
                    "Event dispatcher not empty after poll");
+        m_eventLogStream.Update();
         m_replicationRegistry.ProduceAll(m_netServer, m_world);
         Scene::Update(f, sctx);
         net::PollTerrainChunkEvents(m_world);

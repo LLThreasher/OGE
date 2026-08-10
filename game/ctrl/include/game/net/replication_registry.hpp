@@ -71,7 +71,7 @@ struct EncodeContext
     NetPeer peer{};
 
     // Cursor to start reading from in the event log.
-    LogCursor begin{};
+    LogCursor begin = 0;
 
     // maximum number of bytes to send
     size_t byteLimit = std::numeric_limits<size_t>::max();

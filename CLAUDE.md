@@ -151,6 +151,39 @@ add_test_target(my_test
   `UpdateChunkEvent`.  E2E coverage: `e2e_add_chunk_replicates` +
   `e2e_update_chunk_replicates` in `game/ctrl/test/e2e_scene_test.cpp`.
 
+## Player Input Replication Notes
+
+- **`PlayerInputStream` is a component** on the player entity.  The server's
+  `ComponentPlayer::CreatePlayer` emplaces it (before `ComponentPlayer`);
+  on the client, `DebugVoxelView::onConstructPlayer` emplaces it manually
+  (PlayerInputStream is **not** a replicated component — the snapshot only
+  covers physics/camera/creature/player components).
+- **`InstallPlayerInputReplicationHooks(world)`** — emplaces
+  `PlayerInputReplicationState` in ctx and auto-registers streams via
+  `on_construct<PlayerInputStream>` / `on_construct<ComponentPlayer>` (both
+  orders of component creation covered) + `on_destroy` unregister.  Called by
+  **both** `DebugServerScene` (so `ApplyEvent` can write into the server
+  player's stream) and `ClientScene2` (so local input gets polled).
+- **`PollPlayerInputs(world)`** — called from `ClientScene2::Update` before
+  `ProduceAll`.  Packs each stream's new input into a
+  `PlayerInputReplicationEvent` (`PackedPlayerInputFrame`, quantized via
+  `game::input::net`).  Reliable channel (`SingleReliable`).  The server
+  never calls it — input only flows client → server.
+- **`ApplyEvent(PlayerInputReplicationEvent)`** — inserts the unpacked frame
+  into the server player's stream; `SubsystemPlayer` consumes it with
+  `ComponentPlayer::inputCursor`.  Entity ids are shared between client and
+  server (client mirrors server ids), so `playerEntity` matches.
+- **Wire format**: `PlayerInputReplicationEvent` = entity + packed frame
+  (flags + moveX/Y SNorm8 + panX/Y + up to 255 packed action events).
+  `DECL_NET_OBJ` for the packed types lives in `game/data/include/game/input/
+  net.hpp`.
+- **E2E coverage**: `e2e_player_input_replicates` in
+  `game/ctrl/test/e2e_scene_test.cpp` — test emplaces a `PlayerInputStream`
+  on the client player (the harness has no DebugVoxelView), injects a jump
+  action + move delta, and pumps until the server's stream has the same
+  content.  Note: a zero `Cursor{}` snaps to the frontier and skips all
+  events — the test reads from cursor 1 to see the first event.
+
 ## Known Issues
 1. **`scene_load_test`**: `Scene::Load()` with JSON config triggers `__next_prime
    overflow` in `BlockRegistry::RegisterBlock` when linked with certain .a order.

@@ -24,7 +24,8 @@ class ClientScene2 : public Scene
 {
     NetClient& m_client;
     entt::dispatcher m_clientDispatcher;
-    ::game::net::ReplicationRegistry m_replicationRegistry;
+    net::EventLogStream<>& m_eventLogStream;
+    net::ReplicationRegistry m_replicationRegistry;
 
     bool m_readyToQuit = false;
 
@@ -43,8 +44,9 @@ class ClientScene2 : public Scene
     ClientScene2(const Def& def)
         : Scene(def),
           m_client(*m_ctx.any_ctx.Get<NetClient>()),
+          m_eventLogStream(m_world.ctx().emplace<::game::net::EventLogStream<>>(&m_ctx.any_factory)),
           m_replicationRegistry(::game::net::ReplicationRegistry::Def{
-              m_world.ctx().emplace<::game::net::EventLogStream<>>(&m_ctx.any_factory),
+              m_eventLogStream,
               m_ctx.any_factory})
     {
         LOG_INFO("client scene loaded");
@@ -61,6 +63,11 @@ class ClientScene2 : public Scene
         {
             Load();
         }
+
+        // Track the local player's input stream so PollPlayerInputs can flush
+        // it to the server.  The stream component appears after the player
+        // entity replicates (DebugVoxelView emplaces it on construct).
+        net::InstallPlayerInputReplicationHooks(m_world);
 
         m_replicationRegistry.AddPeer(0, m_client.Host(), &m_world);
 
@@ -89,6 +96,11 @@ class ClientScene2 : public Scene
             sctx.nextScene = Id<Scene>();
             sctx.nextSceneArgs = {};
         }
+        // Flush local player input into the replication stream before
+        // ProduceAll sends it to the server.  No-op when no stream is
+        // registered (e.g. pre-player or headless).
+        net::PollPlayerInputs(m_world);
+        m_eventLogStream.Update();
         m_replicationRegistry.ProduceAll(m_client, m_world);
 
         Scene::Update(f, sctx);
