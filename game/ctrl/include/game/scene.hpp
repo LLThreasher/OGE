@@ -20,6 +20,16 @@ using oge::runtime::OGEContext;
 
 class Scene : protected AppRuntime
 {
+    enum class LifetimeStage
+    {
+        Unloaded = 0,
+        Loaded,
+    };
+
+#if OGE_DEBUG
+    LifetimeStage m_lifetimeStage;
+#endif
+
    protected:
     GameWorld m_world;
     sim::SubsystemPipeline m_subsystems;

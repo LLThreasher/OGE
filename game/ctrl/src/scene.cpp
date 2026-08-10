@@ -7,6 +7,7 @@
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
+#include "oge/assert.hpp"
 #include "oge/platform/io.hpp"
 
 using namespace game;
@@ -36,6 +37,10 @@ void Scene::Update(Frame f, SceneContext sctx)
 
 void Scene::Load()
 {
+#if OGE_DEBUG
+    OGE_ASSERT(m_lifetimeStage != LifetimeStage::Loaded, "double load");
+    m_lifetimeStage = LifetimeStage::Loaded;
+#endif
     if (m_sceneConfig.loadMask & SceneConfig::LOAD_MASK_BLOCKS)
     {
         auto& blocks = m_world.ctx().emplace<::game::terrain::BlockRegistry>();
@@ -62,6 +67,10 @@ void Scene::Load()
 
 void Scene::Unload()
 {
+#if OGE_DEBUG
+    OGE_ASSERT(m_lifetimeStage != LifetimeStage::Unloaded, "double unload");
+    m_lifetimeStage = LifetimeStage::Unloaded;
+#endif
     m_subsystems.Clear();
     m_realtimeSubsystems.Clear();
 }
