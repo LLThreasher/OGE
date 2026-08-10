@@ -10,6 +10,7 @@
 #include "game/json.hpp"
 #include "game/memory_context.hpp"
 #include "oge/input/raw_input_stream.hpp"
+#include "oge/log.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
 namespace game
@@ -90,9 +91,31 @@ class SceneRunner
             {
                 m_currentScene.reset();
             }
-            m_currentScene = m_anyFactory.BuildABC<TSceneBase>(
+            auto nextScene = m_anyFactory.BuildABC<TSceneBase>(
                 m_nextScene.value(),
                 typename TSceneBase::Def{m_appCtx, m_nextSceneArgs});
+            if (nextScene == nullptr)
+            {
+                if (auto desc = m_anyFactory.GetDescriptor(m_nextScene.value()))
+                {
+                    LOG_ERROR("cannot switch to scene with name {}",
+                              desc->name);
+                }
+                else
+                {
+                    LOG_ERROR("cannot switch to unregistered scene with id {}",
+                              m_nextScene.value());
+                }
+                SwitchToScene<TSceneBase>();
+                m_nextSceneArgs = {};
+                nextScene = m_anyFactory.BuildABC<TSceneBase>(
+                    Id<TSceneBase>(),
+                    typename TSceneBase::Def{m_appCtx, m_nextSceneArgs});
+                assert(nextScene != nullptr);
+            }
+            LOG_INFO("switched to scene with name {}",
+                        m_anyFactory.GetDescriptor(m_nextScene.value())->name);
+            m_currentScene = std::move(nextScene);
             m_nextScene.reset();
         }
         m_currentScene->Update(std::forward<typename TSceneBase::Frame>(f),

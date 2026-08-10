@@ -390,7 +390,37 @@ class ReplicationRegistry
                         net::Buffer& buffer)
     {
         OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
-        m_eventStream->DeserializeEvent(peer, buffer);
+        auto meta = m_eventStream->DeserializeEvent(peer, buffer);
+
+        // Split packets (StreamReliable): the payload-only half carries the
+        // send-payload type id and no event id — apply once its meta half
+        // has arrived.
+        if (m_eventStream->IsSendPayloadType(meta.id))
+        {
+            const EventLogEntryMeta* entry =
+                m_eventStream->GetEntry(meta.cursor);
+            if (entry != nullptr) ApplyReceivedEvent(*entry, world);
+            return;
+        }
+
+        ApplyReceivedEvent(meta, world);
+    }
+
+    // Deserialize the payload of a received event and apply it to the world
+    // through the event family's ReplicationCapability::apply function.
+    void ApplyReceivedEvent(const EventLogEntryMeta& meta,
+                            oge::runtime::OgeRegistryRef world)
+    {
+        auto it = m_units.find(meta.id);
+        if (it == m_units.end() || it->second->apply == nullptr) return;
+
+        std::vector<std::byte>* payload =
+            m_eventStream->GetPayload(meta.cursor);
+        if (payload == nullptr) return;  // payload half still in flight
+
+        net::Buffer buf{payload->data(), payload->size()};
+        buf.ToReadOnly();
+        it->second->apply(*m_eventStream, world, buf);
     }
 
     void AdvancePeerTick(PeerId peer, oge::runtime::OgeRegistryRef world)

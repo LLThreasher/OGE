@@ -1,3 +1,5 @@
+#pragma once
+
 #include <vector>
 
 #include "game/app_context.hpp"
@@ -245,8 +247,8 @@ class DebugServerScene final : public Scene
 
         m_world.ctx().emplace<::game::terrain::TerrainView>();
 
-        auto desc = m_world.ctx().emplace<::game::terrain::TerrainDesc>();
-        desc.chunkViewDistance = 1;
+        auto& desc = m_world.ctx().emplace<::game::terrain::TerrainDesc>();
+        desc.chunkViewDistance = 8;
 
         for (auto stage : m_sceneConfig.subsystems)
         {

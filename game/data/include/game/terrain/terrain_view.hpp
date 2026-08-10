@@ -27,6 +27,7 @@ class SubsystemTerrain;
 namespace view::terrain
 {
 class TerrainRenderer;
+class TerrainUploader;
 }  // namespace view::terrain
 
 namespace game::math
@@ -271,6 +272,7 @@ class TerrainView
 {
     friend class ::game::sim::terrain::SubsystemTerrain;
     friend class ::game::view::terrain::TerrainRenderer;
+    friend class ::game::view::terrain::TerrainUploader;
 
    public:
     uint32_t GetBlock(Point3 pos) const

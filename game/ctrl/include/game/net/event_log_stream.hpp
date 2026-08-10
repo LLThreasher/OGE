@@ -11,7 +11,6 @@
 #include "game/app_context.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/log.hpp"
-#include "oge/runtime/debug.hpp"
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/type_name.hpp"
 
@@ -140,7 +139,7 @@ class EventLogStream
         return sizeof(LogCursor) + sizeof(oge_id_type);
     }
 
-    void DeserializeEvent(uint32_t peerId, Buffer& buffer)
+    EventLogEntryMeta DeserializeEvent(uint32_t peerId, Buffer& buffer)
     {
         EventLogEntryMeta meta{};
         buffer.Read(meta.id);
@@ -180,6 +179,38 @@ class EventLogStream
                 DeserializeEventPayload(meta.cursor, buffer);
             }
         }
+
+        return meta;
+    }
+
+    // True if `id` is the stream's send-payload type id — i.e. the packet
+    // carried only the payload half of a StreamReliable event, without its
+    // meta half.
+    bool IsSendPayloadType(oge_id_type id) const
+    {
+        return id == m_sendPayloadTypeId;
+    }
+
+    // Returns the meta stored at `cursor`, or nullptr if no entry exists
+    // there yet (the meta half of a split packet has not arrived, or the
+    // slot is a gap pad).
+    const EventLogEntryMeta* GetEntry(LogCursor cursor) const
+    {
+        if (!m_entries.Contains(cursor) ||
+            !m_validSet.test(cursor % Capacity))
+        {
+            return nullptr;
+        }
+        return &m_entries.Get(cursor);
+    }
+
+    // Returns the payload stored at `cursor`, or nullptr if it has not
+    // arrived yet (the payload half of a StreamReliable event is still in
+    // flight).
+    std::vector<std::byte>* GetPayload(LogCursor cursor)
+    {
+        auto it = m_payloads.find(cursor);
+        return it == m_payloads.end() ? nullptr : &it->second;
     }
 
     // Consumes and validates the payload section header

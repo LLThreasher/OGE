@@ -55,6 +55,7 @@ class ViewExecutor
     template <typename TQueue>
     void Update(float dt, TQueue& s_queue)
     {
+        assert(m_ctx.has_value());
         DrawContext ctx(dt, m_ctx.value(), m_clearColor);
         s_queue.template Add<CmdAddView>(
             GameViewType::Overlay,

@@ -2,7 +2,8 @@
 #include "game/client.hpp"
 #include "game/client_conn_scene.hpp"
 #include "game/client_scene2.hpp"
-#include "game/debug_scene.hpp"
+#include "game/debug_voxel_view.hpp"
+#include "game/debug_view.hpp"
 #include "game/scene.hpp"
 #include "game/scene_ext.hpp"
 #include "oge/log.hpp"
@@ -19,7 +20,7 @@ int main(int argc, char* argv[])
 {
     // Scene to start with: argv[1] as short ("DebugScene3") or full
     // ("core::DebugScene3") type name.  Defaults to DebugScene3.
-    std::string sceneName = "core::DebugView<" "core::Scene" ">";
+    std::string sceneName = "core::DebugVoxelView<" "core::Scene" ">";
     if (argc > 1)
     {
         std::string arg = argv[1];
@@ -46,7 +47,9 @@ int main(int argc, char* argv[])
 
     app.RegisterScene<game::DebugView<game::Scene>>();
     app.RegisterScene<game::DebugView<game::ClientConnScene>>();
-    app.RegisterScene<game::DebugView<game::ClientScene2>>();
+
+    app.RegisterScene<game::DebugVoxelView<game::Scene>>();
+    app.RegisterScene<game::DebugVoxelView<game::ClientScene2>>();
 
     try
     {

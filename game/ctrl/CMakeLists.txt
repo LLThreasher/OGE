@@ -66,3 +66,8 @@ add_test_target(loopback_test
     SOURCES test/loopback_test.cpp
     LIBRARIES game::ctrl oge::platform::native
 )
+
+add_test_target(e2e_scene_test
+    SOURCES test/e2e_scene_test.cpp
+    LIBRARIES game::ctrl oge::platform::native
+)

@@ -1,6 +1,7 @@
 #include "game/sim/subsystem_physics.hpp"
 
 #include <unordered_map>
+#include <unordered_set>
 
 #include "game/components.hpp"
 #include "game/sim/subsystem.hpp"
@@ -164,6 +165,10 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
         body.acceleration = {};
     }
 
+    // Track which entities are modified by collision resolution so we can
+    // fire a single on_update / replication event per entity per frame.
+    std::unordered_set<entt::entity> modified;
+
     cachedCollisions.clear();
 
     // collision between physical body and terrain Y
@@ -185,13 +190,8 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     {
         auto& [res, blkVals] = tup;
         auto& body = game.get<ComponentPhysicBody>(e);
-        game.patch<ComponentPhysicBody>(
-            e,
-            [=](auto& body)
-            {
-                body.isGrounded = res.type == oge::COLLISION_TYPE_POS_Y;
-                body.pos.y += res.effectiveOffset.y;
-            });
+        body.isGrounded = res.type == oge::COLLISION_TYPE_POS_Y;
+        body.pos.y += res.effectiveOffset.y;
 
         auto& collider = game.get<ComponentAABBCollider>(e);
         auto realAABB = collider.aabb + body.pos;
@@ -206,6 +206,8 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
             body.onTopOfBlkValue = blkVals;
         else
             body.onTopOfBlkValue = 0;
+
+        modified.insert(e);
     }
 
     cachedCollisions.clear();
@@ -257,13 +259,14 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     {
         auto& [res, blkVals] = tup;
         auto& body = game.get<ComponentPhysicBody>(e);
-        game.patch<ComponentPhysicBody>(
-            e, [=](auto& body) { body.pos += res.effectiveOffset; });
+        body.pos += res.effectiveOffset;
 
         if (res.type == oge::COLLISION_TYPE_POS_X && body.velocity.x < 0.f)
             body.velocity.x = 0;
         if (res.type == oge::COLLISION_TYPE_NEG_X && body.velocity.x > 0.f)
             body.velocity.x = 0;
+
+        modified.insert(e);
     }
 
     cachedCollisions.clear();
@@ -315,14 +318,21 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     {
         auto& [res, blkVals] = tup;
         auto& body = game.get<ComponentPhysicBody>(e);
-        game.patch<ComponentPhysicBody>(
-            e, [=](auto& body) { body.pos += res.effectiveOffset; });
+        body.pos += res.effectiveOffset;
 
         if (res.type == oge::COLLISION_TYPE_POS_Z && body.velocity.z < 0.f)
             body.velocity.z = 0;
         if (res.type == oge::COLLISION_TYPE_NEG_Z && body.velocity.z > 0.f)
             body.velocity.z = 0;
+
+        modified.insert(e);
     }
+
+    // Fire a single on_update per modified entity so that replication hooks
+    // produce at most one UpdateComponentEvent<ComponentPhysicBody> per
+    // entity per physics frame.
+    for (auto e : modified)
+        game.patch<ComponentPhysicBody>(e);
 }
 
 DECL_UTYPES_IMPL(SubsystemPhysics)

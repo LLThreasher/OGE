@@ -22,11 +22,13 @@ void TerrainRenderer::onAttach(RendererState& ctx)
     m_terrainMeshBuilder.SetVertexBudget(desc->meshingQuadBudget);
     m_terrainUploader.SetMaxNumChunks((tdesc->chunkViewDistance + 1) *
                                       (tdesc->chunkViewDistance + 1) * 6);
+    ctx.events.sink<TerrainUploadedEvent>().connect<&TerrainUploader::onTerrainUploaded>(m_terrainUploader);
     LOG_DEBUG("attach terrain renderer");
 }
 
 void TerrainRenderer::onDetach(RendererState& ctx)
 {
+    ctx.events.sink<TerrainUploadedEvent>().disconnect();
 }
 
 void TerrainRenderer::onUpdate(FRendererState& ctx)
@@ -37,7 +39,7 @@ void TerrainRenderer::onUpdate(FRendererState& ctx)
     m_terrainMeshBuilder.BuildChunkMeshes(
         terrainData, ctx.world.ctx().get<BlockRegistry>(), m_terrainPData,
         ctx.memory.frameBuffer.Resource());
-    m_terrainUploader.UploadTerrain(m_terrainPData, ctx.assets);
+    m_terrainUploader.UploadTerrain(m_terrainPData, ctx.assets, ctx.events);
     m_terrainMeshScheduler.SubmitVisibleChunks(
         terrainData, m_terrainPData, ctx.uiWorld, ctx.world,
         ctx.submissionQueue.View<CmdDrawTerrainMeshOpaque>());

@@ -1,7 +1,9 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cassert>
+#include <memory>
 #include <memory_resource>
 #include <optional>
 #include <queue>
@@ -10,6 +12,8 @@
 #include <vector>
 
 #include "defs_ext.hpp"
+#include "entt/signal/fwd.hpp"
+#include "game/game_world.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/terrain_view.hpp"
 #include "game/view/gfx/commands.hpp"
@@ -83,12 +87,12 @@ struct TerrainPresentationData
     Pool<TerrainObject::BuiltChunkMesh, BuiltChunkMesh2> builtChunkMeshes;
 
     std::queue<std::tuple<ChunkHandle, BuiltMeshHandle>> uploadMeshQueue;
-    std::unordered_map<ChunkHandle, PTerrainMesh>
-        residentChunks;
+    std::unordered_map<ChunkHandle, PTerrainMesh> residentChunks;
 
     TerrainPresentationData()
     {
     }
+    ~TerrainPresentationData() = default;
     NO_COPY(TerrainPresentationData)
 };
 
@@ -132,11 +136,22 @@ class TerrainMeshScheduler
     ChunkEventStream::Cursor chunkCursor{};
 };
 
+struct TerrainUploadedEvent
+{
+    ChunkHandle chunk;
+    BuiltMeshHandle chunkMesh;
+    PTerrainMesh pterrain;
+    AssetContext* ctx;
+    TerrainPresentationData* terrain;
+};
+
+
 class TerrainUploader
 {
    public:
     void SetMaxNumChunks(uint32_t maxNumChunks);
-    void UploadTerrain(TerrainPresentationData& terrain, AssetContext& ctx);
+    void UploadTerrain(TerrainPresentationData& terrain, AssetContext& ctx, entt::dispatcher& events);
+    void onTerrainUploaded(TerrainUploadedEvent event);
 };
 
 class TerrainRenderer : public Renderer

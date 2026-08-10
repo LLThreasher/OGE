@@ -98,7 +98,7 @@ class ClientConnScene : public Scene
         if (it == def.args.end())
         {
             LOG_WARN("next_scene not provided, default to ClientScene2");
-            m_nextSene = Id("core::ClientScene2");
+            m_nextSene = Id("core::DebugVoxelView<core::ClientScene2>");
         }
         else
         {

@@ -45,7 +45,7 @@ void Scene::Load()
     }
     if (m_sceneConfig.loadMask & SceneConfig::LOAD_MASK_TERRAIN)
     {
-        auto desc = m_world.ctx().emplace<::game::terrain::TerrainDesc>(
+        m_world.ctx().emplace<::game::terrain::TerrainDesc>(
             m_sceneConfig.terrainDesc);
         m_world.ctx().emplace<::game::terrain::TerrainView>();
     }

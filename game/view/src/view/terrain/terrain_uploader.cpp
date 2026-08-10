@@ -1,4 +1,8 @@
+#include <memory>
+
 #include "game/components.hpp"
+#include "game/game_world.hpp"
+#include "game/terrain/terrain_view.hpp"
 #include "game/view/terrain/terrain_renderer.hpp"
 #include "oge/graphics/objects.hpp"
 #include "oge/log.hpp"
@@ -10,8 +14,7 @@ namespace game::view::terrain
 {
 using namespace oge::graphics;
 
-void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain,
-                                    AssetContext& ctx)
+void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain, AssetContext& ctx, entt::dispatcher& events)
 {
     while (!terrain.uploadMeshQueue.empty())
     {
@@ -24,16 +27,11 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain,
         auto resolved = ctx.chunkAllocator.Resolve(slot);
         PTerrainMesh pterrain{slot, static_cast<uint32_t>(quadCount * 6)};
 
+        TerrainUploadedEvent e {chunk, chunkMesh, pterrain, &ctx, &terrain};
         ResourceBundleHandle res = ctx.streamingManager.CreateResourceBundle(
-            [chunk, chunkMesh, pterrain, ctx, &terrain]()
+            [e, &events]()
             {
-                auto it = terrain.residentChunks.find(chunk);
-                if (it != terrain.residentChunks.end())
-                {
-                    ctx.chunkAllocator.Free(it->second.alloc);
-                }
-                terrain.residentChunks.insert_or_assign(chunk, pterrain);
-                terrain.builtChunkMeshes.Destroy(chunkMesh);
+                events.enqueue(e);
             });
 
         auto mesh = terrain.builtChunkMeshes.Get(chunkMesh);
@@ -41,6 +39,17 @@ void TerrainUploader::UploadTerrain(TerrainPresentationData& terrain,
             mesh->quads,
             {BufferUsage::Storage, resolved.buffer, resolved.offset}, res);
     }
+}
+
+void TerrainUploader::onTerrainUploaded(TerrainUploadedEvent e)
+{
+    auto it = e.terrain->residentChunks.find(e.chunk);
+    if (it != e.terrain->residentChunks.end())
+    {
+        e.ctx->chunkAllocator.Free(it->second.alloc);
+    }
+    e.terrain->residentChunks.insert_or_assign(e.chunk, e.pterrain);
+    e.terrain->builtChunkMeshes.Destroy(e.chunkMesh);
 }
 
 void TerrainUploader::SetMaxNumChunks(uint32_t maxNumChunks)

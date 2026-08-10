@@ -4,8 +4,6 @@
 #include <string>
 #include <string_view>
 
-#include "game/components.hpp"
-#include "game/input/player_input_stream.hpp"
 #include "game/json.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
@@ -57,7 +55,10 @@ class ClientScene2 : public Scene
             .connect<&ClientScene2::onDisconnected>(this);
         m_replicationRegistry.AddPeer(0, m_client.Host(), &m_world);
 
-        ::game::net::InstallEntityReplicationHooks(m_world);
+        // The client world is a read-only mirror of the server: state
+        // changes arrive as replication events applied by HandleIncoming.
+        // No local hooks — they would fire when applied entities/components
+        // materialize and echo them back to the server via ProduceAll.
 
         // send ready package
         auto packet = m_client.StartPacket(sizeof(uint32_t));

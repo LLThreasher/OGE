@@ -1,24 +1,15 @@
 /// Smoke test for DebugScene3 — verifies compilation, linkage, and type hierarchy.
 #include "test_macros.hpp"
 
-#include "game/debug_scene.hpp"
+#include "game/debug_view.hpp"
 #include "game/app_context.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
-// TEST(type_register) {
-//     auto name = oge::runtime::TypeName<game::DebugScene3>::Get();
-//     CHECK_EQ(name, "core::DebugScene3");
-// }
-
-// TEST(inheritance) {
-//     bool ok1 = std::is_base_of_v<game::SceneExt, game::DebugScene3>;
-//     bool ok2 = std::is_base_of_v<game::Scene, game::DebugScene3>;
-//     bool ok3 = std::is_base_of_v<game::AppRuntime, game::DebugScene3>;
-//     CHECK(ok1);
-//     CHECK(ok2);
-//     CHECK(ok3);
-// }
+// Removed smoke tests (DebugScene3 no longer exists): they checked the
+// scene's type name registration and inheritance from SceneExt/Scene.
+// Kept as documentation; note the extractor registers TEST() names from raw
+// source, so the old commented-out macros must not contain "TEST(".
 
 TEST(default_scene_config) {
     oge::runtime::OgeRegistry dummyReg;
