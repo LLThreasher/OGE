@@ -110,18 +110,12 @@ class DebugServerScene final : public Scene
                     return;
                 }
             }
-            auto playerEntity =
-                ComponentPlayer::CreatePlayer(m_world, playerInfo);
-            m_world.emplace<ReplicatedTag>(playerEntity);
             m_playerEntries.resize(
                 math::max(p.peerId + 1, (uint32_t)m_playerEntries.size()));
             m_playerEntries[p.peerId] = playerInfo;
-            LOG_INFO(
-                "create player enitty: {}({}) for conn({})",
-                uuids::to_string(uuids::uuid{m_playerEntries[p.peerId].uuid}),
-                (uint32_t)playerEntity, p.peerId);
+
             auto packet = m_netServer.StartPacket(sizeof(entt::entity));
-            packet.Write(playerEntity);
+            packet.Write<entt::entity>(entt::null);
             m_netServer.Send(p.peer, packet);
         }
         else if (p.peer == m_pendingConnection2)
@@ -130,6 +124,15 @@ class DebugServerScene final : public Scene
             m_pendingConn2Timeout = 0.f;
             m_replicationRegistry.AddPeer(p.peerId, p.peer, &m_world);
             LOG_INFO("initialize replication peer for conn({})", p.peerId);
+
+            auto playerInfo = m_playerEntries.at(p.peerId);
+            auto playerEntity = m_world.create();
+            m_world.emplace<ReplicatedTag>(playerEntity);
+            ComponentPlayer::CreatePlayer(m_world, playerInfo, playerEntity);
+            LOG_INFO(
+                "create player enitty: {}({}) for conn({})",
+                uuids::to_string(uuids::uuid{m_playerEntries[p.peerId].uuid}),
+                (uint32_t)playerEntity, p.peerId);
         }
         else
         {
@@ -237,7 +240,7 @@ class DebugServerScene final : public Scene
         m_eventLogStream.Update();
         m_replicationRegistry.ProduceAll(m_netServer, m_world);
         Scene::Update(f, sctx);
-        net::PollTerrainChunkEvents(m_world);
+        // net::PollTerrainChunkEvents(m_world);
     }
 
     void Load() override

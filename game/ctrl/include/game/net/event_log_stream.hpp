@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "game/app_context.hpp"
+#include "oge/assert.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/log.hpp"
 #include "oge/math.hpp"
@@ -271,6 +272,14 @@ struct SendPayload
 {
 };
 
+// when a peer joins, we queue an add peer event to the new peer
+// since server won't send events to a peer untill the ready
+// packet arrives, this will block the tail untill peer is ready
+// it will also give the peer info on the tail location
+struct UpdateTail
+{
+};
+
 constexpr uint32_t MyPeerId = 63;
 
 // the event stream protocol follows a roughly consistent principle
@@ -290,7 +299,7 @@ constexpr uint32_t MyPeerId = 63;
 template <size_t Capacity = 256>
 class EventLogStream
 {
-    static constexpr bool SHOW_LOGS = false;
+    static constexpr bool SHOW_LOGS = true;
 
    protected:
     oge::DiscreteEventStream<EventLogEntryMeta, Capacity> m_entries;
@@ -300,18 +309,24 @@ class EventLogStream
     LogCursor m_currentTail = 1;
     AnythingFactory* m_af;
     oge_id_type m_sendPayloadTypeId = 0;
+    oge_id_type m_addPeerTypeId = 1;
 
    public:
     EventLogStream(AnythingFactory* af = nullptr, bool authority = false)
         : m_af(af)
     {
-        if (m_af) m_sendPayloadTypeId = m_af->Id<SendPayload>();
+        if (m_af) {
+            m_sendPayloadTypeId = m_af->Id<SendPayload>();
+            m_addPeerTypeId = m_af->Id<UpdateTail>();
+        }
     }
 
     // this must be called at tick boundry
     void AddPeer(uint32_t peerId)
     {
         m_activePeers.set(peerId, true);
+        auto buf = EnqueueEvent(m_addPeerTypeId, sizeof(LogCursor));
+        buf.template Write<LogCursor>(m_currentTail);
     }
 
     // this must be called at tick boundry
@@ -382,6 +397,19 @@ class EventLogStream
             // [size][payload] remains.
             DeserializeEventPayload(meta.cursor, buffer);
         }
+        else if (meta.id == m_addPeerTypeId)
+        {
+            LogCursor tail;
+            buffer.Read(tail);
+            m_currentTail = tail;
+
+            EventLogEntryMeta empty = {};
+            empty.recieveMask = {};
+            while (m_entries.HeadCursor() < m_currentTail)
+            {
+                m_entries.Push(empty);
+            }
+        }
         else
         {
             // The claimed cursor is the sender's number for this event.  If
@@ -396,11 +424,11 @@ class EventLogStream
             const LogCursor claimedCursor = meta.cursor;
             if (m_entries.HeadCursor() < claimedCursor)
             {
+                EventLogEntryMeta empty = {};
+                empty.recieveMask = {};
                 while (m_entries.HeadCursor() < claimedCursor)
                 {
                     m_validSet.set(m_entries.HeadCursor() % Capacity, false);
-                    EventLogEntryMeta empty = {};
-                    empty.recieveMask = {};
                     m_entries.Push(empty);
                 }
             }
@@ -411,7 +439,7 @@ class EventLogStream
             m_validSet.set(m_entries.HeadCursor() % Capacity, true);
             m_entries.Push(meta);
 
-            if (SHOW_LOGS)
+            if (SHOW_LOGS && m_af->GetDescriptor(meta.id))
                 LOG_DEBUG("deserialize event {} at slot {} ({})",
                           m_af->GetDescriptor(meta.id)->name, meta.cursor,
                           meta.cursor % Capacity);
@@ -557,7 +585,7 @@ class EventLogStream
                 EventLogEntryMeta& entry = m_entries.Get(curosr);
                 if (entry.recieveMask.test(peer))
                 {
-                    if (SHOW_LOGS)
+                    if (SHOW_LOGS && m_af->GetDescriptor(entry.id))
                         LOG_DEBUG("deqeue event {} at slot {}",
                                   m_af->GetDescriptor(entry.id)->name,
                                   entry.cursor);
@@ -574,8 +602,9 @@ class EventLogStream
                         return true;
                     }
                 }
-                else if (entry.recieveMask.none())
+                else if ((entry.recieveMask & m_activePeers).none())
                 {
+                    m_validSet.set(curosr % Capacity, false);
                     incrementTail = true;
                 }
             }

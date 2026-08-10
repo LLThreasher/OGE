@@ -19,6 +19,8 @@ entt::entity ComponentPlayer::CreatePlayer(GameWorld& world,
     entt::entity res;
     if (hint == entt::null)
         res = world.create();
+    else if (world.valid(hint))
+        res = hint;
     else
         res = world.create(hint);
     world.emplace<UpdateTag<UpdateType::Realtime>>(res);
@@ -116,7 +118,7 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                 math::vec3{(collider.aabb.min.x + collider.aabb.max.x) / 2.f,
                            1.65f,
                            (collider.aabb.min.z + collider.aabb.max.z) / 2.f};
-            ctx.world.patch<ComponentCamera>(entity);
+            // ctx.world.patch<ComponentCamera>(entity);
 
             // Continuous block targeting for highlight rendering
             auto raycastResult =
