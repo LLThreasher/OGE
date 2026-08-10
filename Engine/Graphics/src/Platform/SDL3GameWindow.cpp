@@ -176,6 +176,11 @@ void SDL3GameWindow::Run(GameGraphicApp& app)
         return;
     }
 
+    auto mode = SDL_GetCurrentDisplayMode(0);
+
+    float refresh = mode && (mode->refresh_rate > 0) ? mode->refresh_rate : 60.0f;
+    const float TargetframeDelayS = 1.f / refresh;
+
     uint64_t perfFrequency = SDL_GetPerformanceFrequency();
     bool readyToClose = false;
     bool waitingSurface = false;
@@ -262,6 +267,17 @@ void SDL3GameWindow::Run(GameGraphicApp& app)
         {
             SDL_SetWindowRelativeMouseMode(m_window, false);
         }
+        
+#if PLATFORM_ANDROID
+        if (finalDeltaTime < TargetframeDelayS)
+        {
+            SDL_Delay(uint32_t(1000.f * (TargetframeDelayS - finalDeltaTime)));
+        }
+
+        frameEndTicks = SDL_GetPerformanceCounter();
+        elapsedS = (double)(frameEndTicks - frameStartTicks) / perfFrequency;
+        finalDeltaTime = elapsedS;
+#endif
     }
 
     app.Shutdown();
