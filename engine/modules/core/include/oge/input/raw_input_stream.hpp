@@ -38,12 +38,12 @@ struct PackedMouseInfo
 
     MouseButton button() const
     {
-        return static_cast<MouseButton>(val & 0x7);
+        return static_cast<MouseButton>((val >> 4) & 0x7);
     }
 
     size_t ptrIdx() const
     {
-        return (val >> 4) & 0x7;
+        return val & 0x7;
     }
 };
 
@@ -87,6 +87,10 @@ class RawInputStream
         for (auto& ptr : mouseIds)
         {
             ptr = MaxMousePtrCount;
+        }
+        for (auto& ptr : touchIds)
+        {
+            ptr = MaxTouchPtrCount;
         }
     }
     NO_COPY(RawInputStream)

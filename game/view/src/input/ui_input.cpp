@@ -168,17 +168,11 @@ void UIDragInput::onUpdate(FInputContext& ctx)
         switch (event.type)
         {
             case InputEventType::MouseButtonDown:
-                ptrIdx = event.mouse.ptrIdx();
+            case InputEventType::PointerDown:
+                ptrIdx = event.pointerIdx;
                 handlePtrDown();
                 break;
             case InputEventType::MouseButtonUp:
-                ptrIdx = event.mouse.ptrIdx();
-                handleDragUpdate();
-                break;
-            case InputEventType::PointerDown:
-                ptrIdx = event.pointerIdx;
-                handleDragUpdate();
-                break;
             case InputEventType::PointerUp:
                 ptrIdx = event.pointerIdx;
                 handleDragUpdate();

@@ -173,10 +173,10 @@ class SceneView : protected AppRuntime
                 switch (e.type)
                 {
                     case oge::input::InputEventType::AddMouse:
-                        AddCursor(e.mouse.ptrIdx());
+                        AddCursor(e.pointerIdx);
                         break;
                     case oge::input::InputEventType::RemoveMouse:
-                        RemoveCursor(e.mouse.ptrIdx());
+                        RemoveCursor(e.pointerIdx);
                         break;
                     case oge::input::InputEventType::MouseButtonDown:
                         if (m_uiWorld.valid(m_cursors[e.mouse.ptrIdx()]))

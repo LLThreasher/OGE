@@ -46,6 +46,10 @@ void RawInputStream::NewFrame()
     for (size_t i : toRemovePtrs)
     {
         activePtrs.remove(i);
+        if (IsMouse(i))
+            mouseIds[i] = MaxMousePtrCount;
+        else
+            touchIds[i - MaxMousePtrCount] = MaxTouchPtrCount;
     }
     toRemovePtrs.clear();
     frameFrontier.activePtrs = activePtrs;
@@ -86,6 +90,7 @@ void RawInputStream::SetMousePosition(int id, float x, float y)
 {
     auto idx = FindMouse(id);
     LOG_DEBUG("set mouse pos {} at slot {}", id, idx);
+    if (idx == MaxMousePtrCount) return;
     auto& ptr = pointerPos[idx];
     ptr = math::vec2{x, y};
     dirtyPtrs.add(idx);
@@ -103,6 +108,7 @@ void RawInputStream::AddMouse(int id)
         }
     }
     LOG_DEBUG("add mouse {} at slot {}", id, resultId);
+    mouseIds[resultId] = id;
     activePtrs.add(resultId);
     InputEvent res2{InputEventType::AddMouse};
     res2.pointerIdx = resultId;
@@ -125,7 +131,7 @@ uint32_t RawInputStream::FindMouse(int id) const
     {
         if (activePtrs.contains(i) && !toRemovePtrs.contains(i) && mouseIds[i] == id) return i;
     }
-    return 0;
+    return MaxMousePtrCount;
 }
 
 uint32_t RawInputStream::FindTouch(uint64_t id) const
