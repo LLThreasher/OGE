@@ -5,7 +5,7 @@ Vulkan-based game engine + block-world game ("Arterium").  Client-server multipl
 with ENet networking, entity replication, client-side prediction with rollback, and
 voxel terrain.
 
-**Active branches:** `dev/network3` (current), `main` (stable)
+**Active branches:** `dev/network4` (current), `main` (stable)
 
 ## Tech Stack
 - **Language:** C++20 (clang++, Apple Clang on macOS)
@@ -77,6 +77,79 @@ add_test_target(name SOURCES test/foo.cpp LIBRARIES game::ctrl oge::platform::na
 | scene_load_test | 1 | ctrl | Scene construction + config |
 | sim_physics_test | 12 | sim | AABB collision, PhysBody defaults |
 | debug_scene3_test | 3 | ctrl_ext | Type registration, inheritance |
+
+## E2E Network Tests
+
+For end-to-end integration tests over a real ENet loopback connection, **use
+`game/ctrl/test/scene_test_harness.hpp`** — do **not** build a custom loopback
+harness from scratch.  The harness drives `DebugServerScene` + `ClientConnScene`
+→ `ClientScene2` through a full scene lifecycle and exposes `serverWorld()` /
+`clientWorld()` / `poll()` / `pumpUntil()`.
+
+**Pattern** — follow `game/ctrl/test/e2e_scene_test.cpp`:
+```cpp
+#include <test_macros.hpp>
+#include "scene_test_harness.hpp"   // NetSceneHarness
+
+TEST(my_e2e_test)
+{
+    NetSceneHarness h;
+    CHECK(h.start());
+    CHECK(h.waitForHandshake());   // polls until server has ComponentPlayer
+
+    // Poll some frames, then assert client state
+    CHECK(h.pumpUntil([&] {
+        auto& cw = h.clientWorld();
+        // check client has expected replicated entity/component/chunk
+        ...
+        return true;
+    }, 400));
+}
+```
+
+**Key harness API:**
+| Method | Description |
+|---|---|
+| `h.start()` | Init ENet + register scenes + switch to them |
+| `h.waitForHandshake(maxPolls)` | Poll until server world has ComponentPlayer |
+| `h.poll()` | One tick: server + client `Scene::Update` |
+| `h.pumpUntil(fn, maxPolls)` | Poll until `fn()` returns true |
+| `h.serverWorld()` / `h.clientWorld()` | Mutable `GameWorld&` for assertions |
+
+**Register in CMakeLists.txt:**
+```cmake
+add_test_target(my_test
+    SOURCES test/my_test.cpp
+    LIBRARIES game::ctrl oge::platform::native
+)
+```
+
+## Chunk Replication Notes
+
+- **`PollTerrainChunkEvents(world)`** — call after subsystems run (now in
+  `Scene::Update`) to flush `ChunkStateUpdateEvent`s from `TerrainView`'s
+  `ChunkEventStream` into the replication `EventLogStream`.
+- **`InstallTerrainReplicationHooks(world)`** — call once in the server scene
+  constructor to emplace `TerrainReplicationState` in ctx.
+- **`TerrainReplicationState::chunkEventCursor`** must start at **1**, NOT 0 —
+  `DiscreteEventStream::PollOne(cursor=0)` snaps to frontier (head), skipping
+  the first event.  Default-initialised `Cursor{}` (0) causes all events to be
+  missed silently.
+- **`AddChunkEvent`** carries a `terrain::PaletteCompressedChunk` (≤255-block
+  palette + 4096 one-byte indices).  The wire format is coords + palette +
+  **RLE-compressed indices** (custom `NetTraits` in `replication_events.hpp`).
+  `SimplePacketScheduler` has **no byte limit** — ENet fragments reliable
+  packets, so oversized payloads are safe.
+- **Client must have `TerrainView` + `BlockRegistry`** in its world for
+  `ApplyEvent(AddChunkEvent)` / `ApplyEvent(UpdateChunkEvent)` to write chunks.
+  `ClientScene2` self-loads its `scene_config` (terrain load mask) in its
+  constructor.  `ClientConnScene` forwards a caller-provided `scene_config` to
+  the next scene; otherwise it synthesizes the default client config
+  (SubsystemDebugText + realtime SubsystemPlayer).
+- **UpdateChunk** (block updates): `TerrainView::SetBlock` emits a dirty
+  `ChunkStateUpdateEvent` (1–29 dirty blocks) → `PollTerrainChunkEvents` pushes
+  `UpdateChunkEvent`.  E2E coverage: `e2e_add_chunk_replicates` +
+  `e2e_update_chunk_replicates` in `game/ctrl/test/e2e_scene_test.cpp`.
 
 ## Known Issues
 1. **`scene_load_test`**: `Scene::Load()` with JSON config triggers `__next_prime

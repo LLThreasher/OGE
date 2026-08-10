@@ -112,18 +112,17 @@ struct ChunkBlockUpdate
     uint32_t block = 0;
 };
 
+// Full chunk transfer — palette-compressed block data (see
+// terrain::PaletteCompressedChunk).  Serialization writes coords + palette +
+// RLE-compressed block indices; the client reconstructs the raw data on apply.
 struct AddChunkEvent
 {
     oge::Point3 coords{};
-    std::pmr::vector<uint32_t> blocks;  // CHUNK_SIZE_TOTAL elements
-
-    // When true, serialization will RLE-compress the block data.
-    // When false, blocks are serialized as raw uint32_t values.
-    bool compressed = false;
+    ::game::terrain::PaletteCompressedChunk chunk{};
 };
 
 // ---------------------------------------------------------------------------
-// RLE compression helpers
+// RLE compression helpers (applied to palette block indices on the wire)
 // ---------------------------------------------------------------------------
 
 inline std::pmr::vector<uint8_t> CompressChunk(const uint8_t* data,
@@ -217,7 +216,9 @@ struct PlayerInputReplicationState
 // Emplaced in world.ctx() by InstallTerrainReplicationHooks.
 struct TerrainReplicationState
 {
-    terrain::ChunkEventStream::Cursor chunkEventCursor{};
+    // Start at 1 — a cursor of 0 is the "snap-to-frontier" sentinel in
+    // DiscreteEventStream::PollOne, which would skip the first event.
+    terrain::ChunkEventStream::Cursor chunkEventCursor{1};
     bool initialized = false;
 };
 
@@ -436,11 +437,8 @@ inline void PollTerrainChunkEvents(OgeRegistryRef world)
             {
                 AddChunkEvent evt{};
                 evt.coords = chunk->Coords;
-                evt.blocks.resize(terrain::CHUNK_SIZE_TOTAL);
-                for (size_t i = 0; i < terrain::CHUNK_SIZE_TOTAL; ++i)
-                {
-                    evt.blocks[i] = chunk->data[i];
-                }
+                terrain::PaletteCompressedChunk::FromChunkData(*chunk,
+                                                               evt.chunk);
                 PushReplicationEvent(world, evt);
             }
         }
@@ -737,12 +735,14 @@ inline void ApplyEvent(OgeRegistryRef world, const AddChunkEvent& event)
         return;
     }
 
-    if (event.blocks.size() == terrain::CHUNK_SIZE_TOTAL)
+    // PaletteCompressedChunk::FromChunkData guarantees <= 255 palette
+    // entries (indices are one byte).
+    if (!event.chunk.palette.empty())
     {
-        for (size_t i = 0; i < terrain::CHUNK_SIZE_TOTAL; ++i)
-        {
-            chunk->data[i] = event.blocks[i];
-        }
+        // ToChunkData is non-const; copy the compact payload before
+        // expanding it into the chunk.
+        terrain::PaletteCompressedChunk cc = event.chunk;
+        cc.ToChunkData(*chunk);
     }
 
     chunk->Coords = event.coords;
@@ -921,8 +921,8 @@ struct NetTraits<game::net::UpdateComponentEvent<T>>
 
 }  // namespace oge::runtime::net
 
-// AddChunkEvent has custom serialization to support both compressed and
-// non-compressed paths.  Must be in oge::runtime::net.
+// AddChunkEvent has custom serialization — palette + RLE-compressed block
+// indices.  Must be in oge::runtime::net.
 namespace oge::runtime::net
 {
 
@@ -931,42 +931,22 @@ struct NetTraits<::game::net::AddChunkEvent>
 {
     static uint64_t Size(const game::net::AddChunkEvent& value)
     {
-        uint64_t sz = net::Size(value.coords) + sizeof(uint8_t);
-        if (value.compressed && value.blocks.size() == ::game::terrain::CHUNK_SIZE_TOTAL)
-        {
-            auto rle = game::net::CompressChunk(
-                reinterpret_cast<const uint8_t*>(value.blocks.data()),
-                value.blocks.size() * sizeof(uint32_t));
-            sz += sizeof(uint32_t) + rle.size();
-        }
-        else
-        {
-            sz += net::Size(value.blocks);
-        }
-        return sz;
+        auto rle = game::net::CompressChunk(value.chunk.data,
+                                            ::game::terrain::CHUNK_SIZE_TOTAL);
+        return net::Size(value.coords) + net::Size(value.chunk.palette) +
+               sizeof(uint32_t) + rle.size();
     }
 
     static void Serialize(Buffer& buffer,
                           const game::net::AddChunkEvent& value)
     {
         net::Serialize(buffer, value.coords);
-        uint8_t flags = value.compressed ? 1 : 0;
-        buffer.Write(flags);
-
-        if (value.compressed &&
-            value.blocks.size() == ::game::terrain::CHUNK_SIZE_TOTAL)
-        {
-            auto rle = game::net::CompressChunk(
-                reinterpret_cast<const uint8_t*>(value.blocks.data()),
-                value.blocks.size() * sizeof(uint32_t));
-            uint32_t rleSize = static_cast<uint32_t>(rle.size());
-            buffer.Write(rleSize);
-            buffer.WriteRaw(rle.data(), rle.size());
-        }
-        else
-        {
-            net::Serialize(buffer, value.blocks);
-        }
+        net::Serialize(buffer, value.chunk.palette);
+        auto rle = game::net::CompressChunk(value.chunk.data,
+                                            ::game::terrain::CHUNK_SIZE_TOTAL);
+        uint32_t rleSize = static_cast<uint32_t>(rle.size());
+        buffer.Write(rleSize);
+        buffer.WriteRaw(rle.data(), rle.size());
     }
 
     static void Deserialize(Buffer& buffer,
@@ -974,26 +954,13 @@ struct NetTraits<::game::net::AddChunkEvent>
     {
         value = {};
         net::Deserialize(buffer, value.coords);
-        uint8_t flags = buffer.Read<uint8_t>();
-        value.compressed = (flags & 1) != 0;
-
-        if (value.compressed)
-        {
-            uint32_t rleSize = buffer.Read<uint32_t>();
-            std::pmr::vector<uint8_t> compressed(rleSize);
-            buffer.ReadRaw(compressed.data(), rleSize);
-
-            size_t rawSize =
-                ::game::terrain::CHUNK_SIZE_TOTAL * sizeof(uint32_t);
-            value.blocks.resize(::game::terrain::CHUNK_SIZE_TOTAL);
-            game::net::DecompressChunk(
-                compressed.data(), rleSize,
-                reinterpret_cast<uint8_t*>(value.blocks.data()), rawSize);
-        }
-        else
-        {
-            net::Deserialize(buffer, value.blocks);
-        }
+        net::Deserialize(buffer, value.chunk.palette);
+        uint32_t rleSize = buffer.Read<uint32_t>();
+        std::pmr::vector<uint8_t> compressed(rleSize);
+        buffer.ReadRaw(compressed.data(), rleSize);
+        game::net::DecompressChunk(compressed.data(), rleSize,
+                                   value.chunk.data,
+                                   ::game::terrain::CHUNK_SIZE_TOTAL);
     }
 };
 

@@ -51,7 +51,16 @@ TEST(entity_remove_rt){ game::net::RemoveEntityEvent o{entt::entity{99}},d{}; RT
 TEST(comp_add_rt){ game::ComponentCamera cam{}; cam.position=oge::math::vec3{1,2,3}; cam.forward=oge::math::vec3{0,0,1}; game::net::AddComponentEvent<game::ComponentCamera> o{entt::entity{7},cam},d{}; RT(o,d); CHECK_EQ(o.entity,d.entity); CHECK(o.component.position==d.component.position); }
 TEST(comp_update_rt){ using Ev=game::net::UpdateComponentEvent<game::ComponentAABBCollider>; Ev o{entt::entity{3},game::ComponentAABBCollider{oge::AABB{oge::math::vec3{0,0,0},oge::math::vec3{1,1,1}}}}; Ev d{}; RT(o,d); CHECK_EQ(o.entity,d.entity); }
 TEST(comp_remove_rt){ using Ev=game::net::RemoveComponentEvent<game::ComponentPlayer>; Ev o{entt::entity{15}},d{}; RT(o,d); CHECK_EQ(o.entity,d.entity); }
-TEST(chunk_add_rt){ game::net::AddChunkEvent o{}; o.coords=oge::Point3{1,2,3}; o.blocks.resize(game::terrain::CHUNK_SIZE_TOTAL,0); o.blocks[0]=42; o.blocks[100]=7; game::net::AddChunkEvent d{}; RT(o,d); CHECK_EQ(o.coords.x,d.coords.x); CHECK_EQ(o.blocks.size(),d.blocks.size()); CHECK_EQ(o.blocks[0],d.blocks[0]); }
+TEST(chunk_add_rt){
+    game::terrain::ChunkData cd(oge::Point3{1,2,3});
+    cd.data[0]=42; cd.data[100]=7;
+    game::net::AddChunkEvent o{}; o.coords=cd.Coords;
+    game::terrain::PaletteCompressedChunk::FromChunkData(cd, o.chunk);
+    game::net::AddChunkEvent d{}; RT(o,d);
+    CHECK_EQ(o.coords.x,d.coords.x);
+    CHECK_EQ(o.chunk.palette.size(),d.chunk.palette.size());
+    CHECK_EQ(o.chunk.Get(0,0,0),d.chunk.Get(0,0,0));
+}
 TEST(chunk_remove_rt){ game::net::RemoveChunkEvent o{oge::Point3{-1,0,5}},d{}; RT(o,d); CHECK_EQ(o.coords.x,d.coords.x); }
 TEST(chunk_update_rt){ game::net::UpdateChunkEvent o{}; o.coords=oge::Point3{0,0,0}; o.dirtyCnt=2; o.updates[0]=game::net::ChunkBlockUpdate{oge::CompactLocalPoint3{oge::Point3{3,5,7}},100}; o.updates[1]=game::net::ChunkBlockUpdate{oge::CompactLocalPoint3{oge::Point3{1,1,1}},200}; game::net::UpdateChunkEvent d{}; RT(o,d); CHECK_EQ(o.dirtyCnt,d.dirtyCnt); CHECK_EQ(o.updates[0].block,d.updates[0].block); }
 
@@ -83,9 +92,9 @@ TEST(el_peek_cursor){ game::net::EventLogStream<> s; s.AddPeer(0); s.EnqueueEven
 // =========================================================================
 // PacketScheduler tests
 // =========================================================================
-TEST(sched_basic){ game::net::EventLogStream<> s; s.AddPeer(0); s.EnqueueEvent(1,4).Write<uint32_t>(100); s.EnqueueEvent(2,4).Write<uint32_t>(200); game::net::SimplePacketScheduler sc(99999); game::net::EncodeContext ctx{}; ctx.peer.id=0; game::net::PacketPlan p; CHECK(sc.Schedule(s,ctx,p)); CHECK(p.hasPacket); CHECK_EQ(p.packets.size(),2); }
-TEST(sched_limit){ game::net::EventLogStream<> s; s.AddPeer(0); s.EnqueueEvent(1,4).Write<uint32_t>(100); game::net::SimplePacketScheduler sc(1); game::net::EncodeContext ctx{}; ctx.peer.id=0; game::net::PacketPlan p; CHECK(!sc.Schedule(s,ctx,p)); }
-TEST(sched_empty){ game::net::EventLogStream<> s; s.AddPeer(0); game::net::SimplePacketScheduler sc(99999); game::net::EncodeContext ctx{}; ctx.peer.id=0; game::net::PacketPlan p; CHECK(!sc.Schedule(s,ctx,p)); }
+TEST(sched_basic){ game::net::EventLogStream<> s; s.AddPeer(0); s.EnqueueEvent(1,4).Write<uint32_t>(100); s.EnqueueEvent(2,4).Write<uint32_t>(200); game::net::SimplePacketScheduler sc; game::net::EncodeContext ctx{}; ctx.peer.id=0; game::net::PacketPlan p; CHECK(sc.Schedule(s,ctx,p)); CHECK(p.hasPacket); CHECK_EQ(p.packets.size(),2); }
+TEST(sched_oversized){ game::net::EventLogStream<> s; s.AddPeer(0); s.EnqueueEvent(1,4).Write<uint32_t>(100); game::net::SimplePacketScheduler sc; game::net::EncodeContext ctx{}; ctx.peer.id=0; game::net::PacketPlan p; CHECK(sc.Schedule(s,ctx,p)); CHECK(p.hasPacket); CHECK_EQ(p.packets.size(),1); }
+TEST(sched_empty){ game::net::EventLogStream<> s; s.AddPeer(0); game::net::SimplePacketScheduler sc; game::net::EncodeContext ctx{}; ctx.peer.id=0; game::net::PacketPlan p; CHECK(!sc.Schedule(s,ctx,p)); }
 
 // =========================================================================
 // Snapshot tests (use Registry with proper TypeRegistry)
@@ -126,7 +135,8 @@ TEST(snapshot_terrain){
     auto* chunk=terrain.GetChunk(h);
     CHECK(chunk != nullptr);
     chunk->state=game::terrain::ChunkState::Persistent;
-    for(size_t i=0;i<game::terrain::CHUNK_SIZE_TOTAL;++i) chunk->data[i]=static_cast<uint32_t>(i);
+    // Palette compression caps distinct block values at 255.
+    for(size_t i=0;i<game::terrain::CHUNK_SIZE_TOTAL;++i) chunk->data[i]=static_cast<uint32_t>(i % 100);
 
     game::net::ReplicationRegistry reg({w.ctx().get<game::net::EventLogStream<>>(), types});
     reg.GenerateSnapshot(2, w);
@@ -138,25 +148,45 @@ TEST(snapshot_terrain){
 }
 
 // =========================================================================
-// Compression tests
+// Palette compression tests
 // =========================================================================
-TEST(compress_non_compressed_rt){
-    game::net::AddChunkEvent o{}; o.compressed=false; o.coords=oge::Point3{10,20,30}; o.blocks.resize(game::terrain::CHUNK_SIZE_TOTAL,0); for(size_t i=0;i<o.blocks.size();++i) o.blocks[i]=static_cast<uint32_t>(i);
+TEST(palette_compress_rt){
+    // Many distinct block values (up to the 255-entry palette cap) — the
+    // round-trip must preserve them all.
+    game::terrain::ChunkData cd(oge::Point3{10,20,30});
+    for(size_t i=0;i<game::terrain::CHUNK_SIZE_TOTAL;++i) cd.data[i]=static_cast<uint32_t>(i % 200);
+    game::net::AddChunkEvent o{}; o.coords=cd.Coords;
+    game::terrain::PaletteCompressedChunk::FromChunkData(cd, o.chunk);
     game::net::AddChunkEvent d{}; RT(o,d);
-    CHECK_EQ(o.compressed,d.compressed); CHECK_EQ(o.blocks.size(),d.blocks.size()); CHECK_EQ(o.blocks[0],d.blocks[0]); CHECK_EQ(o.blocks[1000],d.blocks[1000]);
+    CHECK_EQ(o.chunk.palette.size(),d.chunk.palette.size());
+    CHECK_EQ(o.chunk.palette.size(),200u);
+    CHECK_EQ(o.chunk.Get(0,0,0),d.chunk.Get(0,0,0));
+    CHECK_EQ(o.chunk.Get(1,2,3),d.chunk.Get(1,2,3));
 }
-TEST(compress_compressed_rt){
-    game::net::AddChunkEvent o{}; o.compressed=true; o.coords=oge::Point3{1,2,3}; o.blocks.resize(game::terrain::CHUNK_SIZE_TOTAL,0); o.blocks[0]=42; o.blocks[4095]=99;
+TEST(palette_compress_uniform){
+    // Two non-zero block values plus the zero default — palette has 3
+    // entries, data stores only 1-byte indices.
+    game::terrain::ChunkData cd(oge::Point3{1,2,3});
+    cd.data[0]=42; cd.data[4095]=99;
+    game::net::AddChunkEvent o{}; o.coords=cd.Coords;
+    game::terrain::PaletteCompressedChunk::FromChunkData(cd, o.chunk);
     game::net::AddChunkEvent d{}; RT(o,d);
-    CHECK(d.compressed); CHECK_EQ(o.blocks.size(),d.blocks.size()); CHECK_EQ(o.blocks[0],d.blocks[0]); CHECK_EQ(o.blocks[4095],d.blocks[4095]);
+    CHECK_EQ(o.chunk.palette.size(),d.chunk.palette.size());
+    CHECK_EQ(o.chunk.palette.size(),3u);
+    CHECK_EQ(o.chunk.Get(0,0,0),d.chunk.Get(0,0,0));
+    CHECK_EQ(o.chunk.Get(15,15,15),d.chunk.Get(15,15,15));
+    // ToChunkData reconstructs the raw block data.
+    game::terrain::ChunkData out(oge::Point3{1,2,3});
+    d.chunk.ToChunkData(out);
+    CHECK_EQ(out.data[0],42u);
+    CHECK_EQ(out.data[4095],99u);
 }
-TEST(compress_rle){
-    uint8_t data[16]={1,1,1,1,2,2,3,3,3,3,3,4,5,5,6,6};
-    auto rle=game::net::CompressChunk(data,16); CHECK(rle.size()>0);
-    uint8_t out[16]={}; game::net::DecompressChunk(rle.data(),rle.size(),out,16);
-    CHECK_EQ(std::memcmp(data,out,16),0);
+TEST(palette_decompress_empty){
+    // Empty palette (no chunk data) must not crash.
+    game::net::AddChunkEvent o{}; o.coords=oge::Point3{0,0,0};
+    game::net::AddChunkEvent d{}; RT(o,d);
+    CHECK(d.chunk.palette.empty());
 }
-TEST(compress_empty){ auto rle=game::net::CompressChunk(nullptr,0); CHECK(rle.empty()); }
 
 // =========================================================================
 // ReplicationRegistry tests
@@ -368,12 +398,14 @@ TEST(rollback_compare_payloads){
 }
 
 TEST(rollback_chunk_compare){
+    game::terrain::ChunkData cd(oge::Point3{1,2,3});
     game::net::AddChunkEvent c1{}; c1.coords = oge::Point3{1,2,3};
-    c1.blocks.resize(game::terrain::CHUNK_SIZE_TOTAL, 0);
+    game::terrain::PaletteCompressedChunk::FromChunkData(cd, c1.chunk);
     game::net::AddChunkEvent c2{}; c2.coords = oge::Point3{1,2,3};
-    c2.blocks.resize(game::terrain::CHUNK_SIZE_TOTAL, 0);
+    game::terrain::PaletteCompressedChunk::FromChunkData(cd, c2.chunk);
+    game::terrain::ChunkData cd2(oge::Point3{1,2,3}); cd2.data[0] = 99;
     game::net::AddChunkEvent c3{}; c3.coords = oge::Point3{1,2,3};
-    c3.blocks.resize(game::terrain::CHUNK_SIZE_TOTAL, 0); c3.blocks[0] = 99;
+    game::terrain::PaletteCompressedChunk::FromChunkData(cd2, c3.chunk);
 
     auto s1 = S(65536); rnet::Buffer b1(s1); rnet::Serialize(b1,c1); b1.ToReadOnly();
     auto s2 = S(65536); rnet::Buffer b2(s2); rnet::Serialize(b2,c2); b2.ToReadOnly();

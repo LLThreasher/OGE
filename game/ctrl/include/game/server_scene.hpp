@@ -191,6 +191,7 @@ class DebugServerScene final : public Scene
             m_world);
         net::InstallComponentReplicationHooks<ComponentPlayer>(m_world);
         net::InstallEntityReplicationHooks(m_world);
+        net::InstallTerrainReplicationHooks(m_world);
     }
 
     ~DebugServerScene()
@@ -232,6 +233,7 @@ class DebugServerScene final : public Scene
                    "Event dispatcher not empty after poll");
         m_replicationRegistry.ProduceAll(m_netServer, m_world);
         Scene::Update(f, sctx);
+        net::PollTerrainChunkEvents(m_world);
     }
 
     void Load() override

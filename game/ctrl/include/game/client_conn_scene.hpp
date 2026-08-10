@@ -106,6 +106,14 @@ class ClientConnScene : public Scene
         }
         m_playerInfo = LoadOrCreatePlayer();
 
+        // Forward an explicit scene_config to the next scene so callers
+        // (e.g. tests) can control what ClientScene2 loads.
+        auto cfgIt = def.args.find("scene_config");
+        if (cfgIt != def.args.end())
+        {
+            m_nextSceneArgs["scene_config"] = cfgIt->second;
+        }
+
         // uint16_t port = 23400;
         uint16_t port = 23401;
         std::string_view ip = "localhost";
@@ -140,14 +148,19 @@ class ClientConnScene : public Scene
             {
                 sctx.nextSceneArgs[key] = val;
             }
-            SceneConfig cfg = GetDefaultSceneConfig(AF());
-            cfg.subsystems.clear();
-            cfg.realtimeSubsystems.clear();
-            cfg.subsystems.push_back(Id<sim::SubsystemDebugText>());
-            cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-            // cfg.realtimeSubsystems.push_back(Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-            // cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
-            sctx.nextSceneArgs["scene_config"] = json::ToJson(cfg);
+            // Only synthesize the default client config when the caller did
+            // not provide one (tests pass their own scene_config).
+            if (m_nextSceneArgs.find("scene_config") == m_nextSceneArgs.end())
+            {
+                SceneConfig cfg = GetDefaultSceneConfig(AF());
+                cfg.subsystems.clear();
+                cfg.realtimeSubsystems.clear();
+                cfg.subsystems.push_back(Id<sim::SubsystemDebugText>());
+                cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
+                // cfg.realtimeSubsystems.push_back(Id<sim::SubsystemCreature<UpdateType::Realtime>>());
+                // cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
+                sctx.nextSceneArgs["scene_config"] = json::ToJson(cfg);
+            }
             sctx.nextSceneArgs["wait_player"] = json::ToJson(true);
         }
         else if (m_state == State::Timeout)

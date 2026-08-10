@@ -63,7 +63,22 @@ struct NetSceneHarness
         game::json::Object cliArgs;
         cliArgs["port"] = static_cast<int64_t>(TEST_PORT);
         cliArgs["ip"] = std::string("127.0.0.1");
-        cliArgs["next_scene"] = std::string("core::ClientScene2");
+        cliArgs["next_scene"] =
+            static_cast<int64_t>(entt::type_hash<game::ClientScene2>::value());
+
+        // ClientScene2 self-loads this config (blocks + terrain only — no
+        // subsystems, so no local sim or debug-text pool in the harness).
+        game::SceneConfig cliConfig;
+        cliConfig.loadMask = game::SceneConfig::LOAD_MASK_BLOCKS |
+                             game::SceneConfig::LOAD_MASK_TERRAIN;
+        cliConfig.blocks = {
+            {"dirt", {"Dirt", "dirt.png", 1}},
+            {"wood", {"Wood", "wood_plank.png", 1}},
+            {"stone", {"Stone", "green_stone.png", 1}},
+        };
+        cliConfig.terrainDesc.chunkViewDistance = 4;
+        cliArgs["scene_config"] = game::json::ToJson(cliConfig);
+
         m_clientRunner.SwitchToScene<game::ClientConnScene>(std::move(cliArgs));
 
         return true;

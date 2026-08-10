@@ -53,6 +53,15 @@ class ClientScene2 : public Scene
             .connect<&ClientScene2::onRecievePacket>(this);
         m_clientDispatcher.sink<OnClientDisconnected>()
             .connect<&ClientScene2::onDisconnected>(this);
+
+        // Self-load when a scene_config was provided in the args (test
+        // harness).  In the desktop app, DebugVoxelView<ClientScene2>
+        // supplies the config and calls Load() itself after the constructor.
+        if (!m_sceneConfig.empty())
+        {
+            Load();
+        }
+
         m_replicationRegistry.AddPeer(0, m_client.Host(), &m_world);
 
         // The client world is a read-only mirror of the server: state

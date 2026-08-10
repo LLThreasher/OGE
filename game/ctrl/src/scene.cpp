@@ -3,6 +3,7 @@
 #include "game/components.hpp"
 #include "game/game_world.hpp"
 #include "game/json.hpp"
+#include "game/net/replication_events.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
@@ -31,6 +32,7 @@ void Scene::Update(Frame f, SceneContext sctx)
     m_ctx.memory.Update(f.dt);
     m_subsystems.Update(f.dt);
     m_realtimeSubsystems.Update(f.dt);
+    net::PollTerrainChunkEvents(m_world);
 }
 
 void Scene::Load()

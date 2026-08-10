@@ -164,23 +164,15 @@ class PacketScheduler
 // ---------------------------------------------------------------------------
 // SimplePacketScheduler
 //
-// A basic scheduler that packs as many events as possible into a single tick
-// while respecting a configurable byte limit.
-//
-// Set m_maxBytesPerFrame to 0 for unlimited.
+// A basic scheduler that packs as many events as possible into a single tick.
+// There is no byte limit — ENet fragments reliable packets transparently, so
+// oversized events (e.g. full chunk blocks) are safe to send in one packet.
 // ---------------------------------------------------------------------------
 
 class SimplePacketScheduler : public PacketScheduler
 {
    public:
-    size_t m_maxBytesPerFrame = 1200;  // typical MTU-safe default
-
     SimplePacketScheduler() = default;
-
-    explicit SimplePacketScheduler(size_t maxBytesPerFrame)
-        : m_maxBytesPerFrame(maxBytesPerFrame)
-    {
-    }
 
     void Reset() override
     {
@@ -194,9 +186,6 @@ class SimplePacketScheduler : public PacketScheduler
         plan.hasPacket = true;
 
         LogCursor cursor = ctx.begin;
-        size_t usedBytes = 0;
-        const size_t headerBytes =
-            sizeof(FamilyId) + sizeof(LogCursor) + sizeof(uint32_t);
 
         while (true)
         {
@@ -206,23 +195,11 @@ class SimplePacketScheduler : public PacketScheduler
                 break;
             }
 
-            // Estimate: per-packet header + payload size prefix + payload
-            size_t entryBytes = headerBytes +
-                                EventLogStream<>::PayloadSizePrefixBytes() +
-                                ref.payload.size();
-
-            if (m_maxBytesPerFrame > 0 &&
-                usedBytes + entryBytes > m_maxBytesPerFrame)
-            {
-                break;
-            }
-
             PacketDesc desc{};
             desc.logPosition = ref.entry.cursor;
             desc.payloadByteCount = ref.payload.size();
             plan.packets.push_back(desc);
 
-            usedBytes += entryBytes;
             cursor = ref.entry.cursor + 1;
         }
 
@@ -500,11 +477,8 @@ class ReplicationRegistry
 
                 AddChunkEvent evt{};
                 evt.coords = chunk->Coords;
-                evt.blocks.resize(terrain::CHUNK_SIZE_TOTAL);
-                for (size_t i = 0; i < terrain::CHUNK_SIZE_TOTAL; ++i)
-                {
-                    evt.blocks[i] = chunk->data[i];
-                }
+                terrain::PaletteCompressedChunk::FromChunkData(*chunk,
+                                                               evt.chunk);
 
                 auto buf = m_eventStream->EnqueueEvent(
                     entt::type_hash<AddChunkEvent>::value(), net::Size(evt),
