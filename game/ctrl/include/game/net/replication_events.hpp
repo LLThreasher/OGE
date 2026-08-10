@@ -1,10 +1,13 @@
 #pragma once
 
 #include <array>
+#include <bitset>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
 
+#include "game/components.hpp"
+#include "game/components_net.hpp"
 #include "game/input/net.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/net/event_log_stream.hpp"
@@ -16,8 +19,6 @@
 #include "oge/runtime/net_serializer.hpp"
 #include "oge/runtime/net_traits.hpp"
 #include "oge/runtime/oge_registry.hpp"
-#include "game/components.hpp"
-#include "game/components_net.hpp"
 
 // =========================================================================
 // NetTraits for entt::entity
@@ -126,8 +127,7 @@ struct AddChunkEvent
 // RLE compression helpers (applied to palette block indices on the wire)
 // ---------------------------------------------------------------------------
 
-inline std::pmr::vector<uint8_t> CompressChunk(const uint8_t* data,
-                                               size_t size)
+inline std::pmr::vector<uint8_t> CompressChunk(const uint8_t* data, size_t size)
 {
     std::pmr::vector<uint8_t> out{};
     if (size == 0) return out;
@@ -156,9 +156,10 @@ inline void DecompressChunk(const uint8_t* compressed, size_t compressedSize,
     size_t outOffset = 0;
     while (inOffset < compressedSize)
     {
-        OGE_ASSERT(inOffset + 2 <= compressedSize,
-                   "RLE decompression: unexpected end of data at offset {} / {}",
-                   inOffset, compressedSize);
+        OGE_ASSERT(
+            inOffset + 2 <= compressedSize,
+            "RLE decompression: unexpected end of data at offset {} / {}",
+            inOffset, compressedSize);
         uint8_t count = compressed[inOffset++];
         uint8_t value = compressed[inOffset++];
         OGE_ASSERT(outOffset + count <= expectedSize,
@@ -219,7 +220,7 @@ struct TerrainReplicationState
 {
     // Start at 1 — a cursor of 0 is the "snap-to-frontier" sentinel in
     // DiscreteEventStream::PollOne, which would skip the first event.
-    terrain::ChunkEventStream::Cursor chunkEventCursor{1};
+    terrain::ChunkEventStream::Cursor chunkEventCursor{};
     bool initialized = false;
 };
 
@@ -253,21 +254,21 @@ void PushReplicationEvent(OgeRegistryRef world, const TEvent& event)
 inline void InstallAddEntityHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     world.on_construct<ReplicatedTag>()
-        .template connect<
-            +[](OgeRegistryRef world, entt::entity entity)
-            {
-                PushReplicationEvent(world, AddEntityEvent{entity});
-            }>();
+        .template connect<+[](OgeRegistryRef world, entt::entity entity)
+                          {
+                              PushReplicationEvent(world,
+                                                   AddEntityEvent{entity});
+                          }>();
 }
 
 inline void InstallRemoveEntityHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     world.on_destroy<ReplicatedTag>()
-        .template connect<
-            +[](OgeRegistryRef world, entt::entity entity)
-            {
-                PushReplicationEvent(world, RemoveEntityEvent{entity});
-            }>();
+        .template connect<+[](OgeRegistryRef world, entt::entity entity)
+                          {
+                              PushReplicationEvent(world,
+                                                   RemoveEntityEvent{entity});
+                          }>();
 }
 
 // Convenience: install both entity hooks at once (used from server_scene)
@@ -286,65 +287,63 @@ void InstallAddComponentHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     // Component added to an already-replicated entity.
     world.template on_construct<T>()
-        .template connect<
-            +[](OgeRegistryRef world, entt::entity entity)
-            {
-                if (!world.all_of<ReplicatedTag>(entity))
-                {
-                    return;
-                }
-                PushReplicationEvent(
-                    world,
-                    AddComponentEvent<T>{entity, world.template get<T>(entity)});
-            }>();
+        .template connect<+[](OgeRegistryRef world, entt::entity entity)
+                          {
+                              if (!world.all_of<ReplicatedTag>(entity))
+                              {
+                                  return;
+                              }
+                              PushReplicationEvent(
+                                  world,
+                                  AddComponentEvent<T>{
+                                      entity, world.template get<T>(entity)});
+                          }>();
 
     // ReplicatedTag added to an entity that already has T.
     world.on_construct<ReplicatedTag>()
-        .template connect<
-            +[](OgeRegistryRef world, entt::entity entity)
-            {
-                if (!world.template all_of<T>(entity))
-                {
-                    return;
-                }
-                PushReplicationEvent(
-                    world,
-                    AddComponentEvent<T>{entity, world.template get<T>(entity)});
-            }>();
+        .template connect<+[](OgeRegistryRef world, entt::entity entity)
+                          {
+                              if (!world.template all_of<T>(entity))
+                              {
+                                  return;
+                              }
+                              PushReplicationEvent(
+                                  world,
+                                  AddComponentEvent<T>{
+                                      entity, world.template get<T>(entity)});
+                          }>();
 }
 
 template <typename T>
 void InstallUpdateComponentHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     world.template on_update<T>()
-        .template connect<
-            +[](OgeRegistryRef world, entt::entity entity)
-            {
-                if (!world.all_of<ReplicatedTag>(entity))
-                {
-                    return;
-                }
-                PushReplicationEvent(
-                    world,
-                    UpdateComponentEvent<T>{entity, world.template get<T>(entity)});
-            }>();
+        .template connect<+[](OgeRegistryRef world, entt::entity entity)
+                          {
+                              if (!world.all_of<ReplicatedTag>(entity))
+                              {
+                                  return;
+                              }
+                              PushReplicationEvent(
+                                  world,
+                                  UpdateComponentEvent<T>{
+                                      entity, world.template get<T>(entity)});
+                          }>();
 }
 
 template <typename T>
 void InstallRemoveComponentHooks(EventLogStream<>&, OgeRegistryRef world)
 {
     world.template on_destroy<T>()
-        .template connect<
-            +[](OgeRegistryRef world, entt::entity entity)
-            {
-                if (!world.all_of<ReplicatedTag>(entity))
-                {
-                    return;
-                }
-                PushReplicationEvent(
-                    world,
-                    RemoveComponentEvent<T>{entity});
-            }>();
+        .template connect<+[](OgeRegistryRef world, entt::entity entity)
+                          {
+                              if (!world.all_of<ReplicatedTag>(entity))
+                              {
+                                  return;
+                              }
+                              PushReplicationEvent(
+                                  world, RemoveComponentEvent<T>{entity});
+                          }>();
 }
 
 // Convenience: install all component hooks for T at once (used from
@@ -432,50 +431,49 @@ inline void PollTerrainChunkEvents(OgeRegistryRef world)
         if (chunkEvent.packed.prevState != terrain::ChunkState::Persistent &&
             chunkEvent.packed.state == terrain::ChunkState::Persistent)
         {
-            const terrain::ChunkData* chunk =
-                terrain.GetChunk(chunkEvent.chunk);
-            if (chunk != nullptr)
+            if (chunkEvent.IsAllDirty())
             {
-                AddChunkEvent evt{};
-                evt.coords = chunk->Coords;
-                terrain::PaletteCompressedChunk::FromChunkData(*chunk,
-                                                               evt.chunk);
-                PushReplicationEvent(world, evt);
+                const terrain::ChunkData* chunk =
+                    terrain.GetChunk(chunkEvent.chunk);
+                if (chunk != nullptr)
+                {
+                    AddChunkEvent evt{};
+                    evt.coords = chunk->Coords;
+                    terrain::PaletteCompressedChunk::FromChunkData(*chunk,
+                                                                   evt.chunk);
+                    PushReplicationEvent(world, evt);
+                }
+            }
+            else if (chunkEvent.packed.dirtyCnt > 0)
+            {
+                LOG_DEBUG("trigger block event at {}", chunkEvent.dirtyBlocks[0].val);
+                const terrain::ChunkData* chunk =
+                    terrain.GetChunk(chunkEvent.chunk);
+                if (chunk != nullptr)
+                {
+                    UpdateChunkEvent evt{};
+                    evt.coords = chunk->Coords;
+                    evt.dirtyCnt = chunkEvent.packed.dirtyCnt;
+                    for (uint8_t i = 0; i < chunkEvent.packed.dirtyCnt; ++i)
+                    {
+                        const oge::LocalUPoint3 p = chunkEvent.dirtyBlocks[i];
+                        evt.updates[i] = ChunkBlockUpdate{
+                            chunkEvent.dirtyBlocks[i], chunk->GetBlock(p)};
+                    }
+                    PushReplicationEvent(world, evt);
+                }
             }
         }
 
         // Chunk stopped being persistent → RemoveChunk
-        if (chunkEvent.packed.prevState == terrain::ChunkState::Persistent &&
-            chunkEvent.packed.state != terrain::ChunkState::Persistent)
+        if (chunkEvent.packed.prevState == terrain::ChunkState::PendingDestroy &&
+            chunkEvent.packed.state != terrain::ChunkState::PendingDestroy)
         {
             const terrain::ChunkData* chunk =
                 terrain.GetChunk(chunkEvent.chunk);
             if (chunk != nullptr)
             {
                 RemoveChunkEvent evt{chunk->Coords};
-                PushReplicationEvent(world, evt);
-            }
-        }
-
-        // Persistent chunk with dirty blocks → UpdateChunk
-        if (chunkEvent.packed.state == terrain::ChunkState::Persistent &&
-            chunkEvent.packed.dirtyCnt > 0 &&
-            chunkEvent.packed.dirtyCnt <= 29)
-        {
-            const terrain::ChunkData* chunk =
-                terrain.GetChunk(chunkEvent.chunk);
-            if (chunk != nullptr)
-            {
-                UpdateChunkEvent evt{};
-                evt.coords = chunk->Coords;
-                evt.dirtyCnt = chunkEvent.packed.dirtyCnt;
-                for (uint8_t i = 0; i < chunkEvent.packed.dirtyCnt; ++i)
-                {
-                    const oge::LocalUPoint3 p = chunkEvent.dirtyBlocks[i];
-                    evt.updates[i] = ChunkBlockUpdate{
-                        chunkEvent.dirtyBlocks[i],
-                        chunk->GetBlock(p)};
-                }
                 PushReplicationEvent(world, evt);
             }
         }
@@ -491,8 +489,7 @@ inline void PollTerrainChunkEvents(OgeRegistryRef world)
 // =========================================================================
 
 // Register a player's input stream so it is polled each tick.
-inline void RegisterPlayerInputStream(OgeRegistryRef world,
-                                      entt::entity player,
+inline void RegisterPlayerInputStream(OgeRegistryRef world, entt::entity player,
                                       input::PlayerInputStream* stream)
 {
     if (!world.ctx().contains<PlayerInputReplicationState>())
@@ -536,32 +533,32 @@ inline void InstallPlayerInputReplicationHooks(OgeRegistryRef world)
     // ComponentPlayer, the client's DebugVoxelView emplaces it after — so
     // cover both orderings.
     world.on_construct<input::PlayerInputStream>()
-        .template connect<+[](OgeRegistryRef world, entt::entity entity)
-        {
-            if (world.all_of<ComponentPlayer>(entity))
+        .template connect<
+            +[](OgeRegistryRef world, entt::entity entity)
             {
-                RegisterPlayerInputStream(
-                    world, entity,
-                    &world.template get<input::PlayerInputStream>(entity));
-            }
-        }>();
+                if (world.all_of<ComponentPlayer>(entity))
+                {
+                    RegisterPlayerInputStream(
+                        world, entity,
+                        &world.template get<input::PlayerInputStream>(entity));
+                }
+            }>();
     world.on_construct<ComponentPlayer>()
-        .template connect<+[](OgeRegistryRef world, entt::entity entity)
-        {
-            if (world.all_of<input::PlayerInputStream>(entity))
+        .template connect<
+            +[](OgeRegistryRef world, entt::entity entity)
             {
-                RegisterPlayerInputStream(
-                    world, entity,
-                    &world.template get<input::PlayerInputStream>(entity));
-            }
-        }>();
+                if (world.all_of<input::PlayerInputStream>(entity))
+                {
+                    RegisterPlayerInputStream(
+                        world, entity,
+                        &world.template get<input::PlayerInputStream>(entity));
+                }
+            }>();
     // Drop the stream pointer when the component goes away so
     // PollPlayerInputs / ApplyEvent never dereference a dangling pointer.
     world.on_destroy<input::PlayerInputStream>()
         .template connect<+[](OgeRegistryRef world, entt::entity entity)
-        {
-            UnregisterPlayerInputStream(world, entity);
-        }>();
+                          { UnregisterPlayerInputStream(world, entity); }>();
 }
 
 // Call this each tick to flush player input frames into the replication
@@ -744,8 +741,7 @@ void ApplyEvent(OgeRegistryRef world, const RemoveComponentEvent<T>& event)
         return;
     }
 
-    if (world.valid(event.entity) &&
-        world.template all_of<T>(event.entity))
+    if (world.valid(event.entity) && world.template all_of<T>(event.entity))
     {
         world.template remove<T>(event.entity);
     }
@@ -808,22 +804,34 @@ inline void ApplyEvent(OgeRegistryRef world, const UpdateChunkEvent& event)
 
     auto [handle, chunk] = terrain.GetChunk(event.coords);
 
-    if (chunk == nullptr ||
-        chunk->state != terrain::ChunkState::Persistent)
+    if (chunk == nullptr || chunk->state != terrain::ChunkState::Persistent)
     {
         return;
     }
 
+    std::bitset<6> dirtyFaces{};
     for (uint8_t i = 0; i < event.dirtyCnt; ++i)
     {
         const ChunkBlockUpdate& upd = event.updates[i];
         const oge::LocalUPoint3 p = upd.position;
 
         chunk->SetBlock(p, upd.block);
+        terrain::ChunkDir::ForEachDirtyChunkNeighborIdx(p, [&](auto cpos) {
+            dirtyFaces.set(cpos, true);
+        });
     }
 
     terrain.DowngradeChunk(handle, terrain::ChunkState::InvalidLighting);
     terrain.UpgradeChunk(handle, terrain::ChunkState::Persistent);
+
+    for (size_t face = 0; face < 6; ++face)
+    {
+        if (dirtyFaces.test(face))
+        {
+            terrain.DowngradeChunk(handle, terrain::ChunkState::InvalidLighting);
+            terrain.UpgradeChunk(handle, terrain::ChunkState::Persistent);
+        }
+    }
 }
 
 }  // namespace game::net
@@ -881,13 +889,9 @@ struct TypeName<game::net::RemoveComponentEvent<T>>
 // NetTraits for entity events
 // =========================================================================
 
-DECL_NET_OBJ(game::net::AddEntityEvent, {
-    visit(self.entity);
-})
+DECL_NET_OBJ(game::net::AddEntityEvent, { visit(self.entity); })
 
-DECL_NET_OBJ(game::net::RemoveEntityEvent, {
-    visit(self.entity);
-})
+DECL_NET_OBJ(game::net::RemoveEntityEvent, { visit(self.entity); })
 
 // =========================================================================
 // NetTraits for component events (generic partial specializations)
@@ -921,8 +925,7 @@ struct NetTraits<game::net::RemoveComponentEvent<T>>
     : ObjectTraits<game::net::RemoveComponentEvent<T>>
 {
     template <typename F>
-    static void VisitFields(game::net::RemoveComponentEvent<T>& self,
-                            F&& visit)
+    static void VisitFields(game::net::RemoveComponentEvent<T>& self, F&& visit)
     {
         visit(self.entity);
     }
@@ -940,8 +943,7 @@ struct NetTraits<game::net::UpdateComponentEvent<T>>
     : ObjectTraits<game::net::UpdateComponentEvent<T>>
 {
     template <typename F>
-    static void VisitFields(game::net::UpdateComponentEvent<T>& self,
-                            F&& visit)
+    static void VisitFields(game::net::UpdateComponentEvent<T>& self, F&& visit)
     {
         visit(self.entity);
         visit(self.component);
@@ -974,8 +976,7 @@ struct NetTraits<::game::net::AddChunkEvent>
                sizeof(uint32_t) + rle.size();
     }
 
-    static void Serialize(Buffer& buffer,
-                          const game::net::AddChunkEvent& value)
+    static void Serialize(Buffer& buffer, const game::net::AddChunkEvent& value)
     {
         net::Serialize(buffer, value.coords);
         net::Serialize(buffer, value.chunk.palette);
@@ -986,8 +987,7 @@ struct NetTraits<::game::net::AddChunkEvent>
         buffer.WriteRaw(rle.data(), rle.size());
     }
 
-    static void Deserialize(Buffer& buffer,
-                            game::net::AddChunkEvent& value)
+    static void Deserialize(Buffer& buffer, game::net::AddChunkEvent& value)
     {
         value = {};
         net::Deserialize(buffer, value.coords);
@@ -995,8 +995,7 @@ struct NetTraits<::game::net::AddChunkEvent>
         uint32_t rleSize = buffer.Read<uint32_t>();
         std::pmr::vector<uint8_t> compressed(rleSize);
         buffer.ReadRaw(compressed.data(), rleSize);
-        game::net::DecompressChunk(compressed.data(), rleSize,
-                                   value.chunk.data,
+        game::net::DecompressChunk(compressed.data(), rleSize, value.chunk.data,
                                    ::game::terrain::CHUNK_SIZE_TOTAL);
     }
 };
@@ -1008,9 +1007,7 @@ DECL_NET_OBJ(game::net::ChunkBlockUpdate, {
     visit(self.block);
 })
 
-DECL_NET_OBJ(game::net::RemoveChunkEvent, {
-    visit(self.coords);
-})
+DECL_NET_OBJ(game::net::RemoveChunkEvent, { visit(self.coords); })
 
 DECL_NET_OBJ(game::net::UpdateChunkEvent, {
     visit(self.coords);

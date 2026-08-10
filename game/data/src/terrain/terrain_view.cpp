@@ -3,6 +3,7 @@
 #include <tuple>
 
 #include "game/terrain/block_registry.hpp"
+#include "game/terrain/defs.hpp"
 #include "oge/point3.hpp"
 
 namespace game::terrain
@@ -48,30 +49,7 @@ void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
         e.AddDirtyBlk(localCoord);
         DowngradeChunk(handle, ChunkState::InvalidLighting, e);
         UpgradeChunk(handle, ChunkState::Persistent, e);
-        if ((x & 0xF) == 0)
-        {
-            handleChunk({chunkCoord.x - 1, chunkCoord.y, chunkCoord.z});
-        }
-        else if ((x & 0xF) == 15)
-        {
-            handleChunk({chunkCoord.x + 1, chunkCoord.y, chunkCoord.z});
-        }
-        if ((y & 0xF) == 0)
-        {
-            handleChunk({chunkCoord.x, chunkCoord.y - 1, chunkCoord.z});
-        }
-        else if ((y & 0xF) == 15)
-        {
-            handleChunk({chunkCoord.x, chunkCoord.y + 1, chunkCoord.z});
-        }
-        if ((z & 0xF) == 0)
-        {
-            handleChunk({chunkCoord.x, chunkCoord.y, chunkCoord.z - 1});
-        }
-        else if ((z & 0xF) == 15)
-        {
-            handleChunk({chunkCoord.x, chunkCoord.y, chunkCoord.z + 1});
-        }
+        ChunkDir::ForEachDirtyChunkNeighbor({x, y, z}, handleChunk);
         return chunk->SetBlock(x & 0xF, y & 0xF, z & 0xF, value);
     }
 }
