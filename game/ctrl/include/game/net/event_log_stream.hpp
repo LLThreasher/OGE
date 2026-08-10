@@ -71,6 +71,8 @@ constexpr uint32_t MyPeerId = 63;
 template <size_t Capacity = 256>
 class EventLogStream
 {
+    static constexpr bool SHOW_LOGS = false;
+
    protected:
     oge::DiscreteEventStream<EventLogEntryMeta, Capacity> m_entries;
     std::bitset<Capacity> m_validSet = {};
@@ -101,8 +103,9 @@ class EventLogStream
 
     void SerializeEventMeta(Buffer& buffer, const EventLogEntryMeta& meta)
     {
-        LOG_DEBUG("serialize event {} at slot {}",
-                  m_af->GetDescriptor(meta.id)->name, meta.cursor);
+        if (SHOW_LOGS)
+            LOG_DEBUG("serialize event {} at slot {}",
+                      m_af->GetDescriptor(meta.id)->name, meta.cursor);
 
         buffer.Write(meta.id);
         buffer.Write<LogCursor>(meta.cursor);
@@ -187,9 +190,10 @@ class EventLogStream
             m_validSet.set(m_entries.HeadCursor() % Capacity, true);
             m_entries.Push(meta);
 
-            LOG_DEBUG("deserialize event {} at slot {} ({})",
-                      m_af->GetDescriptor(meta.id)->name, meta.cursor,
-                      meta.cursor % Capacity);
+            if (SHOW_LOGS)
+                LOG_DEBUG("deserialize event {} at slot {} ({})",
+                          m_af->GetDescriptor(meta.id)->name, meta.cursor,
+                          meta.cursor % Capacity);
 
             if (!buffer.IsEmpty())
             {
@@ -282,9 +286,10 @@ class EventLogStream
                    LogCursor at = 0) const
     {
         auto curosr = at == 0 ? m_currentTail : at;
-        LOG_DEBUG("peek event at slot {}: {}, {}, {}", curosr, m_currentTail,
-                  m_entries.Contains(curosr),
-                  m_validSet.test(curosr % Capacity));
+        if (SHOW_LOGS)
+            LOG_DEBUG("peek event at slot {}: {}, {}, {}", curosr,
+                      m_currentTail, m_entries.Contains(curosr),
+                      m_validSet.test(curosr % Capacity));
         while (m_entries.Contains(curosr))
         {
             if (m_validSet.test(curosr % Capacity))
@@ -318,9 +323,10 @@ class EventLogStream
                 EventLogEntryMeta& entry = m_entries.Get(curosr);
                 if (entry.recieveMask.test(peer))
                 {
-                    LOG_DEBUG("deqeue event {} at slot {}",
-                              m_af->GetDescriptor(entry.id)->name,
-                              entry.cursor);
+                    if (SHOW_LOGS)
+                        LOG_DEBUG("deqeue event {} at slot {}",
+                                  m_af->GetDescriptor(entry.id)->name,
+                                  entry.cursor);
                     out.entry = entry;
                     auto it = m_payloads.find(curosr);
                     if (it != m_payloads.end())
@@ -351,7 +357,8 @@ class EventLogStream
     void Update()
     {
         // increment tail to first valid entry
-        while (m_currentTail < m_entries.HeadCursor() && !m_validSet.test(m_currentTail % Capacity))
+        while (m_currentTail < m_entries.HeadCursor() &&
+               !m_validSet.test(m_currentTail % Capacity))
         {
             m_currentTail++;
         }

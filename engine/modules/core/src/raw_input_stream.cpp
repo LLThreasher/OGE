@@ -85,6 +85,7 @@ void RawInputStream::SetMouseDelta(int id, float dx, float dy)
 void RawInputStream::SetMousePosition(int id, float x, float y)
 {
     auto idx = FindMouse(id);
+    LOG_DEBUG("set mouse pos {} at slot {}", id, idx);
     auto& ptr = pointerPos[idx];
     ptr = math::vec2{x, y};
     dirtyPtrs.add(idx);
@@ -101,7 +102,7 @@ void RawInputStream::AddMouse(int id)
             break;
         }
     }
-    // LOG_DEBUG("add mouse {} at slot {}", id, resultId);
+    LOG_DEBUG("add mouse {} at slot {}", id, resultId);
     activePtrs.add(resultId);
     InputEvent res2{InputEventType::AddMouse};
     res2.pointerIdx = resultId;
@@ -113,7 +114,7 @@ void RawInputStream::DelMouse(int id)
     InputEvent res2{InputEventType::RemoveMouse};
     res2.pointerIdx = FindMouse(id);
     events.Push(res2);
-    // LOG_DEBUG("remove mouse {} from slot {}", id, res2.pointerIdx);
+    LOG_DEBUG("remove mouse {} from slot {}", id, res2.pointerIdx);
     toRemovePtrs.add(res2.pointerIdx);
     dirtyPtrs.add(res2.pointerIdx);
 }
@@ -122,7 +123,7 @@ uint32_t RawInputStream::FindMouse(int id) const
 {
     for (uint32_t i = 0; i < MousePtrInputIndices.size(); ++i)
     {
-        if (activePtrs.contains(i) && mouseIds[i] == id) return i;
+        if (activePtrs.contains(i) && !toRemovePtrs.contains(i) && mouseIds[i] == id) return i;
     }
     return 0;
 }

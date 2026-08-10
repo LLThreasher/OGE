@@ -84,6 +84,10 @@ class RawInputStream
 
     RawInputStream()
     {
+        for (auto& ptr : mouseIds)
+        {
+            ptr = MaxMousePtrCount;
+        }
     }
     NO_COPY(RawInputStream)
     void AdvanceCursor(Cursor& cursor) const;

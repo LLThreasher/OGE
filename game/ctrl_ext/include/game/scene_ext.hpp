@@ -211,9 +211,8 @@ class SceneView : protected AppRuntime
         {
             if (!m_nextShowingCursor)
             {
-                for (auto ptr : f.is.ActivePtrs())
+                for (size_t ptr : f.is.MousePtrInputIndices)
                 {
-                    if (!f.is.IsMouse(ptr)) continue;
                     RemoveCursor(ptr);
                 }
             }
