@@ -17,6 +17,7 @@
 #include "game/view/gfx/view_executor.hpp"
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
+#include "oge/assert.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/oge_registry.hpp"
@@ -54,7 +55,7 @@ class SceneView : protected AppRuntime
 
     struct Frame : Scene::Frame
     {
-        oge::input::RawInputStream& is;
+        RawInputStream& is;
         FramePerfStatus perfStats;
         AppFrameAction& frameAction;
     };
@@ -73,6 +74,8 @@ class SceneView : protected AppRuntime
 
     view::SubmissionQueue m_squeue;
     ViewExecutor m_viewExecutor;
+
+    RawInputStream::Cursor m_rawInputCursor{};
 
     SceneView(const Scene::Def& def,
               std::string_view innerSceneName = "core::Scene")
@@ -141,6 +144,7 @@ class SceneView : protected AppRuntime
 
     void AddCursor(size_t mouseIdx)
     {
+        LOG_INFO("add cursor at idx {}", mouseIdx);
         namespace ui = oge::runtime::ui;
         assert(m_cursors[mouseIdx] == entt::null);
         auto& cursor = m_cursors[mouseIdx];
@@ -156,8 +160,10 @@ class SceneView : protected AppRuntime
 
     void RemoveCursor(size_t mouseIdx)
     {
-        if (m_uiWorld.valid(m_cursors[mouseIdx]))
-            m_uiWorld.destroy(m_cursors[mouseIdx]);
+        LOG_INFO("remove cursor at idx {}", mouseIdx);
+        OGE_ASSERT(m_uiWorld.valid(m_cursors[mouseIdx]),
+                   "invalid cursor entity");
+        m_uiWorld.destroy(m_cursors[mouseIdx]);
         m_cursors[mouseIdx] = entt::null;
     }
 
@@ -166,9 +172,8 @@ class SceneView : protected AppRuntime
         namespace ui = oge::runtime::ui;
         if (m_showingCursor)
         {
-            auto cursor = f.is.LastFrameCursor();
             oge::input::InputEvent e;
-            while (f.is.PollEvent(cursor, e))
+            while (f.is.PollEvent(m_rawInputCursor, e))
             {
                 switch (e.type)
                 {
@@ -198,13 +203,16 @@ class SceneView : protected AppRuntime
             }
             for (auto ptr : f.is.ActivePtrs())
             {
-                if (!f.is.IsMouse(ptr) || !m_uiWorld.valid(m_cursors[ptr]))
-                    continue;
-                auto rect = m_uiWorld.get<ui::UIRect>(m_cursors[ptr]);
+                if (!f.is.IsMouse(ptr)) continue;
                 math::vec2 extent = m_ctx.assets.backend.SwapchainExtent();
-                math::vec2 pos = f.is.PollPtrLatest(ptr, cursor);
-                rect.pos = pos - (rect.extent * 0.5f);
-                m_uiWorld.emplace_or_replace<ui::UIRect>(m_cursors[ptr], rect);
+                math::vec2 pos = f.is.PollPtrLatest(ptr);
+                OGE_ASSERT(m_uiWorld.valid(m_cursors[ptr]),
+                           "entity not found for ptr {}", ptr);
+                OGE_ASSERT(m_uiWorld.all_of<ui::UIRect>(m_cursors[ptr]),
+                           "component not found for ptr {}", ptr);
+                m_uiWorld.patch<ui::UIRect>(
+                    m_cursors[ptr], [=](ui::UIRect& val)
+                    { val.pos = pos - (val.extent * 0.5f); });
             }
         }
         if (m_nextShowingCursor != m_showingCursor)
@@ -213,16 +221,16 @@ class SceneView : protected AppRuntime
             {
                 for (size_t ptr : f.is.MousePtrInputIndices)
                 {
-                    RemoveCursor(ptr);
+                    if (f.is.ActivePtrs().contains(ptr)) RemoveCursor(ptr);
                 }
             }
             else
             {
-                for (auto ptr : f.is.ActivePtrs())
+                for (auto ptr : f.is.MousePtrInputIndices)
                 {
-                    if (!f.is.IsMouse(ptr)) continue;
-                    AddCursor(ptr);
+                    if (f.is.ActivePtrs().contains(ptr)) AddCursor(ptr);
                 }
+                f.is.AdvanceCursor(m_rawInputCursor);
             }
             m_showingCursor = m_nextShowingCursor;
         }

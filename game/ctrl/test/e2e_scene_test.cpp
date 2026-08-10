@@ -51,6 +51,7 @@ TEST(e2e_scenes_handshake_and_player)
 {
     NetSceneHarness h;
     CHECK(h.start());
+    CHECK(h.connect());
     CHECK(h.waitForHandshake());
 
     // Verify the server world has a player entity with the full set of
@@ -103,6 +104,7 @@ TEST(e2e_player_replicated_to_client)
 
     NetSceneHarness h;
     CHECK(h.start());
+    CHECK(h.connect());
     CHECK(h.waitForHandshake());
 
     // Wait for replication to land on the client.  The snapshot events
@@ -150,6 +152,94 @@ TEST(e2e_player_replicated_to_client)
                             "player.bin");
 }
 
+TEST(e2e_player_replicated_to_client_twice)
+{
+    // Pre-write player.bin with a known uuid so LoadOrCreatePlayer is
+    // deterministic and the replicated client player can be matched.
+    const std::array<uint8_t, 16> kPlayerUuid{
+        0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF,
+        0xFE, 0xDC, 0xBA, 0x98, 0x76, 0x54, 0x32, 0x10};
+    {
+        std::filesystem::create_directories(
+            std::filesystem::path(GetBinaryDir()) / "assets");
+        std::vector<char> blob(16 + sizeof(game::math::vec3));
+        std::memcpy(blob.data(), kPlayerUuid.data(), 16);
+        game::math::vec3 pos{20.f, 20.f, 20.f};
+        std::memcpy(&blob[16], &pos, sizeof(game::math::vec3));
+        CHECK(oge::platform::TrySaveBlob("player.bin", blob));
+    }
+
+    NetSceneHarness h;
+    CHECK(h.start());
+
+    for (size_t i = 0; i < 4; i++)
+    {
+        CHECK(h.connect());
+        CHECK(h.waitForHandshake());
+
+        // Wait for replication to land on the client.  The snapshot events
+        // travel: server AddPeer → GenerateSnapshot → ENet → client
+        // HandleIncoming → ApplyEvent.  ComponentPlayer is snapshotted last, so
+        // wait for it to appear.
+        bool clientHasPlayer = false;
+        CHECK(h.pumpUntil(
+            [&]
+            {
+                auto& cw = h.clientWorld();
+                for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+                {
+                    (void)e;
+                    (void)player;
+                    clientHasPlayer = true;
+                    return true;
+                }
+                return false;
+            },
+            400));
+
+        CHECK(clientHasPlayer);
+
+        // The client player must be the local player: uuid matches player.bin,
+        // and it must carry every replicated component (plus ReplicatedTag so
+        // the client cannot echo it back).
+        auto& cw = h.clientWorld();
+        int playerCount = 0;
+        for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+        {
+            ++playerCount;
+            CHECK(player.id == kPlayerUuid);
+            CHECK(cw.all_of<game::ReplicatedTag>(e));
+            CHECK(cw.all_of<game::ComponentPhysicBody>(e));
+            CHECK(cw.all_of<game::ComponentAABBCollider>(e));
+            CHECK(cw.all_of<game::ComponentCreature>(e));
+            CHECK(cw.all_of<game::ComponentCamera>(e));
+            CHECK(cw.all_of<game::ComponentPerspectiveCamera>(e));
+        }
+        CHECK_EQ(playerCount, 1);
+
+        h.disconnect();
+
+        bool serverHasPlayer = true;
+        CHECK(h.pumpUntil(
+            [&]
+            {
+                auto& cw = h.serverWorld();
+                if (cw.view<game::ComponentPlayer>()->size() == 0) {
+                    serverHasPlayer = false;
+                    return true;
+                }
+                return false;
+            },
+            400));
+
+        CHECK(!serverHasPlayer);
+    }
+
+    // Clean up the deterministic save file.
+    std::filesystem::remove(std::filesystem::path(GetBinaryDir()) / "assets" /
+                            "player.bin");
+}
+
 // =============================================================================
 // Physics event bounding
 //
@@ -165,6 +255,7 @@ TEST(e2e_physics_events_bounded)
 {
     NetSceneHarness h;
     CHECK(h.start());
+    CHECK(h.connect());
     CHECK(h.waitForHandshake());
 
     // Let replication settle so we count only steady-state physics events.
@@ -258,6 +349,7 @@ TEST(e2e_add_chunk_replicates)
 {
     NetSceneHarness h;
     CHECK(h.start());
+    CHECK(h.connect());
     CHECK(h.waitForHandshake());
 
     // Wait for the server to generate at least one persistent chunk.
@@ -325,6 +417,7 @@ TEST(e2e_update_chunk_replicates)
 {
     NetSceneHarness h;
     CHECK(h.start());
+    CHECK(h.connect());
     CHECK(h.waitForHandshake());
 
     // Wait for a persistent chunk on the server, then set a block in it.
@@ -407,6 +500,7 @@ TEST(e2e_player_input_replicates)
 {
     NetSceneHarness h;
     CHECK(h.start());
+    CHECK(h.connect());
     CHECK(h.waitForHandshake());
 
     // Wait for the player entity to replicate to the client.
@@ -495,6 +589,7 @@ TEST(e2e_scenes_stability)
 {
     NetSceneHarness h;
     CHECK(h.start());
+    CHECK(h.connect());
     CHECK(h.waitForHandshake());
 
     // Run 120 frames (~2 seconds at 60 fps) after handshake.  The server

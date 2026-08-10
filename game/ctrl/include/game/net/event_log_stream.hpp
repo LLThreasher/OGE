@@ -49,10 +49,22 @@ struct SmallPayload
         return m_isInline ? inlineBuf.data() : m_heapBuf.data();
     }
 
-    size_t size() const { return m_size; }
-    size_t capacity() const { return m_isInline ? kSmallPayloadInlineSize : m_heapBuf.capacity(); }
-    bool isInline() const { return m_isInline; }
-    bool empty() const { return m_size == 0; }
+    size_t size() const
+    {
+        return m_size;
+    }
+    size_t capacity() const
+    {
+        return m_isInline ? kSmallPayloadInlineSize : m_heapBuf.capacity();
+    }
+    bool isInline() const
+    {
+        return m_isInline;
+    }
+    bool empty() const
+    {
+        return m_size == 0;
+    }
 
     // Resize payload storage.  n ≤ kSmallPayloadInlineSize stays inline;
     // larger values promote to heap.
@@ -89,7 +101,8 @@ struct SmallPayload
     void commitSize(size_t n)
     {
         OGE_ASSERT(m_isInline, "commitSize called on heap-backed SmallPayload");
-        OGE_ASSERT(n <= kSmallPayloadInlineSize, "committed size {} exceeds inline capacity", n);
+        OGE_ASSERT(n <= kSmallPayloadInlineSize,
+                   "committed size {} exceeds inline capacity", n);
         m_size = n;
     }
 
@@ -108,10 +121,10 @@ struct SmallPayload
     // -- move ----------------------------------------------------------------
 
     SmallPayload(SmallPayload&& other) noexcept
-        : inlineBuf(other.inlineBuf)
-        , m_heapBuf(std::move(other.m_heapBuf))
-        , m_size(other.m_size)
-        , m_isInline(other.m_isInline)
+        : inlineBuf(other.inlineBuf),
+          m_heapBuf(std::move(other.m_heapBuf)),
+          m_size(other.m_size),
+          m_isInline(other.m_isInline)
     {
         other.m_size = 0;
         other.m_isInline = true;
@@ -125,7 +138,8 @@ struct SmallPayload
             {
                 if (other.m_isInline)
                 {
-                    std::memcpy(inlineBuf.data(), other.inlineBuf.data(), other.m_size);
+                    std::memcpy(inlineBuf.data(), other.inlineBuf.data(),
+                                other.m_size);
                 }
                 else
                 {
@@ -139,7 +153,8 @@ struct SmallPayload
                 {
                     m_heapBuf.clear();
                     m_heapBuf.shrink_to_fit();
-                    std::memcpy(inlineBuf.data(), other.inlineBuf.data(), other.m_size);
+                    std::memcpy(inlineBuf.data(), other.inlineBuf.data(),
+                                other.m_size);
                     m_isInline = true;
                 }
                 else
@@ -157,8 +172,7 @@ struct SmallPayload
     // -- copy ----------------------------------------------------------------
 
     SmallPayload(const SmallPayload& other)
-        : m_size(other.m_size)
-        , m_isInline(other.m_isInline)
+        : m_size(other.m_size), m_isInline(other.m_isInline)
     {
         if (m_isInline)
         {
@@ -222,8 +236,14 @@ struct SmallPayload
 
     // -- implicit conversion to span -----------------------------------------
 
-    operator std::span<std::byte>() { return {data(), m_size}; }
-    operator std::span<const std::byte>() const { return {data(), m_size}; }
+    operator std::span<std::byte>()
+    {
+        return {data(), m_size};
+    }
+    operator std::span<const std::byte>() const
+    {
+        return {data(), m_size};
+    }
 
     // -- explicit span access ------------------------------------------------
 
@@ -236,12 +256,13 @@ struct SmallPayload
         return {data(), m_size};
     }
 
-private:
+   private:
     std::vector<std::byte> m_heapBuf{};
     size_t m_size = 0;
     bool m_isInline = true;
 };
 
+// 24 bytes
 struct EventLogEntryMeta
 {
     LogCursor cursor = 0;
@@ -296,10 +317,10 @@ constexpr uint32_t MyPeerId = 63;
 //   non-authoritative peer only maintain local events and remote events
 //      with its mask. local events may not have the same cursor slot as
 //      its replica on the authoritative log.
-template <size_t Capacity = 256>
+template <size_t Capacity = 32768>
 class EventLogStream
 {
-    static constexpr bool SHOW_LOGS = true;
+    static constexpr bool SHOW_LOGS = false;
 
    protected:
     oge::DiscreteEventStream<EventLogEntryMeta, Capacity> m_entries;
@@ -315,7 +336,8 @@ class EventLogStream
     EventLogStream(AnythingFactory* af = nullptr, bool authority = false)
         : m_af(af)
     {
-        if (m_af) {
+        if (m_af)
+        {
             m_sendPayloadTypeId = m_af->Id<SendPayload>();
             m_addPeerTypeId = m_af->Id<UpdateTail>();
         }
@@ -325,14 +347,24 @@ class EventLogStream
     void AddPeer(uint32_t peerId)
     {
         m_activePeers.set(peerId, true);
-        auto buf = EnqueueEvent(m_addPeerTypeId, sizeof(LogCursor));
-        buf.template Write<LogCursor>(m_currentTail);
+        // auto buf = EnqueueEvent(m_addPeerTypeId, sizeof(LogCursor));
+        // buf.template Write<LogCursor>(m_currentTail);
     }
 
     // this must be called at tick boundry
     void RemovePeer(uint32_t peerId)
     {
         m_activePeers.set(peerId, false);
+        LogCursor cursor = m_currentTail;
+        while (cursor < m_entries.HeadCursor())
+        {
+            if (m_validSet.test(cursor % Capacity) &&
+                (m_entries.Get(cursor).recieveMask & m_activePeers).none())
+            {
+                m_validSet.set(cursor % Capacity, false);
+            }
+            ++cursor;
+        }
     }
 
     void SerializeEventMeta(Buffer& buffer, const EventLogEntryMeta& meta)
@@ -373,9 +405,9 @@ class EventLogStream
     void SerializeEvent(Buffer& buffer, const EventLogEntry& entry)
     {
         SerializeEventMeta(entry.entry, buffer);
-        SerializeEventPayload(
-            entry.entry.cursor, buffer,
-            std::span<const std::byte>(entry.payload.data(), entry.payload.size()));
+        SerializeEventPayload(entry.entry.cursor, buffer,
+                              std::span<const std::byte>(entry.payload.data(),
+                                                         entry.payload.size()));
     }
 
     static constexpr size_t MetaSize()
@@ -517,10 +549,15 @@ class EventLogStream
     Buffer EnqueueEvent(oge_id_type id, size_t initPayloadSize,
                         std::bitset<64> peerMask = ~std::bitset<64>{})
     {
-        // if (m_af)
-        //     LOG_DEBUG("enqueue event {} with mask {}",
-        //     m_af->GetDescriptor(id)->name, (peerMask &
-        //     m_activePeers).to_ullong());
+        if (SHOW_LOGS)
+            LOG_DEBUG("enqueue event {} with mask {} at {} with tail {}",
+                      m_af->GetDescriptor(id)->name,
+                      (peerMask & m_activePeers).to_ullong(),
+                      m_entries.HeadCursor(), m_currentTail);
+
+        OGE_ASSERT(m_entries.HeadCursor() - m_currentTail < Capacity,
+                   "too many enqueue, tail wrap around at {}, with head {}",
+                   m_currentTail, m_entries.HeadCursor());
         OGE_ASSERT(peerMask.any(), "EnqueueEvent called with empty peer mask");
         EventLogEntryMeta meta = {m_entries.HeadCursor(), id,
                                   peerMask & m_activePeers};
@@ -576,12 +613,10 @@ class EventLogStream
     bool TryDequeueEvent(uint32_t peer, EventLogEntry& out, LogCursor at = 0)
     {
         auto curosr = at == 0 ? m_currentTail : at;
-        bool incrementTail = curosr == m_currentTail;
         while (m_entries.Contains(curosr))
         {
             if (m_validSet.test(curosr % Capacity))
             {
-                incrementTail = false;
                 EventLogEntryMeta& entry = m_entries.Get(curosr);
                 if (entry.recieveMask.test(peer))
                 {
@@ -598,19 +633,13 @@ class EventLogStream
                             m_validSet.set(curosr % Capacity, false);
                         out.payload = std::move(it->second);
                         m_payloads.erase(it);
-                        m_currentTail = oge::math::max(m_currentTail, curosr);
                         return true;
                     }
                 }
                 else if ((entry.recieveMask & m_activePeers).none())
                 {
                     m_validSet.set(curosr % Capacity, false);
-                    incrementTail = true;
                 }
-            }
-            else if (incrementTail)
-            {
-                m_currentTail = oge::math::max(m_currentTail, curosr);
             }
             ++curosr;
         }
@@ -621,7 +650,7 @@ class EventLogStream
     {
         // increment tail to first valid entry
         while (m_currentTail < m_entries.HeadCursor() &&
-               !m_validSet.test(m_currentTail % Capacity))
+               (!m_validSet.test(m_currentTail % Capacity)))
         {
             m_currentTail++;
         }

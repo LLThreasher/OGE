@@ -11,7 +11,7 @@
 #include "game/input/net.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/scene.hpp"
-#include "game/scene_ext.hpp"
+#include "game/scene_view.hpp"
 #include "game/scene_runner.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/ui/objects.hpp"

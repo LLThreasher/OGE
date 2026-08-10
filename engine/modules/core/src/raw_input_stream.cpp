@@ -24,6 +24,12 @@ bool RawInputStream::PollPtr(size_t ptrIdx, Cursor& cursor,
                                     frameFrontier.cursor.ptrCursors[ptrIdx]);
 }
 
+math::vec2 RawInputStream::PollPtrLatest(size_t ptrIdx) const
+{
+    auto& frontier = frameFrontier.cursor.ptrCursors[ptrIdx];
+    return pointers[ptrIdx].Get(frontier - 1);
+}
+
 math::vec2 RawInputStream::PollPtrLatest(size_t ptrIdx, Cursor& cursor) const
 {
     auto& frontier = frameFrontier.cursor.ptrCursors[ptrIdx];

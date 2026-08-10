@@ -331,6 +331,7 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     // Fire a single on_update per modified entity so that replication hooks
     // produce at most one UpdateComponentEvent<ComponentPhysicBody> per
     // entity per physics frame.
+
     for (auto e : modified)
         game.patch<ComponentPhysicBody>(e);
 }

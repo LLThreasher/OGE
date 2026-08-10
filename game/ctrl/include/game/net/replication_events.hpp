@@ -10,6 +10,7 @@
 #include "game/net/event_log_stream.hpp"
 #include "game/terrain/defs.hpp"
 #include "game/terrain/terrain_view.hpp"
+#include "oge/log.hpp"
 #include "oge/point3.hpp"
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/net_serializer.hpp"

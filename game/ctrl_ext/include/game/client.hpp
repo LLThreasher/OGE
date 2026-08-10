@@ -1,6 +1,6 @@
 #pragma once
 
-#include "game/scene_ext.hpp"
+#include "game/scene_view.hpp"
 #include "game/scene_runner.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/input/raw_input_stream.hpp"

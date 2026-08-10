@@ -97,6 +97,7 @@ class RawInputStream
     void AdvanceCursor(Cursor& cursor) const;
     bool PollEvent(Cursor& cursor, InputEvent& eventOut) const;
     bool PollPtr(size_t ptrIdx, Cursor& cursor, math::vec2& posOut) const;
+    math::vec2 PollPtrLatest(size_t ptrIdx) const;
     math::vec2 PollPtrLatest(size_t ptrIdx, Cursor& cursor) const;
     math::vec2 PollPtrDelta(size_t ptrIdx, Cursor& cursor) const;
     const BitSet32& ActivePtrs() const

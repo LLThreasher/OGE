@@ -240,7 +240,7 @@ class DebugServerScene final : public Scene
         m_eventLogStream.Update();
         m_replicationRegistry.ProduceAll(m_netServer, m_world);
         Scene::Update(f, sctx);
-        // net::PollTerrainChunkEvents(m_world);
+        net::PollTerrainChunkEvents(m_world);
     }
 
     void Load() override

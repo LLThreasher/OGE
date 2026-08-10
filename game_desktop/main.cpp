@@ -5,7 +5,7 @@
 #include "game/debug_voxel_view.hpp"
 #include "game/debug_view.hpp"
 #include "game/scene.hpp"
-#include "game/scene_ext.hpp"
+#include "game/scene_view.hpp"
 #include "oge/log.hpp"
 #include "oge/platform/sdl3/create_window.hpp"
 #include "oge/platform/window.hpp"

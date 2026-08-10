@@ -4,7 +4,7 @@
 #include <string>
 
 #include "game/scene.hpp"
-#include "game/scene_ext.hpp"
+#include "game/scene_view.hpp"
 #include "game/scene_runner.hpp"
 #include "game/view/renderer.hpp"
 #include "oge/runtime/type_name.hpp"

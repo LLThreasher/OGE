@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <type_traits>
+#include <utility>
 
 #include "oge/macros.hpp"
 #include "oge/runtime/debug.hpp"
@@ -150,6 +151,13 @@ class OgeRegistryABC
     {
         CHECK_NULL_REGISTRY(try_get);
         return Raw().template try_get<T1, T2, Rest...>(e);
+    }
+
+    template <typename T, typename... Func>
+    decltype(auto) patch(const Entity e, Func&&... fn)
+    {
+        CHECK_NULL_REGISTRY(patch)
+        return Raw().template patch<T>(e, std::forward<Func>(fn)...);
     }
 
     // -- component queries ------------------------------------------------
