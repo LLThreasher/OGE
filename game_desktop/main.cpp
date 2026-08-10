@@ -1,9 +1,9 @@
 #include "build_config.h"
 #include "game/client.hpp"
-#include "game/client_scene.hpp"
+#include "game/client_conn_scene.hpp"
 #include "game/client_scene2.hpp"
 #include "game/debug_scene.hpp"
-#include "game/minimal_scene.hpp"
+#include "game/scene.hpp"
 #include "game/scene_ext.hpp"
 #include "oge/log.hpp"
 #include "oge/platform/sdl3/create_window.hpp"
@@ -19,13 +19,13 @@ int main(int argc, char* argv[])
 {
     // Scene to start with: argv[1] as short ("DebugScene3") or full
     // ("core::DebugScene3") type name.  Defaults to DebugScene3.
-    std::string sceneName = "core::DebugScene3";
+    std::string sceneName = "core::DebugView<" "core::Scene" ">";
     if (argc > 1)
     {
         std::string arg = argv[1];
         if (arg.find("::") == std::string::npos)
         {
-            arg = "core::" + arg;
+            arg = "core::DebugView<" "core::" + arg + ">";
         }
         sceneName = arg;
     }
@@ -38,10 +38,15 @@ int main(int argc, char* argv[])
 #endif
     auto window = CreateSDL3Window(app_name, 1280, 720);
     auto app = game::Client();
-    app.RegisterScene<game::DebugScene3>();
-    app.RegisterScene<game::ClientConnScene>();
-    app.RegisterScene<game::ClientScene2>();
-    app.RegisterScene<game::DebugScene>();
+
+    app.AF().RegisterABC<game::Scene>();
+    app.AF().RegisterDerived<game::Scene, game::Scene>();
+    app.AF().RegisterDerived<game::Scene, game::ClientConnScene>();
+    app.AF().RegisterDerived<game::Scene, game::ClientScene2>();
+
+    app.RegisterScene<game::DebugView<game::Scene>>();
+    app.RegisterScene<game::DebugView<game::ClientConnScene>>();
+    app.RegisterScene<game::DebugView<game::ClientScene2>>();
 
     try
     {
@@ -50,7 +55,7 @@ int main(int argc, char* argv[])
     catch (const std::out_of_range&)
     {
         LOG_WARN("Unknown scene '{}', falling back to core::SceneExt", sceneName);
-        app.SwitchToScene<game::SceneExt>();
+        app.SwitchToScene<game::SceneView>();
     }
     window->Run(app);
     return 0;

@@ -15,7 +15,7 @@ namespace game
 using namespace oge::platform;
 using namespace oge::runtime;
 
-class Client : public WindowApp, public SceneRunner<SceneExt>
+class Client : public WindowApp, public SceneRunner<SceneView>
 {
    public:
     Client();

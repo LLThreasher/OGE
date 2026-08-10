@@ -71,6 +71,11 @@ class SceneRunner
         return entt::type_hash<T>::value();
     }
 
+    AnythingFactory& AF()
+    {
+        return m_anyFactory;
+    }
+
    protected:
     TSceneBase* CurrentScene()
     {

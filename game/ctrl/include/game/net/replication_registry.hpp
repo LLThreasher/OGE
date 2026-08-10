@@ -21,6 +21,9 @@
 #include "oge/runtime/type_name.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
+struct _ENetPeer;
+typedef _ENetPeer ENetPeer;
+
 namespace game::net
 {
 

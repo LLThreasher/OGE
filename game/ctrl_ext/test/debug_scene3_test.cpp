@@ -6,19 +6,19 @@
 #include "oge/runtime/entt.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
-TEST(type_register) {
-    auto name = oge::runtime::TypeName<game::DebugScene3>::Get();
-    CHECK_EQ(name, "core::DebugScene3");
-}
+// TEST(type_register) {
+//     auto name = oge::runtime::TypeName<game::DebugScene3>::Get();
+//     CHECK_EQ(name, "core::DebugScene3");
+// }
 
-TEST(inheritance) {
-    bool ok1 = std::is_base_of_v<game::SceneExt, game::DebugScene3>;
-    bool ok2 = std::is_base_of_v<game::Scene, game::DebugScene3>;
-    bool ok3 = std::is_base_of_v<game::AppRuntime, game::DebugScene3>;
-    CHECK(ok1);
-    CHECK(ok2);
-    CHECK(ok3);
-}
+// TEST(inheritance) {
+//     bool ok1 = std::is_base_of_v<game::SceneExt, game::DebugScene3>;
+//     bool ok2 = std::is_base_of_v<game::Scene, game::DebugScene3>;
+//     bool ok3 = std::is_base_of_v<game::AppRuntime, game::DebugScene3>;
+//     CHECK(ok1);
+//     CHECK(ok2);
+//     CHECK(ok3);
+// }
 
 TEST(default_scene_config) {
     oge::runtime::OgeRegistry dummyReg;

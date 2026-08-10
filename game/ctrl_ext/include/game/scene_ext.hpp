@@ -1,6 +1,12 @@
 #pragma once
 
+#include <concepts>
+#include <memory>
+#include <string>
+#include <string_view>
+
 #include "game/app_context.hpp"
+#include "game/game_world.hpp"
 #include "game/input/input_source.hpp"
 #include "game/scene.hpp"
 #include "game/scene_runner.hpp"
@@ -14,6 +20,7 @@
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/runtime/asset_ctx.hpp"
 #include "oge/runtime/oge_registry.hpp"
+#include "oge/runtime/type_name.hpp"
 #include "oge/runtime/typed_registry.hpp"
 #include "oge/runtime/ui/objects.hpp"
 
@@ -28,7 +35,7 @@ using oge::runtime::AnythingFactory;
 using oge::runtime::AssetContext;
 using oge::runtime::OGEContext;
 
-class SceneExt : public Scene
+class SceneView : protected AppRuntime
 {
     using ViewExecutor =
         view::ViewExecutor<TerrainPass2, UIPass, DebugInfoPass, GizmoPass>;
@@ -43,12 +50,17 @@ class SceneExt : public Scene
     };
 
    public:
+    using Def = Scene::Def;
+
     struct Frame : Scene::Frame
     {
         oge::input::RawInputStream& is;
         FramePerfStatus perfStats;
         AppFrameAction& frameAction;
     };
+
+    std::unique_ptr<Scene> m_ownedScene;
+    Scene& m_innerScene;
 
     Ctx m_ctx;
     WindowCtx m_windowCtx;
@@ -62,12 +74,60 @@ class SceneExt : public Scene
     view::SubmissionQueue m_squeue;
     ViewExecutor m_viewExecutor;
 
-    SceneExt(const Def& def);
-    virtual ~SceneExt();
-    virtual void Update(Frame f, SceneContext sctx);
+    SceneView(const Scene::Def& def,
+              std::string_view innerSceneName = "core::Scene")
+        : AppRuntime(def.ctx),
+          m_ownedScene(AF().BuildABC<Scene>(AF().Id(innerSceneName), def)),
+          m_innerScene(*m_ownedScene),
+          m_ctx(def.ctx),
+          m_inputs(input::InputContext{m_windowCtx, m_uiWorld}),
+          m_renderers(view::RendererState{m_innerScene.GetWorld().Raw(),
+                                          m_uiWorld.Raw(), m_renderWorld.Raw(),
+                                          m_ctx.events, m_ctx.memory,
+                                          AssetContext(def.ctx.any_ctx)}),
+          m_squeue(m_ctx.memory.frameBuffer.Resource())
+    {
+        m_renderers.AddStage<view::UIRenderer>(m_ctx.any_factory);
+        m_renderers.AddStage<view::GizmoRenderer>(m_ctx.any_factory);
+        m_viewExecutor.Attach(def.ctx.any_ctx);
+    }
 
-    ViewExecutor& GetPasses();
-    void Render(float dt);
+    virtual ~SceneView()
+    {
+        m_viewExecutor.Detach();
+    }
+
+    virtual void Update(Frame f, SceneContext sctx)
+    {
+        UpdateCursors(f);
+
+        // input processing
+        m_inputs.Update({f.dt, f.is});
+        m_innerScene.GetWorld().ctx().insert_or_assign(f.perfStats);
+
+        // simulation
+        m_innerScene.Update(f, sctx);
+
+        // presentation
+        m_squeue.Clear();
+        m_renderers.Update(view::RendererFrameData{
+            f.dt, m_ctx.assets, m_squeue,
+            0});  // TODO: expose alpha information in scene
+
+        // window action
+        f.frameAction |= m_windowCtx.frameAction;
+        m_windowCtx.Clear();
+    }
+
+    ViewExecutor& GetPasses()
+    {
+        return m_viewExecutor;
+    }
+
+    void Render(float dt)
+    {
+        m_viewExecutor.Update(dt, m_squeue);
+    }
 
    protected:
     bool m_nextShowingCursor = true;
@@ -101,7 +161,7 @@ class SceneExt : public Scene
         m_cursors[mouseIdx] = entt::null;
     }
 
-    void UpdateCursors(SceneExt::Frame& f)
+    void UpdateCursors(SceneView::Frame& f)
     {
         namespace ui = oge::runtime::ui;
         if (m_showingCursor)
@@ -171,4 +231,4 @@ class SceneExt : public Scene
 };
 }  // namespace game
 
-DECL_TYPE_NAME(game::SceneExt, "core::SceneExt")
+DECL_TYPE_NAME(game::SceneView, "core::SceneView");

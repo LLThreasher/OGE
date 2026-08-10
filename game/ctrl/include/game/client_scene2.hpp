@@ -5,12 +5,10 @@
 #include <string_view>
 
 #include "game/components.hpp"
-#include "game/debug_scene.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/json.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
-#include "game/scene_ext.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_client.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
@@ -24,7 +22,7 @@ using oge::runtime::OnClientConnectionTimeout;
 using oge::runtime::OnClientDisconnected;
 using oge::runtime::OnClientReceivePacket;
 
-class ClientScene2 : public DebugScene3
+class ClientScene2 : public Scene
 {
     NetClient& m_client;
     entt::dispatcher m_clientDispatcher;
@@ -45,7 +43,7 @@ class ClientScene2 : public DebugScene3
 
    public:
     ClientScene2(const Def& def)
-        : DebugScene3(def),
+        : Scene(def),
           m_client(*m_ctx.any_ctx.Get<NetClient>()),
           m_replicationRegistry(::game::net::ReplicationRegistry::Def{
               m_world.ctx().emplace<::game::net::EventLogStream<>>(&m_ctx.any_factory),
@@ -78,12 +76,12 @@ class ClientScene2 : public DebugScene3
         m_client.Poll(m_clientDispatcher, f.dt);
         if (m_readyToQuit)
         {
-            sctx.nextScene = Id<SceneExt>();
+            sctx.nextScene = Id<Scene>();
             sctx.nextSceneArgs = {};
         }
         m_replicationRegistry.ProduceAll(m_client, m_world);
 
-        DebugScene3::Update(f, sctx);
+        Scene::Update(f, sctx);
     }
 };
 }  // namespace game

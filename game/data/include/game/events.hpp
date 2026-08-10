@@ -3,6 +3,9 @@
 #include "oge/math.hpp"
 #include "oge/point2.hpp"
 
+struct _ENetPeer;
+typedef _ENetPeer ENetPeer;
+
 namespace game
 {
 struct SurfaceRecreateEvent
@@ -15,8 +18,6 @@ struct WindowResizeEvent
 {
     oge::U16Point2 windowSize;
 };
-
-struct ENetPeer;
 
 struct OnAddPeer
 {

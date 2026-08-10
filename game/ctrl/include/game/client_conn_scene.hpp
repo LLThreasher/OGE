@@ -6,18 +6,12 @@
 
 #include "game/components.hpp"
 #include "game/game_world.hpp"
-#include "game/input/input_source.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/json.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
-#include "game/scene_ext.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
-#include "game/ui/objects.hpp"
-#include "game/view/renderer.hpp"
-#include "game/view/submission_queue.hpp"
-#include "game/view/terrain/terrain_renderer.hpp"
 #include "oge/color.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_client.hpp"
@@ -49,7 +43,7 @@ enum class ClientState
     Disconnected,
 };
 
-class ClientConnScene : public SceneExt
+class ClientConnScene : public Scene
 {
     enum class State
     {
@@ -98,7 +92,7 @@ class ClientConnScene : public SceneExt
 
    public:
     ClientConnScene(const Def& def)
-        : SceneExt(def), m_client(def.ctx.any_ctx.Emplace<NetClient>())
+        : Scene(def), m_client(def.ctx.any_ctx.Emplace<NetClient>())
     {
         auto it = def.args.find("next_scene");
         if (it == def.args.end())
@@ -133,13 +127,11 @@ class ClientConnScene : public SceneExt
             .connect<&ClientConnScene::onRecievePacket>(this);
         m_clientDispatcher.sink<OnClientDisconnected>()
             .connect<&ClientConnScene::onDisconnected>(this);
-
-        GetPasses().SetClearColor(oge::colors::GREY);
     }
 
     void Update(Frame f, SceneContext sctx) override
     {
-        SceneExt::Update(f, sctx);
+        Scene::Update(f, sctx);
         m_client.Poll(m_clientDispatcher, f.dt);
         if (m_state == State::Ready)
         {
@@ -161,7 +153,7 @@ class ClientConnScene : public SceneExt
         else if (m_state == State::Timeout)
         {
             LOG_ERROR("connection failure");
-            sctx.nextScene = Id<SceneExt>();
+            sctx.nextScene = Id<Scene>();
             m_client.Shutdown();
             m_ctx.any_ctx.Erase<NetClient>();
         }

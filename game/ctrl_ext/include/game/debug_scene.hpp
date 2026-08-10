@@ -27,9 +27,11 @@
 
 namespace game
 {
-class DebugScene3 : public SceneExt
+template <typename InnerScene>
+class DebugView : public SceneView
 {
    private:
+    GameWorld& m_gameWorld;
     PlayerInfo m_playerInfo;
     entt::connection m_waitPlayer{};
 
@@ -56,19 +58,21 @@ class DebugScene3 : public SceneExt
     {
         auto extent = m_ctx.assets.backend.SwapchainExtent();
 
-        auto& pcam = m_world.get<const ComponentPerspectiveCamera>(m_player);
+        auto& pcam =
+            m_gameWorld.get<const ComponentPerspectiveCamera>(m_player);
         auto widgetInputDef = input::KeyMouseInput::Def{
-            .target = m_world.get<input::PlayerInputStream>(m_player)};
+            .target = m_gameWorld.get<input::PlayerInputStream>(m_player)};
         widgetInputDef.vfov = -pcam.fov;
         widgetInputDef.hfov =
             2.f * math::atan(math::tan(pcam.fov / 2.f) * pcam.aspect);
 
         m_inputs.AddStage<input::KeyMouseInput>(
-            AF(), input::KeyMouseInput::Def{
-                      .target = m_world.get<input::PlayerInputStream>(m_player),
-                      .mouseIdx = 0,
-                      .hfov = widgetInputDef.hfov / (float)extent.x,
-                      .vfov = widgetInputDef.vfov / (float)extent.y});
+            m_ctx.any_factory,
+            input::KeyMouseInput::Def{
+                .target = m_gameWorld.get<input::PlayerInputStream>(m_player),
+                .mouseIdx = 0,
+                .hfov = widgetInputDef.hfov / (float)extent.x,
+                .vfov = widgetInputDef.vfov / (float)extent.y});
 
         // put something in the middle of the screen
         ui::UISprite crossSprite{
@@ -102,9 +106,10 @@ class DebugScene3 : public SceneExt
         m_uiWorld.emplace<ui::UIZLevel>(mvWidget, 1);
         m_uiWorld.emplace<ui::UIRaycastTarget>(mvWidget);
 
-        auto& pcam = m_world.get<const ComponentPerspectiveCamera>(m_player);
+        auto& pcam =
+            m_gameWorld.get<const ComponentPerspectiveCamera>(m_player);
         auto m_widgetInputDef = input::WidgetInput::Def{
-            .target = m_world.get<input::PlayerInputStream>(m_player),
+            .target = m_gameWorld.get<input::PlayerInputStream>(m_player),
             .pcam = pcam,
         };
         m_widgetInputDef.vfov = -pcam.fov;
@@ -115,8 +120,9 @@ class DebugScene3 : public SceneExt
         m_widgetInputDef.viewWidget = lookWidget;
         m_widgetInputDef.moveWidget = mvWidget;
 
-        m_inputs.AddStage<input::UIDragInput>(AF());
-        m_inputs.AddStage<input::WidgetInput>(AF(), m_widgetInputDef);
+        m_inputs.AddStage<input::UIDragInput>(m_ctx.any_factory);
+        m_inputs.AddStage<input::WidgetInput>(m_ctx.any_factory,
+                                              m_widgetInputDef);
 
         m_lookWidget = lookWidget;
         m_moveWidget = mvWidget;
@@ -170,17 +176,20 @@ class DebugScene3 : public SceneExt
     }
 
    public:
-    DebugScene3(const Def& def) : SceneExt(def)
+    DebugView(const Scene::Def& def)
+        : SceneView(def, oge::runtime::TypeName<InnerScene>::Get()),
+          m_gameWorld(m_innerScene.GetWorld())
     {
         m_playerInfo = LoadOrCreatePlayer();
-        if (m_sceneConfig.empty())
+        auto& sceneConfig = m_innerScene.GetConfig();
+        if (sceneConfig.empty())
         {
-            m_sceneConfig = GetDefaultSceneConfig(AF());
-            m_sceneConfig.subsystems.insert(m_sceneConfig.subsystems.begin(),
-                                            Id<sim::SubsystemDebugText>());
+            sceneConfig = GetDefaultSceneConfig(AF());
+            sceneConfig.subsystems.insert(sceneConfig.subsystems.begin(),
+                                          Id<sim::SubsystemDebugText>());
         }
 
-        Load();
+        m_innerScene.Load();
 
         m_renderers.AddStage<view::DebugInfoRenderer>(AF());
         m_renderers.AddStage<view::TerrainRenderer>(AF());
@@ -188,13 +197,13 @@ class DebugScene3 : public SceneExt
         m_renderers.AddStage<view::BlockHighlightRenderer>(AF());
 
         auto assets = AssetContext(m_ctx.any_ctx);
-        auto& blks = m_world.ctx()
-                         .get<::game::terrain::BlockRegistry>()
+        auto& blks = m_gameWorld.ctx()
+                         .template get<::game::terrain::BlockRegistry>()
                          .GetBlockTextures();
         for (size_t i = 0; i < blks.size(); ++i)
         {
-            GetPasses().GetPass<TerrainPass2>().UpdateBlockTexture(assets,
-                                                                   blks[i], i);
+            GetPasses().template GetPass<TerrainPass2>().UpdateBlockTexture(
+                assets, blks[i], i);
         }
 
         {
@@ -202,23 +211,25 @@ class DebugScene3 : public SceneExt
             if (it != def.args.end() && std::get<bool>(it->second))
             {
                 m_waitPlayer =
-                    m_world.on_construct<ComponentPlayer>()
-                        .connect<&DebugScene3::onConstructPlayer>(this);
+                    m_gameWorld.on_construct<ComponentPlayer>()
+                        .template connect<&DebugView::onConstructPlayer>(
+                            this);
             }
             else
             {
-                m_player = ComponentPlayer::CreatePlayer(m_world, m_playerInfo);
+                m_player =
+                    ComponentPlayer::CreatePlayer(m_gameWorld, m_playerInfo);
                 {
                     ComponentCamera& cam =
-                        m_world.get<ComponentCamera>(m_player);
+                        m_gameWorld.get<ComponentCamera>(m_player);
                     cam.position = {20.f, 20.f, 20.f};
                 }
-                onConstructPlayer(m_world.Raw(), m_player);
+                onConstructPlayer(m_gameWorld.Raw(), m_player);
             }
         }
 
         m_ctx.events.sink<SurfaceRecreateEvent>()
-            .connect<&DebugScene3::onResize>(this);
+            .connect<&DebugView::onResize>(this);
 
         // m_terminalButton = ui::CreateButton(world, context,
         // {math::vec2{0.f, 0.f}, math::vec2{0.1f, 0.1f}});
@@ -269,9 +280,16 @@ class DebugScene3 : public SceneExt
             }
         }
 
-        SceneExt::Update(std::move(f), sctx);
+        SceneView::Update(std::move(f), sctx);
     }
 };
 }  // namespace game
 
-DECL_TYPE_NAME(game::DebugScene3, "core::DebugScene3")
+template <typename S>
+struct ::oge::runtime::TypeName<game::DebugView<S>>
+{
+    static constexpr std::string Get()
+    {
+        return "core::DebugView<" + ::oge::runtime::TypeName<S>::Get() + ">";
+    }
+};

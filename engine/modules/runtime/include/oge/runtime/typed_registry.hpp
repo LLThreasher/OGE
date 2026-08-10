@@ -247,6 +247,7 @@ class TypeRegistry
     // ----------------------------
 
     template <typename TBase, typename TDerived>
+        requires std::derived_from<TDerived, TBase>
     static entt::any BuildImpl(entt::any def, TypeRegistry& af)
     {
         std::unique_ptr<TBase> ptr;
