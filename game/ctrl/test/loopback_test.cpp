@@ -226,7 +226,7 @@ TEST(loopback_hooks_fire_on_entity_create)
     // The hook should have enqueued an AddEntityEvent in the server's stream.
     auto& stream =
         h.serverWorld.ctx().get<game::net::EventLogStream<>>();
-    std::vector<std::byte> dp;
+    game::net::SmallPayload dp;
     game::net::EventLogEntryConstRef r{{}, dp};
     bool found = stream.PeekEvent(0, r);
     CHECK(found);
@@ -250,7 +250,7 @@ TEST(loopback_hooks_fire_multiple_entities)
     // cursor explicitly (same idiom as el_peek_cursor).
     auto& stream =
         h.serverWorld.ctx().get<game::net::EventLogStream<>>();
-    std::vector<std::byte> dp;
+    game::net::SmallPayload dp;
     game::net::EventLogEntryConstRef r{{}, dp};
     int count = 0;
     for (game::net::LogCursor cursor = 0; stream.PeekEvent(0, r, cursor);)
@@ -289,7 +289,7 @@ TEST(loopback_wire_delivers_add_entity)
     // The event is stored on the client but visible to no peer.
     auto& clientStream =
         h.clientWorld.ctx().get<game::net::EventLogStream<>>();
-    std::vector<std::byte> dp;
+    game::net::SmallPayload dp;
     game::net::EventLogEntryConstRef r{{}, dp};
     CHECK(!clientStream.PeekEvent(0, r));
 
@@ -320,7 +320,7 @@ TEST(loopback_wire_delivers_add_component)
 
     auto& clientStream =
         h.clientWorld.ctx().get<game::net::EventLogStream<>>();
-    std::vector<std::byte> dp;
+    game::net::SmallPayload dp;
     game::net::EventLogEntryConstRef r{{}, dp};
     CHECK(!clientStream.PeekEvent(0, r));
 
@@ -572,7 +572,7 @@ TEST(server_scene_replicates_player)
 
     // Deserialized events must not be locally deliverable (no echo).
     auto& stream = h.clientWorld.ctx().get<game::net::EventLogStream<>>();
-    std::vector<std::byte> dp;
+    game::net::SmallPayload dp;
     game::net::EventLogEntryConstRef r{{}, dp};
     CHECK(!stream.PeekEvent(0, r));
 

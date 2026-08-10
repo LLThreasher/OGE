@@ -176,7 +176,7 @@ TEST(e2e_physics_events_bounded)
         h.serverWorld().ctx().get<game::net::EventLogStream<>>();
     game::net::LogCursor beforeCursor = 0;
     {
-        std::vector<std::byte> dp;
+        game::net::SmallPayload dp;
         game::net::EventLogEntryConstRef r{{}, dp};
         game::net::LogCursor c = 0;
         while (stream.PeekEvent(0, r, c == 0 ? 0 : c))
@@ -205,7 +205,7 @@ TEST(e2e_physics_events_bounded)
         std::unordered_map<entt::entity, int> perEntityCount;
         game::net::LogCursor lastCursor = 0;
         {
-            std::vector<std::byte> dp;
+            game::net::SmallPayload dp;
             game::net::EventLogEntryConstRef r{{}, dp};
             game::net::LogCursor c = beforeCursor == 0 ? 0 : beforeCursor + 1;
             while (stream.PeekEvent(0, r, c == 0 ? 0 : c))

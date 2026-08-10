@@ -32,7 +32,6 @@ void Scene::Update(Frame f, SceneContext sctx)
     m_ctx.memory.Update(f.dt);
     m_subsystems.Update(f.dt);
     m_realtimeSubsystems.Update(f.dt);
-    net::PollTerrainChunkEvents(m_world);
 }
 
 void Scene::Load()

@@ -30,6 +30,19 @@ public:
     game::Scene* GetScene() { return CurrentScene(); }
 };
 
+class TestClientScene : public game::ClientScene2
+{
+public:
+    TestClientScene(const Def& def) : game::ClientScene2(def)
+    {
+        // normally this is done by scene view, here we do it like this for testing
+        // we load client scene2
+        game::ClientScene2::Load();
+    }
+};
+
+DECL_TYPE_NAME(TestClientScene, "test::TestClientScene")
+
 // =============================================================================
 // NetSceneHarness — drives a server + client scene pair through ENet loopback
 //
@@ -54,6 +67,7 @@ struct NetSceneHarness
         m_serverRunner.RegisterScene<game::DebugServerScene>();
         m_clientRunner.RegisterScene<game::ClientConnScene>();
         m_clientRunner.RegisterScene<game::ClientScene2>();
+        m_clientRunner.RegisterScene<TestClientScene>();
 
         // Pass the test port to both scenes so they talk to each other.
         game::json::Object srvArgs;
@@ -64,7 +78,7 @@ struct NetSceneHarness
         cliArgs["port"] = static_cast<int64_t>(TEST_PORT);
         cliArgs["ip"] = std::string("127.0.0.1");
         cliArgs["next_scene"] =
-            static_cast<int64_t>(entt::type_hash<game::ClientScene2>::value());
+            game::json::Int(entt::type_hash<TestClientScene>::value());
 
         // ClientScene2 self-loads this config (blocks + terrain only — no
         // subsystems, so no local sim or debug-text pool in the harness).

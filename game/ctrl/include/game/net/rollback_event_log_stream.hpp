@@ -152,7 +152,7 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         EventLogEntryConstRef ref{{}, m_scratchPayload};
         while (this->PeekEvent(0, ref, cursor))
         {
-            net::Buffer b(ref.payload);
+            net::Buffer b(ref.payload.data(), ref.payload.size());
             b.ToReadOnly();
             servByFam[ref.entry.id].push_back(b);
             cursor = ref.entry.cursor + 1;
@@ -230,7 +230,7 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
     std::unordered_map<FamilyId, RollbackCapability> m_rollbackCaps;
     std::deque<SnapshotPoint> m_snapshots;
     std::deque<PredictedEntry> m_predictedEvents;
-    mutable std::vector<std::byte> m_scratchPayload;
+    mutable SmallPayload m_scratchPayload;
 };
 
 }  // namespace game::net

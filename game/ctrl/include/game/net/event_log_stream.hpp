@@ -22,6 +22,225 @@ using oge::runtime::net::Buffer;
 
 using LogCursor = uint64_t;
 
+// ---------------------------------------------------------------------------
+// SmallPayload — small-buffer-optimized payload storage.
+//
+// Payloads ≤ kSmallPayloadInlineSize bytes are stored inline in `inlineBuf`
+// (a public std::array users may write to directly).  Larger payloads fall
+// back to a heap-allocated std::vector.
+//
+// Move and copy are both supported.  Copy is needed by PeekEvent (which
+// copies from a const map into the caller's scratch buffer).  Move is used
+// by TryDequeueEvent to hand ownership out of the stream.
+// ---------------------------------------------------------------------------
+constexpr size_t kSmallPayloadInlineSize = 64;
+
+struct SmallPayload
+{
+    std::array<std::byte, kSmallPayloadInlineSize> inlineBuf{};
+
+    std::byte* data()
+    {
+        return m_isInline ? inlineBuf.data() : m_heapBuf.data();
+    }
+    const std::byte* data() const
+    {
+        return m_isInline ? inlineBuf.data() : m_heapBuf.data();
+    }
+
+    size_t size() const { return m_size; }
+    size_t capacity() const { return m_isInline ? kSmallPayloadInlineSize : m_heapBuf.capacity(); }
+    bool isInline() const { return m_isInline; }
+    bool empty() const { return m_size == 0; }
+
+    // Resize payload storage.  n ≤ kSmallPayloadInlineSize stays inline;
+    // larger values promote to heap.
+    void resize(size_t n)
+    {
+        if (n <= kSmallPayloadInlineSize)
+        {
+            if (!m_isInline)
+            {
+                // Demote from heap back to inline — copy existing data
+                size_t keep = std::min(n, m_size);
+                if (keep > 0)
+                    std::memcpy(inlineBuf.data(), m_heapBuf.data(), keep);
+                m_heapBuf.clear();
+                m_heapBuf.shrink_to_fit();
+                m_isInline = true;
+            }
+            m_size = n;
+        }
+        else
+        {
+            if (m_isInline)
+            {
+                // Promote to heap — move existing data
+                m_heapBuf.assign(inlineBuf.data(), inlineBuf.data() + m_size);
+                m_isInline = false;
+            }
+            m_heapBuf.resize(n);
+            m_size = n;
+        }
+    }
+
+    // For users who write directly into inlineBuf: commit the written size.
+    void commitSize(size_t n)
+    {
+        OGE_ASSERT(m_isInline, "commitSize called on heap-backed SmallPayload");
+        OGE_ASSERT(n <= kSmallPayloadInlineSize, "committed size {} exceeds inline capacity", n);
+        m_size = n;
+    }
+
+    // Access the internal heap buffer (only valid when !isInline()).
+    // Provided for Buffer's owning-scratch constructor.
+    std::vector<std::byte>& heapBuf()
+    {
+        OGE_ASSERT(!m_isInline, "heapBuf() called on inline SmallPayload");
+        return m_heapBuf;
+    }
+
+    // -- default -------------------------------------------------------------
+
+    SmallPayload() = default;
+
+    // -- move ----------------------------------------------------------------
+
+    SmallPayload(SmallPayload&& other) noexcept
+        : inlineBuf(other.inlineBuf)
+        , m_heapBuf(std::move(other.m_heapBuf))
+        , m_size(other.m_size)
+        , m_isInline(other.m_isInline)
+    {
+        other.m_size = 0;
+        other.m_isInline = true;
+    }
+
+    SmallPayload& operator=(SmallPayload&& other) noexcept
+    {
+        if (this != &other)
+        {
+            if (m_isInline)
+            {
+                if (other.m_isInline)
+                {
+                    std::memcpy(inlineBuf.data(), other.inlineBuf.data(), other.m_size);
+                }
+                else
+                {
+                    m_heapBuf = std::move(other.m_heapBuf);
+                    m_isInline = false;
+                }
+            }
+            else
+            {
+                if (other.m_isInline)
+                {
+                    m_heapBuf.clear();
+                    m_heapBuf.shrink_to_fit();
+                    std::memcpy(inlineBuf.data(), other.inlineBuf.data(), other.m_size);
+                    m_isInline = true;
+                }
+                else
+                {
+                    m_heapBuf = std::move(other.m_heapBuf);
+                }
+            }
+            m_size = other.m_size;
+            other.m_size = 0;
+            other.m_isInline = true;
+        }
+        return *this;
+    }
+
+    // -- copy ----------------------------------------------------------------
+
+    SmallPayload(const SmallPayload& other)
+        : m_size(other.m_size)
+        , m_isInline(other.m_isInline)
+    {
+        if (m_isInline)
+        {
+            std::memcpy(inlineBuf.data(), other.inlineBuf.data(), m_size);
+        }
+        else
+        {
+            m_heapBuf = other.m_heapBuf;
+        }
+    }
+
+    SmallPayload& operator=(const SmallPayload& other)
+    {
+        if (this != &other)
+        {
+            m_size = other.m_size;
+            if (other.m_isInline)
+            {
+                if (!m_isInline)
+                {
+                    m_heapBuf.clear();
+                    m_heapBuf.shrink_to_fit();
+                    m_isInline = true;
+                }
+                std::memcpy(inlineBuf.data(), other.inlineBuf.data(), m_size);
+            }
+            else
+            {
+                if (m_isInline)
+                {
+                    m_isInline = false;
+                }
+                m_heapBuf = other.m_heapBuf;
+            }
+        }
+        return *this;
+    }
+
+    // -- comparison ----------------------------------------------------------
+
+    bool operator==(const SmallPayload& other) const
+    {
+        if (m_size != other.m_size) return false;
+        return std::memcmp(data(), other.data(), m_size) == 0;
+    }
+    bool operator!=(const SmallPayload& other) const
+    {
+        return !(*this == other);
+    }
+
+    // Compare against any contiguous byte range (std::span, std::vector, etc.)
+    bool operator==(std::span<const std::byte> other) const
+    {
+        if (m_size != other.size()) return false;
+        return std::memcmp(data(), other.data(), m_size) == 0;
+    }
+    bool operator!=(std::span<const std::byte> other) const
+    {
+        return !(*this == other);
+    }
+
+    // -- implicit conversion to span -----------------------------------------
+
+    operator std::span<std::byte>() { return {data(), m_size}; }
+    operator std::span<const std::byte>() const { return {data(), m_size}; }
+
+    // -- explicit span access ------------------------------------------------
+
+    std::span<std::byte> span()
+    {
+        return {data(), m_size};
+    }
+    std::span<const std::byte> span() const
+    {
+        return {data(), m_size};
+    }
+
+private:
+    std::vector<std::byte> m_heapBuf{};
+    size_t m_size = 0;
+    bool m_isInline = true;
+};
+
 struct EventLogEntryMeta
 {
     LogCursor cursor = 0;
@@ -33,19 +252,19 @@ struct EventLogEntryMeta
 struct EventLogEntry
 {
     EventLogEntryMeta entry;
-    std::vector<std::byte> payload;
+    SmallPayload payload;
 };
 
 struct EventLogEntryRef
 {
     EventLogEntryMeta entry;
-    std::vector<std::byte>& payload;
+    SmallPayload& payload;
 };
 
 struct EventLogEntryConstRef
 {
     EventLogEntryMeta entry;
-    std::vector<std::byte>& payload;
+    SmallPayload& payload;
 };
 
 struct SendPayload
@@ -77,7 +296,7 @@ class EventLogStream
     oge::DiscreteEventStream<EventLogEntryMeta, Capacity> m_entries;
     std::bitset<Capacity> m_validSet = {};
     std::bitset<64> m_activePeers = {};
-    std::unordered_map<LogCursor, std::vector<std::byte>> m_payloads;
+    std::unordered_map<LogCursor, SmallPayload> m_payloads;
     LogCursor m_currentTail = 1;
     AnythingFactory* m_af;
     oge_id_type m_sendPayloadTypeId = 0;
@@ -127,9 +346,9 @@ class EventLogStream
     }
 
     void SerializeEventPayload(LogCursor cursor, Buffer& buffer,
-                               const std::span<std::byte> payload)
+                               std::span<const std::byte> payload)
     {
-        uint32_t size = static_cast<uint32_t>(payload.size_bytes());
+        uint32_t size = static_cast<uint32_t>(payload.size());
         buffer.Write(m_sendPayloadTypeId);
         buffer.Write(cursor);
         buffer.Write(size);
@@ -139,7 +358,9 @@ class EventLogStream
     void SerializeEvent(Buffer& buffer, const EventLogEntry& entry)
     {
         SerializeEventMeta(entry.entry, buffer);
-        SerializeEventPayload(entry.entry.cursor, buffer, entry.payload);
+        SerializeEventPayload(
+            entry.entry.cursor, buffer,
+            std::span<const std::byte>(entry.payload.data(), entry.payload.size()));
     }
 
     static constexpr size_t MetaSize()
@@ -232,7 +453,7 @@ class EventLogStream
     // Returns the payload stored at `cursor`, or nullptr if it has not
     // arrived yet (the payload half of a StreamReliable event is still in
     // flight).
-    std::vector<std::byte>* GetPayload(LogCursor cursor)
+    SmallPayload* GetPayload(LogCursor cursor)
     {
         auto it = m_payloads.find(cursor);
         return it == m_payloads.end() ? nullptr : &it->second;
@@ -259,8 +480,9 @@ class EventLogStream
     {
         uint32_t payloadSize;
         buffer.Read(payloadSize);
-        auto [it, succ] = m_payloads.emplace(cursor, payloadSize);
+        auto [it, succ] = m_payloads.try_emplace(cursor);
         OGE_ASSERT(succ, "Failed to emplace payload at cursor {}", cursor);
+        it->second.resize(payloadSize);
         buffer.ReadRaw(it->second.data(), payloadSize);
     }
 
@@ -279,7 +501,19 @@ class EventLogStream
         auto [it, succ] = m_payloads.try_emplace(meta.cursor);
         OGE_ASSERT(succ, "Failed to emplace payload at cursor {}", meta.cursor);
         it->second.resize(initPayloadSize);
-        return {it->second};
+        if (it->second.isInline())
+        {
+            // Non-owning buffer over the inline array — cannot grow, but
+            // initPayloadSize is the exact serialized size so overflow
+            // never occurs.
+            return Buffer(it->second.data(), it->second.size());
+        }
+        else
+        {
+            // Owning-scratch buffer over the heap vector — may grow via
+            // EnsureCapacity if needed.
+            return Buffer(it->second.heapBuf());
+        }
     }
 
     bool PeekEvent(uint32_t peer, EventLogEntryConstRef& out,

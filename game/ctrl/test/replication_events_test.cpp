@@ -77,17 +77,17 @@ TEST(cap_apply){ oge::runtime::OgeRegistry w; game::net::AddEntityEvent oe{entt:
 // =========================================================================
 // Hook tests
 // =========================================================================
-TEST(hooks_entity_construct){ oge::runtime::OgeRegistry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallAddEntityHooks(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
-TEST(hooks_entity_destroy){ oge::runtime::OgeRegistry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallRemoveEntityHooks(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); w.remove<game::ReplicatedTag>(e); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
-TEST(hooks_comp_construct){ oge::runtime::OgeRegistry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallAddComponentHooks<game::ComponentCamera>(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); w.emplace<game::ComponentCamera>(e); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
+TEST(hooks_entity_construct){ oge::runtime::OgeRegistry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallAddEntityHooks(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); game::net::SmallPayload dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
+TEST(hooks_entity_destroy){ oge::runtime::OgeRegistry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallRemoveEntityHooks(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); w.remove<game::ReplicatedTag>(e); game::net::SmallPayload dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
+TEST(hooks_comp_construct){ oge::runtime::OgeRegistry w; w.ctx().emplace<game::net::EventLogStream<>>(); w.ctx().get<game::net::EventLogStream<>>().AddPeer(0); game::net::InstallAddComponentHooks<game::ComponentCamera>(w.ctx().get<game::net::EventLogStream<>>(),w); auto e=w.create(); w.emplace<game::ReplicatedTag>(e); w.emplace<game::ComponentCamera>(e); game::net::SmallPayload dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(0,r)); }
 
 // =========================================================================
 // EventLogStream tests
 // =========================================================================
-TEST(el_enqueue_peek){ game::net::EventLogStream<> s; s.AddPeer(0); auto b=s.EnqueueEvent(42,8); b.Write<uint64_t>(0xDEADBEEF); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(s.PeekEvent(0,r)); CHECK_EQ(r.entry.id,42); CHECK_EQ(r.payload.size(),8); }
+TEST(el_enqueue_peek){ game::net::EventLogStream<> s; s.AddPeer(0); auto b=s.EnqueueEvent(42,8); b.Write<uint64_t>(0xDEADBEEF); game::net::SmallPayload dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(s.PeekEvent(0,r)); CHECK_EQ(r.entry.id,42); CHECK_EQ(r.payload.size(),8); }
 TEST(el_dequeue){ game::net::EventLogStream<> s; s.AddPeer(0); auto b=s.EnqueueEvent(100,4); b.Write<uint32_t>(12345); game::net::EventLogEntry e; CHECK(s.TryDequeueEvent(0,e)); CHECK_EQ(e.entry.id,100); }
 TEST(el_multi_peer){ game::net::EventLogStream<> s; s.AddPeer(0); s.AddPeer(1); auto b1=s.EnqueueEvent(1,4,std::bitset<64>{}.set(0)); b1.Write<uint32_t>(111); auto b2=s.EnqueueEvent(2,4,std::bitset<64>{}.set(1)); b2.Write<uint32_t>(222); game::net::EventLogEntry e; CHECK(s.TryDequeueEvent(0,e)); CHECK_EQ(e.entry.id,1); CHECK(s.TryDequeueEvent(1,e)); CHECK_EQ(e.entry.id,2); }
-TEST(el_peek_cursor){ game::net::EventLogStream<> s; s.AddPeer(0); s.EnqueueEvent(1,4).Write<uint32_t>(111); s.EnqueueEvent(2,4).Write<uint32_t>(222); std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(s.PeekEvent(0,r)); CHECK_EQ(r.entry.id,1); CHECK(s.PeekEvent(0,r,r.entry.cursor+1)); CHECK_EQ(r.entry.id,2); }
+TEST(el_peek_cursor){ game::net::EventLogStream<> s; s.AddPeer(0); s.EnqueueEvent(1,4).Write<uint32_t>(111); s.EnqueueEvent(2,4).Write<uint32_t>(222); game::net::SmallPayload dp; game::net::EventLogEntryConstRef r{{},dp}; CHECK(s.PeekEvent(0,r)); CHECK_EQ(r.entry.id,1); CHECK(s.PeekEvent(0,r,r.entry.cursor+1)); CHECK_EQ(r.entry.id,2); }
 TEST(el_deserialize_stale_claim)
 {
     // Regression: a sender behind the local log (e.g. client input arriving
@@ -192,7 +192,7 @@ TEST(snapshot_entity){
     reg.GenerateSnapshot(5, w);
 
     auto& stream=w.ctx().get<game::net::EventLogStream<>>();
-    std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp};
+    game::net::SmallPayload dp; game::net::EventLogEntryConstRef r{{},dp};
     CHECK(stream.PeekEvent(5,r));  // add-entity for e1 or e2
     CHECK(stream.PeekEvent(5,r,r.entry.cursor+1)); // the other entity
     CHECK(!stream.PeekEvent(0,r));  // peer 0 not snapshotted
@@ -218,7 +218,7 @@ TEST(snapshot_terrain){
     game::net::ReplicationRegistry reg({w.ctx().get<game::net::EventLogStream<>>(), types});
     reg.GenerateSnapshot(2, w);
 
-    std::vector<std::byte> dp; game::net::EventLogEntryConstRef r{{},dp};
+    game::net::SmallPayload dp; game::net::EventLogEntryConstRef r{{},dp};
     CHECK(w.ctx().get<game::net::EventLogStream<>>().PeekEvent(2,r));
     // Verify the snapped event is an AddChunkEvent with correct coords
     CHECK(r.entry.id == entt::type_hash<game::net::AddChunkEvent>::value());

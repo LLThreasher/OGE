@@ -207,7 +207,7 @@ class SimplePacketScheduler : public PacketScheduler
     }
 
    private:
-    mutable std::vector<std::byte> m_scratchPayload;
+    mutable SmallPayload m_scratchPayload;
 };
 
 using Tick = int64_t;
@@ -305,7 +305,9 @@ class ReplicationRegistry
                 if (entry.entry.id == m_tickEventTypeId)
                 {
                     AdvanceTick tick;
-                    auto buffer = net::Buffer{entry.payload};
+                    auto buffer =
+                        net::Buffer{entry.payload.data(), entry.payload.size()};
+                    buffer.ToReadOnly();
                     net::Deserialize(buffer, tick);
                     peerState.tick = tick.tick;
                 }
@@ -323,8 +325,10 @@ class ReplicationRegistry
                             m_eventStream->PayloadHeaderBytes() +
                             pdesc.payloadByteCount);
                         m_eventStream->SerializeEventMeta(packet, entry.entry);
-                        m_eventStream->SerializeEventPayload(entry.entry.cursor, packet,
-                                                             entry.payload);
+                        m_eventStream->SerializeEventPayload(
+                            entry.entry.cursor, packet,
+                            std::span<const std::byte>(entry.payload.data(),
+                                                       entry.payload.size()));
                         server.Send(peerState.peer.peer, packet,
                                     SendType::Reliable, 0);
                         break;
@@ -336,8 +340,10 @@ class ReplicationRegistry
                             m_eventStream->PayloadHeaderBytes() +
                             pdesc.payloadByteCount);
                         m_eventStream->SerializeEventMeta(packet, entry.entry);
-                        m_eventStream->SerializeEventPayload(entry.entry.cursor, packet,
-                                                             entry.payload);
+                        m_eventStream->SerializeEventPayload(
+                            entry.entry.cursor, packet,
+                            std::span<const std::byte>(entry.payload.data(),
+                                                       entry.payload.size()));
                         server.Send(peerState.peer.peer, packet,
                                     SendType::Sequenced, 0);
                         break;
@@ -353,7 +359,9 @@ class ReplicationRegistry
                             m_eventStream->PayloadHeaderBytes() +
                             pdesc.payloadByteCount);
                         m_eventStream->SerializeEventPayload(
-                            entry.entry.cursor, payloadPacket, entry.payload);
+                            entry.entry.cursor, payloadPacket,
+                            std::span<const std::byte>(entry.payload.data(),
+                                                       entry.payload.size()));
                         server.Send(peerState.peer.peer, payloadPacket,
                                     SendType::Reliable, 1);
                         break;
@@ -391,7 +399,7 @@ class ReplicationRegistry
         auto it = m_units.find(meta.id);
         if (it == m_units.end() || it->second->apply == nullptr) return;
 
-        std::vector<std::byte>* payload =
+        SmallPayload* payload =
             m_eventStream->GetPayload(meta.cursor);
         if (payload == nullptr) return;  // payload half still in flight
 

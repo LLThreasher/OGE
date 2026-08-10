@@ -42,7 +42,7 @@ struct TestStream : game::net::EventLogStream<>
     {
         return m_payloads.contains(c);
     }
-    const std::vector<std::byte>& PayloadAt(game::net::LogCursor c) const
+    const game::net::SmallPayload& PayloadAt(game::net::LogCursor c) const
     {
         return m_payloads.at(c);
     }
@@ -157,7 +157,7 @@ TEST(fuzz_mixed_single_stream)
             auto raw = std::vector<std::byte>(totalSize);
             net::Buffer wire(raw);
             srv.SerializeEventMeta(wire, entry.entry);
-            srv.SerializeEventPayload(entry.entry.cursor, wire, entry.payload);
+            srv.SerializeEventPayload(entry.entry.cursor, wire, std::span<const std::byte>(entry.payload.data(), entry.payload.size()));
             cli.DeserializeEvent(0, wire);
         }
         else
@@ -173,8 +173,10 @@ TEST(fuzz_mixed_single_stream)
                 game::net::EventLogStream<>::PayloadHeaderBytes() +
                 evt.payload.size());
             net::Buffer plWire(rawPl);
-            srv.SerializeEventPayload(entry.entry.cursor, plWire,
-                                       entry.payload);
+            srv.SerializeEventPayload(
+                entry.entry.cursor, plWire,
+                std::span<const std::byte>(entry.payload.data(),
+                                           entry.payload.size()));
 
             bool payloadFirst = (std::rand() % 2) != 0;
             if (payloadFirst)
@@ -280,7 +282,7 @@ TEST(fuzz_multi_peer)
     {
         game::net::LogCursor cursor;
         game::net::oge_id_type id;
-        std::vector<std::byte> payload;
+        game::net::SmallPayload payload;
     };
     std::vector<DequeueResult> dequeued;
 
@@ -331,7 +333,7 @@ TEST(fuzz_multi_peer)
             auto raw = std::vector<std::byte>(totalSize);
             net::Buffer wire(raw);
             srv.SerializeEventMeta(wire, meta);
-            srv.SerializeEventPayload(dq.cursor, wire, dq.payload);
+            srv.SerializeEventPayload(dq.cursor, wire, std::span<const std::byte>(dq.payload.data(), dq.payload.size()));
             cli.DeserializeEvent(0, wire);
         }
         else
@@ -345,7 +347,10 @@ TEST(fuzz_multi_peer)
                 game::net::EventLogStream<>::PayloadHeaderBytes() +
                 dq.payload.size());
             net::Buffer plWire(rawPl);
-            srv.SerializeEventPayload(dq.cursor, plWire, dq.payload);
+            srv.SerializeEventPayload(
+                dq.cursor, plWire,
+                std::span<const std::byte>(dq.payload.data(),
+                                           dq.payload.size()));
 
             if (std::rand() % 2)
             {

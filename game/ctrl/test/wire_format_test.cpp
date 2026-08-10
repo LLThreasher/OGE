@@ -49,7 +49,7 @@ struct TestStream : game::net::EventLogStream<>
     {
         return m_payloads.contains(c);
     }
-    const std::vector<std::byte>& PayloadAt(game::net::LogCursor c) const
+    const game::net::SmallPayload& PayloadAt(game::net::LogCursor c) const
     {
         return m_payloads.at(c);
     }
@@ -127,8 +127,8 @@ TEST(wire_single_packet_roundtrip)
 
     // The stored payload deserializes back to the original event.
     game::net::UpdateComponentEvent<game::ComponentPhysicBody> back;
-    std::vector<std::byte> payloadCopy(cli.PayloadAt(1).begin(),
-                                       cli.PayloadAt(1).end());
+    auto sp = cli.PayloadAt(1).span();
+    std::vector<std::byte> payloadCopy(sp.begin(), sp.end());
     net::Buffer payloadBuf(payloadCopy);
     payloadBuf.ToReadOnly();
     net::Deserialize(payloadBuf, back);
@@ -290,7 +290,7 @@ TEST(wire_no_echo_deserialized)
     CHECK(cli.Contains(1));
     CHECK(cli.HasPayload(1));
     game::net::EventLogEntry out;
-    std::vector<std::byte> dp;
+    game::net::SmallPayload dp;
     game::net::EventLogEntryConstRef ref{{}, dp};
     CHECK(!cli.PeekEvent(0, ref));
     CHECK(!cli.TryDequeueEvent(0, out));

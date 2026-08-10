@@ -56,14 +56,6 @@ class ClientScene2 : public Scene
         m_clientDispatcher.sink<OnClientDisconnected>()
             .connect<&ClientScene2::onDisconnected>(this);
 
-        // Self-load when a scene_config was provided in the args (test
-        // harness).  In the desktop app, DebugVoxelView<ClientScene2>
-        // supplies the config and calls Load() itself after the constructor.
-        if (!m_sceneConfig.empty())
-        {
-            Load();
-        }
-
         // Track the local player's input stream so PollPlayerInputs can flush
         // it to the server.  The stream component appears after the player
         // entity replicates (DebugVoxelView emplaces it on construct).
@@ -99,6 +91,8 @@ class ClientScene2 : public Scene
         // Flush local player input into the replication stream before
         // ProduceAll sends it to the server.  No-op when no stream is
         // registered (e.g. pre-player or headless).
+
+        net::PollTerrainChunkEvents(m_world);
         net::PollPlayerInputs(m_world);
         m_eventLogStream.Update();
         m_replicationRegistry.ProduceAll(m_client, m_world);
