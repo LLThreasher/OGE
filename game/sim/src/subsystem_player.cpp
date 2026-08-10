@@ -139,6 +139,7 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
             {
                 creature.jumpOrder =
                     creature.jumpOrder || event.get<PlayerAction::Jump>();
+                event.unset<PlayerAction::Jump>();
                 if (event.actionMask != 0)
                 {
                     if (player.lastActionTime <= 0.f)

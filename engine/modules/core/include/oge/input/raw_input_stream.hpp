@@ -31,8 +31,8 @@ struct PackedMouseInfo
     uint8_t val;
 
     PackedMouseInfo(size_t id = 0, MouseButton button = MouseButton::Left)
-        : val((static_cast<uint8_t>(id & 0x7) << 4) |
-              (static_cast<uint8_t>(button) & 0x7))
+        : val(((static_cast<uint8_t>(button) & 0x7) << 4) |
+              (static_cast<uint8_t>(id) & 0x7))
     {
     }
 
