@@ -155,8 +155,6 @@ class DebugVoxelView : public SceneView
                 auto& pcam = world.emplace<ComponentPerspectiveCamera>(e);
                 pcam.aspect = m_ctx.assets.backend.SwapchainAspect();
             }
-            if (!world.all_of<ReplicatedTag>(e))
-                world.emplace<ReplicatedTag>(e);
             assert(world.all_of<ComponentCamera>(e));
             assert(world.all_of<const ComponentPerspectiveCamera>(e));
             assert(world.all_of<input::PlayerInputStream>(e));

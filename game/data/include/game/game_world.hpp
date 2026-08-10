@@ -55,16 +55,10 @@ class GameWorld : public oge::runtime::OgeRegistry
     GameWorld() = default;
     NO_COPY(GameWorld)
 
-    template <typename T, typename Fn>
-    auto patch(Entity e, Fn fn)
+    template <typename T, typename... Fn>
+    decltype(auto) patch(const Entity e, Fn&&... fn)
     {
-        return Raw().patch<T>(e, fn);
-    }
-
-    template <typename T>
-    auto patch(Entity e)
-    {
-        return Raw().patch<T>(e);
+        return oge::runtime::OgeRegistry::patch<T>(e, std::forward<Fn>(fn)...);
     }
 };
 

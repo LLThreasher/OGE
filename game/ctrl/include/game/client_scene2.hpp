@@ -4,6 +4,7 @@
 #include <string>
 #include <string_view>
 
+#include "game/components.hpp"
 #include "game/json.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/net/rollback_capability.hpp"
@@ -115,7 +116,7 @@ class ClientScene2 : public Scene
         }
 
         // (2) Flush terrain + input into replication stream
-        net::PollTerrainChunkEvents(m_world);
+        // net::PollTerrainChunkEvents(m_world);
         net::PollPlayerInputs(m_world);
 
         // (3) Run local simulation (prediction) — moves the player locally

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+#include <bitset>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -11,6 +13,7 @@
 #include "game/input/entity_event_stream.hpp"
 #include "game/net/event_log_stream.hpp"
 #include "game/net/replication_events.hpp"
+#include "oge/assert.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/event_stream2.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
@@ -38,6 +41,8 @@ using input::EntityEventStream;
 using input::EntityEventType;
 using oge::DiscreteEventStream;
 using oge::NetworkEventStream;
+
+using oge::runtime::OgeRegistryPtr;
 
 using ReplicationTick = uint32_t;
 
@@ -98,6 +103,8 @@ enum class ReplicationMethod
     StreamReliable,
 };
 
+constexpr size_t MAX_WORLD_VARIANTS = 1;
+
 struct ReplicationCapability : ICapability
 {
     FamilyId family{};
@@ -109,14 +116,14 @@ struct ReplicationCapability : ICapability
     // this install a hook that collects information from world
     //  and submit to the event log stream in world.ctx()
     //  on update (entity(ReplicatedTag)/component/chunk/block)
-    using InstallHooksFn = void (*)(EventLogStream<>&,
-                                    oge::runtime::OgeRegistryRef);
+    using InstallHooksFn = void (*)(EventLogStream<>&, OgeRegistryRef);
     InstallHooksFn installHooks = nullptr;
 
     // this apply a event in the event log stream
-    using ApplyFn = void (*)(EventLogStream<>&, oge::runtime::OgeRegistryRef,
-                             net::Buffer&);
+    using ApplyFn = void (*)(EventLogStream<>&, OgeRegistryRef, net::Buffer&);
     ApplyFn apply = nullptr;
+
+    std::bitset<MAX_WORLD_VARIANTS> worldMask = {};
 };
 
 // =========================================================================
@@ -139,8 +146,8 @@ ReplicationCapability MakeSimpleReplicationCapability(
     cap.sendType = sendType;
     cap.installHooks = installHooks;
 
-    cap.apply = [](EventLogStream<>& /*stream*/,
-                   oge::runtime::OgeRegistryRef world, net::Buffer& buffer)
+    cap.apply = [](EventLogStream<>& /*stream*/, OgeRegistryRef world,
+                   net::Buffer& buffer)
     {
         TEvent event{};
         net::Deserialize(buffer, event);
@@ -149,6 +156,36 @@ ReplicationCapability MakeSimpleReplicationCapability(
 
     return cap;
 }
+
+class WorldRouter
+{
+    OgeRegistryRef m_defaultWorld;
+    std::array<OgeRegistryPtr, MAX_WORLD_VARIANTS> m_worlds;
+
+   public:
+    WorldRouter(OgeRegistryRef ref) : m_defaultWorld(ref)
+    {
+    }
+
+    void AddWorldVariant(size_t idx, OgeRegistryRef world)
+    {
+        OGE_ASSERT(0 <= idx && idx < MAX_WORLD_VARIANTS, "invalid idx");
+        m_worlds[idx] = &world;
+    }
+
+    template <typename Fn>
+    void ApplyWorldFn(ReplicationCapability cap, Fn&& fn)
+    {
+        fn(m_defaultWorld);
+        for (auto i = 0; i < MAX_WORLD_VARIANTS; ++i)
+        {
+            if (m_worlds[i] != nullptr && cap.worldMask.test(i))
+            {
+                fn(*m_worlds[i]);
+            }
+        }
+    }
+};
 
 class PacketScheduler
 {
@@ -278,8 +315,7 @@ class ReplicationRegistry
         }
     }
 
-    void ProduceAll(oge::runtime::NetPacketSender& server,
-                    oge::runtime::OgeRegistryRef world)
+    void ProduceAll(oge::runtime::NetPacketSender& server, OgeRegistryRef world)
     {
         OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
 
@@ -371,8 +407,7 @@ class ReplicationRegistry
         }
     }
 
-    void HandleIncoming(PeerId peer, oge::runtime::OgeRegistryRef world,
-                        net::Buffer& buffer)
+    void HandleIncoming(PeerId peer, OgeRegistryRef world, net::Buffer& buffer)
     {
         OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
         auto meta = m_eventStream->DeserializeEvent(peer, buffer);
@@ -394,41 +429,41 @@ class ReplicationRegistry
     // Deserialize the payload of a received event and apply it to the world
     // through the event family's ReplicationCapability::apply function.
     void ApplyReceivedEvent(const EventLogEntryMeta& meta,
-                            oge::runtime::OgeRegistryRef world)
+                            WorldRouter worldRouter)
     {
         auto it = m_units.find(meta.id);
         if (it == m_units.end() || it->second->apply == nullptr) return;
 
-        SmallPayload* payload =
-            m_eventStream->GetPayload(meta.cursor);
+        SmallPayload* payload = m_eventStream->GetPayload(meta.cursor);
         if (payload == nullptr) return;  // payload half still in flight
 
         net::Buffer buf{payload->data(), payload->size()};
         buf.ToReadOnly();
-        it->second->apply(*m_eventStream, world, buf);
+        worldRouter.ApplyWorldFn(
+            *it->second, [&](OgeRegistryRef world)
+            { it->second->apply(*m_eventStream, world, buf); });
     }
 
-    void AdvancePeerTick(PeerId peer, oge::runtime::OgeRegistryRef world)
+    void AdvancePeerTick(PeerId peer, OgeRegistryRef world)
     {
         ++m_currentTick;
         AdvanceTick evt{m_currentTick};
-        auto buf = m_eventStream->EnqueueEvent(m_tickEventTypeId,
-                                               net::Size(evt));
+        auto buf =
+            m_eventStream->EnqueueEvent(m_tickEventTypeId, net::Size(evt));
         net::Serialize(buf, evt);
     }
 
     // Store component-type info so the snapshot can iterate components.
-    using SnapshotComponentFn = void (*)(EventLogStream<>&,
-                                         oge::runtime::OgeRegistryRef,
-                                         oge::runtime::OgeRegistryRef::Entity,
+    using SnapshotComponentFn = void (*)(EventLogStream<>&, OgeRegistryRef,
+                                         OgeRegistryRef::Entity,
                                          const std::bitset<64>& peerMask);
 
     std::vector<SnapshotComponentFn> m_snapshotFns;
 
     template <typename T>
     static void SnapshotComponent(EventLogStream<>& stream,
-                                  oge::runtime::OgeRegistryRef world,
-                                  oge::runtime::OgeRegistryRef::Entity e,
+                                  OgeRegistryRef world,
+                                  OgeRegistryRef::Entity e,
                                   const std::bitset<64>& peerMask)
     {
         if (!world.all_of<T>(e)) return;
@@ -450,7 +485,7 @@ class ReplicationRegistry
     // Generate a snapshot of the current world state for a newly joined
     // peer.  Pushes AddEntity / AddComponent / AddChunk events with a
     // receive mask that only targets this peer.
-    void GenerateSnapshot(PeerId peerId, oge::runtime::OgeRegistryRef world)
+    void GenerateSnapshot(PeerId peerId, OgeRegistryRef world)
     {
         OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
 
@@ -500,8 +535,7 @@ class ReplicationRegistry
         }
     }
 
-    void AddPeer(PeerId id, ENetPeer* peer,
-                 oge::runtime::OgeRegistry* world = {})
+    void AddPeer(PeerId id, ENetPeer* peer, OgeRegistryPtr world = nullptr)
     {
         PeerState peerState{};
         peerState.peer = {peer, id};

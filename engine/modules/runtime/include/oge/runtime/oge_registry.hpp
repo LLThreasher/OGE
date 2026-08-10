@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "oge/assert.hpp"
 #include "oge/macros.hpp"
 #include "oge/runtime/debug.hpp"
 #include "oge/runtime/entt.hpp"
@@ -157,6 +158,10 @@ class OgeRegistryABC
     decltype(auto) patch(const Entity e, Func&&... fn)
     {
         CHECK_NULL_REGISTRY(patch)
+        OGE_ASSERT(valid(e), "patch<{}>() on invalid entity {}",
+                   TypeName<T>::Get(), static_cast<uint32_t>(e));
+        OGE_ASSERT(all_of<T>(e), "patch<{}>() on invalid component on entity {}",
+                   TypeName<T>::Get(), static_cast<uint32_t>(e));
         return Raw().template patch<T>(e, std::forward<Func>(fn)...);
     }
 
@@ -295,7 +300,19 @@ public:
 class OgeRegistryPtr : public OgeRegistryABC<OgeRegistryRef>
 {
 public:
-    OgeRegistryPtr(entt::registry* ref) : m_registry(ref)
+    OgeRegistryPtr(std::nullptr_t) : m_registry(nullptr)
+    {
+    }
+
+    OgeRegistryPtr(OgeRegistry* reg) : m_registry(&reg->Raw())
+    {
+    }
+
+    OgeRegistryPtr(OgeRegistryRef* reg) : m_registry(&reg->Raw())
+    {
+    }
+
+    OgeRegistryPtr(entt::registry* ref = nullptr) : m_registry(ref)
     {
     }
 
@@ -304,12 +321,19 @@ public:
         return m_registry == nullptr;
     }
 
+    OgeRegistryRef operator*()
+    {
+        return OgeRegistryRef{Raw()};
+    }
+
     entt::registry& Raw()
     {
+        OGE_ASSERT(m_registry != nullptr, "nullptr");
         return *m_registry;
     }
     const entt::registry& Raw() const
     {
+        OGE_ASSERT(m_registry != nullptr, "nullptr");
         return *m_registry;
     }
 
