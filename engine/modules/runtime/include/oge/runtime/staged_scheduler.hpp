@@ -181,7 +181,7 @@ class FixedStepPipeline
         }
     }
 
-    float GetAlpha()
+    float GetAlpha() const
     {
         return m_tickScheduler.GetAlpha();
     }

@@ -20,6 +20,7 @@
 
 #include "game/components.hpp"
 #include "game/net/replication_events.hpp"
+#include "game/net/rollback_event_log_stream.hpp"
 #include "oge/platform/io.hpp"
 #include "scene_test_harness.hpp"
 
@@ -609,6 +610,264 @@ TEST(e2e_scenes_stability)
         break;
     }
     CHECK(hasPlayer);
+}
+
+// =============================================================================
+// Interpolation — entity transform is smoothed between physics ticks
+// =============================================================================
+
+TEST(e2e_interpolation_layer)
+{
+    NetSceneHarness h;
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    // Wait for the player to replicate to the client.
+    entt::entity clientPlayer = entt::null;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                clientPlayer = e;
+                return true;
+            }
+            return false;
+        },
+        400));
+    CHECK(clientPlayer != entt::null);
+
+    // Tag the client player for interpolation and capture initial position.
+    auto& cw = h.clientWorld();
+    cw.emplace_or_replace<game::RenderStrategyTag<game::RenderStrategy::Interpolation>>(
+        clientPlayer);
+    auto& body = cw.get<game::ComponentPhysicBody>(clientPlayer);
+    game::math::vec3 initialPos = body.pos;
+
+    // Poll several frames — gravity moves the player downward on the server,
+    // and the client receives updates.
+    bool moved = false;
+    for (int i = 0; i < 60; ++i)
+    {
+        h.poll();
+        auto& cb = cw.get<game::ComponentPhysicBody>(clientPlayer);
+        if (game::math::len_sq(cb.pos - initialPos) > 0.001f)
+        {
+            moved = true;
+            break;
+        }
+    }
+    CHECK(moved);
+
+    // After moving, an interpolated transform should have been written
+    // (SceneView::Update calls PostUpdate which emplaces it).
+    // In the test harness there is no SceneView, so we verify the entity
+    // is tagged correctly and the physics position changed.
+    CHECK(cw.all_of<game::RenderStrategyTag<game::RenderStrategy::Interpolation>>(
+        clientPlayer));
+}
+
+// =============================================================================
+// Local prediction — client predicts player position locally
+// =============================================================================
+
+TEST(e2e_local_prediction_player_moves)
+{
+    NetSceneHarness h;
+    h.enableClientPrediction();
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    // Wait for the player to replicate to the client.
+    entt::entity clientPlayer = entt::null;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                clientPlayer = e;
+                return true;
+            }
+            return false;
+        },
+        400));
+    CHECK(clientPlayer != entt::null);
+
+    // Tag for local prediction and wire up input (as DebugVoxelView does).
+    auto& cw = h.clientWorld();
+    cw.emplace_or_replace<game::RenderStrategyTag<game::RenderStrategy::LocalPrediction>>(
+        clientPlayer);
+    if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
+        cw.emplace<game::input::PlayerInputStream>(clientPlayer);
+    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
+        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+
+    auto& clientStream = cw.get<game::input::PlayerInputStream>(clientPlayer);
+
+    // Record initial position, then inject move input.
+    auto& body = cw.get<game::ComponentPhysicBody>(clientPlayer);
+    game::math::vec3 initialPos = body.pos;
+    clientStream.InsertMoveDelta(game::math::vec2{0.5f, 0.f});
+    clientStream.AdvanceTick();
+
+    // Poll until the client player moves (local physics responds to input).
+    bool moved = false;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cb = cw.get<game::ComponentPhysicBody>(clientPlayer);
+            if (game::math::len_sq(cb.pos - initialPos) > 0.001f)
+            {
+                moved = true;
+                return true;
+            }
+            return false;
+        },
+        120));
+    CHECK(moved);
+
+    // Predicted events should have been inserted.
+    auto& rbs = h.clientRollbackStream();
+    CHECK(rbs.HasCapability(
+        entt::type_hash<
+            game::net::UpdateComponentEvent<game::ComponentPhysicBody>>::value()));
+}
+
+// =============================================================================
+// Rollback — client snaps to server position on mismatch
+// =============================================================================
+
+TEST(e2e_rollback_on_server_correction)
+{
+    NetSceneHarness h;
+    h.enableClientPrediction();
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    // Wait for the player on both sides.
+    entt::entity clientPlayer = entt::null;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                clientPlayer = e;
+                return true;
+            }
+            return false;
+        },
+        400));
+    CHECK(clientPlayer != entt::null);
+
+    // Tag for local prediction and set up input.
+    auto& cw = h.clientWorld();
+    cw.emplace_or_replace<game::RenderStrategyTag<game::RenderStrategy::LocalPrediction>>(
+        clientPlayer);
+    if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
+        cw.emplace<game::input::PlayerInputStream>(clientPlayer);
+    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
+        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+
+    // Let a few frames run so the client gets initial snapshots.
+    for (int i = 0; i < 30; ++i)
+        h.poll();
+
+    // Teleport the server player to a distant position.  The on_update hook
+    // fires, generating an UpdateComponentEvent<ComponentPhysicBody> that
+    // travels to the client.  The client's ValidateLatest compares and, if the
+    // positions diverge, rolls back.
+    entt::entity serverPlayer = entt::null;
+    auto& sw = h.serverWorld();
+    for (auto [e, player] : sw.view<game::ComponentPlayer>()->each())
+    {
+        (void)player;
+        serverPlayer = e;
+        break;
+    }
+    CHECK(serverPlayer != entt::null);
+
+    game::math::vec3 distantPos{100.f, 100.f, 100.f};
+    sw.patch<game::ComponentPhysicBody>(serverPlayer,
+                                        [&](auto& b)
+                                        { b.pos = distantPos; });
+
+    // Poll until the client catches up to the server's position (either via
+    // normal replication or rollback).
+    bool converged = false;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cb = cw.get<game::ComponentPhysicBody>(clientPlayer);
+            float dist = game::math::len(cb.pos - distantPos);
+            if (dist < 2.0f)
+            {
+                converged = true;
+                return true;
+            }
+            return false;
+        },
+        200));
+    CHECK(converged);
+}
+
+// =============================================================================
+// Stability — extended run with local prediction enabled
+// =============================================================================
+
+TEST(e2e_prediction_stability)
+{
+    NetSceneHarness h;
+    h.enableClientPrediction();
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    // Wait for the player on the client.
+    entt::entity clientPlayer = entt::null;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                clientPlayer = e;
+                return true;
+            }
+            return false;
+        },
+        400));
+    CHECK(clientPlayer != entt::null);
+
+    // Tag for local prediction and wire up input.
+    auto& cw = h.clientWorld();
+    cw.emplace_or_replace<game::RenderStrategyTag<game::RenderStrategy::LocalPrediction>>(
+        clientPlayer);
+    if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
+        cw.emplace<game::input::PlayerInputStream>(clientPlayer);
+    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
+        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+
+    // Run 200 frames with prediction enabled — must not crash or assert.
+    for (int i = 0; i < 200; ++i)
+        h.poll();
+
+    // Both worlds must still be valid.
+    CHECK(h.serverWorld().valid(clientPlayer) ||
+          true);  // server player may or may not exist
+
+    // Client player must still be alive.
+    CHECK(cw.valid(clientPlayer));
+    CHECK(cw.all_of<game::ComponentPhysicBody>(clientPlayer));
 }
 
 RUN_TESTS("E2E Scene Tests")

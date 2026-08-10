@@ -157,8 +157,8 @@ class ClientConnScene : public Scene
                 cfg.realtimeSubsystems.clear();
                 cfg.subsystems.push_back(Id<sim::SubsystemDebugText>());
                 cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-                // cfg.realtimeSubsystems.push_back(Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-                // cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
+                cfg.realtimeSubsystems.push_back(Id<sim::SubsystemCreature<UpdateType::Realtime>>());
+                cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
                 sctx.nextSceneArgs["scene_config"] = json::ToJson(cfg);
             }
             sctx.nextSceneArgs["wait_player"] = json::ToJson(true);

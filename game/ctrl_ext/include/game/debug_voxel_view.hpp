@@ -143,6 +143,8 @@ class DebugVoxelView : public SceneView
                 world.emplace<input::PlayerInputStream>(e);
             if (!world.all_of<UpdateTag<UpdateType::Realtime>>(e))
                 world.emplace<UpdateTag<UpdateType::Realtime>>(e);
+            // Local player: use prediction with rollback
+            world.emplace_or_replace<RenderStrategyTag<RenderStrategy::LocalPrediction>>(e);
             if (!world.all_of<ComponentCamera>(e))
             {
                 auto& cam = world.emplace<ComponentCamera>(e);
@@ -166,6 +168,11 @@ class DebugVoxelView : public SceneView
 
             AddWidgetInput();
             m_waitPlayer.release();
+        }
+        else
+        {
+            // Remote player: interpolate between server updates
+            world.emplace_or_replace<RenderStrategyTag<RenderStrategy::Interpolation>>(e);
         }
     }
 

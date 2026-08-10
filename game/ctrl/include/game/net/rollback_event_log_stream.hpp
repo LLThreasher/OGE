@@ -7,6 +7,7 @@
 #include "game/net/event_log_stream.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/net/rollback_capability.hpp"
+#include "oge/runtime/typed_registry.hpp"
 
 namespace game::net
 {
@@ -32,11 +33,19 @@ namespace game::net
 // EventLogStream (which only holds authoritative server events).
 // =========================================================================
 
-template <size_t Capacity = 4096>
+template <size_t Capacity = 32768>
 class RollbackEventLogStream : public EventLogStream<Capacity>
 {
    public:
     using Base = EventLogStream<Capacity>;
+
+    // Forward to base constructor so the stream can receive AnythingFactory*
+    // and authority flag (same signature as EventLogStream).
+    RollbackEventLogStream(AnythingFactory* af = nullptr,
+                           bool authority = false)
+        : Base(af, authority)
+    {
+    }
 
     // ---------- Snapshot management ----------
 
@@ -185,6 +194,59 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         return consistent;
     }
 
+    // Compare only the most recent predicted payload against the most
+    // recent server payload per family (since the last snapshot).
+    // Intended for position prediction where per-frame rates differ
+    // between client and server (exact count match is impossible).
+    // On mismatch: RollbackToLatest + clear predictions.
+    // Returns true if consistent.
+    bool ValidateLatest(oge::runtime::OgeRegistryRef world)
+    {
+        if (m_snapshots.empty()) return true;
+
+        // Find last predicted payload per family.
+        std::unordered_map<FamilyId, const PredictedEntry*> lastPred;
+        for (auto& pe : m_predictedEvents)
+            lastPred[pe.family] = &pe;
+
+        // Find last server payload per family since last snapshot.
+        std::unordered_map<FamilyId, SmallPayload> lastServer;
+        EventLogEntryConstRef ref{{}, m_scratchPayload};
+        LogCursor cursor = m_snapshots.back().streamCursor;
+        while (this->PeekEvent(0, ref, cursor))
+        {
+            lastServer[ref.entry.id] = ref.payload;
+            cursor = ref.entry.cursor + 1;
+        }
+
+        // Compare per-family: last predicted vs last server.
+        bool consistent = true;
+        for (auto& [family, cap] : m_rollbackCaps)
+        {
+            if (!cap.compare) continue;
+            auto p = lastPred.find(family);
+            auto s = lastServer.find(family);
+            if (p == lastPred.end() || s == lastServer.end())
+                continue;  // no data yet for this family
+
+            net::Buffer pb(
+                const_cast<std::byte*>(p->second->payload.data()),
+                p->second->payload.size());
+            pb.ToReadOnly();
+            net::Buffer sb(s->second.data(), s->second.size());
+            sb.ToReadOnly();
+            if (!cap.compare(pb, sb))
+            {
+                consistent = false;
+                break;
+            }
+        }
+
+        if (!consistent) RollbackToLatest(world);
+        m_predictedEvents.clear();
+        return consistent;
+    }
+
     // ---------- Rollback ----------
 
     void RollbackToLatest(oge::runtime::OgeRegistryRef world)
@@ -212,6 +274,11 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
     const auto& Snapshots() const { return m_snapshots; }
     const auto& PredictedEvents() const { return m_predictedEvents; }
     size_t PredictedCount() const { return m_predictedEvents.size(); }
+
+    LogCursor LastSnapshotCursor() const
+    {
+        return m_snapshots.empty() ? 0 : m_snapshots.back().streamCursor;
+    }
 
    private:
     void TakeSnapshot(oge::runtime::OgeRegistryRef world)

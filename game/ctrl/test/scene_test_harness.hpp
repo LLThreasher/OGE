@@ -7,10 +7,12 @@
 #include "game/client_scene2.hpp"
 #include "game/components.hpp"
 #include "game/game_world.hpp"
+#include "game/net/rollback_event_log_stream.hpp"
 #include "game/scene.hpp"
 #include "game/scene_runner.hpp"
 #include "game/server_scene.hpp"
 #include "game/sim/registry.hpp"
+#include "game/sim/subsystem.hpp"
 
 namespace
 {
@@ -56,6 +58,7 @@ struct NetSceneHarness
 {
     TestSceneRunner m_serverRunner;
     TestSceneRunner m_clientRunner;
+    bool m_clientPrediction = false;
 
     bool start()
     {
@@ -77,10 +80,15 @@ struct NetSceneHarness
         return true;
     }
 
+    // Enable local physics/creature subsystems on the client so the
+    // local player entity is simulated (client-side prediction).
+    void enableClientPrediction()
+    {
+        m_clientPrediction = true;
+    }
+
     bool connect()
     {
-        // TestScene self-loads this config (blocks + terrain only — no
-        // subsystems, so no local sim or debug-text pool in the harness).
         game::json::Object cliArgs;
         cliArgs["port"] = static_cast<int64_t>(TEST_PORT);
         cliArgs["ip"] = std::string("127.0.0.1");
@@ -96,6 +104,18 @@ struct NetSceneHarness
             {"stone", {"Stone", "green_stone.png", 1}},
         };
         cliConfig.terrainDesc.chunkViewDistance = 4;
+
+        // When prediction is enabled, run local simulation on the client
+        // so the local player entity drives physics/creature locally.
+        if (m_clientPrediction)
+        {
+            cliConfig.realtimeSubsystems.push_back(
+                m_clientRunner.Id<game::sim::SubsystemPlayer<game::UpdateType::Realtime>>());
+            cliConfig.realtimeSubsystems.push_back(
+                m_clientRunner.Id<game::sim::SubsystemCreature<game::UpdateType::Realtime>>());
+            cliConfig.realtimeSubsystems.push_back(
+                m_clientRunner.Id<game::sim::SubsystemPhysics<game::UpdateType::Realtime>>());
+        }
 
         cliArgs["scene_config"] = game::json::ToJson(cliConfig);
         m_clientRunner.SwitchToScene<game::ClientConnScene>(std::move(cliArgs));
@@ -174,5 +194,11 @@ struct NetSceneHarness
     game::GameWorld& clientWorld()
     {
         return m_clientRunner.GetScene()->GetWorld();
+    }
+
+    // Access the client's RollbackEventLogStream for prediction assertions.
+    game::net::RollbackEventLogStream<>& clientRollbackStream()
+    {
+        return clientWorld().ctx().get<game::net::RollbackEventLogStream<>>();
     }
 };

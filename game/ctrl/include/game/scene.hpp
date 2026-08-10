@@ -44,6 +44,11 @@ class Scene : protected AppRuntime
     auto& GetWorld() { return m_world; }
     const auto& GetWorld() const { return m_world; }
 
+    // Interpolation alpha from the fixed-step scheduler.
+    // Range [0, 1) — fraction of the way from the previous physics tick
+    // toward the next.  Renderers use this to smooth entity positions.
+    float GetFixedStepAlpha() const { return m_subsystems.GetAlpha(); }
+
     struct Frame
     {
         float dt;

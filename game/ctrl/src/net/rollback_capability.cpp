@@ -2,6 +2,7 @@
 
 #include "game/input/net.hpp"
 #include "game/net/replication_events.hpp"
+#include "oge/math.hpp"
 #include "oge/runtime/net_serializer.hpp"
 
 using namespace game::net;
@@ -187,4 +188,22 @@ bool game::net::ChunkCompareFn(net::Buffer& a, net::Buffer& b)
     auto sb = b.Data();
     if (sa.size() != sb.size()) return false;
     return std::memcmp(sa.data(), sb.data(), sa.size()) == 0;
+}
+
+// =========================================================================
+// Physics body compare — tolerance-based (client and server diverge)
+// =========================================================================
+
+bool game::net::PhysicsBodyCompareFn(net::Buffer& a, net::Buffer& b)
+{
+    UpdateComponentEvent<ComponentPhysicBody> evtA{};
+    UpdateComponentEvent<ComponentPhysicBody> evtB{};
+    net::Deserialize(a, evtA);
+    net::Deserialize(b, evtB);
+
+    if (evtA.entity != evtB.entity) return false;
+
+    constexpr float kPositionEpsilon = 0.1f;
+    return oge::math::len(evtA.component.pos - evtB.component.pos) <=
+           kPositionEpsilon;
 }

@@ -8,6 +8,7 @@
 #include "game/app_context.hpp"
 #include "game/game_world.hpp"
 #include "game/input/input_source.hpp"
+#include "game/interpolation.hpp"
 #include "game/scene.hpp"
 #include "game/scene_runner.hpp"
 #include "game/view/gfx/debug_info_pass.hpp"
@@ -75,6 +76,8 @@ class SceneView : protected AppRuntime
     view::SubmissionQueue m_squeue;
     ViewExecutor m_viewExecutor;
 
+    InterpolationLayer m_interp;
+
     RawInputStream::Cursor m_rawInputCursor{};
 
     SceneView(const Scene::Def& def,
@@ -108,14 +111,16 @@ class SceneView : protected AppRuntime
         m_inputs.Update({f.dt, f.is});
         m_innerScene.GetWorld().ctx().insert_or_assign(f.perfStats);
 
-        // simulation
+        // simulation + interpolation
+        m_interp.PreUpdate(m_innerScene.GetWorld());
         m_innerScene.Update(f, sctx);
+        float alpha = m_innerScene.GetFixedStepAlpha();
+        m_interp.PostUpdate(m_innerScene.GetWorld(), alpha);
 
         // presentation
         m_squeue.Clear();
-        m_renderers.Update(view::RendererFrameData{
-            f.dt, m_ctx.assets, m_squeue,
-            0});  // TODO: expose alpha information in scene
+        m_renderers.Update(view::RendererFrameData{f.dt, m_ctx.assets, m_squeue,
+                                                    alpha});
 
         // window action
         f.frameAction |= m_windowCtx.frameAction;

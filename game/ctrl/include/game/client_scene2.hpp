@@ -6,6 +6,8 @@
 
 #include "game/json.hpp"
 #include "game/net/replication_registry.hpp"
+#include "game/net/rollback_capability.hpp"
+#include "game/net/rollback_event_log_stream.hpp"
 #include "game/scene.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_client.hpp"
@@ -24,7 +26,7 @@ class ClientScene2 : public Scene
 {
     NetClient& m_client;
     entt::dispatcher m_clientDispatcher;
-    net::EventLogStream<>& m_eventLogStream;
+    net::RollbackEventLogStream<>& m_rollbackStream;
     net::ReplicationRegistry m_replicationRegistry;
 
     bool m_readyToQuit = false;
@@ -44,13 +46,37 @@ class ClientScene2 : public Scene
     ClientScene2(const Def& def)
         : Scene(def),
           m_client(*m_ctx.any_ctx.Get<NetClient>()),
-          m_eventLogStream(m_world.ctx().emplace<::game::net::EventLogStream<>>(&m_ctx.any_factory)),
+          m_rollbackStream(m_world.ctx().emplace<::game::net::RollbackEventLogStream<>>(&m_ctx.any_factory)),
           m_replicationRegistry(::game::net::ReplicationRegistry::Def{
-              m_eventLogStream,
+              m_rollbackStream,
               m_ctx.any_factory})
     {
         LOG_INFO("client scene loaded");
+
+        // Store a base-class pointer in ctx so GetReplicationStream()
+        // (used by PollPlayerInputs, etc.) finds the stream via exact-type
+        // lookup without needing to include the rollback header.
+        m_world.ctx().emplace<net::EventLogStream<>*>(&m_rollbackStream);
+
         RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
+
+        // Register rollback capability for physics bodies so predicted
+        // updates are accepted by InsertPredicted.
+        {
+            net::RollbackCapability physCap;
+            physCap.family =
+                entt::type_hash<
+                    net::UpdateComponentEvent<ComponentPhysicBody>>::value();
+            physCap.getRegionKey =
+                net::ComponentRegionKey<ComponentPhysicBody>;
+            physCap.takeSnapshot =
+                net::ComponentSnapshotFn<ComponentPhysicBody>;
+            physCap.rollback =
+                net::ComponentRollbackFn<ComponentPhysicBody>;
+            physCap.compare = net::PhysicsBodyCompareFn;
+            m_rollbackStream.RegisterRollbackCapability(physCap);
+        }
+
         m_clientDispatcher.sink<OnClientReceivePacket>()
             .connect<&ClientScene2::onRecievePacket>(this);
         m_clientDispatcher.sink<OnClientDisconnected>()
@@ -63,10 +89,8 @@ class ClientScene2 : public Scene
 
         m_replicationRegistry.AddPeer(0, m_client.Host(), &m_world);
 
-        // The client world is a read-only mirror of the server: state
-        // changes arrive as replication events applied by HandleIncoming.
-        // No local hooks — they would fire when applied entities/components
-        // materialize and echo them back to the server via ProduceAll.
+        // Snapshot every 3 server ticks (~150ms at 20Hz) for rollback.
+        m_rollbackStream.m_snapshotInterval = 3;
 
         // send ready package
         auto packet = m_client.StartPacket(sizeof(uint32_t));
@@ -82,22 +106,38 @@ class ClientScene2 : public Scene
 
     void Update(Frame f, SceneContext sctx) override
     {
+        // (1) Receive server events (AdvanceTick → snapshot via apply fn)
         m_client.Poll(m_clientDispatcher, f.dt);
         if (m_readyToQuit)
         {
             sctx.nextScene = Id<Scene>();
             sctx.nextSceneArgs = {};
         }
-        // Flush local player input into the replication stream before
-        // ProduceAll sends it to the server.  No-op when no stream is
-        // registered (e.g. pre-player or headless).
 
+        // (2) Flush terrain + input into replication stream
         net::PollTerrainChunkEvents(m_world);
         net::PollPlayerInputs(m_world);
-        m_eventLogStream.Update();
-        m_replicationRegistry.ProduceAll(m_client, m_world);
 
+        // (3) Run local simulation (prediction) — moves the player locally
         Scene::Update(f, sctx);
+
+        // (4) Insert predicted physics for LocalPrediction-tagged entities
+        for (auto [e, body] :
+             m_world
+                 .view<RenderStrategyTag<RenderStrategy::LocalPrediction>,
+                       ComponentPhysicBody>()
+                 .each())
+        {
+            net::UpdateComponentEvent<ComponentPhysicBody> evt{e, body};
+            m_rollbackStream.InsertPredicted(evt);
+        }
+
+        // (5) Validate predictions against server events since last snapshot
+        m_rollbackStream.ValidateLatest(m_world);
+
+        // (6) Prune old entries + send input to server
+        m_rollbackStream.Update();
+        m_replicationRegistry.ProduceAll(m_client, m_world);
     }
 };
 }  // namespace game

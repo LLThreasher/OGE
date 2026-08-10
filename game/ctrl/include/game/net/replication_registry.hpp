@@ -411,6 +411,10 @@ class ReplicationRegistry
     void AdvancePeerTick(PeerId peer, oge::runtime::OgeRegistryRef world)
     {
         ++m_currentTick;
+        AdvanceTick evt{m_currentTick};
+        auto buf = m_eventStream->EnqueueEvent(m_tickEventTypeId,
+                                               net::Size(evt));
+        net::Serialize(buf, evt);
     }
 
     // Store component-type info so the snapshot can iterate components.
@@ -527,5 +531,7 @@ void RegisterReplications(oge::runtime::AnythingFactory& af,
                           ReplicationRegistry& rf);
 
 }  // namespace game::net
+
+DECL_TYPE_NAME(game::net::AdvanceTick, "net::AdvanceTick")
 
 DECL_NET_OBJ(game::net::AdvanceTick, { visit(self.tick); })

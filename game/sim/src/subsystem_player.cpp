@@ -24,6 +24,7 @@ entt::entity ComponentPlayer::CreatePlayer(GameWorld& world,
     else
         res = world.create(hint);
     world.emplace<UpdateTag<UpdateType::Realtime>>(res);
+    world.emplace<RenderStrategyTag<RenderStrategy::Interpolation>>(res);
     auto& b = world.emplace<ComponentPhysicBody>(res, info.latestPosition);
     b.stepAssist = 1.01f;
     world.emplace<ComponentAABBCollider>(

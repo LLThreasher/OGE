@@ -36,6 +36,33 @@ struct UpdateTag
 {
 };
 
+// =========================================================================
+// Render strategy tags — control how the interpolation/prediction layer
+// treats each entity.  These are pure ECS marker components; no
+// DECL_TYPE_NAME needed.
+// =========================================================================
+
+enum class RenderStrategy
+{
+    None,                 // No special rendering — use physics state as-is
+    Interpolation,        // Lerp between last two fixed-step states
+    Extrapolation,        // Project forward from velocity (reserved)
+    FixedStepSmoothing,   // Smooth remote entity updates (reserved)
+    LocalPrediction,      // Client-side prediction with rollback
+};
+
+template <RenderStrategy>
+struct RenderStrategyTag
+{
+};
+
+// Render-only smoothed transform — renderers prefer this over raw
+// ComponentPhysicBody when present.
+struct ComponentInterpolatedTransform
+{
+    math::vec3 pos{};
+};
+
 struct ComponentCamera
 {
     float yaw = 0.f;
@@ -165,3 +192,6 @@ DECL_TYPE_NAME(game::ComponentCreature, "core::ComponentCreature")
 DECL_TYPE_NAME(game::ComponentPhysicBody, "core::ComponentPhysicBody")
 DECL_TYPE_NAME(game::UpdateTag<game::UpdateType::FixedStep>, "core::UpdateTag<FixedStep>")
 DECL_TYPE_NAME(game::UpdateTag<game::UpdateType::Realtime>, "core::UpdateTag<Realtime>")
+DECL_TYPE_NAME(game::RenderStrategyTag<game::RenderStrategy::Interpolation>, "core::RenderStrategyTag<Interpolation>")
+DECL_TYPE_NAME(game::RenderStrategyTag<game::RenderStrategy::LocalPrediction>, "core::RenderStrategyTag<LocalPrediction>")
+DECL_TYPE_NAME(game::ComponentInterpolatedTransform, "core::ComponentInterpolatedTransform")

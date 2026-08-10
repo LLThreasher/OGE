@@ -166,6 +166,13 @@ inline uint64_t ChunkRegionKey(net::Buffer& p)
     return h;
 }
 
+// --- Physics body compare (tolerance-based) ---
+
+// Compare two serialized UpdateComponentEvent<ComponentPhysicBody> payloads.
+// Entity must match; position within epsilon (client and server run at
+// different sim rates so exact byte match is impossible).
+bool PhysicsBodyCompareFn(net::Buffer& a, net::Buffer& b);
+
 // --- Generic helpers ---
 inline bool ByteCompareFn(net::Buffer& a, net::Buffer& b)
 {

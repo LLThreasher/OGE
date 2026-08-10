@@ -1,10 +1,11 @@
 #include "game/net/replication_registry.hpp"
 
 #include "game/app_context.hpp"
-#include "game/input/net.hpp"
-#include "game/net/replication_events.hpp"
 #include "game/components.hpp"
 #include "game/components_net.hpp"
+#include "game/input/net.hpp"
+#include "game/net/replication_events.hpp"
+#include "game/net/rollback_event_log_stream.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
 using game::AnythingFactory;
@@ -134,6 +135,28 @@ void game::net::RegisterReplications(AnythingFactory& af,
             MakeSimpleReplicationCapability<PlayerInputReplicationEvent>(
                 desc.localId, nullptr,
                 ReplicationMethod::SingleReliable));
+    }
+
+    // AdvanceTick — server→client tick sync; drives rollback snapshots
+    {
+        auto& desc = af.RegisterType<AdvanceTick>();
+        ReplicationCapability tickCap;
+        tickCap.family = desc.localId;
+        tickCap.sendType = ReplicationMethod::SingleReliable;
+        tickCap.installHooks = nullptr;
+        tickCap.apply =
+            [](EventLogStream<>&, oge::runtime::OgeRegistryRef world,
+               net::Buffer& buffer)
+        {
+            AdvanceTick evt{};
+            net::Deserialize(buffer, evt);
+            if (world.ctx().contains<RollbackEventLogStream<>>())
+            {
+                auto& rbs = world.ctx().get<RollbackEventLogStream<>>();
+                rbs.AdvanceTick(world);
+            }
+        };
+        desc.capabilities.Add<ReplicationCapability>(tickCap);
     }
 
     rf.RegisterFrom(af);

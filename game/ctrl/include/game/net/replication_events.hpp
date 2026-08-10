@@ -220,17 +220,25 @@ struct TerrainReplicationState
 {
     // Start at 1 — a cursor of 0 is the "snap-to-frontier" sentinel in
     // DiscreteEventStream::PollOne, which would skip the first event.
-    terrain::ChunkEventStream::Cursor chunkEventCursor{};
+    terrain::ChunkEventStream::Cursor chunkEventCursor{1};
     bool initialized = false;
 };
 
 // ---------------------------------------------------------------------------
 // Accessor for the EventLogStream stored in world.ctx()
 // ---------------------------------------------------------------------------
+// When the ctx stores a RollbackEventLogStream (client), there is also an
+// EventLogStream<>* pointer aliasing it so that exact-type lookup works.
+// ===========================================================================
 
 inline EventLogStream<>& GetReplicationStream(OgeRegistryRef world)
 {
-    return world.ctx().get<EventLogStream<>>();
+    auto& ctx = world.ctx();
+    // Client: RollbackEventLogStream is stored; a base pointer aliases it.
+    if (ctx.contains<EventLogStream<>*>())
+        return *ctx.get<EventLogStream<>*>();
+    // Server: plain EventLogStream.
+    return ctx.get<EventLogStream<>>();
 }
 
 // ---------------------------------------------------------------------------
@@ -446,7 +454,6 @@ inline void PollTerrainChunkEvents(OgeRegistryRef world)
             }
             else if (chunkEvent.packed.dirtyCnt > 0)
             {
-                LOG_DEBUG("trigger block event at {}", chunkEvent.dirtyBlocks[0].val);
                 const terrain::ChunkData* chunk =
                     terrain.GetChunk(chunkEvent.chunk);
                 if (chunk != nullptr)
@@ -804,7 +811,11 @@ inline void ApplyEvent(OgeRegistryRef world, const UpdateChunkEvent& event)
 
     auto [handle, chunk] = terrain.GetChunk(event.coords);
 
-    if (chunk == nullptr || chunk->state != terrain::ChunkState::Persistent)
+    // Use weakState instead of state: chunks may be waiting for neighbor
+    // upgrades.  weakState reflects the intended level; state catches up
+    // when AllNeighborsValid passes.
+    if (chunk == nullptr ||
+        chunk->weakState < terrain::ChunkState::Persistent)
     {
         return;
     }
