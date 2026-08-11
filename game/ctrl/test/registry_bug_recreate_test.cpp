@@ -1,7 +1,6 @@
 /// Test Scene construction and config access.
 #include <test_macros.hpp>
 #include "game/app_context.hpp"
-#include "game/components.hpp"
 #include "game/game_world.hpp"
 #include "oge/json.hpp"
 #include "game/scene.hpp"

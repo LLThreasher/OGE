@@ -1,6 +1,5 @@
 #include <memory>
 
-#include "game/components.hpp"
 #include "game/game_world.hpp"
 #include "game/terrain/terrain_view.hpp"
 #include "game/view/terrain/terrain_renderer.hpp"
