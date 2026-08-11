@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <queue>
 #include <span>
 #include <unordered_map>
