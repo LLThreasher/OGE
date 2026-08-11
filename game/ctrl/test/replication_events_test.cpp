@@ -492,4 +492,91 @@ TEST(rollback_chunk_compare){
     CHECK(!game::net::ChunkCompareFn(b1, b3));
 }
 
+// After a pong aligns the stream to a server tick, Validate should only
+// compare and erase predictions up to the alignment tick.  Predictions
+// made for ticks the server hasn't confirmed yet survive into the next
+// validation cycle.
+TEST(rollback_pong_partial_erase_validate)
+{
+    oge::runtime::OgeRegistry w;
+    auto e = w.create(); w.emplace<game::ReplicatedTag>(e);
+
+    game::net::RollbackEventLogStream<> stream;
+    stream.m_snapshotInterval = 1;
+    stream.AddPeer(63);  // self-bit must be active for EnqueueEvent mask
+
+    game::net::RollbackCapability cap{};
+    cap.family = entt::type_hash<game::net::AddEntityEvent>::value();
+    cap.takeSnapshot = game::net::EntitySnapshotFn;
+    cap.rollback = game::net::EntityRollbackFn;
+    cap.compare = game::net::EntityCompareFn;
+    stream.RegisterRollbackCapability(cap);
+
+    // Advance ticks — each tick takes a snapshot and records a prediction.
+    stream.AdvanceLocalTick(w);                          // tick 1
+    stream.InsertPredicted(game::net::AddEntityEvent{e}); // pred at tick 1
+    stream.AdvanceLocalTick(w);                          // tick 2
+    stream.InsertPredicted(game::net::AddEntityEvent{e}); // pred at tick 2
+    stream.AdvanceLocalTick(w);                          // tick 3
+    stream.InsertPredicted(game::net::AddEntityEvent{e}); // pred at tick 3
+    stream.AdvanceLocalTick(w);                          // tick 4
+    stream.InsertPredicted(game::net::AddEntityEvent{e}); // pred at tick 4
+
+    CHECK_EQ(stream.PredictedCount(), 4);
+
+    // One server event — matches the single prediction in the comparison
+    // window (tick 1, the only tick with baseTick ≤ tick ≤ alignment).
+    auto f = entt::type_hash<game::net::AddEntityEvent>::value();
+    auto buf = stream.EnqueueEvent(f, sizeof(entt::entity));
+    buf.Write(e);
+
+    // Server confirmed up to tick 1.  Predictions at τ ≤ 1 are compared
+    // and erased; predictions at τ > 1 survive.
+    stream.DebugSetAlignment(1);
+
+    CHECK(stream.Validate(w));
+    CHECK_EQ(stream.PredictedCount(), 3);  // ticks 2, 3, 4 survive
+}
+
+// Same as rollback_pong_partial_erase_validate but exercises ValidateLatest,
+// which compares only the last prediction per family against the last
+// server event.
+TEST(rollback_pong_partial_erase_validate_latest)
+{
+    oge::runtime::OgeRegistry w;
+    auto e = w.create(); w.emplace<game::ReplicatedTag>(e);
+
+    game::net::RollbackEventLogStream<> stream;
+    stream.m_snapshotInterval = 1;
+    stream.AddPeer(63);
+
+    game::net::RollbackCapability cap{};
+    cap.family = entt::type_hash<game::net::AddEntityEvent>::value();
+    cap.takeSnapshot = game::net::EntitySnapshotFn;
+    cap.rollback = game::net::EntityRollbackFn;
+    cap.compare = game::net::EntityCompareFn;
+    stream.RegisterRollbackCapability(cap);
+
+    stream.AdvanceLocalTick(w);
+    stream.InsertPredicted(game::net::AddEntityEvent{e});  // tick 1
+    stream.AdvanceLocalTick(w);
+    stream.InsertPredicted(game::net::AddEntityEvent{e});  // tick 2
+    stream.AdvanceLocalTick(w);
+    stream.InsertPredicted(game::net::AddEntityEvent{e});  // tick 3
+
+    CHECK_EQ(stream.PredictedCount(), 3);
+
+    // One server event so the last-vs-last comparison within the alignment
+    // window succeeds.
+    auto f = entt::type_hash<game::net::AddEntityEvent>::value();
+    auto buf = stream.EnqueueEvent(f, sizeof(entt::entity));
+    buf.Write(e);
+
+    // Align to tick 2: predictions at τ ≤ 2 are compared and erased.
+    stream.DebugSetAlignment(2);
+
+    CHECK(stream.ValidateLatest(w));
+    CHECK_EQ(stream.PredictedCount(), 1);  // only tick 3 survives
+}
+
 RUN_TESTS("Replication Events Tests")

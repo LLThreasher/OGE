@@ -82,7 +82,7 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
 
     // ---------- Configuration ----------
 
-    Tick m_snapshotInterval = 20;
+    Tick m_snapshotInterval = 18;
     size_t m_maxSnapshots = 32;
 
     // ---------- Registration ----------
@@ -198,11 +198,15 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
 
         // Build per-family lists of predicted payloads, only for
         // predictions made at-or-after the base snapshot (older
-        // predictions are subsumed in the snapshot state).
+        // predictions are subsumed in the snapshot state).  When alignment
+        // is set, stop at m_alignmentTick — predictions beyond are for
+        // ticks the server hasn't confirmed yet and survive to the next
+        // validation cycle.
         std::unordered_map<FamilyId, std::vector<net::Buffer>> predByFam;
         for (auto& range : m_tickPredictionRanges)
         {
             if (range.tick < baseTick) continue;
+            if (m_alignmentTick > 0 && range.tick > m_alignmentTick) continue;
             for (size_t i = range.startIdx;
                  i < range.startIdx + range.count &&
                  i < m_predictedEvents.size();
@@ -253,10 +257,7 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         }
 
         if (!consistent) RollbackToLatest(world);
-
-        // Clear predictions after validation.
-        m_predictedEvents.clear();
-        m_tickPredictionRanges.clear();
+        else EraseComparedPredictions();
 
         return consistent;
     }
@@ -278,11 +279,14 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         Tick baseTick = base->tick;
 
         // Find last predicted payload per family, only for predictions
-        // made at-or-after the base snapshot.
+        // made at-or-after the base snapshot.  When alignment is set,
+        // stop at m_alignmentTick — predictions beyond are for ticks
+        // the server hasn't confirmed yet and survive to the next cycle.
         std::unordered_map<FamilyId, const PredictedEntry*> lastPred;
         for (auto& range : m_tickPredictionRanges)
         {
             if (range.tick < baseTick) continue;
+            if (m_alignmentTick > 0 && range.tick > m_alignmentTick) continue;
             for (size_t i = range.startIdx;
                  i < range.startIdx + range.count &&
                  i < m_predictedEvents.size();
@@ -332,8 +336,7 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         }
 
         if (!consistent) RollbackToLatest(world);
-        m_predictedEvents.clear();
-        m_tickPredictionRanges.clear();
+        else EraseComparedPredictions();
         return consistent;
     }
 
@@ -343,8 +346,8 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
     {
         if (m_snapshots.empty()) return;
 
-        LOG_DEBUG("rollback to tick {} (cursor {})", m_currentTick,
-                  m_snapshots.back().streamCursor);
+        LOG_DEBUG("rollback to tick {} (cursor {}, alignment {})", m_currentTick,
+                  m_snapshots.back().streamCursor, m_alignmentCursor);
         const auto& snap = m_snapshots.back();
         for (auto& [family, payload] : snap.payloads)
         {
@@ -441,6 +444,11 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         return m_snapshots.empty() ? 0 : m_snapshots.back().streamCursor;
     }
 
+    // Test helper: set the alignment tick without going through a full
+    // ping-pong cycle.  The validation methods only compare predictions
+    // up to this tick; predictions beyond it survive.
+    void DebugSetAlignment(Tick t) { m_alignmentTick = t; }
+
    private:
     void TakeSnapshot(oge::runtime::OgeRegistryRef world)
     {
@@ -508,6 +516,28 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
             {
                 ++m_tickPredictionRanges.back().count;
             }
+        }
+    }
+
+    // Erase only the predictions that were compared (up to m_alignmentTick).
+    // Predictions made for ticks the server hasn't confirmed yet survive.
+    // When there is no alignment (m_alignmentTick == 0, never pinged), clear
+    // all predictions — the fallback SelectBaseSnapshot pairs the newest
+    // snapshot with whatever server events have arrived.
+    void EraseComparedPredictions()
+    {
+        if (m_alignmentTick > 0)
+        {
+            // Predictions are in monotonic tick order.
+            while (!m_predictedEvents.empty() &&
+                   m_predictedEvents.front().tick <= m_alignmentTick)
+                m_predictedEvents.pop_front();
+            RebuildTickRanges();
+        }
+        else
+        {
+            m_predictedEvents.clear();
+            m_tickPredictionRanges.clear();
         }
     }
 
