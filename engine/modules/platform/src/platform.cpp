@@ -345,15 +345,15 @@ double GetCPUUsage()
 void oge::platform::PrintStackTrace()
 {
 }
-RAMInfo GetRAMUsage()
+oge::platform::RAMInfo GetRAMUsage()
 {
     return {};
 }
-double GetCPUUsage()
+double oge::platform::GetCPUUsage()
 {
     return -1.0;
 }
-double GetGPUUsage()
+double oge::platform::GetGPUUsage()
 {
     return -1.0;
 }

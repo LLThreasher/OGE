@@ -1,5 +1,6 @@
 #include "oge/platform/io.hpp"
 
+#include <cstring>
 #include <vector>
 
 #include "stb_image.h"
