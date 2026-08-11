@@ -57,14 +57,6 @@ jobs:
 
       - name: Install Vulkan SDK and Runtime
         uses: jakoch/install-vulkan-sdk-action@v1.6.0
-        
-      - name: Install LLVM (clang-cl)
-        run: choco install llvm --version=19.1.7 -y --no-progress
-        shell: pwsh
-
-      - name: Add LLVM to PATH
-        run: echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        shell: pwsh
 
       - name: Configure
         run: cmake --preset x64-debug
@@ -90,10 +82,8 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: |
-            platforms;android-29
-            ndk;28.2.13676358
-            cmake;3.28.0+
+          packages: 'platforms;android-29 ndk;28.2.13676358'
+
 
       - name: Install Ninja
         run: sudo apt-get update && sudo apt-get install -y ninja-build
