@@ -7,7 +7,7 @@
 
 #include "game/app_context.hpp"
 #include "game/frame_perf.hpp"
-#include "game/json.hpp"
+#include "oge/json.hpp"
 #include "game/memory_context.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/log.hpp"
@@ -17,6 +17,7 @@ namespace game
 {
 using oge::runtime::oge_id_type;
 using oge::runtime::OGEContext;
+namespace json = ::oge::json;
 
 struct SceneContext
 {

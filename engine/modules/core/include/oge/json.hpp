@@ -10,7 +10,7 @@
 #include <variant>
 #include <vector>
 
-namespace game::json
+namespace oge::json
 {
 using Bool = bool;
 using Int = int64_t;
@@ -27,6 +27,9 @@ struct Value
 {
     using variant::variant;
 };
+
+void ToString(const Value& value, std::string& out);
+void FromString(const std::string& str, Value& out);
 
 template <typename T>
 struct JsonTraits;
@@ -55,7 +58,10 @@ T FromJson(const Value& json)
 
 // -- Primitives -----------------------------------------------------------
 
-inline Value ToJson(const bool& value) { return value; }
+inline Value ToJson(const bool& value)
+{
+    return value;
+}
 
 inline void FromJson(const Value& json, bool& value)
 {
@@ -65,7 +71,10 @@ inline void FromJson(const Value& json, bool& value)
         throw std::runtime_error("JSON: expected bool");
 }
 
-inline Value ToJson(const std::string& value) { return value; }
+inline Value ToJson(const std::string& value)
+{
+    return value;
+}
 
 inline void FromJson(const Value& json, std::string& value)
 {
@@ -75,7 +84,10 @@ inline void FromJson(const Value& json, std::string& value)
         throw std::runtime_error("JSON: expected string");
 }
 
-inline Value ToJson(const std::pmr::string& value) { return Str(value); }
+inline Value ToJson(const std::pmr::string& value)
+{
+    return Str(value);
+}
 
 inline void FromJson(const Value& json, std::pmr::string& value)
 {
@@ -85,9 +97,15 @@ inline void FromJson(const Value& json, std::pmr::string& value)
         throw std::runtime_error("JSON: expected string");
 }
 
-inline Value ToJson(const char* value) { return Str{value}; }
+inline Value ToJson(const char* value)
+{
+    return Str{value};
+}
 
-inline Value ToJson(const float& value) { return static_cast<Float>(value); }
+inline Value ToJson(const float& value)
+{
+    return static_cast<Float>(value);
+}
 
 inline void FromJson(const Value& json, float& value)
 {
@@ -99,7 +117,10 @@ inline void FromJson(const Value& json, float& value)
         throw std::runtime_error("JSON: expected number");
 }
 
-inline Value ToJson(const double& value) { return static_cast<Float>(value); }
+inline Value ToJson(const double& value)
+{
+    return static_cast<Float>(value);
+}
 
 inline void FromJson(const Value& json, double& value)
 {
@@ -135,8 +156,7 @@ Value ToJson(const std::vector<T>& values)
 {
     Array array;
     array.reserve(values.size());
-    for (const auto& v : values)
-        array.push_back(ToJson(v));
+    for (const auto& v : values) array.push_back(ToJson(v));
     return array;
 }
 
@@ -144,8 +164,7 @@ template <typename T>
 void FromJson(const Value& json, std::vector<T>& values)
 {
     const auto* array = std::get_if<Array>(&json);
-    if (!array)
-        throw std::runtime_error("JSON: expected array");
+    if (!array) throw std::runtime_error("JSON: expected array");
     values.clear();
     values.reserve(array->size());
     for (const auto& item : *array)
@@ -161,8 +180,7 @@ Value ToJson(const std::array<T, N>& values)
 {
     Array array;
     array.reserve(values.size());
-    for (const auto& v : values)
-        array.push_back(ToJson(v));
+    for (const auto& v : values) array.push_back(ToJson(v));
     return array;
 }
 
@@ -170,10 +188,8 @@ template <typename T, size_t N>
 void FromJson(const Value& json, std::array<T, N>& values)
 {
     const auto* array = std::get_if<Array>(&json);
-    if (!array)
-        throw std::runtime_error("JSON: expected array");
-    if (array->size() < N)
-        throw std::runtime_error("JSON: array too short");
+    if (!array) throw std::runtime_error("JSON: expected array");
+    if (array->size() < N) throw std::runtime_error("JSON: array too short");
     for (size_t i = 0; i < N; ++i)
     {
         T v{};
@@ -187,8 +203,7 @@ Value ToJson(const std::pmr::vector<T>& values)
 {
     Array array;
     array.reserve(values.size());
-    for (const auto& v : values)
-        array.push_back(ToJson(v));
+    for (const auto& v : values) array.push_back(ToJson(v));
     return array;
 }
 
@@ -196,8 +211,7 @@ template <typename T>
 void FromJson(const Value& json, std::pmr::vector<T>& values)
 {
     const auto* array = std::get_if<Array>(&json);
-    if (!array)
-        throw std::runtime_error("JSON: expected array");
+    if (!array) throw std::runtime_error("JSON: expected array");
     values.clear();
     values.reserve(array->size());
     for (const auto& item : *array)
@@ -237,8 +251,7 @@ struct ObjectTraits
     static void Deserialize(const Value& json, T& value)
     {
         const auto* object = std::get_if<Object>(&json);
-        if (!object)
-            throw std::runtime_error("JSON: expected object");
+        if (!object) throw std::runtime_error("JSON: expected object");
         JsonTraits<T>::VisitFields(value,
                                    [&](const char* name, auto& field)
                                    {
@@ -248,21 +261,21 @@ struct ObjectTraits
                                    });
     }
 };
-}  // namespace game::json
+}  // namespace oge::json
 
-#define DECL_JSON_OBJ(Type, BODY)                                            \
-    template <>                                                              \
-    struct ::game::json::JsonTraits<Type> : ::game::json::ObjectTraits<Type> \
-    {                                                                        \
-        template <typename F>                                                \
-        static void VisitFields(Type& self, F&& visit)                       \
-        {                                                                    \
-            BODY                                                             \
-        }                                                                    \
-                                                                             \
-        template <typename F>                                                \
-        static void VisitFields(const Type& self, F&& visit)                 \
-        {                                                                    \
-            BODY                                                             \
-        }                                                                    \
+#define DECL_JSON_OBJ(Type, BODY)                                          \
+    template <>                                                            \
+    struct ::oge::json::JsonTraits<Type> : ::oge::json::ObjectTraits<Type> \
+    {                                                                      \
+        template <typename F>                                              \
+        static void VisitFields(Type& self, F&& visit)                     \
+        {                                                                  \
+            BODY                                                           \
+        }                                                                  \
+                                                                           \
+        template <typename F>                                              \
+        static void VisitFields(const Type& self, F&& visit)               \
+        {                                                                  \
+            BODY                                                           \
+        }                                                                  \
     };

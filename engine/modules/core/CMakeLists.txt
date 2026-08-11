@@ -32,6 +32,11 @@ endif()
 
 target_link_libraries(oge_core PUBLIC glm::glm fmt::fmt)
 
+# nlohmann/json backs the JSON parser/emitter in src/json.cpp.  PRIVATE:
+# the public header oge/core/json.hpp stays self-contained (variant-based),
+# only the .cpp includes nlohmann headers.
+target_link_libraries(oge_core PRIVATE nlohmann_json::nlohmann_json)
+
 add_library(oge::core ALIAS oge_core)
 
 # ---------------------------------------------------------------------------

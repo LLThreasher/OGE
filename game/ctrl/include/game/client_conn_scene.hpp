@@ -7,7 +7,7 @@
 #include "game/components.hpp"
 #include "game/game_world.hpp"
 #include "game/input/player_input_stream.hpp"
-#include "game/json.hpp"
+#include "oge/json.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
 #include "game/sim/subsystem.hpp"

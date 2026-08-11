@@ -2,7 +2,7 @@
 #include <test_macros.hpp>
 #include "game/app_context.hpp"
 #include "game/game_world.hpp"
-#include "game/json.hpp"
+#include "oge/json.hpp"
 #include "game/scene.hpp"
 #include "game/sim/registry.hpp"
 #include "oge/runtime/typed_registry.hpp"

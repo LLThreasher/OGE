@@ -7,7 +7,7 @@
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/game_world.hpp"
-#include "game/json.hpp"
+#include "oge/json.hpp"
 #include "game/scene_runner.hpp"
 #include "game/sim/subsystem.hpp"
 #include "oge/runtime/type_name.hpp"

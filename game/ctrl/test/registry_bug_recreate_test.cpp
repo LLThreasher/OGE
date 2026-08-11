@@ -3,7 +3,7 @@
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/game_world.hpp"
-#include "game/json.hpp"
+#include "oge/json.hpp"
 #include "game/scene.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "oge/runtime/oge_registry.hpp"

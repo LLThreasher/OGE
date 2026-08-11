@@ -2,7 +2,7 @@
 
 #include "game/components.hpp"
 #include "game/game_world.hpp"
-#include "game/json.hpp"
+#include "oge/json.hpp"
 #include "game/net/replication_events.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"

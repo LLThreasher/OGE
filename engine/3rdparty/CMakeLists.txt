@@ -69,11 +69,21 @@ FetchContent_Declare(
     GIT_TAG        12.2.0
 )
 
+FetchContent_Declare(
+    nlohmann_json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG        v3.12.0
+)
+
 FetchContent_MakeAvailable(glm)
 FetchContent_MakeAvailable(entt)
 FetchContent_MakeAvailable(freetype)
 FetchContent_MakeAvailable(enet)
 FetchContent_MakeAvailable(fmt)
+
+# Header-only JSON parser/emitter, consumed by oge_core's json.cpp.
+set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(nlohmann_json)
 
 if(BUILD_METAL)
 FetchContent_MakeAvailable(metal_cpp)

@@ -6,7 +6,7 @@
 #include <string_view>
 
 #include "game/components.hpp"
-#include "game/json.hpp"
+#include "oge/json.hpp"
 #include "game/net/replication_events.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/net/rollback_capability.hpp"

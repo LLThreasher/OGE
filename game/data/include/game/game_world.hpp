@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-#include "game/json.hpp"
+#include "oge/json.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/defs.hpp"
 #include "oge/runtime/oge_registry.hpp"

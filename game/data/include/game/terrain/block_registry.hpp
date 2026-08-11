@@ -9,7 +9,7 @@
 
 #include "oge/aabb.hpp"
 #include "oge/fixed_vector.hpp"
-#include "game/json.hpp"
+#include "oge/json.hpp"
 
 namespace game::terrain
 {
