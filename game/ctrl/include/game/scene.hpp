@@ -27,7 +27,9 @@ class Scene : protected AppRuntime
     };
 
 #if OGE_DEBUG
-    LifetimeStage m_lifetimeStage;
+    // Must be initialized: Scene::Load asserts on it, and the constructor
+    // does not touch it.  A garbage value would randomly trip "double load".
+    LifetimeStage m_lifetimeStage = LifetimeStage::Unloaded;
 #endif
 
    protected:

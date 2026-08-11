@@ -409,6 +409,17 @@ class ReplicationRegistry
 
     void HandleIncoming(PeerId peer, OgeRegistryRef world, net::Buffer& buffer)
     {
+        HandleIncoming(peer, WorldRouter{world}, buffer);
+    }
+
+    // Incoming events route through a WorldRouter: the default world always
+    // receives them, and worlds added as variants receive only the families
+    // flagged in their ReplicationCapability::worldMask.  ClientScene2 uses
+    // this to mirror server truth into a separate authoritative world that
+    // owns the rollback snapshots.
+    void HandleIncoming(PeerId peer, WorldRouter worldRouter,
+                        net::Buffer& buffer)
+    {
         OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
         auto meta = m_eventStream->DeserializeEvent(peer, buffer);
 
@@ -419,11 +430,11 @@ class ReplicationRegistry
         {
             const EventLogEntryMeta* entry =
                 m_eventStream->GetEntry(meta.cursor);
-            if (entry != nullptr) ApplyReceivedEvent(*entry, world);
+            if (entry != nullptr) ApplyReceivedEvent(*entry, worldRouter);
             return;
         }
 
-        ApplyReceivedEvent(meta, world);
+        ApplyReceivedEvent(meta, worldRouter);
     }
 
     // Deserialize the payload of a received event and apply it to the world
@@ -437,14 +448,22 @@ class ReplicationRegistry
         SmallPayload* payload = m_eventStream->GetPayload(meta.cursor);
         if (payload == nullptr) return;  // payload half still in flight
 
-        net::Buffer buf{payload->data(), payload->size()};
-        buf.ToReadOnly();
         worldRouter.ApplyWorldFn(
             *it->second, [&](OgeRegistryRef world)
-            { it->second->apply(*m_eventStream, world, buf); });
+            {
+                // Fresh read-only buffer per world: Deserialize advances the
+                // buffer's read cursor, so reusing one buffer across worlds
+                // would consume the payload before the variant world saw it.
+                net::Buffer buf{payload->data(), payload->size()};
+                buf.ToReadOnly();
+                it->second->apply(*m_eventStream, world, buf);
+            });
     }
 
-    void AdvancePeerTick(PeerId peer, OgeRegistryRef world)
+    // Enqueue one AdvanceTick event (full peer mask) so every connected
+    // peer advances its tick.  On the client the tick apply drives the
+    // rollback snapshot cadence.
+    void AdvancePeerTick()
     {
         ++m_currentTick;
         AdvanceTick evt{m_currentTick};

@@ -777,9 +777,16 @@ TEST(e2e_rollback_on_server_correction)
     if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
         cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
 
-    // Let a few frames run so the client gets initial snapshots.
-    for (int i = 0; i < 30; ++i)
-        h.poll();
+    // Let a few frames run so the client receives AdvanceTick events and
+    // the rollback stream takes snapshots.  The snapshots are taken from
+    // the authoritative world (clean server truth), not the prediction
+    // world.
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            return h.clientRollbackStream().Snapshots().size() > 0;
+        },
+        200));
 
     // Teleport the server player to a distant position.  The on_update hook
     // fires, generating an UpdateComponentEvent<ComponentPhysicBody> that

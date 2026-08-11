@@ -19,24 +19,37 @@ using namespace game::net;
 // dispatches to the correct apply function without a discriminator byte.
 // ---------------------------------------------------------------------------
 
+// worldMask bit 0 mirrors an event family into the client's authoritative
+// world (ClientScene2's variant 0).  That world owns the rollback snapshot
+// stream, so it must track server truth for the families snapshots capture —
+// entities and components.  Chunk families are excluded: the mirror has no
+// TerrainView (apply would throw) and chunks are not part of rollback
+// snapshots anyway.
+static void SetMirrorMask(ReplicationCapability& cap)
+{
+    cap.worldMask.set(0);
+}
+
 static void RegisterEntityEvents(AnythingFactory& af)
 {
     // AddEntityEvent
     {
         auto& desc = af.RegisterType<AddEntityEvent>();
-        desc.capabilities.Add<ReplicationCapability>(
-            MakeSimpleReplicationCapability<AddEntityEvent>(
-                desc.localId, InstallAddEntityHooks,
-                ReplicationMethod::SingleReliable));
+        auto cap = MakeSimpleReplicationCapability<AddEntityEvent>(
+            desc.localId, InstallAddEntityHooks,
+            ReplicationMethod::SingleReliable);
+        SetMirrorMask(cap);
+        desc.capabilities.Add<ReplicationCapability>(cap);
     }
 
     // RemoveEntityEvent
     {
         auto& desc = af.RegisterType<RemoveEntityEvent>();
-        desc.capabilities.Add<ReplicationCapability>(
-            MakeSimpleReplicationCapability<RemoveEntityEvent>(
-                desc.localId, InstallRemoveEntityHooks,
-                ReplicationMethod::SingleReliable));
+        auto cap = MakeSimpleReplicationCapability<RemoveEntityEvent>(
+            desc.localId, InstallRemoveEntityHooks,
+            ReplicationMethod::SingleReliable);
+        SetMirrorMask(cap);
+        desc.capabilities.Add<ReplicationCapability>(cap);
     }
 }
 
@@ -46,30 +59,35 @@ static void RegisterComponentEvents(AnythingFactory& af)
     // AddComponentEvent<T>
     {
         auto& desc = af.template RegisterType<AddComponentEvent<TComponent>>();
-        desc.capabilities.template Add<ReplicationCapability>(
-            MakeSimpleReplicationCapability<AddComponentEvent<TComponent>>(
-                desc.localId, InstallAddComponentHooks<TComponent>,
-                ReplicationMethod::SingleSequenced));
+        auto cap = MakeSimpleReplicationCapability<AddComponentEvent<TComponent>>(
+            desc.localId, InstallAddComponentHooks<TComponent>,
+            ReplicationMethod::SingleSequenced);
+        SetMirrorMask(cap);
+        desc.capabilities.template Add<ReplicationCapability>(cap);
     }
 
     // UpdateComponentEvent<T>
     {
         auto& desc =
             af.template RegisterType<UpdateComponentEvent<TComponent>>();
-        desc.capabilities.template Add<ReplicationCapability>(
+        auto cap =
             MakeSimpleReplicationCapability<UpdateComponentEvent<TComponent>>(
                 desc.localId, InstallUpdateComponentHooks<TComponent>,
-                ReplicationMethod::SingleSequenced));
+                ReplicationMethod::SingleSequenced);
+        SetMirrorMask(cap);
+        desc.capabilities.template Add<ReplicationCapability>(cap);
     }
 
     // RemoveComponentEvent<T>
     {
         auto& desc =
             af.template RegisterType<RemoveComponentEvent<TComponent>>();
-        desc.capabilities.template Add<ReplicationCapability>(
+        auto cap =
             MakeSimpleReplicationCapability<RemoveComponentEvent<TComponent>>(
                 desc.localId, InstallRemoveComponentHooks<TComponent>,
-                ReplicationMethod::SingleSequenced));
+                ReplicationMethod::SingleSequenced);
+        SetMirrorMask(cap);
+        desc.capabilities.template Add<ReplicationCapability>(cap);
     }
 }
 
@@ -137,7 +155,11 @@ void game::net::RegisterReplications(AnythingFactory& af,
                 ReplicationMethod::SingleReliable));
     }
 
-    // AdvanceTick — server→client tick sync; drives rollback snapshots
+    // AdvanceTick — server→client tick sync; drives rollback snapshots.
+    // Mirrored into the client's authoritative world: that world owns the
+    // RollbackEventLogStream, so the routed apply snapshots clean server
+    // truth instead of the prediction world (whose state includes client
+    // predictions).
     {
         auto& desc = af.RegisterType<AdvanceTick>();
         ReplicationCapability tickCap;
@@ -156,6 +178,7 @@ void game::net::RegisterReplications(AnythingFactory& af,
                 rbs.AdvanceTick(world);
             }
         };
+        SetMirrorMask(tickCap);
         desc.capabilities.Add<ReplicationCapability>(tickCap);
     }
 

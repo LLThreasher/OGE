@@ -196,9 +196,22 @@ struct NetSceneHarness
         return m_clientRunner.GetScene()->GetWorld();
     }
 
+    // The client's authoritative mirror world (ClientScene2 variant 0).
+    // Only valid after the client scene has switched to ClientScene2
+    // (i.e. post-handshake, like clientWorld()).
+    game::GameWorld& clientAuthoritativeWorld()
+    {
+        return static_cast<game::ClientScene2&>(*m_clientRunner.GetScene())
+            .GetAuthoritativeWorld();
+    }
+
     // Access the client's RollbackEventLogStream for prediction assertions.
+    // The stream lives in the authoritative world's ctx (it snapshots clean
+    // server truth, not the predicted world).
     game::net::RollbackEventLogStream<>& clientRollbackStream()
     {
-        return clientWorld().ctx().get<game::net::RollbackEventLogStream<>>();
+        return clientAuthoritativeWorld()
+            .ctx()
+            .get<game::net::RollbackEventLogStream<>>();
     }
 };

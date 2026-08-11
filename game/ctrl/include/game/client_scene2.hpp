@@ -27,7 +27,15 @@ class ClientScene2 : public Scene
 {
     NetClient& m_client;
     entt::dispatcher m_clientDispatcher;
+
+    // Authoritative mirror world (WorldRouter variant 0): receives the
+    // replication families flagged in their worldMask, mirrors server truth
+    // without local prediction, and owns the RollbackEventLogStream.  The
+    // rollback snapshots are taken from this world so they never contain
+    // predicted state.
+    GameWorld m_authoritativeWorld;
     net::RollbackEventLogStream<>& m_rollbackStream;
+    net::WorldRouter m_worldRouter;
     net::ReplicationRegistry m_replicationRegistry;
 
     bool m_readyToQuit = false;
@@ -40,19 +48,27 @@ class ClientScene2 : public Scene
 
     void onRecievePacket(OnClientReceivePacket ctx)
     {
-        m_replicationRegistry.HandleIncoming(0, m_world, *ctx.data);
+        m_replicationRegistry.HandleIncoming(0, m_worldRouter, *ctx.data);
     }
 
    public:
     ClientScene2(const Def& def)
         : Scene(def),
           m_client(*m_ctx.any_ctx.Get<NetClient>()),
-          m_rollbackStream(m_world.ctx().emplace<::game::net::RollbackEventLogStream<>>(&m_ctx.any_factory)),
+          m_rollbackStream(m_authoritativeWorld.ctx().emplace<::game::net::RollbackEventLogStream<>>(&m_ctx.any_factory)),
+          m_worldRouter(m_world),
           m_replicationRegistry(::game::net::ReplicationRegistry::Def{
               m_rollbackStream,
               m_ctx.any_factory})
     {
         LOG_INFO("client scene loaded");
+
+        // Route incoming events to both worlds: m_world (default) always
+        // receives them; the authoritative mirror receives the worldMask'd
+        // families.  AdvanceTick is masked in as well so its apply snapshots
+        // the authoritative world (the only world holding the rollback
+        // stream in its ctx).
+        m_worldRouter.AddWorldVariant(0, m_authoritativeWorld);
 
         // Store a base-class pointer in ctx so GetReplicationStream()
         // (used by PollPlayerInputs, etc.) finds the stream via exact-type
@@ -133,12 +149,22 @@ class ClientScene2 : public Scene
             m_rollbackStream.InsertPredicted(evt);
         }
 
-        // (5) Validate predictions against server events since last snapshot
+        // (5) Validate predictions against server events since last
+        // snapshot.  Snapshots were taken from the authoritative world
+        // (clean server truth), so a rollback restores m_world to that
+        // state; the mirror itself never diverges and is never rolled back.
         m_rollbackStream.ValidateLatest(m_world);
 
         // (6) Prune old entries + send input to server
         m_rollbackStream.Update();
         m_replicationRegistry.ProduceAll(m_client, m_world);
+    }
+
+    // The authoritative mirror world (variant 0 of the WorldRouter).
+    // Exposed for tests (see scene_test_harness.hpp).
+    GameWorld& GetAuthoritativeWorld()
+    {
+        return m_authoritativeWorld;
     }
 };
 }  // namespace game

@@ -238,6 +238,11 @@ class DebugServerScene final : public Scene
         OGE_ASSERT(m_serverEventDispatcher.size() == 0,
                    "Event dispatcher not empty after poll");
         m_eventLogStream.Update();
+        // One AdvanceTick per frame drives the clients' rollback snapshot
+        // cadence.  Only when peers are connected: the event carries a full
+        // peer mask and EnqueueEvent rejects an empty one.
+        if (!m_replicationRegistry.Peers().empty())
+            m_replicationRegistry.AdvancePeerTick();
         m_replicationRegistry.ProduceAll(m_netServer, m_world);
         Scene::Update(f, sctx);
         net::PollTerrainChunkEvents(m_world);
