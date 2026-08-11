@@ -573,9 +573,11 @@ TEST(e2e_player_input_replicates)
                             receivedAction = true;
                         }
                     }
-                    // Quantized through SNorm8, so check sign/magnitude
-                    // rather than exact equality.
-                    if (frame.move.x > 0.4f && frame.move.y > 0.2f)
+                    // move is in world space (Camera.right * moveDelta.x +
+                    // Camera.forward * moveDelta.y).  Check magnitude rather
+                    // than exact components — SNorm8 quantization rounds.
+                    if (std::abs(frame.move.x) > 0.4f ||
+                        std::abs(frame.move.z) > 0.2f)
                         receivedMove = true;
                 }
 
