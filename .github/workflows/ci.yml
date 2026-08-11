@@ -85,7 +85,7 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platforms;android-35 platforms;android-29 ndk;28.2.13676358 cmake;3.28.0+'
+          packages: 'platforms;android-35 platforms;android-29 ndk;28.2.13676358'
 
       - name: Install Ninja
         run: sudo apt-get update && sudo apt-get install -y ninja-build

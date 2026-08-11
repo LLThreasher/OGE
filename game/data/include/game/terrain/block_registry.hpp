@@ -35,7 +35,8 @@ inline BlockMetadata GetMetadata(uint32_t blockValue)
 constexpr uint32_t BLOCK_FLAG_OPAQUE_TO_MESHER = 1 << 0;
 constexpr uint32_t BLOCK_FLAG_OPAQUE_TO_LIGHT = 1 << 1;
 
-constexpr AABB DEFAULT_BLOCK_AABB = AABB{{0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}};
+// Not constexpr: glm::vec3 constructors are not constexpr in all GLM versions.
+inline const AABB DEFAULT_BLOCK_AABB = AABB{{0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}};
 
 struct BlockConfig
 {
