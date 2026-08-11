@@ -84,7 +84,7 @@ class BlockRegistry
 };
 }  // namespace game::terrain
 
-DECL_JSON_OBJ(::oge::AABB, {
+DECL_JSON_OBJ(oge::AABB, {
     visit("min.x", self.min.x);
     visit("min.y", self.min.y);
     visit("min.z", self.min.z);
@@ -93,7 +93,7 @@ DECL_JSON_OBJ(::oge::AABB, {
     visit("max.z", self.max.z);
 })
 
-DECL_JSON_OBJ(::game::terrain::BlockConfig, {
+DECL_JSON_OBJ(game::terrain::BlockConfig, {
     visit("display_name", self.blockDisplayName);
     visit("texture_slot_per_face", self.textureSlotPerFace);
     visit("block_flags", self.blockFlags);
