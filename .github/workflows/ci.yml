@@ -19,6 +19,9 @@ jobs:
       - name: Install Ninja
         run: sudo apt-get update && sudo apt-get install -y ninja-build
 
+      - name: Install SDL3 dependencies (X11/Wayland)
+        run: sudo apt-get install -y libx11-dev libxext-dev libwayland-dev libxkbcommon-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxss-dev
+
       - name: Configure
         run: cmake --preset linux-debug
 

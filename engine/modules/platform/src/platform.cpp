@@ -31,9 +31,9 @@ void PrintStackTrace()
 
     free(symbol);
 }
-unsigned long long GetRAMUsage()
+RAMInfo GetRAMUsage()
 {
-    return 0;
+    return {};
 }
 double GetCPUUsage()
 {

@@ -145,3 +145,4 @@ AGI_trace/
 
 .clangd
 .claude/
+engine/3rdparty/enet/
