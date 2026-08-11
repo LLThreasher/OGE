@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory_resource>
 
 #include "oge/log.hpp"
 #include "oge/runtime/entt.hpp"
