@@ -25,6 +25,14 @@ if (cmakeBuildDir) {
     logger.warn("CMAKE_BUILD_DIR property not set; no extra CMake args will be passed")
 }
 
+// Provide Vulkan GLSLC from the NDK as a default.  If the top-level CMake
+// already set Vulkan_GLSLC_EXECUTABLE in cmake_config.properties, keep that
+// value; otherwise fall back to the NDK shader-tools path.
+if (!extraArgs.any { it.startsWith("-DVulkan_GLSLC_EXECUTABLE=") }) {
+    def glslcPath = "${android.ndkDirectory}/shader-tools/linux-x86_64/glslc"
+    extraArgs.add("-DVulkan_GLSLC_EXECUTABLE=${glslcPath}")
+}
+
 def versionNameFromCMake = project.findProperty("VERSION_NAME") ?: "0.1.0";
 def versionCodeFromCMake = project.findProperty("VERSION_CODE") ?: "1";
 

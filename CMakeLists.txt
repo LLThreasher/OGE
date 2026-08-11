@@ -125,6 +125,11 @@ file(APPEND "${CMAKE_CONFIG_PROPS}" "BUILD_VULKAN=ON\n")
 if (ENABLE_PERF)
     file(APPEND "${CMAKE_CONFIG_PROPS}" "ENABLE_PERF=${ENABLE_PERF}\n")
 endif()
+# If the preset (or command line) explicitly sets Vulkan_GLSLC_EXECUTABLE,
+# forward it to Gradle; otherwise Gradle supplies the NDK default.
+if (DEFINED Vulkan_GLSLC_EXECUTABLE)
+    file(APPEND "${CMAKE_CONFIG_PROPS}" "Vulkan_GLSLC_EXECUTABLE=${Vulkan_GLSLC_EXECUTABLE}\n")
+endif()
 
 if (CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(APK_NAME "debug/app-debug.apk")
