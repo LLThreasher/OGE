@@ -13,8 +13,8 @@
 
 namespace game
 {
-entt::entity ComponentPlayer::CreatePlayer(GameWorld& world,
-                                           PlayerInfo info, entt::entity hint)
+entt::entity ComponentPlayer::CreatePlayer(GameWorld& world, PlayerInfo info,
+                                           entt::entity hint)
 {
     entt::entity res;
     if (hint == entt::null)
@@ -30,8 +30,7 @@ entt::entity ComponentPlayer::CreatePlayer(GameWorld& world,
     world.emplace<ComponentAABBCollider>(
         res, ComponentAABBCollider{.aabb = {math::vec3{0.f, 0.f, 0.f},
                                             math::vec3{0.7f, 1.8f, 0.7f}}});
-    world.emplace<ComponentCamera>(
-        res, math::vec3{20.f, 20.f, 20.f});
+    world.emplace<ComponentCamera>(res, math::vec3{20.f, 20.f, 20.f});
     world.emplace<ComponentPerspectiveCamera>(res);
     world.emplace<input::PlayerInputStream>(res);
     auto& c = world.emplace<ComponentCreature>(
@@ -82,43 +81,37 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                    ComponentPlayer, ComponentPhysicBody, ComponentCreature>()
              .each())
     {
-        auto& cursor = player.inputCursor;
         if constexpr (variant == UpdateType::Realtime)
         {
+            auto& cursor = player.inputCursor;
             input.AdvanceTick();
+            input::PlayerInputFrame frame;
+            if (!input.PollFrame(cursor, frame)) continue;
+
             math::vec2 panDelta;
-            if (input.PollAccumPan(cursor, panDelta))
+            if (frame.hasAim)
             {
                 camera.SetYawPitch(panDelta.x, panDelta.y);
             }
 
-            math::vec2 moveDelta;
-            if (input.PollMoveDelta(cursor, moveDelta))
+            auto right = camera.right();
+            if (body.enableGravity)
             {
-                auto right = camera.right();
-                if (body.enableGravity)
-                {
-                    creature.moveOrder =
-                        math::normalize(
-                            {camera.forward.x, 0, camera.forward.z}) *
-                            moveDelta.y +
-                        math::normalize(math::vec3{right.x, 0, right.z}) *
-                            moveDelta.x;
-                }
-                else
-                {
-                    creature.moveOrder =
-                        camera.forward * moveDelta.y + right * moveDelta.x;
-                }
-                if (math::len_sq(creature.moveOrder) >= 1.0f)
-                    creature.moveOrder = math::normalize(creature.moveOrder);
+                creature.moveOrder = frame.move;
+            }
+            else
+            {
+                auto r = math::sqrt((frame.move.x * frame.move.x) +
+                                    (frame.move.z * frame.move.z));
+                creature.moveOrder = frame.move * r / math::len(frame.move);
             }
 
             camera.position =
                 body.pos +
                 math::vec3{(collider.aabb.min.x + collider.aabb.max.x) / 2.f,
                            1.65f,
-                           (collider.aabb.min.z + collider.aabb.max.z) / 2.f} - camera.forward * 3.f;
+                           (collider.aabb.min.z + collider.aabb.max.z) / 2.f} -
+                camera.forward * 3.f;
             // ctx.world.patch<ComponentCamera>(entity);
 
             // Continuous block targeting for highlight rendering
@@ -134,56 +127,65 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
 
         if constexpr (variant == UpdateType::FixedStep)
         {
-            PlayerInputEvent event;
+            auto& cursor = player.actionCursor;
+            input::PlayerInputFrame frame;
             creature.jumpOrder = false;
-            while (input.PollAction(cursor, event))
+            while (input.PollFrame(cursor, frame))
             {
-                creature.jumpOrder =
-                    creature.jumpOrder || event.get<PlayerAction::Jump>();
-                event.unset<PlayerAction::Jump>();
-                if (event.actionMask != 0)
+                size_t actionIdx = 0;
+                while (actionIdx < frame.inputEventCnt)
                 {
-                    if (player.lastActionTime <= 0.f)
+                    auto event = frame.inputEvents[actionIdx];
+                    actionIdx++;
+                    creature.jumpOrder =
+                        creature.jumpOrder || event.get<PlayerAction::Jump>();
+                    event.unset<PlayerAction::Jump>();
+                    if (event.actionMask != 0)
                     {
-                        auto raycastResult =
-                            terrain.CastRay(camera.position,
-                                            ViewToRay(camera, event.actionPos));
-                        if (raycastResult.has_value())
+                        if (player.lastActionTime <= 0.f)
                         {
-                            if (event.get<PlayerAction::Digging>())
+                            auto raycastResult = terrain.CastRay(
+                                camera.position,
+                                ViewToRay(camera, event.actionPos));
+                            if (raycastResult.has_value())
                             {
-                                terrain.SetBlock(raycastResult.value().hitPos,
-                                                 0);
-                            }
-                            if (event.get<PlayerAction::Placing>())
-                            {
-                                auto blockId = blocks.GetBlockId("stone");
-                                auto blockValue = blockId;
-                                auto placePos =
-                                    raycastResult->hitPos +
-                                    oge::perFaceOffset[raycastResult->hitFace];
-                                auto blkAABBs =
-                                    blocks.GetBlockAABBList(blockId);
-                                bool canPlace = true;
-                                for (auto blkAABB : blkAABBs)
+                                if (event.get<PlayerAction::Digging>())
                                 {
-                                    if (CheckOverlap(collider.aabb + body.pos,
-                                                     blkAABB + placePos))
-                                    {
-                                        canPlace = false;
-                                        break;
-                                    }
+                                    terrain.SetBlock(
+                                        raycastResult.value().hitPos, 0);
                                 }
-                                if (canPlace)
-                                    terrain.SetBlock(placePos, blockValue);
+                                if (event.get<PlayerAction::Placing>())
+                                {
+                                    auto blockId = blocks.GetBlockId("stone");
+                                    auto blockValue = blockId;
+                                    auto placePos =
+                                        raycastResult->hitPos +
+                                        oge::perFaceOffset[raycastResult
+                                                               ->hitFace];
+                                    auto blkAABBs =
+                                        blocks.GetBlockAABBList(blockId);
+                                    bool canPlace = true;
+                                    for (auto blkAABB : blkAABBs)
+                                    {
+                                        if (CheckOverlap(
+                                                collider.aabb + body.pos,
+                                                blkAABB + placePos))
+                                        {
+                                            canPlace = false;
+                                            break;
+                                        }
+                                    }
+                                    if (canPlace)
+                                        terrain.SetBlock(placePos, blockValue);
+                                }
+                                player.lastActionTime = 0.3f;
                             }
-                            player.lastActionTime = 0.3f;
                         }
                     }
-                }
-                else
-                {
-                    player.lastActionTime = 0.f;
+                    else
+                    {
+                        player.lastActionTime = 0.f;
+                    }
                 }
             }
 

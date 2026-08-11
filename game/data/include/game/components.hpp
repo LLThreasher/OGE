@@ -6,7 +6,6 @@
 #include <string_view>
 
 #include "game/game_world.hpp"
-#include "game/input/player_input_stream.hpp"
 #include "oge/aabb.hpp"
 #include "oge/input/raw_input_stream.hpp"
 #include "oge/math.hpp"
@@ -162,7 +161,8 @@ struct ComponentPlayer
 {
     std::array<uint8_t, 16> id;
     float lastActionTime = 0.f;
-    input::PlayerInputStream::Cursor inputCursor{};
+    uint64_t inputCursor{};
+    uint64_t actionCursor{};
 
     static entt::entity CreatePlayer(GameWorld& world, PlayerInfo info,
                                      entt::entity hint = entt::null);

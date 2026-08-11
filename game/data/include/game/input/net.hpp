@@ -82,13 +82,6 @@ concept IsLifetimePacketAdapter =
     } -> std::same_as<typename TAdapter::Packet>;
 };
 
-struct PlayerInputFrame
-{
-    std::vector<PlayerInputEvent> inputEvents;
-    math::vec2 moveDelta;
-    math::vec2 panDelta;
-};
-
 enum PlayerInputFrameFlags : uint8_t
 {
     HasEvents = 1 << 0,
@@ -113,6 +106,7 @@ struct PackedPlayerInputFrame
 
     int8_t moveX = 0;
     int8_t moveY = 0;
+    int8_t moveZ = 0;
 
     int16_t panX = 0;
     int16_t panY = 0;
@@ -239,11 +233,11 @@ inline PackedPlayerInputFrame PackFrame(
 
     bool hasEvents = !src.inputEvents.empty();
 
-    bool hasMove = std::abs(src.moveDelta.x) > INPUT_EPSILON ||
-                   std::abs(src.moveDelta.y) > INPUT_EPSILON;
+    bool hasMove = std::abs(src.move.x) > INPUT_EPSILON ||
+                   std::abs(src.move.y) > INPUT_EPSILON;
 
-    bool hasPan = std::abs(src.panDelta.x) > INPUT_EPSILON ||
-                  std::abs(src.panDelta.y) > INPUT_EPSILON;
+    bool hasPan = std::abs(src.aim.x) > INPUT_EPSILON ||
+                  std::abs(src.aim.y) > INPUT_EPSILON;
 
     if (hasEvents)
     {
@@ -254,16 +248,17 @@ inline PackedPlayerInputFrame PackFrame(
     {
         dst.flags = static_cast<uint8_t>(dst.flags | HasMove);
 
-        dst.moveX = QuantizeSNorm8(src.moveDelta.x);
-        dst.moveY = QuantizeSNorm8(src.moveDelta.y);
+        dst.moveX = QuantizeSNorm8(src.move.x);
+        dst.moveY = QuantizeSNorm8(src.move.y);
+        dst.moveZ = QuantizeSNorm8(src.move.z);
     }
 
     if (hasPan)
     {
         dst.flags = static_cast<uint8_t>(dst.flags | HasPan);
 
-        dst.panX = QuantizeRangeU16(src.panDelta.x, 0.f, math::pi * 2);
-        dst.panY = QuantizeRangeS16(src.panDelta.y, math::pi);
+        dst.panX = QuantizeRangeU16(src.aim.x, 0.f, math::pi * 2);
+        dst.panY = QuantizeRangeS16(src.aim.y, math::pi);
     }
 
     if (hasEvents)
@@ -284,27 +279,24 @@ inline PackedPlayerInputFrame PackFrame(
 
 inline PlayerInputFrame UnpackFrame(const PackedPlayerInputFrame& src)
 {
-    PlayerInputFrame dst;
-
-    dst.moveDelta = {};
-    dst.panDelta = {};
-    dst.inputEvents.clear();
+    PlayerInputFrame dst{};
 
     if ((src.flags & HasMove) != 0)
     {
-        dst.moveDelta.x = DequantizeSNorm8(src.moveX);
-        dst.moveDelta.y = DequantizeSNorm8(src.moveY);
+        dst.move.x = DequantizeSNorm8(src.moveX);
+        dst.move.y = DequantizeSNorm8(src.moveY);
+        dst.move.z = DequantizeSNorm8(src.moveZ);
     }
 
     if ((src.flags & HasPan) != 0)
     {
-        dst.panDelta.x = DequantizeRangeU16(src.panX, 0.f, math::pi * 2);
-        dst.panDelta.y = DequantizeRangeS16(src.panY, math::pi);
+        dst.aim.x = DequantizeRangeU16(src.panX, 0.f, math::pi * 2);
+        dst.aim.y = DequantizeRangeS16(src.panY, math::pi);
     }
 
     if ((src.flags & HasEvents) != 0)
     {
-        dst.inputEvents.resize(src.inputEvents.size());
+        dst.inputEventCnt = src.inputEvents.size();
 
         for (std::size_t i = 0; i < src.inputEvents.size(); ++i)
         {
@@ -368,6 +360,6 @@ DECL_NET_OBJ_PACKED(game::input::PlayerInputEvent,
                     game::input::net::PackedPlayerInputEvent,
                     game::input::net::PackEvent, game::input::net::UnpackEvent)
 
-DECL_NET_OBJ_PACKED(game::input::net::PlayerInputFrame,
+DECL_NET_OBJ_PACKED(game::input::PlayerInputFrame,
                     game::input::net::PackedPlayerInputFrame,
                     game::input::net::PackFrame, game::input::net::UnpackFrame)

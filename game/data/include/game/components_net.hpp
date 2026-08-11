@@ -37,6 +37,7 @@ DECL_NET_OBJ(game::ComponentPlayer, {
 
 DECL_NET_OBJ(game::ComponentPhysicBody, {
     visit(self.pos);
+    visit(self.velocity);
     visit(self.mass);
     visit(self.stepAssist);
 })

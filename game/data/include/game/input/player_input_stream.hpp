@@ -1,8 +1,10 @@
 #pragma once
 
+#include <array>
 #include <cassert>
 #include <cstdint>
 
+#include "game/components.hpp"
 #include "oge/event_stream.hpp"
 #include "oge/math.hpp"
 #include "oge/runtime/type_name.hpp"
@@ -68,12 +70,17 @@ struct PlayerInputEvent
     }
 };
 
-using PlayerActionStream = DiscreteEventStream<PlayerInputEvent, 16>;
-using PlayerDeltaStream = DiscreteEventStream<math::vec2, 16>;
-
-inline float WrapRadians0To2Pi(float radians)
+struct PlayerInputFrameDelta
 {
-    constexpr float TwoPi = math::pi * 2;
+    PlayerInputEvent inputEvent;
+    math::vec2 moveDelta = {};
+    math::vec2 panDelta = {};
+    float dt = 0.f;
+};
+
+static float WrapRadians0To2Pi(float radians)
+{
+    constexpr float TwoPi = 6.28318530717958647692f;
 
     radians = std::fmod(radians, TwoPi);
 
@@ -85,68 +92,68 @@ inline float WrapRadians0To2Pi(float radians)
     return radians;
 }
 
+static math::vec2 NormalizeAim(math::vec2 aim)
+{
+    aim.x = WrapRadians0To2Pi(aim.x);
+
+    aim.y = math::clamp(aim.y, -math::radians(89.0f), math::radians(89.0f));
+
+    return aim;
+}
+
+struct PlayerInputFrame
+{
+    size_t inputEventCnt = 0;
+    std::array<PlayerInputEvent, 4> inputEvents = {};
+    math::vec3 move = {};
+    math::vec2 aim = {};
+    size_t deltaCnt = 0;
+    bool hasAim = false;
+
+    PlayerInputFrame(math::vec2 aimBase = {}) : aim(aimBase) {}
+
+    void apply(PlayerInputFrameDelta delta)
+    {
+        if (inputEventCnt < 4)
+        {
+            inputEvents[inputEventCnt] = delta.inputEvent;
+            ++inputEventCnt;
+        }
+        ComponentCamera dummyCamera{};
+        dummyCamera.SetYawPitch(aim.x, aim.y);
+        move += (delta.moveDelta.x * dummyCamera.right() + delta.moveDelta.y * dummyCamera.forward) * delta.dt;
+        aim = NormalizeAim(aim + delta.panDelta);
+        ++deltaCnt;
+        hasAim = hasAim || delta.panDelta != math::vec2{};
+    }
+};
+
+using PlayerFrameStream = DiscreteEventStream<PlayerInputFrame, 16>;
+
 class PlayerInputStream
 {
-public:
-    struct Cursor
-    {
-        PlayerActionStream::Cursor actionCursor = {};
-        PlayerDeltaStream::Cursor moveCursor = {};
-        PlayerDeltaStream::Cursor aimCursor = {};
-    };
+   public:
+    using Cursor = PlayerFrameStream::Cursor;
 
-private:
-    PlayerActionStream actions;
-    PlayerDeltaStream moves;
+   private:
+    PlayerFrameStream m_frames;
 
-    // Stores absolute yaw/pitch, not raw pan deltas.
-    PlayerDeltaStream aims;
-
-    // Accumulates movement deltas for the current tick.
-    math::vec2 pendingMoveDelta = {};
-
-    // Current absolute aim orientation.
-    // x = yaw   in [0, 2pi)
-    // y = pitch in [-89deg, +89deg]
-    math::vec2 currentAim = {};
+    PlayerInputFrame m_accumFrame = {};
 
     bool moveDirty = false;
     bool aimDirty = false;
 
-private:
-    static float WrapRadians0To2Pi(float radians)
-    {
-        constexpr float TwoPi = 6.28318530717958647692f;
-
-        radians = std::fmod(radians, TwoPi);
-
-        if (radians < 0.0f)
-        {
-            radians += TwoPi;
-        }
-
-        return radians;
-    }
-
-    static math::vec2 NormalizeAim(math::vec2 aim)
-    {
-        aim.x = WrapRadians0To2Pi(aim.x);
-
-        aim.y = math::clamp(
-            aim.y,
-            -math::radians(89.0f),
-             math::radians(89.0f));
-
-        return aim;
-    }
-
-public:
+   public:
     // Moves the cursor to the newest item in each substream.
     void AdvanceCursor(Cursor& cursor) const
     {
-        actions.AdvanceCursor(cursor.actionCursor);
-        moves.AdvanceCursor(cursor.moveCursor);
-        aims.AdvanceCursor(cursor.aimCursor);
+        m_frames.AdvanceCursor(cursor);
+    }
+
+    uint8_t LatestAction() const
+    {
+        auto& head = m_frames.Head();
+        return head.inputEventCnt == 0 ? 0 : head.inputEvents[head.inputEventCnt - 1].actionMask;
     }
 
     // Flushes pending per-tick state into the streams.
@@ -155,106 +162,24 @@ public:
     // for frames to send or consume.
     void AdvanceTick()
     {
-        if (moveDirty)
-        {
-            moves.Push(pendingMoveDelta);
-            pendingMoveDelta = {};
-            moveDirty = false;
-        }
-
-        if (aimDirty)
-        {
-            currentAim = NormalizeAim(currentAim);
-            aims.Push(currentAim);
-            aimDirty = false;
-        }
+        m_frames.Push(m_accumFrame);
+        auto aim = m_accumFrame.aim;
+        m_accumFrame = {aim};
     }
 
-    // Latest action mask.
-    int LatestAction() const
+    void PushFrame(PlayerInputFrameDelta delta)
     {
-        return actions.Head().actionMask;
+        m_accumFrame.apply(delta);
     }
 
-    bool HasAction(Cursor& cursor) const
+    void PushTick(const PlayerInputFrame& frame)
     {
-        PlayerActionStream::Cursor latest = {};
-        actions.AdvanceCursor(latest);
-        return latest != cursor.actionCursor;
+        m_frames.Push(frame);
     }
 
-    bool PollAction(Cursor& cursor, PlayerInputEvent& event) const
+    bool PollFrame(Cursor& cursor, PlayerInputFrame& frame) const
     {
-        return actions.PollOne(cursor.actionCursor, event);
-    }
-
-    bool PollMoveDelta(Cursor& cursor, math::vec2& out) const
-    {
-        return moves.PollOne(cursor.moveCursor, out);
-    }
-
-    // Polls absolute aim yaw/pitch.
-    //
-    // x = yaw   in [0, 2pi)
-    // y = pitch in [-89deg, +89deg]
-    bool PollAim(Cursor& cursor, math::vec2& out) const
-    {
-        return aims.PollOne(cursor.aimCursor, out);
-    }
-
-    // Kept for compatibility with older callers.
-    // This no longer returns a raw accumulated pan delta; it returns absolute aim.
-    bool PollAccumPan(Cursor& cursor, math::vec2& out) const
-    {
-        return PollAim(cursor, out);
-    }
-
-    void InsertAction(PlayerInputEvent event)
-    {
-        actions.Push(event);
-    }
-
-    void InsertMoveDelta(math::vec2 delta)
-    {
-        pendingMoveDelta += delta;
-        moveDirty = true;
-    }
-
-    // Local input path:
-    // Adds a camera/mouse/touch delta to the current absolute aim.
-    void InsertPanDelta(math::vec2 delta)
-    {
-        currentAim += delta;
-        currentAim = NormalizeAim(currentAim);
-        aimDirty = true;
-    }
-
-    // Network/replay path:
-    // Directly sets absolute aim.
-    void SetAim(math::vec2 aim)
-    {
-        currentAim = NormalizeAim(aim);
-        aimDirty = true;
-    }
-
-    math::vec2 GetAim() const
-    {
-        return currentAim;
-    }
-
-    math::vec2 GetPendingMoveDelta() const
-    {
-        return pendingMoveDelta;
-    }
-
-    bool HasPendingMove() const
-    {
-        return moveDirty;
-    }
-
-    bool HasPendingAim() const
-    {
-        return aimDirty;
+        return m_frames.PollOne(cursor, frame);
     }
 };
 

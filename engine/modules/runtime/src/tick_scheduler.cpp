@@ -42,18 +42,37 @@ BlockingTickScheduler::BlockingTickScheduler(float interval)
           std::chrono::duration<double>(interval)))
 {
     m_nextTick = clock::now();
+    m_lastTick = m_nextTick;
 }
 
 double BlockingTickScheduler::WaitForNextTick()
 {
-    m_nextTick += m_tickInterval;
+    // Capture the ideal target for this tick before advancing.
+    // We sleep until `target`, not `m_nextTick`, so the schedule
+    // stays aligned to target + N*interval regardless of oversleep.
+    auto target = m_nextTick;
+    m_nextTick = target + m_tickInterval;
 
     auto now = clock::now();
-    if (now < m_nextTick)
+    if (now < target)
     {
-        std::this_thread::sleep_until(m_nextTick);
+        std::this_thread::sleep_until(target);
+        now = clock::now();
     }
 
-    return std::chrono::duration<double>(m_tickInterval).count();
+    // If we fell more than a full interval behind schedule (system
+    // suspend, heavy frame), reset to now.  Otherwise we'd burst
+    // through a backlog of zero-duration ticks.
+    if (now > m_nextTick)
+    {
+        m_nextTick = now + m_tickInterval;
+    }
+
+    // Return the actual time since the last tick, not the ideal
+    // interval.  Using the ideal interval when sleep_until overslept
+    // (or the last frame ran long) causes simulation timer drift.
+    double dt = std::chrono::duration<double>(now - m_lastTick).count();
+    m_lastTick = now;
+    return dt;
 }
 }  // namespace oge::runtime

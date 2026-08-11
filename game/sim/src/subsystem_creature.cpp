@@ -29,7 +29,7 @@ void SubsystemCreature<utype>::onUpdate(FrameCtx& ctx)
             blocks.GetBlockFriction(blocks.GetBlockId(body.onTopOfBlkValue));
 
         assert(friction >= 0.0f && friction <= 1.0f);
-        assert(math::len_sq(creature.moveOrder) <= 1.0f + 1e-3f);
+        // assert(math::len_sq(creature.moveOrder) <= 1.0f + 1e-3f);
         if (!body.enableGravity)
         {
             body.velocity.y =

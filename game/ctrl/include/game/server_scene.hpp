@@ -161,14 +161,15 @@ class DebugServerScene final : public Scene
         m_sceneConfig.subsystems.push_back(
             Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
         m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-        m_sceneConfig.subsystems.push_back(
             Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
         m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-        m_sceneConfig.subsystems.push_back(
             Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
-        m_sceneConfig.subsystems.push_back(
+
+        m_sceneConfig.realtimeSubsystems.push_back(
+            Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
+        m_sceneConfig.realtimeSubsystems.push_back(
+            Id<sim::SubsystemCreature<UpdateType::Realtime>>());
+        m_sceneConfig.realtimeSubsystems.push_back(
             Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
 
         Load();

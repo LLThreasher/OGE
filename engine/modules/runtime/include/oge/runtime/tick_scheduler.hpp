@@ -36,5 +36,6 @@ class BlockingTickScheduler
 
     clock::duration m_tickInterval;
     clock::time_point m_nextTick;
+    clock::time_point m_lastTick;  // actual wake time of the previous tick
 };
 }  // namespace oge::runtime

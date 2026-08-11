@@ -32,16 +32,19 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
     auto& raw = ctx.raw;
     auto& keys = raw.ActiveKeys();
 
+    PlayerInputFrameDelta frame{};
     math::vec2 moveDelta{
         (keys.get(KeyCode::KY_A) ? 1.f : 0.f) -
             (keys.get(KeyCode::KY_D) ? 1.f : 0.f),
         (keys.get(KeyCode::KY_W) ? 1.f : 0.f) -
             (keys.get(KeyCode::KY_S) ? 1.f : 0.f),
     };
-    out.InsertMoveDelta(moveDelta);
+    if (math::len_sq(moveDelta))
+        moveDelta = math::normalize(moveDelta);
+    frame.moveDelta = moveDelta;
     math::vec2 panDelta =
         raw.PollPtrDelta(mouseIdx, raw_idx) * math::vec2{hfov, vfov};
-    out.InsertPanDelta(panDelta);
+    frame.panDelta = panDelta;
 
     bool dirty = false;
     PlayerInputEvent pEvent{{0.f, 0.f}};
@@ -83,7 +86,9 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
             }
         }
     }
-    if (dirty || pEvent.actionMask != 0) out.InsertAction(pEvent);
+    if (dirty || pEvent.actionMask != 0) frame.inputEvent = pEvent;
+
+    out.PushFrame(frame);
 }
 
 void WidgetInput::onAttach(InputContext& ctx)
@@ -100,6 +105,7 @@ void WidgetInput::onUpdate(FInputContext& ctx)
     PlayerInputEvent pEvent{};
     pEvent.actionMask = out.LatestAction();
 
+    PlayerInputFrameDelta frame{};
     auto& game = ctx.uiWorld;
     // handle move
     {
@@ -109,7 +115,7 @@ void WidgetInput::onUpdate(FInputContext& ctx)
             moveDelta = -moveDelta * 4.0f;
             if (math::len_sq(moveDelta) >= 1.f)
                 moveDelta = math::normalize(moveDelta);
-            out.InsertMoveDelta(moveDelta);
+            frame.moveDelta = moveDelta;
         }
     }
     // handle pan
@@ -140,9 +146,9 @@ void WidgetInput::onUpdate(FInputContext& ctx)
                 }
                 else
                 {
-                    out.InsertPanDelta(
+                    frame.panDelta = {
                         math::vec2{drag->dragDelta * math::vec2{hfov, vfov}} *
-                        2.f);
+                        2.f};
                 }
             }
         }
@@ -159,7 +165,8 @@ void WidgetInput::onUpdate(FInputContext& ctx)
             dirty = true;
         }
 
-        if (dirty) out.InsertAction(pEvent);
+        if (dirty) frame.inputEvent = pEvent;
+        out.PushFrame(frame);
     }
 }
 

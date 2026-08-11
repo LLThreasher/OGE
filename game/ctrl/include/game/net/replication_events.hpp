@@ -656,34 +656,12 @@ inline void PollPlayerInputs(OgeRegistryRef world)
 
         auto& cursor = state.cursors[player];
 
-        input::net::PlayerInputFrame frame{};
-
-        // Collect actions.
-        input::PlayerInputEvent action{};
-        while (stream->PollAction(cursor, action))
-        {
-            frame.inputEvents.push_back(action);
-        }
-
-        // Collect move deltas.
-        math::vec2 move{};
-        while (stream->PollMoveDelta(cursor, move))
-        {
-            frame.moveDelta += move;
-        }
-
-        // Collect aim (latest-wins within the tick).
-        math::vec2 aim{};
-        bool hasAim = false;
-        while (stream->PollAim(cursor, aim))
-        {
-            frame.panDelta = aim;
-            hasAim = true;
-        }
+        input::PlayerInputFrame frame{};
+        if (!stream->PollFrame(cursor, frame)) continue;
 
         // Only emit an event if there is something to send.
-        if (frame.inputEvents.empty() && frame.moveDelta == math::vec2{} &&
-            !hasAim)
+        if (frame.inputEvents.empty() && frame.move == math::vec3{} &&
+            !frame.hasAim)
         {
             continue;
         }
@@ -717,29 +695,8 @@ inline void ApplyEvent(OgeRegistryRef world,
     input::PlayerInputStream* stream = it->second;
 
     // Unpack and insert.
-    input::net::PlayerInputFrame frame = event.frame;
-
-    for (const auto& action : frame.inputEvents)
-    {
-        stream->InsertAction(action);
-    }
-
-    if (frame.moveDelta.x != 0.0f || frame.moveDelta.y != 0.0f)
-    {
-        stream->InsertMoveDelta(frame.moveDelta);
-    }
-
-    if (frame.panDelta.x != 0.0f || frame.panDelta.y != 0.0f)
-    {
-        stream->SetAim(frame.panDelta);
-    }
-
-    // Commit the frame as a separate entry in the discrete stream.
-    // Without this, multiple client frames arriving in one server poll
-    // accumulate into pendingMoveDelta and are processed as a single
-    // physics step, causing overshoot relative to the client's
-    // frame-by-frame lerp integration.
-    stream->AdvanceTick();
+    input::PlayerInputFrame frame = event.frame;
+    stream->PushTick(frame);
 }
 
 // =========================================================================
