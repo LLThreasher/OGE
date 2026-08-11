@@ -107,6 +107,14 @@ class CapabilitySet
         if (it == caps.end()) return nullptr;
         return static_cast<T*>(it->second.get());
     }
+
+    template <typename T>
+    const T* Get() const
+    {
+        auto it = caps.find(typeid(T));
+        if (it == caps.end()) return nullptr;
+        return static_cast<T*>(it->second.get());
+    }
 };
 
 using FamilyId = oge_id_type;
@@ -145,6 +153,11 @@ class TypeRegistry
    public:
     TypeRegistry(OGEContext& c) : ctx(c)
     {
+    }
+
+    const std::deque<TypeDescriptor>& GetAll() const
+    {
+        return descs;
     }
 
     std::deque<TypeDescriptor>& GetAll()
@@ -330,6 +343,13 @@ class TypeRegistry
     // ----------------------------
     // Descriptor access
     // ----------------------------
+
+    const TypeDescriptor* GetDescriptor(oge_id_type id) const
+    {
+        auto it = byId.find(id);
+        if (it == byId.end()) return nullptr;
+        return &descs[it->second];
+    }
 
     TypeDescriptor* GetDescriptor(oge_id_type id)
     {

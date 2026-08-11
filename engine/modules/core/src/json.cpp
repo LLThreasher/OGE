@@ -21,18 +21,20 @@ nlohmann::json ToNlohmann(const Value& value)
             return std::get<Bool>(value);
         case 2:  // int
             return std::get<Int>(value);
-        case 3:  // float
+        case 3:  // uint
+            return std::get<UInt>(value);
+        case 4:  // float
             return std::get<Float>(value);
-        case 4:  // string
+        case 5:  // string
             return std::get<Str>(value);
-        case 5:  // array
+        case 6:  // array
         {
             nlohmann::json array = nlohmann::json::array();
             for (const auto& item : std::get<Array>(value))
                 array.push_back(ToNlohmann(item));
             return array;
         }
-        case 6:  // object
+        case 7:  // object
         {
             nlohmann::json object = nlohmann::json::object();
             for (const auto& [key, val] : std::get<Object>(value))

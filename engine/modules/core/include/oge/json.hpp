@@ -3,7 +3,6 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
-#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -14,6 +13,7 @@ namespace oge::json
 {
 using Bool = bool;
 using Int = int64_t;
+using UInt = uint64_t;
 using Float = double;
 using Str = std::string;
 
@@ -23,9 +23,13 @@ using Array = std::vector<Value>;
 using Object = std::unordered_map<std::string, Value>;
 
 struct Value
-    : std::variant<std::nullptr_t, Bool, Int, Float, Str, Array, Object>
+    : std::variant<std::nullptr_t, Bool, Int, UInt, Float, Str, Array, Object>
 {
     using variant::variant;
+
+    Value(uint32_t v) : variant(UInt(v)) {}
+    Value(uint64_t v) : variant(UInt(v)) {}
+    Value(int64_t v) : variant(Int(v)) {}
 };
 
 void ToString(const Value& value, std::string& out);
@@ -112,7 +116,7 @@ inline void FromJson(const Value& json, float& value)
     if (auto* p = std::get_if<Float>(&json))
         value = static_cast<float>(*p);
     else if (auto* p = std::get_if<Int>(&json))
-        value = static_cast<float>(*p);
+        value = static_cast<float>(static_cast<int64_t>(*p));
     else
         throw std::runtime_error("JSON: expected number");
 }
