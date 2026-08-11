@@ -1,11 +1,13 @@
 #pragma once
 
+#include <bitset>
 #include <cstdint>
 #include <string>
 #include <string_view>
 
 #include "game/components.hpp"
 #include "game/json.hpp"
+#include "game/net/replication_events.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/net/rollback_capability.hpp"
 #include "game/net/rollback_event_log_stream.hpp"
@@ -55,11 +57,12 @@ class ClientScene2 : public Scene
     ClientScene2(const Def& def)
         : Scene(def),
           m_client(*m_ctx.any_ctx.Get<NetClient>()),
-          m_rollbackStream(m_authoritativeWorld.ctx().emplace<::game::net::RollbackEventLogStream<>>(&m_ctx.any_factory)),
+          m_rollbackStream(m_authoritativeWorld.ctx()
+                               .emplace<::game::net::RollbackEventLogStream<>>(
+                                   &m_ctx.any_factory)),
           m_worldRouter(m_world),
           m_replicationRegistry(::game::net::ReplicationRegistry::Def{
-              m_rollbackStream,
-              m_ctx.any_factory})
+              m_rollbackStream, m_ctx.any_factory})
     {
         LOG_INFO("client scene loaded");
 
@@ -68,7 +71,7 @@ class ClientScene2 : public Scene
         // families.  AdvanceTick is masked in as well so its apply snapshots
         // the authoritative world (the only world holding the rollback
         // stream in its ctx).
-        m_worldRouter.AddWorldVariant(0, m_authoritativeWorld);
+        m_worldRouter.AddWorldVariant(1, m_authoritativeWorld);
 
         // Store a base-class pointer in ctx so GetReplicationStream()
         // (used by PollPlayerInputs, etc.) finds the stream via exact-type
@@ -80,16 +83,37 @@ class ClientScene2 : public Scene
         // Register rollback capability for physics bodies so predicted
         // updates are accepted by InsertPredicted.
         {
+            std::bitset<net::MAX_WORLD_VARIANTS> bothMask{};
+            bothMask.set(0);  // default world
+            bothMask.set(1);  // authoritative world
+
+            std::bitset<net::MAX_WORLD_VARIANTS> updateMask{};
+            updateMask.set(1);  // authoritative world
+
+            auto setMask = [&](entt::id_type typeId, std::bitset<net::MAX_WORLD_VARIANTS> mask) {
+                m_ctx.any_factory.GetDescriptor(typeId)
+                                 ->capabilities.Get<net::ReplicationCapability>()
+                                 ->worldMask = mask;
+            };
+
+            setMask(Id<net::AddEntityEvent>(), bothMask);
+            setMask(Id<net::RemoveEntityEvent>(), bothMask);
+
+            setMask(Id<net::AddComponentEvent<ComponentAABBCollider>>(), bothMask);
+            setMask(Id<net::UpdateComponentEvent<ComponentAABBCollider>>(), updateMask);
+            setMask(Id<net::RemoveComponentEvent<ComponentAABBCollider>>(), bothMask);
+
+            setMask(Id<net::AddComponentEvent<ComponentPhysicBody>>(), bothMask);
+            setMask(Id<net::UpdateComponentEvent<ComponentPhysicBody>>(), updateMask);
+            setMask(Id<net::RemoveComponentEvent<ComponentPhysicBody>>(), bothMask);
+
             net::RollbackCapability physCap;
-            physCap.family =
-                entt::type_hash<
-                    net::UpdateComponentEvent<ComponentPhysicBody>>::value();
-            physCap.getRegionKey =
-                net::ComponentRegionKey<ComponentPhysicBody>;
+            physCap.family = entt::type_hash<
+                net::UpdateComponentEvent<ComponentPhysicBody>>::value();
+            physCap.getRegionKey = net::ComponentRegionKey<ComponentPhysicBody>;
             physCap.takeSnapshot =
                 net::ComponentSnapshotFn<ComponentPhysicBody>;
-            physCap.rollback =
-                net::ComponentRollbackFn<ComponentPhysicBody>;
+            physCap.rollback = net::ComponentRollbackFn<ComponentPhysicBody>;
             physCap.compare = net::PhysicsBodyCompareFn;
             m_rollbackStream.RegisterRollbackCapability(physCap);
         }

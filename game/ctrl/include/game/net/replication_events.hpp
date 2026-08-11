@@ -4,6 +4,7 @@
 #include <bitset>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 #include <vector>
 
 #include "game/components.hpp"
@@ -235,8 +236,7 @@ inline EventLogStream<>& GetReplicationStream(OgeRegistryRef world)
 {
     auto& ctx = world.ctx();
     // Client: RollbackEventLogStream is stored; a base pointer aliases it.
-    if (ctx.contains<EventLogStream<>*>())
-        return *ctx.get<EventLogStream<>*>();
+    if (ctx.contains<EventLogStream<>*>()) return *ctx.get<EventLogStream<>*>();
     // Server: plain EventLogStream.
     return ctx.get<EventLogStream<>>();
 }
@@ -301,10 +301,18 @@ void InstallAddComponentHooks(EventLogStream<>&, OgeRegistryRef world)
                               {
                                   return;
                               }
-                              PushReplicationEvent(
-                                  world,
-                                  AddComponentEvent<T>{
-                                      entity, world.template get<T>(entity)});
+                              if constexpr (std::is_empty_v<T>)
+                              {
+                                  PushReplicationEvent(
+                                      world, AddComponentEvent<T>{entity, {}});
+                              }
+                              else
+                              {
+                                  PushReplicationEvent(
+                                      world, AddComponentEvent<T>{
+                                                 entity, world.template get<T>(
+                                                             entity)});
+                              }
                           }>();
 
     // ReplicatedTag added to an entity that already has T.
@@ -315,10 +323,18 @@ void InstallAddComponentHooks(EventLogStream<>&, OgeRegistryRef world)
                               {
                                   return;
                               }
-                              PushReplicationEvent(
-                                  world,
-                                  AddComponentEvent<T>{
-                                      entity, world.template get<T>(entity)});
+                              if constexpr (std::is_empty_v<T>)
+                              {
+                                  PushReplicationEvent(
+                                      world, AddComponentEvent<T>{entity, {}});
+                              }
+                              else
+                              {
+                                  PushReplicationEvent(
+                                      world, AddComponentEvent<T>{
+                                                 entity, world.template get<T>(
+                                                             entity)});
+                              }
                           }>();
 }
 
@@ -332,10 +348,19 @@ void InstallUpdateComponentHooks(EventLogStream<>&, OgeRegistryRef world)
                               {
                                   return;
                               }
-                              PushReplicationEvent(
-                                  world,
-                                  UpdateComponentEvent<T>{
-                                      entity, world.template get<T>(entity)});
+                              if constexpr (std::is_empty_v<T>)
+                              {
+                                  PushReplicationEvent(
+                                      world,
+                                      UpdateComponentEvent<T>{entity, {}});
+                              }
+                              else
+                              {
+                                  PushReplicationEvent(
+                                      world, UpdateComponentEvent<T>{
+                                                 entity, world.template get<T>(
+                                                             entity)});
+                              }
                           }>();
 }
 
@@ -473,7 +498,8 @@ inline void PollTerrainChunkEvents(OgeRegistryRef world)
         }
 
         // Chunk stopped being persistent → RemoveChunk
-        if (chunkEvent.packed.prevState == terrain::ChunkState::PendingDestroy &&
+        if (chunkEvent.packed.prevState ==
+                terrain::ChunkState::PendingDestroy &&
             chunkEvent.packed.state != terrain::ChunkState::PendingDestroy)
         {
             const terrain::ChunkData* chunk =
@@ -721,7 +747,14 @@ void ApplyEvent(OgeRegistryRef world, const AddComponentEvent<T>& event)
         (void)_;
     }
 
-    world.template emplace_or_replace<T>(event.entity, event.component);
+    if constexpr (std::is_empty_v<T>)
+    {
+        world.template emplace_or_replace<T>(event.entity);
+    }
+    else
+    {
+        world.template emplace_or_replace<T>(event.entity, event.component);
+    }
 }
 
 template <typename T>
@@ -737,7 +770,14 @@ void ApplyEvent(OgeRegistryRef world, const UpdateComponentEvent<T>& event)
         return;
     }
 
-    world.template emplace_or_replace<T>(event.entity, event.component);
+    if constexpr (std::is_empty_v<T>)
+    {
+        world.template emplace_or_replace<T>(event.entity);
+    }
+    else
+    {
+        world.template emplace_or_replace<T>(event.entity, event.component);
+    }
 }
 
 template <typename T>
@@ -848,7 +888,8 @@ inline void ApplyEvent(OgeRegistryRef world, const UpdateChunkEvent& event)
     // {
     //     if (dirtyFaces.test(face))
     //     {
-    //         terrain.DowngradeChunk(handle, terrain::ChunkState::InvalidLighting);
+    //         terrain.DowngradeChunk(handle,
+    //         terrain::ChunkState::InvalidLighting);
     //         terrain.UpgradeChunk(handle, terrain::ChunkState::Persistent);
     //     }
     // }

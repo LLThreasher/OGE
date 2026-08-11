@@ -4,6 +4,9 @@
 #include "oge/aabb.hpp"
 #include "oge/runtime/net_traits.hpp"
 
+DECL_NET_OBJ(game::UpdateTag<game::UpdateType::FixedStep>, {})
+DECL_NET_OBJ(game::UpdateTag<game::UpdateType::Realtime>, {})
+
 DECL_NET_OBJ(game::ComponentCamera, {
     visit(self.position);
     visit(self.forward);

@@ -103,7 +103,7 @@ enum class ReplicationMethod
     StreamReliable,
 };
 
-constexpr size_t MAX_WORLD_VARIANTS = 1;
+constexpr size_t MAX_WORLD_VARIANTS = 8;
 
 struct ReplicationCapability : ICapability
 {
@@ -145,6 +145,7 @@ ReplicationCapability MakeSimpleReplicationCapability(
     cap.family = family;
     cap.sendType = sendType;
     cap.installHooks = installHooks;
+    cap.worldMask.set(0);  // default world
 
     cap.apply = [](EventLogStream<>& /*stream*/, OgeRegistryRef world,
                    net::Buffer& buffer)
@@ -159,12 +160,12 @@ ReplicationCapability MakeSimpleReplicationCapability(
 
 class WorldRouter
 {
-    OgeRegistryRef m_defaultWorld;
-    std::array<OgeRegistryPtr, MAX_WORLD_VARIANTS> m_worlds;
+    std::array<OgeRegistryPtr, MAX_WORLD_VARIANTS> m_worlds = {};
 
    public:
-    WorldRouter(OgeRegistryRef ref) : m_defaultWorld(ref)
+    WorldRouter(OgeRegistryRef ref)
     {
+        m_worlds[0] = &ref;
     }
 
     void AddWorldVariant(size_t idx, OgeRegistryRef world)
@@ -176,7 +177,6 @@ class WorldRouter
     template <typename Fn>
     void ApplyWorldFn(ReplicationCapability cap, Fn&& fn)
     {
-        fn(m_defaultWorld);
         for (auto i = 0; i < MAX_WORLD_VARIANTS; ++i)
         {
             if (m_worlds[i] != nullptr && cap.worldMask.test(i))

@@ -126,6 +126,9 @@ void game::net::RegisterReplications(AnythingFactory& af,
 {
     RegisterEntityEvents(af);
 
+    RegisterComponentEvents<UpdateTag<UpdateType::FixedStep>>(af);
+    RegisterComponentEvents<UpdateTag<UpdateType::Realtime>>(af);
+
     RegisterComponentEvents<ComponentAABBCollider>(af);
     rf.RegisterSnapshotComponent<ComponentAABBCollider>();
 

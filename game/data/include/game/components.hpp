@@ -183,6 +183,18 @@ struct DebugText
 
 }  // namespace game
 
+template <game::UpdateType utype>
+struct oge::runtime::TypeName<game::UpdateTag<utype>>
+{
+    static constexpr std::string Get()
+    {
+        return utype == game::UpdateType::FixedStep
+                   ? "core::SubsystemPlayer<FixedStep>"
+                   : "core::SubsystemPlayer<Realtime>";
+    }
+};
+
+DECL_TYPE_NAME(game::DirtyTag, "core::DirtyTag")
 DECL_TYPE_NAME(game::ComponentPlayer, "core::ComponentPlayer")
 DECL_TYPE_NAME(game::ComponentTargetBlock, "core::ComponentTargetBlock")
 DECL_TYPE_NAME(game::ComponentAABBCollider, "core::ComponentAABBCollider")
