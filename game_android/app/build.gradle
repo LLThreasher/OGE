@@ -29,8 +29,18 @@ if (cmakeBuildDir) {
 // already set Vulkan_GLSLC_EXECUTABLE in cmake_config.properties, keep that
 // value; otherwise fall back to the NDK shader-tools path.
 if (!extraArgs.any { it.startsWith("-DVulkan_GLSLC_EXECUTABLE=") }) {
-    def glslcPath = "${android.ndkDirectory}/shader-tools/linux-x86_64/glslc"
-    extraArgs.add("-DVulkan_GLSLC_EXECUTABLE=${glslcPath}")
+    try {
+        def ndkDir = android.ndkDirectory
+        def hostTag = System.getProperty("os.name").toLowerCase().contains("mac")
+            ? "darwin-x86_64"
+            : System.getProperty("os.name").toLowerCase().contains("win")
+                ? "windows-x86_64"
+                : "linux-x86_64"
+        def glslcPath = "${ndkDir}/shader-tools/${hostTag}/glslc"
+        extraArgs.add("-DVulkan_GLSLC_EXECUTABLE=${glslcPath}")
+    } catch (Exception e) {
+        logger.warn("NDK not available; skipping Vulkan_GLSLC_EXECUTABLE: ${e.message}")
+    }
 }
 
 def versionNameFromCMake = project.findProperty("VERSION_NAME") ?: "0.1.0";
