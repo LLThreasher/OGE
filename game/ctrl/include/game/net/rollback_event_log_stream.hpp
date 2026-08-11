@@ -267,12 +267,12 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         return consistent;
     }
 
-    // Compare only the most recent predicted payload against the most
-    // recent server payload per family (since the base snapshot).
-    // Intended for position prediction where per-frame rates differ
-    // between client and server (exact count match is impossible).
-    // On mismatch: RollbackToLatest + clear predictions.
-    // Returns true if consistent.
+    // Compare the prediction at the server's confirmed tick (m_alignmentTick)
+    // against the last server event per family.  Without tick alignment the
+    // most recent client prediction (one tick ahead of the server) always
+    // differs from the most recent server event (last server tick), causing
+    // a false rollback loop.  When there is no alignment yet (never pinged),
+    // falls back to the newest prediction.  On mismatch: RollbackToLatest.
     bool ValidateLatest(oge::runtime::OgeRegistryRef world)
     {
         // Suspended while a pong is in flight — see Validate().
@@ -283,21 +283,21 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         const SnapshotPoint* base = SelectBaseSnapshot();
         Tick baseTick = base->tick;
 
-        // Find last predicted payload per family, only for predictions
-        // made at-or-after the base snapshot.  Unlike Validate(), the
-        // alignment tick does NOT gate which predictions are compared —
-        // ValidateLatest is count-insensitive (last-vs-last) and must
-        // see recent predictions to detect divergence.
-        std::unordered_map<FamilyId, const PredictedEntry*> lastPred;
+        // Find the prediction at the alignment tick (or the last prediction
+        // with tick ≤ m_alignmentTick).  This aligns the comparison to the
+        // server's confirmed time window.  When alignment is unset (never
+        // pinged), falls back to the newest prediction per family.
+        std::unordered_map<FamilyId, const PredictedEntry*> alignedPred;
         for (auto& range : m_tickPredictionRanges)
         {
             if (range.tick < baseTick) continue;
+            if (m_alignmentTick > 0 && range.tick > m_alignmentTick) break;
             for (size_t i = range.startIdx;
                  i < range.startIdx + range.count &&
                  i < m_predictedEvents.size();
                  ++i)
             {
-                lastPred[m_predictedEvents[i].family] =
+                alignedPred[m_predictedEvents[i].family] =
                     &m_predictedEvents[i];
             }
         }
@@ -305,8 +305,7 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         // Find last server payload per family since the base snapshot.
         // Incoming server events carry the self bit (peer 63);
         // TryDequeueEvent consumes each exactly once (see Validate), so
-        // only events not yet consumed by an earlier validation remain —
-        // the newest ones, which is what the last-vs-last comparison needs.
+        // only events not yet consumed by an earlier validation remain.
         std::unordered_map<FamilyId, SmallPayload> lastServer;
         EventLogEntry entry;
         LogCursor cursor = std::max(base->streamCursor, this->CurrentTail());
@@ -316,15 +315,15 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
             cursor = entry.entry.cursor + 1;
         }
 
-        // Compare per-family: last predicted vs last server.
+        // Compare per-family: aligned prediction vs last server.
         bool consistent = true;
         for (auto& [family, cap] : m_rollbackCaps)
         {
             if (!cap.compare) continue;
-            auto p = lastPred.find(family);
+            auto p = alignedPred.find(family);
             auto s = lastServer.find(family);
-            if (p == lastPred.end() || s == lastServer.end())
-                continue;  // no data yet for this family
+            if (p == alignedPred.end() || s == lastServer.end())
+                continue;  // no aligned data yet for this family
 
             net::Buffer pb(
                 const_cast<std::byte*>(p->second->payload.data()),

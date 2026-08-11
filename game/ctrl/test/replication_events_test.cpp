@@ -538,12 +538,11 @@ TEST(rollback_pong_partial_erase_validate)
     CHECK_EQ(stream.PredictedCount(), 3);  // ticks 2, 3, 4 survive
 }
 
-// Same as rollback_pong_partial_erase_validate but exercises ValidateLatest,
-// which compares only the last prediction per family against the last
-// server event.  Unlike Validate, ValidateLatest does NOT gate prediction
-// collection by m_alignmentTick — it is count-insensitive (last-vs-last)
-// and must see recent predictions to detect divergence.  The alignment
-// still bounds EraseComparedPredictions.
+// Same as rollback_pong_partial_erase_validate but exercises ValidateLatest.
+// ValidateLatest compares the prediction at the alignment tick (tick ≤
+// m_alignmentTick) against the last server event — not the newest
+// prediction.  This prevents false rollbacks from comparing predictions
+// and server events at different ticks.
 TEST(rollback_pong_partial_erase_validate_latest)
 {
     oge::runtime::OgeRegistry w;
