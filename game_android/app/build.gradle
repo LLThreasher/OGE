@@ -25,21 +25,18 @@ if (cmakeBuildDir) {
     logger.warn("CMAKE_BUILD_DIR property not set; no extra CMake args will be passed")
 }
 
-// Provide Vulkan GLSLC and spirv-opt from the NDK as defaults.  If the
-// top-level CMake already set these in cmake_config.properties, keep those
-// values; otherwise fall back to the NDK shader-tools path.
+// Provide Vulkan shader tools from the NDK as defaults.  If the top-level
+// CMake already set these in cmake_config.properties, keep those values;
+// otherwise fall back to the NDK shader-tools directory.
 if (!extraArgs.any { it.startsWith("-DVulkan_GLSLC_EXECUTABLE=") }) {
     try {
-        def ndkDir = android.ndkDirectory
         def hostTag = System.getProperty("os.name").toLowerCase().contains("mac")
             ? "darwin-x86_64"
             : System.getProperty("os.name").toLowerCase().contains("win")
                 ? "windows-x86_64"
                 : "linux-x86_64"
-        def glslcPath = "${ndkDir}/shader-tools/${hostTag}/glslc"
-        extraArgs.add("-DVulkan_GLSLC_EXECUTABLE=${glslcPath}")
-        def spirvOptPath = "${ndkDir}/shader-tools/${hostTag}/spirv-opt"
-        extraArgs.add("-DVulkan_SPIRV_OPT_EXECUTABLE=${spirvOptPath}")
+        def shaderToolsDir = "${android.ndkDirectory}/shader-tools/${hostTag}"
+        extraArgs.add("-DVULKAN_SHADER_TOOLS=${shaderToolsDir}")
     } catch (Exception e) {
         logger.warn("NDK not available; skipping shader-tool defaults: ${e.message}")
     }

@@ -1,19 +1,21 @@
 function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
 
-    # Use the explicitly-configured glslc path when available (e.g. from a
-    # CMake preset or -DVulkan_GLSLC_EXECUTABLE=...), otherwise fall back to
-    # bare "glslc" and rely on PATH.
-    if (DEFINED Vulkan_GLSLC_EXECUTABLE)
+    # Resolve shader-tool paths.  Precedence:
+    #   1. VULKAN_SHADER_TOOLS      → ${VULKAN_SHADER_TOOLS}/glslc  etc.
+    #   2. Vulkan_GLSLC_EXECUTABLE  → explicit per-tool override
+    #   3. bare command name        → rely on PATH (desktop SDK)
+    if (DEFINED VULKAN_SHADER_TOOLS)
+        set(GLSLC "${VULKAN_SHADER_TOOLS}/glslc")
+        set(SPIRV_OPT_CMD "${VULKAN_SHADER_TOOLS}/spirv-opt")
+    elseif (DEFINED Vulkan_GLSLC_EXECUTABLE)
         set(GLSLC "${Vulkan_GLSLC_EXECUTABLE}")
+        if (DEFINED Vulkan_SPIRV_OPT_EXECUTABLE)
+            set(SPIRV_OPT_CMD "${Vulkan_SPIRV_OPT_EXECUTABLE}")
+        else()
+            set(SPIRV_OPT_CMD spirv-opt)
+        endif()
     else()
         set(GLSLC glslc)
-    endif()
-
-    # Same pattern for spirv-opt: honour an explicit path (preset / command
-    # line), otherwise fall back to bare "spirv-opt" on PATH.
-    if (DEFINED Vulkan_SPIRV_OPT_EXECUTABLE)
-        set(SPIRV_OPT_CMD "${Vulkan_SPIRV_OPT_EXECUTABLE}")
-    else()
         set(SPIRV_OPT_CMD spirv-opt)
     endif()
 
