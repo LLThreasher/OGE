@@ -540,7 +540,10 @@ TEST(rollback_pong_partial_erase_validate)
 
 // Same as rollback_pong_partial_erase_validate but exercises ValidateLatest,
 // which compares only the last prediction per family against the last
-// server event.
+// server event.  Unlike Validate, ValidateLatest does NOT gate prediction
+// collection by m_alignmentTick — it is count-insensitive (last-vs-last)
+// and must see recent predictions to detect divergence.  The alignment
+// still bounds EraseComparedPredictions.
 TEST(rollback_pong_partial_erase_validate_latest)
 {
     oge::runtime::OgeRegistry w;

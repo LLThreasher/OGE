@@ -134,6 +134,11 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         m_serverCursor = avt.peerCursor;
         m_serverTick = avt.tick;
 
+        // The server confirmed it has processed up to this tick — advance
+        // the alignment window so predictions up to here can be erased
+        // once validated.  Use max to never regress.
+        m_alignmentTick = std::max(m_alignmentTick, avt.tick);
+
         if (m_currentTick < m_serverTick)
         {
             m_currentTick = m_serverTick + m_snapshotInterval;  // advance to next snapshot interval
@@ -279,14 +284,14 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         Tick baseTick = base->tick;
 
         // Find last predicted payload per family, only for predictions
-        // made at-or-after the base snapshot.  When alignment is set,
-        // stop at m_alignmentTick — predictions beyond are for ticks
-        // the server hasn't confirmed yet and survive to the next cycle.
+        // made at-or-after the base snapshot.  Unlike Validate(), the
+        // alignment tick does NOT gate which predictions are compared —
+        // ValidateLatest is count-insensitive (last-vs-last) and must
+        // see recent predictions to detect divergence.
         std::unordered_map<FamilyId, const PredictedEntry*> lastPred;
         for (auto& range : m_tickPredictionRanges)
         {
             if (range.tick < baseTick) continue;
-            if (m_alignmentTick > 0 && range.tick > m_alignmentTick) continue;
             for (size_t i = range.startIdx;
                  i < range.startIdx + range.count &&
                  i < m_predictedEvents.size();

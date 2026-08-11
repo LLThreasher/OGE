@@ -855,7 +855,8 @@ TEST(e2e_rollback_on_server_correction)
 }
 
 // =============================================================================
-// Rollback recovery — predictions survive past the pong alignment
+// Rollback recovery + re-trigger — partial erase preserves prediction state
+// through a ping-pong cycle, and rollback still fires on genuine divergence.
 //
 // After a rollback the client pings the server; validation is suspended until
 // the pong arrives.  During this round-trip the client keeps predicting.  The
@@ -863,6 +864,9 @@ TEST(e2e_rollback_on_server_correction)
 // the server's confirmed tick — not the full prediction backlog from the
 // round-trip window.  If the comparison window is unbounded the client
 // sees a count mismatch and rolls back again, creating a livelock.
+//
+// The test then triggers a second correction to prove the mechanism is still
+// alive: a genuine out-of-sync state provokes another rollback.
 // =============================================================================
 
 TEST(e2e_rollback_recovery_no_relapse)
@@ -903,7 +907,7 @@ TEST(e2e_rollback_recovery_no_relapse)
     auto& rbs = h.clientRollbackStream();
     CHECK(h.pumpUntil([&] { return rbs.Snapshots().size() > 0; }, 200));
 
-    // Find the server player and teleport it to trigger a rollback.
+    // Find the server player.
     entt::entity serverPlayer = entt::null;
     auto& sw = h.serverWorld();
     for (auto [e, player] : sw.view<game::ComponentPlayer>()->each())
@@ -914,15 +918,17 @@ TEST(e2e_rollback_recovery_no_relapse)
     }
     CHECK(serverPlayer != entt::null);
 
-    game::math::vec3 distantPos2{50.f, 0.f, 50.f};
+    // ---- First correction: trigger rollback, verify recovery ----
+
+    game::math::vec3 distantPos1{50.f, 0.f, 50.f};
     sw.patch<game::ComponentPhysicBody>(serverPlayer,
                                         [&](auto& b)
-                                        { b.pos = distantPos2; });
+                                        { b.pos = distantPos1; });
 
     // Wait for the rollback to trigger (ping sent).
     CHECK(h.pumpUntil([&] { return rbs.IsWaitingPong(); }, 200));
 
-    // Advance a few frames while waiting — this generates predictions in the
+    // Advance a few frames while waiting — generates predictions in the
     // round-trip window (the client keeps simulating locally).
     auto& clientStream = cw.get<game::input::PlayerInputStream>(clientPlayer);
     for (int i = 0; i < 5; ++i)
@@ -935,11 +941,10 @@ TEST(e2e_rollback_recovery_no_relapse)
     // Wait for the pong — validation resumes with the server's alignment.
     CHECK(h.pumpUntil([&] { return !rbs.IsWaitingPong(); }, 200));
 
-    // Inject more input and run several frames.  The key assertion: the
-    // stream must NOT re-enter the waiting-pong state.  If validation
-    // compares predictions from the whole round-trip window (pre-fix), the
-    // count mismatch against available server events triggers another
-    // rollback immediately.
+    // Run several frames with input.  Key assertion: the stream must NOT
+    // re-enter the waiting-pong state.  Pre-fix, the count mismatch from
+    // comparing the full round-trip prediction backlog triggers an immediate
+    // re-rollback.
     for (int i = 0; i < 10; ++i)
     {
         clientStream.InsertMoveDelta(game::math::vec2{0.01f, 0.f});
@@ -949,10 +954,56 @@ TEST(e2e_rollback_recovery_no_relapse)
     }
     CHECK(!rbs.IsWaitingPong());
 
-    // Predictions beyond the alignment should have survived.
+    // Predictions beyond the server alignment should have survived.
     CHECK(rbs.PredictedCount() > 0);
 
     // Client player must still be valid.
+    CHECK(cw.valid(clientPlayer));
+    CHECK(cw.all_of<game::ComponentPhysicBody>(clientPlayer));
+
+    // ---- Second correction: prove rollback still works ----
+    // The mechanism must not be permanently deadened — a genuine
+    // out-of-sync state should still provoke a rollback.
+
+    game::math::vec3 distantPos2{-50.f, 0.f, -50.f};
+    sw.patch<game::ComponentPhysicBody>(serverPlayer,
+                                        [&](auto& b)
+                                        { b.pos = distantPos2; });
+
+    // Wait for the second rollback.
+    CHECK(h.pumpUntil([&] { return rbs.IsWaitingPong(); }, 200));
+
+    // Wait for the second pong recovery.
+    CHECK(h.pumpUntil([&] { return !rbs.IsWaitingPong(); }, 200));
+
+    // Client should converge to the second correction.
+    bool converged = false;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cb = cw.get<game::ComponentPhysicBody>(clientPlayer);
+            float dist = game::math::len(cb.pos - distantPos2);
+            if (dist < 2.0f)
+            {
+                converged = true;
+                return true;
+            }
+            return false;
+        },
+        200));
+    CHECK(converged);
+
+    // Run a few more frames with input — must still be stable (no third
+    // rollback from spurious count mismatch).
+    for (int i = 0; i < 10; ++i)
+    {
+        clientStream.InsertMoveDelta(game::math::vec2{0.01f, 0.f});
+        clientStream.AdvanceTick();
+        h.poll();
+        if (rbs.IsWaitingPong()) break;
+    }
+    CHECK(!rbs.IsWaitingPong());
+
     CHECK(cw.valid(clientPlayer));
     CHECK(cw.all_of<game::ComponentPhysicBody>(clientPlayer));
 }
