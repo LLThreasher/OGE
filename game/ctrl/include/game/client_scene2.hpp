@@ -30,7 +30,9 @@ class ClientScene2 : public Scene
     NetClient& m_client;
     entt::dispatcher m_clientDispatcher;
 
-    // Authoritative mirror world (WorldRouter variant 0): receives the
+    oge::runtime::TickScheduler m_serverTickScheduler{1 / 20.f};
+
+    // Authoritative mirror world (WorldRouter variant 1): receives the
     // replication families flagged in their worldMask, mirrors server truth
     // without local prediction, and owns the RollbackEventLogStream.  The
     // rollback snapshots are taken from this world so they never contain
@@ -66,11 +68,10 @@ class ClientScene2 : public Scene
     {
         LOG_INFO("client scene loaded");
 
-        // Route incoming events to both worlds: m_world (default) always
-        // receives them; the authoritative mirror receives the worldMask'd
-        // families.  AdvanceTick is masked in as well so its apply snapshots
-        // the authoritative world (the only world holding the rollback
-        // stream in its ctx).
+        // Route incoming events via the WorldRouter: the default world
+        // (m_world) and the authoritative mirror each receive the families
+        // flagged in their worldMask.  See the mask block below for which
+        // families go where.
         m_worldRouter.AddWorldVariant(1, m_authoritativeWorld);
 
         // Store a base-class pointer in ctx so GetReplicationStream()
@@ -84,28 +85,48 @@ class ClientScene2 : public Scene
         // updates are accepted by InsertPredicted.
         {
             std::bitset<net::MAX_WORLD_VARIANTS> bothMask{};
-            bothMask.set(0);  // default world
-            bothMask.set(1);  // authoritative world
+            bothMask.set(0);  // default (prediction) world
+            bothMask.set(1);  // authoritative mirror
 
-            std::bitset<net::MAX_WORLD_VARIANTS> updateMask{};
-            updateMask.set(1);  // authoritative world
+            // Authoritative-only: physics updates and AdvanceTick would
+            // clobber locally-predicted state (or no-op) in the default
+            // world — they belong on the mirror.
+            std::bitset<net::MAX_WORLD_VARIANTS> authoritativeMask{};
+            authoritativeMask.set(1);
 
-            auto setMask = [&](entt::id_type typeId, std::bitset<net::MAX_WORLD_VARIANTS> mask) {
+            auto setMask = [&](entt::id_type typeId,
+                               std::bitset<net::MAX_WORLD_VARIANTS> mask)
+            {
                 m_ctx.any_factory.GetDescriptor(typeId)
-                                 ->capabilities.Get<net::ReplicationCapability>()
-                                 ->worldMask = mask;
+                    ->capabilities.Get<net::ReplicationCapability>()
+                    ->worldMask = mask;
             };
 
             setMask(Id<net::AddEntityEvent>(), bothMask);
             setMask(Id<net::RemoveEntityEvent>(), bothMask);
 
-            setMask(Id<net::AddComponentEvent<ComponentAABBCollider>>(), bothMask);
-            setMask(Id<net::UpdateComponentEvent<ComponentAABBCollider>>(), updateMask);
-            setMask(Id<net::RemoveComponentEvent<ComponentAABBCollider>>(), bothMask);
+            setMask(Id<net::AddComponentEvent<ComponentAABBCollider>>(),
+                    bothMask);
+            setMask(Id<net::UpdateComponentEvent<ComponentAABBCollider>>(),
+                    bothMask);
+            setMask(Id<net::RemoveComponentEvent<ComponentAABBCollider>>(),
+                    bothMask);
 
-            setMask(Id<net::AddComponentEvent<ComponentPhysicBody>>(), bothMask);
-            setMask(Id<net::UpdateComponentEvent<ComponentPhysicBody>>(), updateMask);
-            setMask(Id<net::RemoveComponentEvent<ComponentPhysicBody>>(), bothMask);
+            setMask(Id<net::AddComponentEvent<ComponentPhysicBody>>(),
+                    bothMask);
+            setMask(Id<net::UpdateComponentEvent<ComponentPhysicBody>>(),
+                    authoritativeMask);
+            setMask(Id<net::RemoveComponentEvent<ComponentPhysicBody>>(),
+                    bothMask);
+
+            // AdvanceTick snapshots the authoritative world — the only world
+            // holding the RollbackEventLogStream in its ctx.  Without this
+            // the client never takes rollback snapshots.
+            setMask(Id<net::AdvanceTick>(), authoritativeMask);
+
+            // The pong must reach the authoritative world: its apply calls
+            // HandlePong on the RollbackEventLogStream that lives there.
+            setMask(Id<net::RollbackPong>(), authoritativeMask);
 
             net::RollbackCapability physCap;
             physCap.family = entt::type_hash<
@@ -159,32 +180,48 @@ class ClientScene2 : public Scene
         // net::PollTerrainChunkEvents(m_world);
         net::PollPlayerInputs(m_world);
 
+        // Advance the client tick (snapshot cadence).  Snapshots are taken
+        // from the authoritative mirror — clean server truth, never
+        // predicted state.
+        m_rollbackStream.AdvanceLocalTick(m_authoritativeWorld);
+
         // (3) Run local simulation (prediction) — moves the player locally
         Scene::Update(f, sctx);
 
         // (4) Insert predicted physics for LocalPrediction-tagged entities
         for (auto [e, body] :
-             m_world
-                 .view<RenderStrategyTag<RenderStrategy::LocalPrediction>,
-                       ComponentPhysicBody>()
-                 .each())
+                m_world
+                    .view<
+                        RenderStrategyTag<RenderStrategy::LocalPrediction>,
+                        ComponentPhysicBody>()
+                    .each())
         {
             net::UpdateComponentEvent<ComponentPhysicBody> evt{e, body};
             m_rollbackStream.InsertPredicted(evt);
         }
 
-        // (5) Validate predictions against server events since last
-        // snapshot.  Snapshots were taken from the authoritative world
-        // (clean server truth), so a rollback restores m_world to that
-        // state; the mirror itself never diverges and is never rolled back.
+        // (5) Validate predictions against server events.  Snapshots were
+        // taken from the authoritative world (clean server truth), so a
+        // rollback restores m_world to that state; the mirror itself never
+        // diverges and is never rolled back.  After a rollback the stream
+        // is waiting for a pong (validation suspended): keep pinging until
+        // the server answers with its tick/cursor alignment.
         m_rollbackStream.ValidateLatest(m_world);
+        if (m_rollbackStream.IsWaitingPong())
+        {
+            ::game::net::RollbackPing ping{
+                m_rollbackStream.CurrentTick(),
+                m_rollbackStream.PingCursor()};
+            net::PushReplicationEvent(m_world, ping);
+        }
 
         // (6) Prune old entries + send input to server
         m_rollbackStream.Update();
+
         m_replicationRegistry.ProduceAll(m_client, m_world);
     }
 
-    // The authoritative mirror world (variant 0 of the WorldRouter).
+    // The authoritative mirror world (variant 1 of the WorldRouter).
     // Exposed for tests (see scene_test_harness.hpp).
     GameWorld& GetAuthoritativeWorld()
     {

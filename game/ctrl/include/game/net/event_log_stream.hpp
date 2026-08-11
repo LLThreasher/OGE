@@ -421,6 +421,7 @@ class EventLogStream
         buffer.Read(meta.id);
         buffer.Read(meta.cursor);
         meta.recieveMask = {};
+        meta.recieveMask.set(63, true);  // self
 
         if (meta.id == m_sendPayloadTypeId)
         {
@@ -589,6 +590,7 @@ class EventLogStream
             LOG_DEBUG("peek event at slot {}: {}, {}, {}", curosr,
                       m_currentTail, m_entries.Contains(curosr),
                       m_validSet.test(curosr % Capacity));
+        OGE_ASSERT(curosr >= m_currentTail, "cursor {} < currentTail {}", curosr, m_currentTail);
         while (m_entries.Contains(curosr))
         {
             if (m_validSet.test(curosr % Capacity))
@@ -673,6 +675,21 @@ class EventLogStream
 
             ++m_currentTail;
         }
+    }
+
+    // The local consumption cursor: the next slot validation/applies read
+    // from.  Advances in Update() as entries are pruned.
+    LogCursor CurrentTail() const
+    {
+        return m_currentTail;
+    }
+
+    // The next free slot: where the next EnqueueEvent will land.  This is
+    // the same numbering the peer uses, so a remote cursor (e.g. a pong's
+    // server cursor) can be looked up locally by comparing against this.
+    LogCursor HeadCursor() const
+    {
+        return m_entries.HeadCursor();
     }
 };
 }  // namespace game::net

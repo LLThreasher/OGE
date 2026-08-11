@@ -204,6 +204,7 @@ bool game::net::PhysicsBodyCompareFn(net::Buffer& a, net::Buffer& b)
     if (evtA.entity != evtB.entity) return false;
 
     constexpr float kPositionEpsilon = 0.1f;
-    return oge::math::len(evtA.component.pos - evtB.component.pos) <=
+    auto res = oge::math::len(evtA.component.pos - evtB.component.pos) <=
            kPositionEpsilon;
+    return res;
 }

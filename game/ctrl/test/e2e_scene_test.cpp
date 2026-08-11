@@ -300,6 +300,12 @@ TEST(e2e_physics_events_bounded)
             game::net::SmallPayload dp;
             game::net::EventLogEntryConstRef r{{}, dp};
             game::net::LogCursor c = beforeCursor == 0 ? 0 : beforeCursor + 1;
+            // The server consumes (and its tail advances past) events as it
+            // sends them — with a single peer everything drains within a
+            // poll, so the tail can overtake a scan point captured before
+            // the poll.  Clamp to the current tail: events the tail already
+            // passed are consumed and no longer visible anyway.
+            if (c != 0 && c < stream.CurrentTail()) c = stream.CurrentTail();
             while (stream.PeekEvent(0, r, c == 0 ? 0 : c))
             {
                 if (r.entry.id == physFamily)
@@ -619,6 +625,10 @@ TEST(e2e_scenes_stability)
 TEST(e2e_interpolation_layer)
 {
     NetSceneHarness h;
+    // The visible world is locally simulated (client-side prediction), so
+    // movement comes from local physics, not replicated server updates.
+    // Server physics updates route only to the authoritative mirror world.
+    h.enableClientPrediction();
     CHECK(h.start());
     CHECK(h.connect());
     CHECK(h.waitForHandshake());
@@ -644,11 +654,17 @@ TEST(e2e_interpolation_layer)
     auto& cw = h.clientWorld();
     cw.emplace_or_replace<game::RenderStrategyTag<game::RenderStrategy::Interpolation>>(
         clientPlayer);
+    // Wire the player for local simulation (as DebugVoxelView does) so the
+    // realtime subsystems drive the body.
+    if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
+        cw.emplace<game::input::PlayerInputStream>(clientPlayer);
+    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
+        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
     auto& body = cw.get<game::ComponentPhysicBody>(clientPlayer);
     game::math::vec3 initialPos = body.pos;
 
-    // Poll several frames — gravity moves the player downward on the server,
-    // and the client receives updates.
+    // Poll several frames — local physics (gravity) moves the player
+    // downward.  No server updates reach this world.
     bool moved = false;
     for (int i = 0; i < 60; ++i)
     {
@@ -807,8 +823,20 @@ TEST(e2e_rollback_on_server_correction)
                                         [&](auto& b)
                                         { b.pos = distantPos; });
 
-    // Poll until the client catches up to the server's position (either via
-    // normal replication or rollback).
+    auto& rbs = h.clientRollbackStream();
+
+    // The client detects the divergence (predicted pos != server teleport),
+    // rolls back to the latest authoritative snapshot and sends a ping —
+    // validation is suspended until the pong arrives.
+    CHECK(h.pumpUntil([&] { return rbs.IsWaitingPong(); }, 200));
+
+    // The server answers with its tick/cursor alignment; validation resumes
+    // with the snapshot aligned to the server's tick.
+    CHECK(h.pumpUntil([&] { return !rbs.IsWaitingPong(); }, 200));
+
+    // The rollback restored the client to the authoritative state (which
+    // already contains the teleport — the snapshot is taken from the mirror
+    // world), so the client position now matches the server.
     bool converged = false;
     CHECK(h.pumpUntil(
         [&]

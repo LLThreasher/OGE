@@ -67,6 +67,9 @@ namespace net = oge::runtime::net;
 using oge::runtime::oge_id_type;
 using oge::runtime::OgeRegistryRef;
 
+using Tick = int64_t;
+using PeerId = uint32_t;
+
 // =========================================================================
 // Entity events
 // =========================================================================
@@ -223,6 +226,45 @@ struct TerrainReplicationState
     // DiscreteEventStream::PollOne, which would skip the first event.
     terrain::ChunkEventStream::Cursor chunkEventCursor{1};
     bool initialized = false;
+};
+
+// =========================================================================
+// Rollback ping/pong
+//
+// When the client rolls back to a snapshot it sends a RollbackPing; the
+// server answers with a RollbackPong carrying its current tick and log
+// head cursor.  The client uses the pair to align its snapshot/prediction
+// history with the server's tick (see RollbackEventLogStream::HandlePong).
+// =========================================================================
+
+struct RollbackPing
+{
+    Tick clientTick = 0;
+    LogCursor snapshotCursor = 0;
+};
+
+struct RollbackPong
+{
+    Tick serverTick = 0;
+    LogCursor serverCursor = 0;
+
+    // Echo of the ping's snapshotCursor — lets the client drop stale pongs.
+    LogCursor clientCursor = 0;
+};
+
+// Server-side ctx state for the ping apply fn (apply fns are stateless).
+// Emplaced in the server world's ctx by DebugServerScene.
+struct PongContext
+{
+    oge_id_type rollbackPongTypeId = 0;
+    Tick currentServerTick = 0;
+};
+
+// Set on each world before an incoming event is applied, so stateless
+// apply fns know which peer the packet came from.
+struct IncomingPeerId
+{
+    PeerId id = 0;
 };
 
 // ---------------------------------------------------------------------------
@@ -911,6 +953,8 @@ DECL_TYPE_NAME(game::net::RemoveChunkEvent, "net::RemoveChunkEvent")
 DECL_TYPE_NAME(game::net::UpdateChunkEvent, "net::UpdateChunkEvent")
 DECL_TYPE_NAME(game::net::PlayerInputReplicationEvent,
                "net::PlayerInputReplicationEvent")
+DECL_TYPE_NAME(game::net::RollbackPing, "net::RollbackPing")
+DECL_TYPE_NAME(game::net::RollbackPong, "net::RollbackPong")
 
 namespace oge::runtime
 {
@@ -1087,4 +1131,15 @@ DECL_NET_OBJ(game::net::UpdateChunkEvent, {
 DECL_NET_OBJ(game::net::PlayerInputReplicationEvent, {
     visit(self.playerEntity);
     visit(self.frame);
+})
+
+DECL_NET_OBJ(game::net::RollbackPing, {
+    visit(self.clientTick);
+    visit(self.snapshotCursor);
+})
+
+DECL_NET_OBJ(game::net::RollbackPong, {
+    visit(self.serverTick);
+    visit(self.serverCursor);
+    visit(self.clientCursor);
 })

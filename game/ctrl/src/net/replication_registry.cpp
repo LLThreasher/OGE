@@ -178,11 +178,83 @@ void game::net::RegisterReplications(AnythingFactory& af,
             if (world.ctx().contains<RollbackEventLogStream<>>())
             {
                 auto& rbs = world.ctx().get<RollbackEventLogStream<>>();
-                rbs.AdvanceTick(world);
+                rbs.AdvanceTick(world, evt);
             }
         };
         SetMirrorMask(tickCap);
         desc.capabilities.Add<ReplicationCapability>(tickCap);
+    }
+
+    // RollbackPing — client → server.  The server's apply answers with a
+    // RollbackPong targeted at the sender, carrying its current tick and
+    // log head cursor.  Reads the sender from IncomingPeerId and the pong
+    // type id + tick from PongContext, both emplaced in the server world's
+    // ctx by DebugServerScene (apply fns are stateless).
+    {
+        auto& desc = af.RegisterType<RollbackPing>();
+        ReplicationCapability pingCap;
+        pingCap.family = desc.localId;
+        pingCap.sendType = ReplicationMethod::SingleReliable;
+        pingCap.installHooks = nullptr;
+        pingCap.worldMask.set(0);  // server world
+        pingCap.apply =
+            [](EventLogStream<>& stream, oge::runtime::OgeRegistryRef world,
+               net::Buffer& buffer)
+        {
+            RollbackPing ping{};
+            net::Deserialize(buffer, ping);
+
+            auto& ctx = world.ctx();
+            if (!ctx.contains<IncomingPeerId>() ||
+                !ctx.contains<PongContext>())
+            {
+                return;
+            }
+
+            PeerId peerId = ctx.get<IncomingPeerId>().id;
+            auto pongTypeId = ctx.get<PongContext>().rollbackPongTypeId;
+            if (pongTypeId == 0) return;
+
+            RollbackPong pong{};
+            pong.serverTick = ctx.get<PongContext>().currentServerTick;
+            pong.serverCursor = stream.HeadCursor();
+            pong.clientCursor = ping.snapshotCursor;
+
+            std::bitset<64> peerMask{};
+            peerMask.set(peerId);
+            auto buf =
+                stream.EnqueueEvent(pongTypeId, net::Size(pong), peerMask);
+            net::Serialize(buf, pong);
+        };
+        desc.capabilities.Add<ReplicationCapability>(pingCap);
+    }
+
+    // RollbackPong — server → client.  Client's apply hands the pong to the
+    // RollbackEventLogStream (the authoritative world owns it), which stores
+    // the tick/cursor alignment and resumes validation.
+    // (Built manually rather than via MakeSimpleReplicationCapability: the
+    // helper's default apply calls ApplyEvent(world, event), which has no
+    // overload for RollbackPong.)
+    {
+        auto& desc = af.RegisterType<RollbackPong>();
+        ReplicationCapability pongCap;
+        pongCap.family = desc.localId;
+        pongCap.sendType = ReplicationMethod::SingleReliable;
+        pongCap.installHooks = nullptr;
+        pongCap.worldMask.set(0);
+        pongCap.apply =
+            [](EventLogStream<>&, oge::runtime::OgeRegistryRef world,
+               net::Buffer& buffer)
+        {
+            RollbackPong pong{};
+            net::Deserialize(buffer, pong);
+            if (world.ctx().contains<RollbackEventLogStream<>>())
+            {
+                world.ctx().get<RollbackEventLogStream<>>().HandlePong(pong);
+            }
+        };
+        SetMirrorMask(pongCap);  // masked to the mirror world on the client
+        desc.capabilities.Add<ReplicationCapability>(pongCap);
     }
 
     rf.RegisterFrom(af);

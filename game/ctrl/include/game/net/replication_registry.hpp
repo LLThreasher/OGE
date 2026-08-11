@@ -46,7 +46,8 @@ using oge::runtime::OgeRegistryPtr;
 
 using ReplicationTick = uint32_t;
 
-using PeerId = uint32_t;
+// PeerId and Tick are defined in replication_events.hpp (included above).
+
 struct NetPeer
 {
     ENetPeer* peer = nullptr;
@@ -170,6 +171,7 @@ class WorldRouter
 
     void AddWorldVariant(size_t idx, OgeRegistryRef world)
     {
+        OGE_ASSERT(m_worlds[idx] == nullptr, "world variant already exists");
         OGE_ASSERT(0 <= idx && idx < MAX_WORLD_VARIANTS, "invalid idx");
         m_worlds[idx] = &world;
     }
@@ -182,6 +184,21 @@ class WorldRouter
             if (m_worlds[i] != nullptr && cap.worldMask.test(i))
             {
                 fn(*m_worlds[i]);
+            }
+        }
+    }
+
+    // Store the incoming peer id in each world that has an IncomingPeerId
+    // ctx slot, before the event's apply fn runs.  Apply fns are stateless
+    // (function pointers), so per-apply context must come from the world.
+    void SetIncomingPeerId(PeerId peerId)
+    {
+        for (size_t i = 0; i < MAX_WORLD_VARIANTS; ++i)
+        {
+            if (m_worlds[i] != nullptr &&
+                (*m_worlds[i]).ctx().contains<IncomingPeerId>())
+            {
+                (*m_worlds[i]).ctx().get<IncomingPeerId>().id = peerId;
             }
         }
     }
@@ -247,11 +264,10 @@ class SimplePacketScheduler : public PacketScheduler
     mutable SmallPayload m_scratchPayload;
 };
 
-using Tick = int64_t;
-
 struct AdvanceTick
 {
     Tick tick;
+    LogCursor peerCursor;
 };
 
 class ReplicationRegistry
@@ -421,6 +437,11 @@ class ReplicationRegistry
                         net::Buffer& buffer)
     {
         OGE_ASSERT(m_eventStream != nullptr, "EventStream is null");
+
+        // Covers both the direct event path and the split-packet payload
+        // path below.
+        worldRouter.SetIncomingPeerId(peer);
+
         auto meta = m_eventStream->DeserializeEvent(peer, buffer);
 
         // Split packets (StreamReliable): the payload-only half carries the
@@ -466,7 +487,11 @@ class ReplicationRegistry
     void AdvancePeerTick()
     {
         ++m_currentTick;
-        AdvanceTick evt{m_currentTick};
+        // Capture the cursor where this AdvanceTick will land: the client
+        // uses it (via the rollback pong) to map server log positions to
+        // ticks.
+        LogCursor cursor = m_eventStream->HeadCursor();
+        AdvanceTick evt{m_currentTick, cursor};
         auto buf =
             m_eventStream->EnqueueEvent(m_tickEventTypeId, net::Size(evt));
         net::Serialize(buf, evt);
@@ -587,4 +612,7 @@ void RegisterReplications(oge::runtime::AnythingFactory& af,
 
 DECL_TYPE_NAME(game::net::AdvanceTick, "net::AdvanceTick")
 
-DECL_NET_OBJ(game::net::AdvanceTick, { visit(self.tick); })
+DECL_NET_OBJ(game::net::AdvanceTick, {
+    visit(self.tick);
+    visit(self.peerCursor);
+})

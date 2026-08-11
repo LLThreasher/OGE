@@ -198,6 +198,13 @@ class DebugServerScene final : public Scene
         net::InstallEntityReplicationHooks(m_world);
         net::InstallTerrainReplicationHooks(m_world);
         net::InstallPlayerInputReplicationHooks(m_world);
+
+        // Rollback ping/pong ctx: the ping apply fn reads the sender and
+        // pong type id from these (apply fns are stateless).  The current
+        // server tick is written each Update.
+        m_world.ctx().emplace<net::IncomingPeerId>();
+        m_world.ctx().emplace<net::PongContext>(
+            net::PongContext{m_ctx.any_factory.Id<net::RollbackPong>()});
     }
 
     ~DebugServerScene()
@@ -243,6 +250,10 @@ class DebugServerScene final : public Scene
         // peer mask and EnqueueEvent rejects an empty one.
         if (!m_replicationRegistry.Peers().empty())
             m_replicationRegistry.AdvancePeerTick();
+        // Keep the pong tick current — pings received in the next Poll read
+        // the tick this frame advanced to.
+        m_world.ctx().get<net::PongContext>().currentServerTick =
+            m_replicationRegistry.CurrentTick();
         m_replicationRegistry.ProduceAll(m_netServer, m_world);
         Scene::Update(f, sctx);
         net::PollTerrainChunkEvents(m_world);
