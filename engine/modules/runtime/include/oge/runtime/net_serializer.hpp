@@ -9,29 +9,12 @@
 
 namespace oge::runtime::net
 {
-class Buffer
+template <typename Impl>
+class BufferTraits
 {
-public:
-    // -----------------------------
-    // Non-owning constructors
-    // -----------------------------
-    Buffer(void* ptr, size_t len)
-        : data(static_cast<std::byte*>(ptr), len)
-    {}
-
-    Buffer(std::byte* ptr, size_t len)
-        : data(ptr, len)
-    {}
-
-    Buffer(std::span<std::byte> span)
-        : data(span)
-    {}
-
-    Buffer(std::vector<std::byte>& scratchpad)
-        : scratch(&scratchpad), data(scratch->data(), scratch->capacity())
+   public:
+    BufferTraits(std::span<std::byte> span) : data(span)
     {
-        // we just assume the scratchpad is already initalized full packed
-        assert(scratch->size() == scratch->capacity());
     }
 
     void Align(size_t alignment)
@@ -40,7 +23,7 @@ public:
         if (misalignment != 0)
         {
             size_t padding = alignment - misalignment;
-            EnsureCapacity(padding);
+            static_cast<Impl*>(this)->EnsureCapacity(padding);
             std::memset(data.data() + writePos, 0, padding);
             writePos += padding;
         }
@@ -50,17 +33,17 @@ public:
     // Writing
     // -----------------------------
     template <typename T>
-    requires std::is_trivially_copyable_v<T>
+        requires std::is_trivially_copyable_v<T>
     void Write(const T& value)
     {
-        EnsureCapacity(sizeof(T));
+        static_cast<Impl*>(this)->EnsureCapacity(sizeof(T));
         std::memcpy(data.data() + writePos, &value, sizeof(T));
         writePos += sizeof(T);
     }
 
     void WriteRaw(const void* src, size_t size)
     {
-        EnsureCapacity(size);
+        static_cast<Impl*>(this)->EnsureCapacity(size);
         std::memcpy(data.data() + writePos, src, size);
         writePos += size;
     }
@@ -69,7 +52,7 @@ public:
     // Reading
     // -----------------------------
     template <typename T>
-    requires std::is_trivially_copyable_v<T>
+        requires std::is_trivially_copyable_v<T>
     T Read()
     {
         T value;
@@ -106,7 +89,9 @@ public:
         constexpr size_t byteSize = N * sizeof(T);
 
         assert(readPos + byteSize <= writePos);
-        assert(reinterpret_cast<uintptr_t>(data.data() + readPos) % alignof(T) == 0);
+        assert(reinterpret_cast<uintptr_t>(data.data() + readPos) %
+                   alignof(T) ==
+               0);
 
         auto* ptr = reinterpret_cast<T*>(data.data() + readPos);
 
@@ -118,10 +103,10 @@ public:
     // -----------------------------
     // State
     // -----------------------------
-    Buffer& ToReadOnly()
+    Impl& ToReadOnly()
     {
         writePos = data.size();
-        return *this;
+        return *static_cast<Impl*>(this);
     }
 
     bool IsEmpty()
@@ -145,54 +130,85 @@ public:
         return data;
     }
 
-    size_t Size() const { return writePos; }
-    size_t Capacity() const { return data.size(); }
-
-private:
-    void EnsureCapacity(size_t additional)
+    size_t Size() const
     {
-        if (writePos + additional <= data.size())
-            return;
-
-        // Cannot grow non-owning buffer
-        assert(scratch != nullptr && "Attempting to grow non-owning Buffer");
-
-        size_t newSize = std::max(
-            data.size() * 2,
-            writePos + additional
-        );
-
-        scratch->resize(newSize);
-        data = *scratch;  // refresh span
+        return writePos;
+    }
+    size_t Capacity() const
+    {
+        return data.size();
     }
 
-private:
-    std::vector<std::byte>* scratch = nullptr;
+   protected:
     std::span<std::byte> data = {};
 
     size_t writePos = 0;
     size_t readPos = 0;
 };
 
+class Buffer : public BufferTraits<Buffer>
+{
+    using Base = BufferTraits<Buffer>;
+
+   public:
+    // -----------------------------
+    // Non-owning constructors
+    // -----------------------------
+    Buffer(void* ptr, size_t len) : Base({static_cast<std::byte*>(ptr), len})
+    {
+    }
+
+    Buffer(std::byte* ptr, size_t len) : Base({ptr, len})
+    {
+    }
+
+    Buffer(std::span<std::byte> span) : Base(span)
+    {
+    }
+
+    Buffer(std::vector<std::byte>& scratchpad)
+        : Base(std::span<std::byte>()), scratch(&scratchpad)
+    {
+        // we just assume the scratchpad is already initalized full packed
+        assert(scratch->size() == scratch->capacity());
+    }
+
+    void EnsureCapacity(size_t additional)
+    {
+        if (writePos + additional <= this->data.size()) return;
+
+        // Cannot grow non-owning buffer
+        assert(scratch != nullptr && "Attempting to grow non-owning Buffer");
+
+        size_t newSize = std::max(this->data.size() * 2, writePos + additional);
+
+        scratch->resize(newSize);
+        this->data = *scratch;  // refresh span
+    }
+
+   private:
+    std::vector<std::byte>* scratch = nullptr;
+};
+
 class BufferOutputArchive
 {
-public:
-    explicit BufferOutputArchive(Buffer& buf)
-        : buffer(buf)
-    {}
+   public:
+    explicit BufferOutputArchive(Buffer& buf) : buffer(buf)
+    {
+    }
 
-    template<typename T>
+    template <typename T>
     void operator()(const T& value)
     {
         write(value);
     }
 
-private:
+   private:
     Buffer& buffer;
 
     // ---------- POD ----------
-    template<typename T>
-    requires std::is_trivially_copyable_v<T>
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
     void write(const T& value)
     {
         buffer.Write(value);
@@ -207,7 +223,7 @@ private:
     }
 
     // ---------- std::vector ----------
-    template<typename T>
+    template <typename T>
     void write(const std::vector<T>& vec)
     {
         uint32_t size = static_cast<uint32_t>(vec.size());
@@ -219,13 +235,12 @@ private:
         }
         else
         {
-            for (auto& v : vec)
-                write(v);
+            for (auto& v : vec) write(v);
         }
     }
 
     // ---------- std::unordered_map ----------
-    template<typename K, typename V>
+    template <typename K, typename V>
     void write(const std::unordered_map<K, V>& map)
     {
         uint32_t size = static_cast<uint32_t>(map.size());
@@ -241,23 +256,23 @@ private:
 
 class BufferInputArchive
 {
-public:
-    explicit BufferInputArchive(Buffer& buf)
-        : buffer(buf)
-    {}
+   public:
+    explicit BufferInputArchive(Buffer& buf) : buffer(buf)
+    {
+    }
 
-    template<typename T>
+    template <typename T>
     void operator()(T& value)
     {
         read(value);
     }
 
-private:
+   private:
     Buffer& buffer;
 
     // ---------- POD ----------
-    template<typename T>
-    requires std::is_trivially_copyable_v<T>
+    template <typename T>
+        requires std::is_trivially_copyable_v<T>
     void read(T& value)
     {
         buffer.ReadRaw(&value, sizeof(T));
@@ -274,7 +289,7 @@ private:
     }
 
     // ---------- std::vector ----------
-    template<typename T>
+    template <typename T>
     void read(std::vector<T>& vec)
     {
         uint32_t size;
@@ -288,13 +303,12 @@ private:
         }
         else
         {
-            for (auto& v : vec)
-                read(v);
+            for (auto& v : vec) read(v);
         }
     }
 
     // ---------- std::unordered_map ----------
-    template<typename K, typename V>
+    template <typename K, typename V>
     void read(std::unordered_map<K, V>& map)
     {
         uint32_t size;
