@@ -733,6 +733,13 @@ inline void ApplyEvent(OgeRegistryRef world,
     {
         stream->SetAim(frame.panDelta);
     }
+
+    // Commit the frame as a separate entry in the discrete stream.
+    // Without this, multiple client frames arriving in one server poll
+    // accumulate into pendingMoveDelta and are processed as a single
+    // physics step, causing overshoot relative to the client's
+    // frame-by-frame lerp integration.
+    stream->AdvanceTick();
 }
 
 // =========================================================================
@@ -1060,6 +1067,27 @@ struct NetTraits<game::net::UpdateComponentEvent<T>>
     {
         visit(self.entity);
         visit(self.component);
+    }
+};
+
+template <>
+struct NetTraits<game::net::UpdateComponentEvent<game::ComponentPhysicBody>>
+    : ObjectTraits<game::net::UpdateComponentEvent<game::ComponentPhysicBody>>
+{
+    template <typename F>
+    static void VisitFields(
+        game::net::UpdateComponentEvent<game::ComponentPhysicBody>& self, F&& visit)
+    {
+        visit(self.entity);
+        visit(self.component.pos);
+    }
+
+    template <typename F>
+    static void VisitFields(
+        const game::net::UpdateComponentEvent<game::ComponentPhysicBody>& self, F&& visit)
+    {
+        visit(self.entity);
+        visit(self.component.pos);
     }
 };
 

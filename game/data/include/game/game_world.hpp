@@ -47,20 +47,22 @@ struct SceneConfig
 // EnableEntityEvents() before create/destroy to record events.
 // =========================================================================
 
-class GameWorld : public oge::runtime::OgeRegistry
-{
-   public:
-    using OgeRegistry::Entity;
+// class GameWorld : public oge::runtime::OgeRegistry
+// {
+//    public:
+//     using OgeRegistry::Entity;
 
-    GameWorld() = default;
-    NO_COPY(GameWorld)
+//     GameWorld() = default;
+//     NO_COPY(GameWorld)
 
-    template <typename T, typename... Fn>
-    decltype(auto) patch(const Entity e, Fn&&... fn)
-    {
-        return oge::runtime::OgeRegistry::patch<T>(e, std::forward<Fn>(fn)...);
-    }
-};
+//     template <typename T, typename... Fn>
+//     decltype(auto) patch(const Entity e, Fn&&... fn)
+//     {
+//         return oge::runtime::OgeRegistry::patch<T>(e, std::forward<Fn>(fn)...);
+//     }
+// };
+
+using GameWorld = oge::runtime::OgeRegistry;
 
 // =========================================================================
 // AuthoritativeGameWorld  —  convenience alias for server-side worlds

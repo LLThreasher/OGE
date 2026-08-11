@@ -201,6 +201,7 @@ class DebugVoxelView : public SceneView
         m_renderers.AddStage<view::TerrainRenderer>(AF());
         m_renderers.AddStage<view::CameraRenderer>(AF());
         m_renderers.AddStage<view::BlockHighlightRenderer>(AF());
+        m_renderers.AddStage<view::GizmoRenderer>(AF());
 
         auto assets = AssetContext(m_ctx.any_ctx);
         auto& blks = m_gameWorld.ctx()

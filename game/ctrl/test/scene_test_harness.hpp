@@ -201,7 +201,7 @@ struct NetSceneHarness
     // (i.e. post-handshake, like clientWorld()).
     game::GameWorld& clientAuthoritativeWorld()
     {
-        return static_cast<game::ClientScene2&>(*m_clientRunner.GetScene())
+        return *static_cast<game::ClientScene2&>(*m_clientRunner.GetScene())
             .GetAuthoritativeWorld();
     }
 

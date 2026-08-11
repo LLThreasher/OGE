@@ -316,7 +316,7 @@ public:
     {
     }
 
-    bool operator==(std::nullptr_t)
+    bool operator==(std::nullptr_t) const
     {
         return m_registry == nullptr;
     }

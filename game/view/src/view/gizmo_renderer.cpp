@@ -4,6 +4,7 @@
 #include "game/view/gfx/gizmo_commands.hpp"
 #include "game/view/renderer.hpp"
 #include "game/view/submission_queue.hpp"
+#include "oge/color.hpp"
 #include "oge/log.hpp"
 
 namespace game::view
@@ -42,7 +43,7 @@ void GizmoRenderer::onUpdate(FRendererState& f)
                                        : WHITE});
     }
 
-    if (!ui.Raw().owned<ViewPanel>()) return;
+    if (!ui.view<ViewPanel>()) return;
 
     // --- AABB wire cubes (3D) ---
     // Draw wireframe cubes around entities with AABB colliders.
@@ -54,6 +55,11 @@ void GizmoRenderer::onUpdate(FRendererState& f)
             f.submissionQueue.Add<CmdDrawWireCube>(
                 viewPanel.activeSlot,
                 CmdDrawWireCube{collider.aabb + body.pos, BLUE});
+            if (f.realWorld == nullptr || !f.realWorld.valid(entity)) continue;
+            auto& realbody = f.realWorld.get<ComponentPhysicBody>(entity);
+            f.submissionQueue.Add<CmdDrawWireCube>(
+                viewPanel.activeSlot,
+                CmdDrawWireCube{collider.aabb + realbody.pos, GREEN});
         }
     }
 }

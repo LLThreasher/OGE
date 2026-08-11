@@ -70,7 +70,6 @@ class SceneView : protected AppRuntime
     input::InputPipeline m_inputs;
 
     oge::runtime::OgeRegistry m_uiWorld;
-    oge::runtime::OgeRegistry m_renderWorld;
     view::RenderPipeline m_renderers;
 
     view::SubmissionQueue m_squeue;
@@ -87,8 +86,8 @@ class SceneView : protected AppRuntime
           m_innerScene(*m_ownedScene),
           m_ctx(def.ctx),
           m_inputs(input::InputContext{m_windowCtx, m_uiWorld}),
-          m_renderers(view::RendererState{m_innerScene.GetWorld().Raw(),
-                                          m_uiWorld.Raw(), m_renderWorld.Raw(),
+          m_renderers(view::RendererState{m_innerScene.GetWorld(),
+                                          m_uiWorld,
                                           m_ctx.events, m_ctx.memory,
                                           AssetContext(def.ctx.any_ctx)}),
           m_squeue(m_ctx.memory.frameBuffer.Resource())
@@ -120,7 +119,7 @@ class SceneView : protected AppRuntime
         // presentation
         m_squeue.Clear();
         m_renderers.Update(view::RendererFrameData{f.dt, m_ctx.assets, m_squeue,
-                                                    alpha});
+                                                    alpha, m_innerScene.GetAuthoritativeWorld()});
 
         // window action
         f.frameAction |= m_windowCtx.frameAction;

@@ -223,9 +223,9 @@ class ClientScene2 : public Scene
 
     // The authoritative mirror world (variant 1 of the WorldRouter).
     // Exposed for tests (see scene_test_harness.hpp).
-    GameWorld& GetAuthoritativeWorld()
+    GameWorld* GetAuthoritativeWorld() override
     {
-        return m_authoritativeWorld;
+        return &m_authoritativeWorld;
     }
 };
 }  // namespace game

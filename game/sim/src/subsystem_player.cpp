@@ -118,7 +118,7 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                 body.pos +
                 math::vec3{(collider.aabb.min.x + collider.aabb.max.x) / 2.f,
                            1.65f,
-                           (collider.aabb.min.z + collider.aabb.max.z) / 2.f};
+                           (collider.aabb.min.z + collider.aabb.max.z) / 2.f} - camera.forward * 3.f;
             // ctx.world.patch<ComponentCamera>(entity);
 
             // Continuous block targeting for highlight rendering

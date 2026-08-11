@@ -24,7 +24,6 @@ struct RendererState
 {
     oge::runtime::OgeRegistryRef world;
     oge::runtime::OgeRegistryRef uiWorld;
-    oge::runtime::OgeRegistryRef renderWorld;
     entt::dispatcher& events;
     MemoryContext& memory;
     AssetContext assets;
@@ -36,6 +35,7 @@ struct RendererFrameData
     AssetContext& assets;
     SubmissionQueue& submissionQueue;
     float alpha = 0.f;
+    oge::runtime::OgeRegistryPtr realWorld = nullptr;
 };
 
 struct FRendererState
@@ -46,7 +46,7 @@ struct FRendererState
     SubmissionQueue& submissionQueue;
     const oge::runtime::OgeRegistryRef world;
     const oge::runtime::OgeRegistryRef uiWorld;
-    oge::runtime::OgeRegistryRef renderWorld;
+    const oge::runtime::OgeRegistryPtr realWorld;
     entt::dispatcher& events;
     MemoryContext& memory;
 
@@ -56,7 +56,7 @@ struct FRendererState
           assets(frame.assets),
           world(state.world),
           uiWorld(state.uiWorld),
-          renderWorld(state.renderWorld),
+          realWorld(frame.realWorld),
           submissionQueue(frame.submissionQueue),
           events(state.events),
           memory(state.memory)

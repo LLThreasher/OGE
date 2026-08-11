@@ -68,6 +68,11 @@ class Scene : protected AppRuntime
     virtual void Update(Frame f, SceneContext sctx);
     virtual void Load();
     virtual void Unload();
+
+    virtual GameWorld* GetAuthoritativeWorld()
+    {
+        return nullptr;
+    }
 };
 
 SceneConfig GetDefaultSceneConfig(AnythingFactory&);
