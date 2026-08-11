@@ -53,7 +53,7 @@ class NetClient : public NetPacketSender
 
     bool Initialize(
         size_t channelCount = 2,
-        std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
+        std::pmr::memory_resource* memory = std::pmr::get_default_resource());
 
     bool Connect(const char* ip, uint16_t port, uint32_t timeoutMs = 5000);
 
