@@ -1,5 +1,7 @@
 # OneGame::Engine
 
+[![CI](https://github.com/LLThreasher/OGE/actions/workflows/ci.yml/badge.svg)](https://github.com/LLThreasher/OGE/actions/workflows/ci.yml)
+
 You build Minecraft when you want to find a reason to write C++. 
 
 ## Building
