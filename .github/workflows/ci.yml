@@ -13,8 +13,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Vulkan SDK
-        uses: jakoch/install-vulkan-sdk-action@v1.1.1
+      - name: Install Vulkan SDK and Runtime
+        uses: jakoch/install-vulkan-sdk-action@v1.6.0
         
       - name: Install Ninja
         run: sudo apt-get update && sudo apt-get install -y ninja-build
@@ -34,9 +34,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Vulkan SDK
-        uses: jakoch/install-vulkan-sdk-action@v1.1.1
-
+      - name: Install Vulkan SDK and Runtime
+        uses: jakoch/install-vulkan-sdk-action@v1.6.0
+        
       - name: Install Ninja
         run: brew install ninja
 
@@ -55,8 +55,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Vulkan SDK
-        uses: jakoch/install-vulkan-sdk-action@v1.1.1
+      - name: Install Vulkan SDK and Runtime
+        uses: jakoch/install-vulkan-sdk-action@v1.6.0
         
       - name: Install LLVM (clang-cl)
         run: choco install llvm --version=19.1.7 -y --no-progress
@@ -91,9 +91,7 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: |
-            platforms;android-35
             platforms;android-29
-            build-tools;35.0.0
             ndk;28.2.13676358
             cmake;3.28.0+
 
