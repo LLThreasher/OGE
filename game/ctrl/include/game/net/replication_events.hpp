@@ -660,7 +660,7 @@ inline void PollPlayerInputs(OgeRegistryRef world)
         if (!stream->PollFrame(cursor, frame)) continue;
 
         // Only emit an event if there is something to send.
-        if (frame.inputEvents.empty() && frame.move == math::vec3{} &&
+        if (frame.inputEventCnt == 0 && frame.move == math::vec3{} &&
             !frame.hasAim)
         {
             continue;

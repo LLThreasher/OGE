@@ -231,10 +231,11 @@ inline PackedPlayerInputFrame PackFrame(
 {
     PackedPlayerInputFrame dst;
 
-    bool hasEvents = !src.inputEvents.empty();
+    bool hasEvents = src.inputEventCnt > 0;
 
     bool hasMove = std::abs(src.move.x) > INPUT_EPSILON ||
-                   std::abs(src.move.y) > INPUT_EPSILON;
+                   std::abs(src.move.y) > INPUT_EPSILON ||
+                   std::abs(src.move.z) > INPUT_EPSILON;
 
     bool hasPan = std::abs(src.aim.x) > INPUT_EPSILON ||
                   std::abs(src.aim.y) > INPUT_EPSILON;
@@ -264,7 +265,7 @@ inline PackedPlayerInputFrame PackFrame(
     if (hasEvents)
     {
         const std::size_t count =
-            std::min<std::size_t>(src.inputEvents.size(), 255);
+            std::min<std::size_t>(src.inputEventCnt, 255);
 
         dst.inputEvents.resize(count);
 

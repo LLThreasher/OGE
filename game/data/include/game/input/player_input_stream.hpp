@@ -75,7 +75,7 @@ struct PlayerInputFrameDelta
     PlayerInputEvent inputEvent;
     math::vec2 moveDelta = {};
     math::vec2 panDelta = {};
-    float dt = 0.f;
+    float dt = 1.f;  // default: treat moveDelta as a per-frame value
 };
 
 static float WrapRadians0To2Pi(float radians)

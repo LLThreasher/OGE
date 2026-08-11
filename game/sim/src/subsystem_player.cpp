@@ -88,10 +88,9 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
             input::PlayerInputFrame frame;
             if (!input.PollFrame(cursor, frame)) continue;
 
-            math::vec2 panDelta;
             if (frame.hasAim)
             {
-                camera.SetYawPitch(panDelta.x, panDelta.y);
+                camera.SetYawPitch(frame.aim.x, frame.aim.y);
             }
 
             auto right = camera.right();

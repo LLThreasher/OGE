@@ -129,7 +129,11 @@ TEST(wire_single_packet_roundtrip)
     game::net::UpdateComponentEvent<game::ComponentPhysicBody> back;
     auto sp = cli.PayloadAt(1).span();
     std::vector<std::byte> payloadCopy(sp.begin(), sp.end());
-    net::Buffer payloadBuf(payloadCopy);
+    // Use the span constructor (non-owning) so that ToReadOnly() correctly
+    // sets writePos to the payload size.  The owning vector& constructor
+    // starts with an empty span (grows on write), leaving writePos = 0 after
+    // ToReadOnly and failing every read.
+    net::Buffer payloadBuf(payloadCopy.data(), payloadCopy.size());
     payloadBuf.ToReadOnly();
     net::Deserialize(payloadBuf, back);
     CHECK_EQ(back.entity, evt.entity);
