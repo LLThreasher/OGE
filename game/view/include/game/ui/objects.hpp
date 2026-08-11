@@ -72,6 +72,6 @@ std::tuple<const UIDrag*, entt::entity> TryGetReleasedDragDst(
     const OgeRegistryRef game, entt::entity e);
 }  // namespace game::ui
 
-DECL_TYPE_NAME(::game::ui::UIDragReleaseDst, "core::UIDragReleaseDst")
-DECL_TYPE_NAME(::game::ui::UIDragReleaseFinished, "core::UIDragReleaseFinished")
-DECL_TYPE_NAME(::game::ui::UIDrag, "core::UIDrag")
+DECL_TYPE_NAME(game::ui::UIDragReleaseDst, "core::UIDragReleaseDst")
+DECL_TYPE_NAME(game::ui::UIDragReleaseFinished, "core::UIDragReleaseFinished")
+DECL_TYPE_NAME(game::ui::UIDrag, "core::UIDrag")

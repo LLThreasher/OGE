@@ -316,4 +316,4 @@ class TerrainView
 }  // namespace terrain
 }  // namespace game
 
-DECL_TYPE_NAME(::game::terrain::TerrainView, "core::TerrainView")
+DECL_TYPE_NAME(game::terrain::TerrainView, "core::TerrainView")
