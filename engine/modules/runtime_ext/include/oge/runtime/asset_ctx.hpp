@@ -1,6 +1,8 @@
 #pragma once
 
+#include <memory>
 #include <span>
+#include <string_view>
 
 #include "oge/graphics/objects.hpp"
 #include "oge/runtime/asset_base.hpp"
