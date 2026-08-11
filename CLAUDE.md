@@ -131,10 +131,11 @@ add_test_target(my_test
   `ChunkEventStream` into the replication `EventLogStream`.
 - **`InstallTerrainReplicationHooks(world)`** — call once in the server scene
   constructor to emplace `TerrainReplicationState` in ctx.
-- **`TerrainReplicationState::chunkEventCursor`** must start at **1**, NOT 0 —
-  `DiscreteEventStream::PollOne(cursor=0)` snaps to frontier (head), skipping
-  the first event.  Default-initialised `Cursor{}` (0) causes all events to be
-  missed silently.
+- **`TerrainReplicationState::chunkEventCursor`** — the current code
+  initialises it at **1** (a 0 cursor is the `DiscreteEventStream::PollOne`
+  snap-to-frontier sentinel, which skips queued events).  Note: c4e8d59's
+  intended behavior was **0** (skip the pre-poll backlog; the join snapshot
+  covers current state) — see "Intended chunk replication behavior" below.
 - **`AddChunkEvent`** carries a `terrain::PaletteCompressedChunk` (≤255-block
   palette + 4096 one-byte indices).  The wire format is coords + palette +
   **RLE-compressed indices** (custom `NetTraits` in `replication_events.hpp`).
@@ -150,6 +151,64 @@ add_test_target(my_test
   `ChunkStateUpdateEvent` (1–29 dirty blocks) → `PollTerrainChunkEvents` pushes
   `UpdateChunkEvent`.  E2E coverage: `e2e_add_chunk_replicates` +
   `e2e_update_chunk_replicates` in `game/ctrl/test/e2e_scene_test.cpp`.
+
+### Intended chunk replication behavior (from c4e8d59 "fix terrain bug")
+
+The terrain-bug fix (commit `c4e8d59`) established the intended contract
+between the server's chunk state machine and the replication events.  The
+current code diverges in two places (see "Known divergence" below) — when in
+doubt, treat this section as the spec.
+
+1. **One replication event per state transition.**  `PollTerrainChunkEvents`
+   classifies each `ChunkStateUpdateEvent` and pushes **exactly one** event:
+   - Chunk **entering `Persistent`** (`prevState != Persistent &&
+     state == Persistent`):
+     - `IsAllDirty()` (dirtyCnt == 255, set by `MarkAllDirty()` in terrain
+       generation) → full **`AddChunkEvent`** (palette-compressed).
+     - else `dirtyCnt > 0` (block edit via `SetBlock`) → **`UpdateChunkEvent`**
+       (≤29 dirty blocks).
+     - else (`dirtyCnt == 0` — pure state change, e.g. neighbor
+       revalidation) → nothing.
+   - Chunk **leaving `PendingDestroy`** (`prevState == PendingDestroy &&
+     state != PendingDestroy`) → **`RemoveChunkEvent`**.
+   - Before the fix, one block edit (Persistent → InvalidLighting →
+     Persistent) emitted *three* events: a spurious `RemoveChunkEvent`, a full
+     `AddChunkEvent`, and an `UpdateChunkEvent` — deleting the client chunk
+     and re-sending 4 KB per edit.
+2. **`SetBlock` marks every face-touching neighbor** for revalidation via
+   `ChunkDir::ForEachDirtyChunkNeighbor*` (`defs.hpp`: FACE_IDX_*/FACE_MASK_*).
+   The edited chunk gets the dirty-block event; neighbors get a pure state
+   change (dirtyCnt == 0 → nothing replicated).
+3. **Client `ApplyEvent(UpdateChunkEvent)` gate:** the chunk must exist **and**
+   be `state == Persistent`; otherwise the update is dropped.  Updates must
+   never be written into a chunk whose full data has not been validated yet
+   (a chunk awaiting neighbor upgrades has `state < Persistent`).  The apply
+   path mirrors server `SetBlock`: write blocks, `DowngradeChunk
+   (InvalidLighting)`, `UpgradeChunk(Persistent)`.
+4. **`TerrainReplicationState::chunkEventCursor` starts at 0.**  A zero cursor
+   is the `PollOne` snap-to-frontier sentinel: the pre-poll backlog (events
+   queued before hooks ran, e.g. chunks generated before a peer joined) is
+   skipped, and current state is covered by the peer-join snapshot
+   (`GenerateSnapshot`).  Replaying the backlog can resurrect stale
+   "ghost" chunks (AddChunk for a chunk already destroyed server-side).
+
+**Known divergence (068d422 "add interpolation layer..."):** commit `068d422`
+changed both:
+- `ApplyEvent(UpdateChunkEvent)` now gates on `chunk->weakState < Persistent`
+  instead of `state != Persistent` — updates are applied while the chunk
+  awaits neighbor validation (prevents dropping updates, but contradicts
+  intent #3).
+- `chunkEventCursor` back to `{1}` (contradicts intent #4).
+
+**Inconsistent test:** `e2e_update_chunk_replicates`
+(`game/ctrl/test/e2e_scene_test.cpp`) asserts the client receives a block
+update even when its chunk copy is still waiting on neighbors — the server
+sets the block as soon as its chunk is persistent, the client's chunk may not
+be `Persistent` yet, and the state gate drops the update.  Under the intended
+behavior this test fails (`clientValue != stoneId`); it only passes because
+of the 068d422 weakState gate.  If intent #3 is restored, the test must
+synchronize first (e.g. wait until the client chunk is `Persistent` before
+`SetBlock` on the server).
 
 ## Player Input Replication Notes
 

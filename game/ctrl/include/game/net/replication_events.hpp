@@ -220,7 +220,7 @@ struct TerrainReplicationState
 {
     // Start at 1 — a cursor of 0 is the "snap-to-frontier" sentinel in
     // DiscreteEventStream::PollOne, which would skip the first event.
-    terrain::ChunkEventStream::Cursor chunkEventCursor{1};
+    terrain::ChunkEventStream::Cursor chunkEventCursor{};
     bool initialized = false;
 };
 
