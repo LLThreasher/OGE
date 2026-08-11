@@ -325,6 +325,11 @@ TEST(wire_ring_wrap_small_capacity)
         CHECK(e.entry.id == static_cast<game::net::oge_id_type>(1000 + i));
     }
 
+    // Advance the tail.  TryDequeueEvent only clears the receive-mask bit;
+    // the tail moves in Update() (called every tick in production), which is
+    // what makes room in the ring for the next batch.
+    srv.Update();
+
     // Batch 2: 4 more events at cursors 9-12, forcing indices 1-4 which
     // exercise the same `curosr % Capacity` path that previously threw.
     for (int i = 8; i < 12; ++i)
