@@ -855,6 +855,109 @@ TEST(e2e_rollback_on_server_correction)
 }
 
 // =============================================================================
+// Rollback recovery — predictions survive past the pong alignment
+//
+// After a rollback the client pings the server; validation is suspended until
+// the pong arrives.  During this round-trip the client keeps predicting.  The
+// first ValidateLatest after the pong should only compare predictions up to
+// the server's confirmed tick — not the full prediction backlog from the
+// round-trip window.  If the comparison window is unbounded the client
+// sees a count mismatch and rolls back again, creating a livelock.
+// =============================================================================
+
+TEST(e2e_rollback_recovery_no_relapse)
+{
+    NetSceneHarness h;
+    h.enableClientPrediction();
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    // Wait for the client player.
+    entt::entity clientPlayer = entt::null;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                clientPlayer = e;
+                return true;
+            }
+            return false;
+        },
+        400));
+    CHECK(clientPlayer != entt::null);
+
+    // Tag for local prediction and wire up input.
+    auto& cw = h.clientWorld();
+    cw.emplace_or_replace<game::RenderStrategyTag<game::RenderStrategy::LocalPrediction>>(
+        clientPlayer);
+    if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
+        cw.emplace<game::input::PlayerInputStream>(clientPlayer);
+    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
+        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+
+    // Let snapshots accumulate.
+    auto& rbs = h.clientRollbackStream();
+    CHECK(h.pumpUntil([&] { return rbs.Snapshots().size() > 0; }, 200));
+
+    // Find the server player and teleport it to trigger a rollback.
+    entt::entity serverPlayer = entt::null;
+    auto& sw = h.serverWorld();
+    for (auto [e, player] : sw.view<game::ComponentPlayer>()->each())
+    {
+        (void)player;
+        serverPlayer = e;
+        break;
+    }
+    CHECK(serverPlayer != entt::null);
+
+    game::math::vec3 distantPos2{50.f, 0.f, 50.f};
+    sw.patch<game::ComponentPhysicBody>(serverPlayer,
+                                        [&](auto& b)
+                                        { b.pos = distantPos2; });
+
+    // Wait for the rollback to trigger (ping sent).
+    CHECK(h.pumpUntil([&] { return rbs.IsWaitingPong(); }, 200));
+
+    // Advance a few frames while waiting — this generates predictions in the
+    // round-trip window (the client keeps simulating locally).
+    auto& clientStream = cw.get<game::input::PlayerInputStream>(clientPlayer);
+    for (int i = 0; i < 5; ++i)
+    {
+        clientStream.InsertMoveDelta(game::math::vec2{0.01f, 0.f});
+        clientStream.AdvanceTick();
+        h.poll();
+    }
+
+    // Wait for the pong — validation resumes with the server's alignment.
+    CHECK(h.pumpUntil([&] { return !rbs.IsWaitingPong(); }, 200));
+
+    // Inject more input and run several frames.  The key assertion: the
+    // stream must NOT re-enter the waiting-pong state.  If validation
+    // compares predictions from the whole round-trip window (pre-fix), the
+    // count mismatch against available server events triggers another
+    // rollback immediately.
+    for (int i = 0; i < 10; ++i)
+    {
+        clientStream.InsertMoveDelta(game::math::vec2{0.01f, 0.f});
+        clientStream.AdvanceTick();
+        h.poll();
+        if (rbs.IsWaitingPong()) break;
+    }
+    CHECK(!rbs.IsWaitingPong());
+
+    // Predictions beyond the alignment should have survived.
+    CHECK(rbs.PredictedCount() > 0);
+
+    // Client player must still be valid.
+    CHECK(cw.valid(clientPlayer));
+    CHECK(cw.all_of<game::ComponentPhysicBody>(clientPlayer));
+}
+
+// =============================================================================
 // Stability — extended run with local prediction enabled
 // =============================================================================
 
