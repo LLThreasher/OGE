@@ -1,5 +1,14 @@
 function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
 
+    # Use the explicitly-configured glslc path when available (e.g. from a
+    # CMake preset or -DVulkan_GLSLC_EXECUTABLE=...), otherwise fall back to
+    # bare "glslc" and rely on PATH.
+    if (DEFINED Vulkan_GLSLC_EXECUTABLE)
+        set(GLSLC "${Vulkan_GLSLC_EXECUTABLE}")
+    else()
+        set(GLSLC glslc)
+    endif()
+
     # Collect all shader files
     file(GLOB_RECURSE SHADER_FILES
         CONFIGURE_DEPENDS
@@ -23,7 +32,7 @@ function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
             OUTPUT ${SPIRV_OPT}
             COMMAND ${CMAKE_COMMAND} -E make_directory
                     ${ASSET_TARGET_DIR}
-            COMMAND glslc -O ${SHADER} -o ${SPIRV}
+            COMMAND ${GLSLC} -O ${SHADER} -o ${SPIRV}
             COMMAND spirv-opt ${SPIRV} -o ${SPIRV_OPT}
             DEPENDS ${SHADER}
             COMMENT "Compiling shader ${FILE_NAME}"
