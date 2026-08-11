@@ -431,7 +431,9 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
             }
             cursor = ref.entry.cursor + 1;
         }
-        m_alignmentTick = advTick;
+        // Never regress: AdvanceTick may have already advanced the
+        // alignment past this pong's server tick during the round-trip.
+        m_alignmentTick = std::max(m_alignmentTick, advTick);
 
         LOG_DEBUG("pong: server tick {} at cursor {}, alignment tick {}",
                   pong.serverTick, pong.serverCursor, m_alignmentTick);

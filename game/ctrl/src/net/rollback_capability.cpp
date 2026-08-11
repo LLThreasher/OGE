@@ -203,7 +203,12 @@ bool game::net::PhysicsBodyCompareFn(net::Buffer& a, net::Buffer& b)
 
     if (evtA.entity != evtB.entity) return false;
 
-    constexpr float kPositionEpsilon = 0.1f;
+    // Must cover the prediction lead (client tick - server tick) in
+    // position units.  With a 6-tick lead, 20 Hz, and 5 u/s max player
+    // speed: 6 * 0.05 s * 5 u/s = 1.5 u.  Use 2.0 u for margin.
+    // TODO: match predictions to server events by tick so the epsilon
+    // can be tightened.
+    constexpr float kPositionEpsilon = 2.0f;
     auto res = oge::math::len(evtA.component.pos - evtB.component.pos) <=
            kPositionEpsilon;
     return res;
