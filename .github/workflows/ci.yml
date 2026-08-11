@@ -1,0 +1,98 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---- Linux (gcc, Ninja) ------------------------------------------------
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Configure
+        run: cmake --preset linux-debug
+
+      - name: Build
+        run: cmake --build out/build/linux-debug
+
+      - name: Test
+        run: ctest --test-dir out/build/linux-debug --output-on-failure
+
+  # ---- macOS (Apple Clang, Ninja) ----------------------------------------
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Ninja
+        run: brew install ninja
+
+      - name: Configure
+        run: cmake --preset apple-debug
+
+      - name: Build
+        run: cmake --build --preset apple-debug
+
+      - name: Test
+        run: ctest --test-dir out/build/apple-debug --output-on-failure
+
+  # ---- Windows (x64, clang-cl, Ninja) ------------------------------------
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install LLVM (clang-cl)
+        run: choco install llvm --version=19.1.7 -y --no-progress
+        shell: pwsh
+
+      - name: Add LLVM to PATH
+        run: echo "C:\Program Files\LLVM\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+        shell: pwsh
+
+      - name: Configure
+        run: cmake --preset x64-debug
+
+      - name: Build
+        run: cmake --build out/build/x64-debug
+
+      - name: Test
+        run: ctest --test-dir out/build/x64-debug --output-on-failure
+
+  # ---- Android (Gradle APK, no tests) ------------------------------------
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platforms;android-35
+            platforms;android-29
+            build-tools;35.0.0
+            ndk;28.2.13676358
+            cmake;3.28.0+
+
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Configure
+        run: cmake --preset android-debug
+
+      - name: Build APK
+        run: cmake --build out/build/android-debug
