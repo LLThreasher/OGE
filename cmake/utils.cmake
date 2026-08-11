@@ -9,6 +9,14 @@ function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
         set(GLSLC glslc)
     endif()
 
+    # Same pattern for spirv-opt: honour an explicit path (preset / command
+    # line), otherwise fall back to bare "spirv-opt" on PATH.
+    if (DEFINED Vulkan_SPIRV_OPT_EXECUTABLE)
+        set(SPIRV_OPT_CMD "${Vulkan_SPIRV_OPT_EXECUTABLE}")
+    else()
+        set(SPIRV_OPT_CMD spirv-opt)
+    endif()
+
     # Collect all shader files
     file(GLOB_RECURSE SHADER_FILES
         CONFIGURE_DEPENDS
@@ -33,7 +41,7 @@ function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
             COMMAND ${CMAKE_COMMAND} -E make_directory
                     ${ASSET_TARGET_DIR}
             COMMAND ${GLSLC} -O ${SHADER} -o ${SPIRV}
-            COMMAND spirv-opt ${SPIRV} -o ${SPIRV_OPT}
+            COMMAND ${SPIRV_OPT_CMD} ${SPIRV} -o ${SPIRV_OPT}
             DEPENDS ${SHADER}
             COMMENT "Compiling shader ${FILE_NAME}"
             VERBATIM

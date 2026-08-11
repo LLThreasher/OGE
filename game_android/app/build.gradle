@@ -25,9 +25,9 @@ if (cmakeBuildDir) {
     logger.warn("CMAKE_BUILD_DIR property not set; no extra CMake args will be passed")
 }
 
-// Provide Vulkan GLSLC from the NDK as a default.  If the top-level CMake
-// already set Vulkan_GLSLC_EXECUTABLE in cmake_config.properties, keep that
-// value; otherwise fall back to the NDK shader-tools path.
+// Provide Vulkan GLSLC and spirv-opt from the NDK as defaults.  If the
+// top-level CMake already set these in cmake_config.properties, keep those
+// values; otherwise fall back to the NDK shader-tools path.
 if (!extraArgs.any { it.startsWith("-DVulkan_GLSLC_EXECUTABLE=") }) {
     try {
         def ndkDir = android.ndkDirectory
@@ -38,8 +38,10 @@ if (!extraArgs.any { it.startsWith("-DVulkan_GLSLC_EXECUTABLE=") }) {
                 : "linux-x86_64"
         def glslcPath = "${ndkDir}/shader-tools/${hostTag}/glslc"
         extraArgs.add("-DVulkan_GLSLC_EXECUTABLE=${glslcPath}")
+        def spirvOptPath = "${ndkDir}/shader-tools/${hostTag}/spirv-opt"
+        extraArgs.add("-DVulkan_SPIRV_OPT_EXECUTABLE=${spirvOptPath}")
     } catch (Exception e) {
-        logger.warn("NDK not available; skipping Vulkan_GLSLC_EXECUTABLE: ${e.message}")
+        logger.warn("NDK not available; skipping shader-tool defaults: ${e.message}")
     }
 }
 
