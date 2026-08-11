@@ -46,6 +46,21 @@ struct IntTriple
         }
     }
 
+    IntTriple<int32_t> operator<<(size_t size) const
+    {
+        return {x << size, y << size, z << size};
+    }
+
+    IntTriple<int32_t> operator>>(size_t size) const
+    {
+        return {x >> size, y >> size, z >> size};
+    }
+
+    IntTriple<int32_t> operator&(size_t size) const
+    {
+        return {x & size, y & size, z & size};
+    }
+
     operator math::vec3() const
     {
         return {x, y, z};
@@ -71,7 +86,8 @@ struct CompactLocalPoint3
 {
     uint16_t val;
 
-    CompactLocalPoint3(Point3 pt = {}) : val((pt.x & 0xF) | ((pt.y & 0xF) << 4) | ((pt.z & 0xF) << 8))
+    CompactLocalPoint3(Point3 pt = {})
+        : val((pt.x & 0xF) | ((pt.y & 0xF) << 4) | ((pt.z & 0xF) << 8))
     {
         assert(pt.x >= 0 && pt.x < 16);
         assert(pt.y >= 0 && pt.y < 16);

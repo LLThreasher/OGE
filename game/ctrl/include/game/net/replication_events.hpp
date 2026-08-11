@@ -772,6 +772,7 @@ inline void ApplyEvent(OgeRegistryRef world, const AddChunkEvent& event)
 
     if (chunk == nullptr)
     {
+        LOG_ERROR("create chunk failed when applying AddChunkEvent");
         return;
     }
 
@@ -802,7 +803,7 @@ inline void ApplyEvent(OgeRegistryRef world, const RemoveChunkEvent& event)
         return;
     }
 
-    terrain.DowngradeChunk(handle, terrain::ChunkState::InvalidLighting);
+    terrain.UpgradeChunk(handle, terrain::ChunkState::PendingDestroy);
 }
 
 inline void ApplyEvent(OgeRegistryRef world, const UpdateChunkEvent& event)
@@ -811,38 +812,46 @@ inline void ApplyEvent(OgeRegistryRef world, const UpdateChunkEvent& event)
 
     auto [handle, chunk] = terrain.GetChunk(event.coords);
 
-    // Use weakState instead of state: chunks may be waiting for neighbor
-    // upgrades.  weakState reflects the intended level; state catches up
-    // when AllNeighborsValid passes.
-    if (chunk == nullptr ||
-        chunk->weakState < terrain::ChunkState::Persistent)
+    if (chunk == nullptr)
     {
+        LOG_WARN("dropping update chunk event, client may diverge");
         return;
     }
 
-    std::bitset<6> dirtyFaces{};
+    const oge::Point3 blockBase = event.coords << 4;
     for (uint8_t i = 0; i < event.dirtyCnt; ++i)
     {
         const ChunkBlockUpdate& upd = event.updates[i];
         const oge::LocalUPoint3 p = upd.position;
 
-        chunk->SetBlock(p, upd.block);
-        terrain::ChunkDir::ForEachDirtyChunkNeighborIdx(p, [&](auto cpos) {
-            dirtyFaces.set(cpos, true);
-        });
+        terrain.SetBlock(blockBase + p, upd.block, false);
     }
 
-    terrain.DowngradeChunk(handle, terrain::ChunkState::InvalidLighting);
-    terrain.UpgradeChunk(handle, terrain::ChunkState::Persistent);
+    // std::bitset<6> dirtyFaces{};
+    // terrain::ChunkStateUpdateEvent e{};
+    // for (uint8_t i = 0; i < event.dirtyCnt; ++i)
+    // {
+    //     const ChunkBlockUpdate& upd = event.updates[i];
+    //     const oge::LocalUPoint3 p = upd.position;
 
-    for (size_t face = 0; face < 6; ++face)
-    {
-        if (dirtyFaces.test(face))
-        {
-            terrain.DowngradeChunk(handle, terrain::ChunkState::InvalidLighting);
-            terrain.UpgradeChunk(handle, terrain::ChunkState::Persistent);
-        }
-    }
+    //     e.AddDirtyBlk({p});
+    //     chunk->SetBlock(p, upd.block);
+    //     terrain::ChunkDir::ForEachDirtyChunkNeighborIdx(p, [&](auto cpos) {
+    //         dirtyFaces.set(cpos, true);
+    //     });
+    // }
+
+    // terrain.DowngradeChunk(handle, terrain::ChunkState::InvalidLighting, e);
+    // terrain.UpgradeChunk(handle, terrain::ChunkState::Persistent, e);
+
+    // for (size_t face = 0; face < 6; ++face)
+    // {
+    //     if (dirtyFaces.test(face))
+    //     {
+    //         terrain.DowngradeChunk(handle, terrain::ChunkState::InvalidLighting);
+    //         terrain.UpgradeChunk(handle, terrain::ChunkState::Persistent);
+    //     }
+    // }
 }
 
 }  // namespace game::net

@@ -30,7 +30,7 @@ bool TerrainView::TryGetBlock(int x, int y, int z, uint32_t& value) const
     return false;
 }
 
-void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
+void TerrainView::SetBlock(int x, int y, int z, uint32_t value, bool sideEffect)
 {
     Point3 chunkCoord = {x >> 4, y >> 4, z >> 4};
     oge::CompactLocalPoint3 localCoord = oge::Point3{x & 0xF, y & 0xF, z & 0xF};
@@ -46,7 +46,10 @@ void TerrainView::SetBlock(int x, int y, int z, uint32_t value)
     if (chunk != nullptr)
     {
         ChunkStateUpdateEvent e{};
-        e.AddDirtyBlk(localCoord);
+        if (sideEffect)
+        {
+            e.AddDirtyBlk(localCoord);
+        }
         DowngradeChunk(handle, ChunkState::InvalidLighting, e);
         UpgradeChunk(handle, ChunkState::Persistent, e);
         ChunkDir::ForEachDirtyChunkNeighbor({x, y, z}, handleChunk);

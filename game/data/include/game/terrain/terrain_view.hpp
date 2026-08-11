@@ -283,13 +283,13 @@ class TerrainView
     {
         return TryGetBlock(pos.x, pos.y, pos.z, value);
     }
-    void SetBlock(Point3 pos, uint32_t value)
+    void SetBlock(Point3 pos, uint32_t value, bool sideEffect = true)
     {
-        SetBlock(pos.x, pos.y, pos.z, value);
+        SetBlock(pos.x, pos.y, pos.z, value, sideEffect);
     }
     uint32_t GetBlock(int x, int y, int z) const;
     bool TryGetBlock(int x, int y, int z, uint32_t& value) const;
-    void SetBlock(int x, int y, int z, uint32_t value);
+    void SetBlock(int x, int y, int z, uint32_t value, bool sideEffect = true);
     std::tuple<ChunkHandle, const ChunkData*> GetChunk(Point3 chunkCoord) const;
     std::tuple<ChunkHandle, ChunkData*> GetChunk(Point3 chunkCoord);
     const ChunkData* GetChunk(ChunkHandle handle) const;
