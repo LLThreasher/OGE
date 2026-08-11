@@ -32,6 +32,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtx/transform.hpp>
+#include <numbers>
 
 namespace oge::math
 {
@@ -43,7 +44,7 @@ using mat2 = glm::mat2;
 using mat4 = glm::mat4;
 using quat = glm::quat;
 
-constexpr float pi = glm::pi<float>();
+constexpr double pi = std::numbers::pi;
 
 template <typename T>
 inline float sqrt(T a)
