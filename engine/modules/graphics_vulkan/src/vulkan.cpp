@@ -581,7 +581,7 @@ void VulkanBackend::Initialize(const BackendDesc& desc)
     std::vector<const char*> extensions = {
         VK_KHR_SURFACE_EXTENSION_NAME,
     };
-    if (desc.window->isWayland)
+    if (desc.window.isWayland)
     {
         extensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
     }

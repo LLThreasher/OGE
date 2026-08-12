@@ -293,7 +293,7 @@ class DebugVoxelView : public SceneView
 }  // namespace game
 
 template <typename S>
-struct ::oge::runtime::TypeName<game::DebugVoxelView<S>>
+struct oge::runtime::TypeName<game::DebugVoxelView<S>>
 {
     static constexpr std::string Get()
     {
