@@ -29,7 +29,7 @@ class DebugView : public SceneView
 }  // namespace game
 
 template <typename S>
-struct ::oge::runtime::TypeName<game::DebugView<S>>
+struct oge::runtime::TypeName<game::DebugView<S>>
 {
     static constexpr std::string Get()
     {

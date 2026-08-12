@@ -180,7 +180,7 @@ struct ObjectTraits
 
 #define DECL_NET_OBJ_PACKED(Type, Packed, ToPacked, FromPacked)  \
     template <>                                                  \
-    struct ::oge::runtime::net::NetTraits<Type>                  \
+    struct oge::runtime::net::NetTraits<Type>                    \
     {                                                            \
         static uint64_t Size(const Type& value)                  \
         {                                                        \
