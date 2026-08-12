@@ -66,8 +66,12 @@ void MetalCommandBuffer::SetViewRect(int32_t x, int32_t y, uint32_t w,
                                      uint32_t h)
 {
     if (beginEncoder())
+        // Metal's viewport origin is bottom-left (OpenGL convention).
+        // Invert Y to match Vulkan's top-left origin so shaders, projection
+        // matrices, and texture coordinates all match.
         m_encoder->setViewport(
-            MTL::Viewport{(double)x, (double)y, (double)w, (double)h, 0.0, 1.0});
+            MTL::Viewport{(double)x, (double)(y + h), (double)w, -(double)h,
+                          0.0, 1.0});
 }
 
 void MetalCommandBuffer::BeginRenderPass(const GPURenderPassDesc&)
