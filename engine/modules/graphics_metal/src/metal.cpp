@@ -1117,6 +1117,16 @@ GPUPipelineHandle MetalBackend::CreateGraphicsPipeline(
     // Default color attachment (BGRA8Unorm sRGB, matching swapchain).
     auto* ca = rpDesc->colorAttachments()->object(0);
     ca->setPixelFormat(MTL::PixelFormatBGRA8Unorm_sRGB);
+    if (desc.blending)
+    {
+        ca->setBlendingEnabled(true);
+        ca->setSourceRGBBlendFactor(MTL::BlendFactorSourceAlpha);
+        ca->setDestinationRGBBlendFactor(
+            MTL::BlendFactorOneMinusSourceAlpha);
+        ca->setSourceAlphaBlendFactor(MTL::BlendFactorOne);
+        ca->setDestinationAlphaBlendFactor(
+            MTL::BlendFactorOneMinusSourceAlpha);
+    }
 
     // Always match the depth format our render pass provides.
     rpDesc->setDepthAttachmentPixelFormat(
