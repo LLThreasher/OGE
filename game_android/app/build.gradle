@@ -27,18 +27,28 @@ if (cmakeBuildDir) {
 
 // Provide Vulkan shader tools from the NDK as defaults.  If the top-level
 // CMake already set these in cmake_config.properties, keep those values;
-// otherwise fall back to the NDK shader-tools directory.
+// otherwise resolve the NDK (env var first — android.ndkDirectory throws
+// "NDK is not installed" on CI even when ndkVersion is pinned) and point
+// at its shader-tools/<host> directory.
 if (!extraArgs.any { it.startsWith("-DVULKAN_SHADER_TOOLS=") }) {
-    try {
-        def hostTag = System.getProperty("os.name").toLowerCase().contains("mac")
-            ? "darwin-x86_64"
-            : System.getProperty("os.name").toLowerCase().contains("win")
-                ? "windows-x86_64"
-                : "linux-x86_64"
-        def shaderToolsDir = "${android.ndkDirectory}/shader-tools/${hostTag}"
+    def hostTag = System.getProperty("os.name").toLowerCase().contains("mac")
+        ? "darwin-x86_64"
+        : System.getProperty("os.name").toLowerCase().contains("win")
+            ? "windows-x86_64"
+            : "linux-x86_64"
+    def ndkRoot = System.getenv("ANDROID_NDK_HOME") ?: System.getenv("NDK_HOME")
+    if (!ndkRoot) {
+        try {
+            ndkRoot = android.ndkDirectory.toString()
+        } catch (Throwable e) {
+            logger.warn("Cannot resolve NDK path: ${e.message}")
+        }
+    }
+    def shaderToolsDir = ndkRoot ? "${ndkRoot}/shader-tools/${hostTag}" : null
+    if (shaderToolsDir && new File(shaderToolsDir).exists()) {
         extraArgs.add("-DVULKAN_SHADER_TOOLS=${shaderToolsDir}")
-    } catch (Throwable e) {
-        logger.warn("NDK not available; skipping shader-tool defaults: ${e.message}")
+    } else {
+        logger.warn("NDK shader-tools not found at ${shaderToolsDir}; falling back to PATH")
     }
 }
 

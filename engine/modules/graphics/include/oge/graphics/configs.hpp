@@ -6,6 +6,12 @@
 #include "oge/flag_helper.hpp"
 #include "oge/handle.hpp"
 
+// X11 (reached via vulkan.h) defines `None` as a macro that collides with
+// the None enumerators below — drop it so the enums parse cleanly.
+#ifdef None
+#undef None
+#endif
+
 namespace oge::graphics
 {
 using namespace oge::flag_helper;
