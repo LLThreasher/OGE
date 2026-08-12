@@ -28,12 +28,34 @@ bool MetalCommandBuffer::beginEncoder()
     auto& sc = m_backend.m_swapchain;
     if (sc.currentDrawable == nullptr) return false;
 
+    // Create depth texture on first use.
+    if (!sc.currentDepthTexture.IsValid() &&
+        sc.extent.x > 0 && sc.extent.y > 0)
+    {
+        sc.currentDepthTexture = m_backend.CreateDepthTexture(
+            sc.extent.x, sc.extent.y);
+    }
+
     auto* rpDesc = MTL::RenderPassDescriptor::alloc()->init();
     auto* ca = rpDesc->colorAttachments()->object(0);
     ca->setTexture(sc.currentDrawable->texture());
     ca->setLoadAction(MTL::LoadActionClear);
     ca->setClearColor(MTL::ClearColor::Make(0.1f, 0.12f, 0.15f, 1.0f));
     ca->setStoreAction(MTL::StoreActionStore);
+
+    // Depth attachment.
+    if (sc.currentDepthTexture.IsValid())
+    {
+        auto* t = m_backend.m_textures.Get(sc.currentDepthTexture);
+        if (t != nullptr && t->texture.get() != nullptr)
+        {
+            auto* da = rpDesc->depthAttachment();
+            da->setTexture(t->texture.get());
+            da->setLoadAction(MTL::LoadActionClear);
+            da->setClearDepth(1.0);
+            da->setStoreAction(MTL::StoreActionDontCare);
+        }
+    }
 
     m_encoder = m_mtlCmdBuf->renderCommandEncoder(rpDesc);
     rpDesc->release();
