@@ -53,6 +53,7 @@ struct MetalFrameData
 {
     NS::SharedPtr<MTL::CommandBuffer> commandBuffer = nullptr;
     dispatch_semaphore_t inFlightSemaphore = nullptr;
+    ICommandList* commandList = nullptr;
 };
 
 struct MetalBuffer

@@ -891,6 +891,9 @@ void MetalBackend::Shutdown()
 
     for (auto& f : m_frames)
     {
+        delete f.commandList;
+        f.commandList = nullptr;
+
         if (f.inFlightSemaphore != nullptr)
         {
             dispatch_release(f.inFlightSemaphore);
@@ -981,7 +984,11 @@ ICommandList& MetalBackend::CreateCommandList(QueueType type)
     auto* mtlCB = queue->commandBuffer();
     frame.commandBuffer = NS::RetainPtr(mtlCB);
 
+    // Delete the previous command list (from upload or prior frame).
+    delete frame.commandList;
+
     auto* cmd = new MetalCommandBuffer(mtlCB, *this);
+    frame.commandList = cmd;
     return *cmd;
 }
 
