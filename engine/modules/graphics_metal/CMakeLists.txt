@@ -6,9 +6,10 @@ file(GLOB_RECURSE SOURCE_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp"
 )
 
-file(GLOB_RECURSE SOURCE_FILES_CPP 
+file(GLOB_RECURSE SOURCE_FILES_CPP
     CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.mm"
 )
 
 target_sources(oge_graphics_metal

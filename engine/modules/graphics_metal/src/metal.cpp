@@ -26,6 +26,12 @@
 #include "oge/math.hpp"
 #include "oge/platform/stacktrace.hpp"
 
+// Autorelease pool helpers (metal_autorelease.mm).
+extern "C" {
+void* MetalAutoreleasePoolPush();
+void MetalAutoreleasePoolPop(void* pool);
+}
+
 namespace oge::graphics::metal
 {
 
@@ -930,7 +936,6 @@ void MetalBackend::Shutdown()
 BeginFrameAction MetalBackend::BeginFrame()
 {
     // Push a fresh autorelease pool for this frame.
-    extern void* MetalAutoreleasePoolPush();
     m_framePool = MetalAutoreleasePoolPush();
 
     auto& frame = m_frames[m_frameIndex];
@@ -977,7 +982,6 @@ EndFrameAction MetalBackend::EndFrame()
     m_frameIndex = (m_frameIndex + 1) % static_cast<uint32_t>(m_frames.size());
 
     // Drain this frame's autorelease pool.
-    extern void MetalAutoreleasePoolPop(void* pool);
     MetalAutoreleasePoolPop(m_framePool);
     m_framePool = nullptr;
 
