@@ -230,13 +230,12 @@ void MetalCommandBuffer::CopyBufferToTexture(GPUBufferHandle srcBuf,
     if (src == nullptr || dst == nullptr) return;
     if (src->buffer.get() == nullptr || dst->texture.get() == nullptr) return;
 
-    // Bytes per row: width × 4 bytes (RGBA), aligned to 256.
-    uint32_t bpr = ((w * 4) + 255) & ~255u;
+    uint32_t bpr = w * 4;  // RGBA8 = 4 bytes per pixel
     auto* blit = m_mtlCmdBuf->blitCommandEncoder();
     blit->copyFromBuffer(
         src->buffer.get(), bufOff,
-        bpr,
-        bpr * h,
+        bpr,                       // bytesPerRow
+        bpr * h,                  // bytesPerImage
         MTL::Size{w, h, 1},
         dst->texture.get(),
         tgt.baseTextureLayer, tgt.mipLevel,
