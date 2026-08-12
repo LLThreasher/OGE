@@ -851,8 +851,9 @@ void MetalBackend::Initialize(const BackendDesc& desc)
     uint32_t n = MAX_FRAMES_IN_FLIGHT > 3 ? 3u
                  : static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     m_frames.resize(n);
-    for (auto& f : m_frames)
-        f.inFlightSemaphore = dispatch_semaphore_create(1);
+
+    // Single semaphore limits host to maxFramesInFlight ahead of GPU.
+    m_inFlightSemaphore = dispatch_semaphore_create(n);
 
     m_swapchain.wasRecreated = true;
     m_swapchain.isDirty = false;
@@ -902,15 +903,19 @@ void MetalBackend::Shutdown()
 
     for (auto& f : m_frames)
     {
+        if (f.pendingCB.get() != nullptr)
+            f.pendingCB->waitUntilCompleted();
+        f.pendingCB = nullptr;
+        f.cachedRPDesc = nullptr;
         f.cmdBuffers.clear();
-
-        if (f.inFlightSemaphore != nullptr)
-        {
-            dispatch_release(f.inFlightSemaphore);
-            f.inFlightSemaphore = nullptr;
-        }
     }
     m_frames.clear();
+
+    if (m_inFlightSemaphore != nullptr)
+    {
+        dispatch_release(m_inFlightSemaphore);
+        m_inFlightSemaphore = nullptr;
+    }
     m_frameIndex = 0;
     m_device.layer = nullptr;
     m_device.transferQueue = nullptr;
@@ -928,9 +933,19 @@ void MetalBackend::Shutdown()
 
 BeginFrameAction MetalBackend::BeginFrame()
 {
+    if (m_inFlightSemaphore != nullptr)
+        dispatch_semaphore_wait(m_inFlightSemaphore, DISPATCH_TIME_FOREVER);
+
     auto& frame = m_frames[m_frameIndex];
-    if (frame.inFlightSemaphore != nullptr)
-        dispatch_semaphore_wait(frame.inFlightSemaphore, DISPATCH_TIME_FOREVER);
+
+    // The CB committed in the previous cycle through this slot should
+    // be done by now.  waitUntilCompleted ensures the GPU has finished
+    // before we reuse this slot — zero alloc, no completion handler.
+    if (frame.pendingCB.get() != nullptr)
+    {
+        frame.pendingCB->waitUntilCompleted();
+        frame.pendingCB = nullptr;
+    }
 
     // Reset the command-list pool and clear the previous frame's
     // MTL::CommandBuffer so CreateCommandList creates a fresh one.
@@ -964,19 +979,18 @@ EndFrameAction MetalBackend::EndFrame()
             m_swapchain.currentColorTexture = {};
         }
 
-        // Signal the semaphore only after the GPU completes this CB.
-        // Using addCompletedHandler prevents the CPU from racing ahead
-        // and accumulating unbounded pending command buffers in Metal's
-        // driver (which shows as native-block growth).
-        dispatch_semaphore_t sem = frame.inFlightSemaphore;
-        frame.commandBuffer->addCompletedHandler(
-            [sem](MTL::CommandBuffer*) {
-                if (sem) dispatch_semaphore_signal(sem);
-            });
-
         frame.commandBuffer->commit();
+
+        // Stash the committed CB so BeginFrame can waitUntilCompleted
+        // on it the next time this slot cycles around.
+        frame.pendingCB = frame.commandBuffer;
         frame.commandBuffer = nullptr;
     }
+
+    // CPU pacing: signal so the next frame can pass BeginFrame.
+    // GPU synchronisation is handled by waitUntilCompleted on pendingCB.
+    if (m_inFlightSemaphore != nullptr)
+        dispatch_semaphore_signal(m_inFlightSemaphore);
 
     m_frameIndex = (m_frameIndex + 1) % static_cast<uint32_t>(m_frames.size());
     return EndFrameAction::Continue;

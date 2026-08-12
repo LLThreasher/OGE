@@ -51,12 +51,20 @@ struct MetalSwapchain
 struct MetalFrameData
 {
     NS::SharedPtr<MTL::CommandBuffer> commandBuffer = nullptr;
-    dispatch_semaphore_t inFlightSemaphore = nullptr;
 
     // Pool of reusable MetalCommandBuffer wrappers (recycled each frame).
     std::vector<MetalCommandBuffer> cmdBuffers = {};
     uint32_t cmdUsedCount = 0;
     static constexpr uint32_t kMaxCmdBuffers = 4;
+
+    // Cached render-pass descriptor (reused each frame instead of
+    // alloc/init every beginEncoder call).
+    NS::SharedPtr<MTL::RenderPassDescriptor> cachedRPDesc = nullptr;
+
+    // Committed CB from the previous cycle through this slot.
+    // BeginFrame calls waitUntilCompleted on it to ensure the GPU
+    // is done before reusing this slot's resources.
+    NS::SharedPtr<MTL::CommandBuffer> pendingCB = nullptr;
 };
 
 struct MetalBuffer
@@ -185,6 +193,12 @@ class MetalBackend final : public IGraphicsBackend
     NS::SharedPtr<MTL::Library> m_defaultLibrary = nullptr;
     NS::SharedPtr<MTL::SamplerState> m_defaultSampler = nullptr;
     NS::SharedPtr<MTL::DepthStencilState> m_noDepthDSS = nullptr;
+
+    // Per-frame semaphores for CPU pacing (host limited to
+    // maxFramesInFlight).  GPU synchronisation is handled by
+    // waitUntilCompleted on pendingCB — zero alloc, avoids any
+    // completion-handler lifecycle issues.
+    dispatch_semaphore_t m_inFlightSemaphore = nullptr;
 
     Pool<GPUObjectType::Buffer, MetalBuffer> m_buffers;
     Pool<GPUObjectType::Texture, MetalTexture> m_textures;

@@ -56,7 +56,15 @@ bool MetalCommandBuffer::beginEncoder()
             sc.extent.x, sc.extent.y);
     }
 
-    auto* rpDesc = MTL::RenderPassDescriptor::alloc()->init();
+    // Reuse a cached render-pass descriptor to avoid per-frame alloc.
+    auto& frame = m_backend->m_frames[m_backend->m_frameIndex];
+    MTL::RenderPassDescriptor* rpDesc = frame.cachedRPDesc.get();
+    if (rpDesc == nullptr)
+    {
+        rpDesc = MTL::RenderPassDescriptor::alloc()->init();
+        frame.cachedRPDesc = NS::TransferPtr(rpDesc);
+    }
+
     auto* ca = rpDesc->colorAttachments()->object(0);
     ca->setTexture(sc.currentDrawable->texture());
     ca->setLoadAction(MTL::LoadActionClear);
@@ -77,9 +85,14 @@ bool MetalCommandBuffer::beginEncoder()
             da->setStoreAction(MTL::StoreActionDontCare);
         }
     }
+    else
+    {
+        // Detach depth from previous frame (depth might become invalid
+        // on resize or if never created).
+        rpDesc->depthAttachment()->setTexture(nullptr);
+    }
 
     m_encoder = m_mtlCmdBuf->renderCommandEncoder(rpDesc);
-    rpDesc->release();
     return m_encoder != nullptr;
 }
 
