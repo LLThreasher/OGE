@@ -1,0 +1,28 @@
+name: CI - macOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Vulkan SDK
+        uses: jakoch/install-vulkan-sdk-action@v1.6.0
+
+      - name: Install Ninja
+        run: brew install ninja
+
+      - name: Configure
+        run: cmake --preset apple-debug
+
+      - name: Build
+        run: cmake --build --preset apple-debug
+
+      - name: Test
+        run: ctest --test-dir out/build/apple-debug --output-on-failure
