@@ -86,8 +86,7 @@ class SceneView : protected AppRuntime
           m_innerScene(*m_ownedScene),
           m_ctx(def.ctx),
           m_inputs(input::InputContext{m_windowCtx, m_uiWorld}),
-          m_renderers(view::RendererState{m_innerScene.GetWorld(),
-                                          m_uiWorld,
+          m_renderers(view::RendererState{m_innerScene.GetWorld(), m_uiWorld,
                                           m_ctx.events, m_ctx.memory,
                                           AssetContext(def.ctx.any_ctx)}),
           m_squeue(m_ctx.memory.frameBuffer.Resource())
@@ -95,6 +94,11 @@ class SceneView : protected AppRuntime
         m_renderers.AddStage<view::UIRenderer>(m_ctx.any_factory);
         m_renderers.AddStage<view::GizmoRenderer>(m_ctx.any_factory);
         m_viewExecutor.Attach(def.ctx.any_ctx);
+
+        for (auto& e : m_cursors)
+        {
+            e = entt::null;
+        }
     }
 
     virtual ~SceneView()
@@ -118,8 +122,9 @@ class SceneView : protected AppRuntime
 
         // presentation
         m_squeue.Clear();
-        m_renderers.Update(view::RendererFrameData{f.dt, m_ctx.assets, m_squeue,
-                                                    alpha, m_innerScene.GetAuthoritativeWorld()});
+        m_renderers.Update(
+            view::RendererFrameData{f.dt, m_ctx.assets, m_squeue, alpha,
+                                    m_innerScene.GetAuthoritativeWorld()});
 
         // window action
         f.frameAction |= m_windowCtx.frameAction;
@@ -141,14 +146,11 @@ class SceneView : protected AppRuntime
 
    private:
     bool m_showingCursor = false;
-    std::array<entt::entity, input::RawInputStream::MaxMousePtrCount>
-        m_cursors =
-            MakeArray<entt::entity, input::RawInputStream::MaxMousePtrCount>(
-                entt::null);
+    std::array<entt::entity, input::RawInputStream::MaxMousePtrCount> m_cursors;
 
     void AddCursor(size_t mouseIdx)
     {
-        LOG_INFO("add cursor at idx {}", mouseIdx);
+        // LOG_INFO("add cursor at idx {}", mouseIdx);
         namespace ui = oge::runtime::ui;
         assert(m_cursors[mouseIdx] == entt::null);
         auto& cursor = m_cursors[mouseIdx];
@@ -164,7 +166,7 @@ class SceneView : protected AppRuntime
 
     void RemoveCursor(size_t mouseIdx)
     {
-        LOG_INFO("remove cursor at idx {}", mouseIdx);
+        // LOG_INFO("remove cursor at idx {}", mouseIdx);
         OGE_ASSERT(m_uiWorld.valid(m_cursors[mouseIdx]),
                    "invalid cursor entity");
         m_uiWorld.destroy(m_cursors[mouseIdx]);
@@ -188,6 +190,10 @@ class SceneView : protected AppRuntime
                         RemoveCursor(e.pointerIdx);
                         break;
                     case oge::input::InputEventType::MouseButtonDown:
+                        OGE_ASSERT(e.mouse.ptrIdx() >= 0 &&
+                                       e.mouse.ptrIdx() < m_cursors.size(),
+                                   "Invalid ptr {}", e.mouse.ptrIdx());
+                        // LOG_INFO("down cursor at idx {}", e.mouse.ptrIdx());
                         if (m_uiWorld.valid(m_cursors[e.mouse.ptrIdx()]))
                             m_uiWorld.emplace_or_replace<ui::UISprite>(
                                 m_cursors[e.mouse.ptrIdx()],
@@ -195,6 +201,10 @@ class SceneView : protected AppRuntime
                                     "cursors/hand_closed.png"));
                         break;
                     case oge::input::InputEventType::MouseButtonUp:
+                        OGE_ASSERT(e.mouse.ptrIdx() >= 0 &&
+                                       e.mouse.ptrIdx() < m_cursors.size(),
+                                   "Invalid ptr {}", e.mouse.ptrIdx());
+                        // LOG_INFO("up cursor at idx {}", e.mouse.ptrIdx());
                         if (m_uiWorld.valid(m_cursors[e.mouse.ptrIdx()]))
                             m_uiWorld.emplace_or_replace<ui::UISprite>(
                                 m_cursors[e.mouse.ptrIdx()],
