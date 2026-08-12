@@ -33,9 +33,9 @@ endif()
 target_link_libraries(oge_graphics_metal
 PUBLIC
     oge::graphics
+    metal-cpp
 PRIVATE
     oge::platform
-    metal-cpp
 )
 
 add_library(oge::graphics::metal ALIAS oge_graphics_metal)
