@@ -21,5 +21,34 @@ jobs:
       - name: Build
         run: cmake --build out/build/x64-debug
 
+      # TEMP diagnostics for the wire_format/fuzz segfaults: WER crash
+      # records (faulting module + offset) and a minidump.
+      - name: Diagnose wire_format crash
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $dumpDir = "$PWD\dumps"
+          New-Item -ItemType Directory -Force -Path $dumpDir | Out-Null
+          foreach ($n in @('wire_format_test.exe','fuzz_test.exe')) {
+            $key = "HKLM:\SOFTWARE\Microsoft\Windows\Windows Error Reporting\LocalDumps\$n"
+            New-Item -Path $key -Force | Out-Null
+            Set-ItemProperty $key -Name DumpFolder -Value $dumpDir -Type ExpandString | Out-Null
+            Set-ItemProperty $key -Name DumpType -Value 2 -Type DWord | Out-Null
+            Set-ItemProperty $key -Name DumpCount -Value 2 -Type DWord | Out-Null
+          }
+          & "$PWD\out\build\x64-debug\game\ctrl\wire_format_test.exe" --run-test=wire_single_packet_roundtrip
+          Write-Output "wire_format_test exit code: $LASTEXITCODE"
+          Write-Output "=== crash events ==="
+          Get-WinEvent -FilterHashtable @{LogName='Application'; Id=1000} -MaxEvents 6 -ErrorAction SilentlyContinue |
+            Where-Object { $_.Message -match 'wire_format|fuzz_test' } |
+            ForEach-Object { $_.Message -split "`r?`n" | Where-Object { $_ -match 'Faulting|exception code|Fault offset|Faulting module' } | ForEach-Object { Write-Output $_.Trim() } }
+          Write-Output "=== dumps ==="
+          Get-ChildItem $dumpDir -ErrorAction SilentlyContinue | Select-Object Name,Length
+          $cdb = 'C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\cdb.exe'
+          if (Test-Path $cdb) {
+            $dmp = Get-ChildItem "$dumpDir\*.dmp" -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($dmp) { & $cdb -z $dmp.FullName -c '.ecxr; k 40; q' }
+          } else { Write-Output 'cdb not available' }
+
       - name: Test
         run: ctest --test-dir out/build/x64-debug --output-on-failure
