@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 
 #include "game/view/gfx/commands.hpp"
 #include "internals.hpp"
