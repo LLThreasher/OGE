@@ -26,12 +26,6 @@
 #include "oge/math.hpp"
 #include "oge/platform/stacktrace.hpp"
 
-// Autorelease pool helpers (metal_autorelease.mm).
-extern "C" {
-void* MetalAutoreleasePoolPush();
-void MetalAutoreleasePoolPop(void* pool);
-}
-
 namespace oge::graphics::metal
 {
 
@@ -935,9 +929,6 @@ void MetalBackend::Shutdown()
 
 BeginFrameAction MetalBackend::BeginFrame()
 {
-    // Push a fresh autorelease pool for this frame.
-    m_framePool = MetalAutoreleasePoolPush();
-
     auto& frame = m_frames[m_frameIndex];
     if (frame.inFlightSemaphore != nullptr)
         dispatch_semaphore_wait(frame.inFlightSemaphore, DISPATCH_TIME_FOREVER);
@@ -954,9 +945,6 @@ BeginFrameAction MetalBackend::BeginFrame()
 
 EndFrameAction MetalBackend::EndFrame()
 {
-    // Metal's ObjC runtime autoreleases temporary objects.  In a C++/SDL3
-    // app there is no Cocoa run loop, so the pool is never drained.
-    // Drain it at the end of each frame.
     auto& frame = m_frames[m_frameIndex];
 
     if (frame.commandBuffer.get() != nullptr)
@@ -980,11 +968,6 @@ EndFrameAction MetalBackend::EndFrame()
         dispatch_semaphore_signal(frame.inFlightSemaphore);
 
     m_frameIndex = (m_frameIndex + 1) % static_cast<uint32_t>(m_frames.size());
-
-    // Drain this frame's autorelease pool.
-    MetalAutoreleasePoolPop(m_framePool);
-    m_framePool = nullptr;
-
     return EndFrameAction::Continue;
 }
 
