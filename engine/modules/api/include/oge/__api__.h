@@ -25,6 +25,15 @@ void OGE_App_SwitchToScene(const char* name, const char* args);
 
 void OGE_Init(void);
 
+// --- Graphics Backend ---------------------------------------------------
+// Opaque wrapper around an IGraphicsBackend.  Concrete factories are
+// registered in OGE_Init (or wired directly in __api__.cpp).  Callers
+// that need the raw backend pointer transfer ownership via OGE_Backend_Release.
+typedef struct Backend Backend_t;
+Backend_t* OGE_Backend_Create(const char* name);
+void*      OGE_Backend_Release(Backend_t* instance);
+void       OGE_Backend_Destroy(Backend_t* instance);
+
 #ifdef __cplusplus
 }
 #endif

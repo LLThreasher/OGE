@@ -5,13 +5,12 @@
 #include <cstdint>
 #include <string_view>
 
-#include "game/game_world.hpp"
 #include "oge/aabb.hpp"
-#include "oge/input/raw_input_stream.hpp"
+#include "oge/bitset.hpp"
 #include "oge/math.hpp"
 #include "oge/point3.hpp"
 #include "oge/runtime/entt.hpp"
-#include "oge/runtime/net_serializer.hpp"
+#include "oge/runtime/oge_registry.hpp"
 
 namespace game
 {
@@ -164,9 +163,9 @@ struct ComponentPlayer
     uint64_t inputCursor{};
     uint64_t actionCursor{};
 
-    static entt::entity CreatePlayer(GameWorld& world, PlayerInfo info,
+    static entt::entity CreatePlayer(oge::runtime::OgeRegistry& world, PlayerInfo info,
                                      entt::entity hint = entt::null);
-    static void DestroyPlayer(GameWorld& world, PlayerInfo info);
+    static void DestroyPlayer(oge::runtime::OgeRegistry& world, PlayerInfo info);
 };
 
 struct ComponentTargetBlock

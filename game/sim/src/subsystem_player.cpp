@@ -13,7 +13,7 @@
 
 namespace game
 {
-entt::entity ComponentPlayer::CreatePlayer(GameWorld& world, PlayerInfo info,
+entt::entity ComponentPlayer::CreatePlayer(oge::runtime::OgeRegistry& world, PlayerInfo info,
                                            entt::entity hint)
 {
     entt::entity res;
@@ -40,7 +40,7 @@ entt::entity ComponentPlayer::CreatePlayer(GameWorld& world, PlayerInfo info,
     return res;
 }
 
-void ComponentPlayer::DestroyPlayer(GameWorld& world, PlayerInfo info)
+void ComponentPlayer::DestroyPlayer(oge::runtime::OgeRegistry& world, PlayerInfo info)
 {
     for (auto [e, player] : world.view<ComponentPlayer>()->each())
     {

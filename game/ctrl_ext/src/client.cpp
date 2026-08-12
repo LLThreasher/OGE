@@ -5,9 +5,9 @@
 #include "game/scene.hpp"
 #include "game/sim/registry.hpp"
 #include "game/view/renderer.hpp"
+#include "oge/__api__.h"
 #include "oge/fmt.hpp"
 #include "oge/graphics/backend.hpp"
-#include "oge/graphics/vulkan/create_backend.hpp"
 #include "oge/log.hpp"
 #include "oge/platform/perf.hpp"
 #include "oge/platform/window_app.hpp"
@@ -36,10 +36,11 @@ Client::Client()
 
 void Client::Initialize(WindowHandle& handle)
 {
-    auto backend_ptr = oge::graphics::vulkan::CreateVulkanBackend();
+    auto* api_backend = OGE_Backend_Create("Vulkan");
+    auto* rawBackend =
+        static_cast<IGraphicsBackend*>(OGE_Backend_Release(api_backend));
     m_backend =
-        m_ctx.Emplace<std::unique_ptr<IGraphicsBackend>>(backend_ptr.release())
-            .get();
+        m_ctx.Emplace<std::unique_ptr<IGraphicsBackend>>(rawBackend).get();
     auto& backend = *m_backend;
     backend.Initialize(BackendDesc{handle, FrameTimePreference::VSync});
     m_sm.Initialize(backend);

@@ -2,7 +2,6 @@
 
 #include <cstdint>
 
-#include "game/components.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/ui/objects.hpp"
 #include "oge/fmt.hpp"
