@@ -5,6 +5,7 @@
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/terrain_view.hpp"
 #include "oge/aabb_ops.hpp"
+#include "oge/log.hpp"
 #include "oge/math.hpp"
 
 namespace game
@@ -50,6 +51,11 @@ void ComponentPlayer::DestroyPlayer(oge::runtime::OgeRegistry& world,
 
 namespace sim
 {
+// Max accepted distance between the server's body and the client-stamped
+// jump lift-off position.  Latency drift at run speed is a few tens of cm;
+// anything beyond this is desync or a fabricated stamp.
+constexpr float kMaxJumpStampDelta = 1.0f;
+
 using ::game::input::PlayerAction;
 using ::game::input::PlayerInputStream;
 using ::game::terrain::BlockRegistry;
@@ -150,13 +156,61 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
             creature.jumpOrder = false;
             while (input.PollFrame(cursor, frame))
             {
+                // Client-decided jump stamp (server streams only — the
+                // client's own stamp passes through locally and was already
+                // applied via jumpOrder on the tick the jump fired).  Apply
+                // the impulse anchored to the stamped lift-off position
+                // instead of re-deriving the jump from our own physics:
+                // grounded is evaluated at different ticks on each side, so
+                // re-derivation produces a different arc.
+                if (frame.jumped && !input.IsLocalInput())
+                {
+                    const float drift = math::len(body.pos - frame.jumpPos);
+                    bool nearGround = body.isGrounded;
+                    if (!nearGround)
+                    {
+                        auto groundHit =
+                            terrain.CastRay(body.pos, math::vec3{0.f, -1.f, 0.f});
+                        nearGround =
+                            groundHit.has_value() &&
+                            body.pos.y -
+                                    (static_cast<float>(groundHit->hitPos.y) +
+                                     1.0f) <
+                                0.6f;
+                    }
+
+                    if (drift <= kMaxJumpStampDelta && nearGround)
+                    {
+                        body.pos = frame.jumpPos;
+                        body.velocity.y = creature.initJumpSpeed;
+                    }
+                    else
+                    {
+                        LOG_WARN(
+                            "rejected jump stamp: drift={} nearGround={} "
+                            "(entity {})",
+                            drift, nearGround, static_cast<uint32_t>(entity));
+                    }
+                    // The stamped frame also carries the held jump mask —
+                    // do not feed it back through the jumpOrder path.
+                    continue;
+                }
+
                 size_t actionIdx = 0;
                 while (actionIdx < frame.inputEventCnt)
                 {
                     auto event = frame.inputEvents[actionIdx];
                     actionIdx++;
-                    creature.jumpOrder =
-                        creature.jumpOrder || event.get<PlayerAction::Jump>();
+                    // Server streams: jump is stamp-only — re-deriving it
+                    // from the held Jump bit here would double-impulse on
+                    // top of the stamped arc.  Local streams keep the
+                    // jumpOrder path; it is the decision-maker.
+                    if (input.IsLocalInput())
+                    {
+                        creature.jumpOrder =
+                            creature.jumpOrder ||
+                            event.get<PlayerAction::Jump>();
+                    }
                     event.unset<PlayerAction::Jump>();
                     if (event.actionMask != 0)
                     {
@@ -205,6 +259,14 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                         player.lastActionTime = 0.f;
                     }
                 }
+            }
+
+            // Local streams: the creature is about to fire the impulse this
+            // tick (same grounded value from the last physics tick), so
+            // stamp the decision with the pre-impulse lift-off position.
+            if (input.IsLocalInput() && body.isGrounded && creature.jumpOrder)
+            {
+                input.MarkJumpPerformed(body.pos);
             }
 
             player.lastActionTime -= ctx.dt;

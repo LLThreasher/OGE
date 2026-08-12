@@ -87,6 +87,7 @@ enum PlayerInputFrameFlags : uint8_t
     HasEvents = 1 << 0,
     HasMove = 1 << 1,
     HasPan = 1 << 2,
+    HasJump = 1 << 3,
 };
 
 struct PackedPlayerInputEvent
@@ -110,6 +111,13 @@ struct PackedPlayerInputFrame
 
     int16_t panX = 0;
     int16_t panY = 0;
+
+    // Client-decided jump stamp: lift-off position (raw floats — world
+    // coordinates exceed the small quantized ranges; jumps are rare so the
+    // 12 bytes are negligible).
+    float jumpX = 0.f;
+    float jumpY = 0.f;
+    float jumpZ = 0.f;
 
     std::vector<PackedPlayerInputEvent> inputEvents;
 
@@ -264,6 +272,15 @@ inline PackedPlayerInputFrame PackFrame(
         dst.panY = QuantizeRangeS16(src.aim.y, math::pi);
     }
 
+    if (src.jumped)
+    {
+        dst.flags = static_cast<uint8_t>(dst.flags | HasJump);
+
+        dst.jumpX = src.jumpPos.x;
+        dst.jumpY = src.jumpPos.y;
+        dst.jumpZ = src.jumpPos.z;
+    }
+
     if (hasEvents)
     {
         const std::size_t count =
@@ -298,6 +315,12 @@ inline PlayerInputFrame UnpackFrame(const PackedPlayerInputFrame& src)
         // Consumers gate camera updates on hasAim — keep it consistent with
         // the packed flags, otherwise the aim is silently dropped on apply.
         dst.hasAim = true;
+    }
+
+    if ((src.flags & HasJump) != 0)
+    {
+        dst.jumped = true;
+        dst.jumpPos = {src.jumpX, src.jumpY, src.jumpZ};
     }
 
     if ((src.flags & HasEvents) != 0)
@@ -355,6 +378,13 @@ DECL_NET_OBJ(game::input::net::PackedPlayerInputFrame, {
     {
         visit(self.panX);
         visit(self.panY);
+    }
+
+    if ((self.flags & game::input::net::HasJump) != 0)
+    {
+        visit(self.jumpX);
+        visit(self.jumpY);
+        visit(self.jumpZ);
     }
 
     if ((self.flags & game::input::net::HasEvents) != 0)

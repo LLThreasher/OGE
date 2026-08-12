@@ -839,33 +839,52 @@ TEST(e2e_player_input_jump_move_aim_sync)
     const float predGroundY =
         cw.get<game::ComponentPhysicBody>(clientPlayer).pos.y;
 
-    // Drive jump + move + aim together.  Track each copy's peak height and
-    // the poll at which it lifts off its own ground line — CreatePlayer sets
-    // a ~1.65 m jump (SetMaxJumpHeight).
-    constexpr int InputFrames = 90;
+    // Drive the input in two phases: run + aim first (build speed on landed
+    // terrain), then add the held jump so the jump fires mid-stride.  Track
+    // each copy's peak height, lift poll, and lift-off position — CreatePlayer
+    // sets a ~1.65 m jump (SetMaxJumpHeight).
+    constexpr int RunFrames = 40;
+    constexpr int JumpFrames = 60;
     float predPeak = predGroundY;
     float authPeak = groundY;
     int predLiftPoll = -1;
     int authLiftPoll = -1;
-    for (int i = 0; i < InputFrames; ++i)
+    game::math::vec3 predLiftPos{};
+    game::math::vec3 authLiftPos{};
+
+    auto pushInput = [&](bool jump)
     {
         game::input::PlayerInputFrameDelta delta;
         delta.moveDelta = game::math::vec2{0.f, 1.f};  // forward (W)
         delta.panDelta = game::math::vec2{0.05f, 0.f};
-        delta.inputEvent = game::input::PlayerInputEvent{
-            game::math::vec2{0.f, 0.f}, game::input::PlayerAction::Jump};
+        if (jump)
+            delta.inputEvent = game::input::PlayerInputEvent{
+                game::math::vec2{0.f, 0.f}, game::input::PlayerAction::Jump};
         clientStream.PushFrame(delta);
         h.poll();
+    };
 
-        const float predY =
-            cw.get<game::ComponentPhysicBody>(clientPlayer).pos.y;
-        const float authY = h.clientAuthoritativeWorld()
-                                .get<game::ComponentPhysicBody>(authPlayer)
-                                .pos.y;
-        predPeak = game::math::max(predPeak, predY);
-        authPeak = game::math::max(authPeak, authY);
-        if (predLiftPoll < 0 && predY > predGroundY + 0.1f) predLiftPoll = i;
-        if (authLiftPoll < 0 && authY > groundY + 0.1f) authLiftPoll = i;
+    for (int i = 0; i < RunFrames; ++i) pushInput(false);
+
+    for (int i = 0; i < JumpFrames; ++i)
+    {
+        pushInput(true);
+
+        const auto& predBody = cw.get<game::ComponentPhysicBody>(clientPlayer);
+        const auto& authBody = h.clientAuthoritativeWorld()
+                                   .get<game::ComponentPhysicBody>(authPlayer);
+        predPeak = game::math::max(predPeak, predBody.pos.y);
+        authPeak = game::math::max(authPeak, authBody.pos.y);
+        if (predLiftPoll < 0 && predBody.pos.y > predGroundY + 0.1f)
+        {
+            predLiftPoll = RunFrames + i;
+            predLiftPos = predBody.pos;
+        }
+        if (authLiftPoll < 0 && authBody.pos.y > groundY + 0.1f)
+        {
+            authLiftPoll = RunFrames + i;
+            authLiftPos = authBody.pos;
+        }
     }
     for (int i = 0; i < 20; ++i) h.poll();
 
@@ -889,6 +908,15 @@ TEST(e2e_player_input_jump_move_aim_sync)
     // Both copies agree on the jump height (the server's fixed-step physics
     // double-integrates gravity, so allow a small skew).
     CHECK(std::abs(predLift - authLift) < 0.5f);
+
+    // The arcs must start from the same spot: the server re-deriving the
+    // jump tick from its own physics shifts lift-off forward by
+    // latency × run speed (~0.25–0.4 m).  With the client-stamped jump the
+    // server anchors to the stamped lift-off position.
+    const float liftDrift = game::math::len(
+        game::math::vec2{predLiftPos.x - authLiftPos.x,
+                         predLiftPos.z - authLiftPos.z});
+    CHECK(liftDrift < 0.15f);
 }
 
 // =============================================================================

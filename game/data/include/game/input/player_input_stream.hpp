@@ -110,6 +110,13 @@ struct PlayerInputFrame
     size_t deltaCnt = 0;
     bool hasAim = false;
 
+    // Client-decided jump stamp: the local simulation performed a jump this
+    // tick (grounded && jump pressed).  jumpPos is the pre-impulse lift-off
+    // position.  The server applies the impulse anchored to this position
+    // instead of re-deriving the jump from its own physics.
+    bool jumped = false;
+    math::vec3 jumpPos = {};
+
     PlayerInputFrame(math::vec2 aimBase = {}) : aim(aimBase) {}
 
     void apply(PlayerInputFrameDelta delta)
@@ -148,6 +155,16 @@ class PlayerInputStream
 
     PlayerInputFrame m_accumFrame = {};
 
+    // True once PushFrame is used — local input accumulation only happens
+    // on the client.  Server streams receive replicated frames via PushTick
+    // and must neither stamp jumps nor consume stamps.
+    bool m_isLocalInput = false;
+
+    // Pending jump stamp: latched by MarkJumpPerformed, committed into the
+    // next frame by AdvanceTick.
+    bool m_pendingJump = false;
+    math::vec3 m_jumpPos = {};
+
     bool moveDirty = false;
     bool aimDirty = false;
 
@@ -183,9 +200,15 @@ class PlayerInputStream
         // the packed wire copy observe the same value.
         m_accumFrame.normalize();
 
+        // Stamp a pending jump decision into this frame.  A jump must be
+        // committed even when the frame otherwise carries nothing.
+        m_accumFrame.jumped = m_pendingJump;
+        m_accumFrame.jumpPos = m_jumpPos;
+        m_pendingJump = false;
+
         const bool dirty = m_accumFrame.inputEventCnt > 0 ||
                            m_accumFrame.move != math::vec3{} ||
-                           m_accumFrame.hasAim;
+                           m_accumFrame.hasAim || m_accumFrame.jumped;
         if (dirty)
         {
             m_frames.Push(m_accumFrame);
@@ -197,7 +220,26 @@ class PlayerInputStream
 
     void PushFrame(PlayerInputFrameDelta delta)
     {
+        m_isLocalInput = true;
         m_accumFrame.apply(delta);
+    }
+
+    // Record that the local simulation performed a jump this tick at the
+    // given lift-off position.  No-op on server streams — they receive
+    // replicated frames and must not stamp their own.
+    void MarkJumpPerformed(math::vec3 pos)
+    {
+        if (!m_isLocalInput)
+        {
+            return;
+        }
+        m_pendingJump = true;
+        m_jumpPos = pos;
+    }
+
+    bool IsLocalInput() const
+    {
+        return m_isLocalInput;
     }
 
     void PushTick(const PlayerInputFrame& frame)
