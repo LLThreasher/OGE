@@ -328,6 +328,144 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
         modified.insert(e);
     }
 
+    // --- Entity-to-Entity collision ---
+    // Resolve overlapping AABBs between pairs of active physics bodies by
+    // pushing apart along the axis of minimum penetration, weighted by
+    // inverse mass.  No heap allocations — uses the ECS view .each()
+    // directly with nested lambdas.
+    {
+        auto entityView = game.view<UpdateTag<utype>, const ComponentAABBCollider,
+                                    const ComponentPhysicBody>();
+        entityView.each(
+            [&](entt::entity e1, const ComponentAABBCollider& collider1,
+                const ComponentPhysicBody& body1)
+            {
+                auto aabb1 = collider1.aabb + body1.pos;
+
+                entityView.each(
+                    [&](entt::entity e2, const ComponentAABBCollider& collider2,
+                        const ComponentPhysicBody& body2)
+                    {
+                        // Only process each unordered pair once.
+                        if (entt::to_integral(e2) <= entt::to_integral(e1))
+                            return;
+
+                        auto aabb2 = collider2.aabb + body2.pos;
+
+                        if (!CheckOverlap(aabb1, aabb2)) return;
+
+                        // Penetration depth on each axis.
+                        float penX =
+                            math::min(aabb1.max.x - aabb2.min.x,
+                                      aabb2.max.x - aabb1.min.x);
+                        float penY =
+                            math::min(aabb1.max.y - aabb2.min.y,
+                                      aabb2.max.y - aabb1.min.y);
+                        float penZ =
+                            math::min(aabb1.max.z - aabb2.min.z,
+                                      aabb2.max.z - aabb1.min.z);
+
+                        // Push apart along the axis of shallowest
+                        // penetration, weighted by mass ratio.
+                        float totalMass = body1.mass + body2.mass;
+                        float ratio1 =
+                            (totalMass > 0.f) ? body2.mass / totalMass : 0.5f;
+                        float ratio2 =
+                            (totalMass > 0.f) ? body1.mass / totalMass : 0.5f;
+
+                        math::vec3 separation{};
+                        int32_t collisionAxis = -1;
+
+                        if (penX <= penY && penX <= penZ)
+                        {
+                            float sign = (aabb1.max.x + aabb1.min.x >
+                                          aabb2.max.x + aabb2.min.x)
+                                             ? 1.f
+                                             : -1.f;
+                            separation.x = sign * penX;
+                            collisionAxis = 0;
+                        }
+                        else if (penY <= penZ)
+                        {
+                            float sign = (aabb1.max.y + aabb1.min.y >
+                                          aabb2.max.y + aabb2.min.y)
+                                             ? 1.f
+                                             : -1.f;
+                            separation.y = sign * penY;
+                            collisionAxis = 1;
+                        }
+                        else
+                        {
+                            float sign = (aabb1.max.z + aabb1.min.z >
+                                          aabb2.max.z + aabb2.min.z)
+                                             ? 1.f
+                                             : -1.f;
+                            separation.z = sign * penZ;
+                            collisionAxis = 2;
+                        }
+
+                        // Obtain mutable references via game.get() — the
+                        // view .each() returns const refs for read-only
+                        // pass, mirroring the terrain collision pattern.
+                        auto& mutBody1 = game.get<ComponentPhysicBody>(e1);
+                        auto& mutBody2 = game.get<ComponentPhysicBody>(e2);
+
+                        mutBody1.pos += separation * ratio1;
+                        mutBody2.pos -= separation * ratio2;
+
+                        // Zero velocity opposing the collision normal.
+                        if (collisionAxis == 0)
+                        {
+                            if (separation.x > 0.f &&
+                                mutBody1.velocity.x < 0.f)
+                                mutBody1.velocity.x = 0.f;
+                            if (separation.x < 0.f &&
+                                mutBody1.velocity.x > 0.f)
+                                mutBody1.velocity.x = 0.f;
+                            if (separation.x > 0.f &&
+                                mutBody2.velocity.x > 0.f)
+                                mutBody2.velocity.x = 0.f;
+                            if (separation.x < 0.f &&
+                                mutBody2.velocity.x < 0.f)
+                                mutBody2.velocity.x = 0.f;
+                        }
+                        else if (collisionAxis == 1)
+                        {
+                            if (separation.y > 0.f &&
+                                mutBody1.velocity.y < 0.f)
+                                mutBody1.velocity.y = 0.f;
+                            if (separation.y < 0.f &&
+                                mutBody1.velocity.y > 0.f)
+                                mutBody1.velocity.y = 0.f;
+                            if (separation.y > 0.f &&
+                                mutBody2.velocity.y > 0.f)
+                                mutBody2.velocity.y = 0.f;
+                            if (separation.y < 0.f &&
+                                mutBody2.velocity.y < 0.f)
+                                mutBody2.velocity.y = 0.f;
+                        }
+                        else
+                        {
+                            if (separation.z > 0.f &&
+                                mutBody1.velocity.z < 0.f)
+                                mutBody1.velocity.z = 0.f;
+                            if (separation.z < 0.f &&
+                                mutBody1.velocity.z > 0.f)
+                                mutBody1.velocity.z = 0.f;
+                            if (separation.z > 0.f &&
+                                mutBody2.velocity.z > 0.f)
+                                mutBody2.velocity.z = 0.f;
+                            if (separation.z < 0.f &&
+                                mutBody2.velocity.z < 0.f)
+                                mutBody2.velocity.z = 0.f;
+                        }
+
+                        modified.insert(e1);
+                        modified.insert(e2);
+                    });
+            });
+    }
+
     // Fire a single on_update per modified entity so that replication hooks
     // produce at most one UpdateComponentEvent<ComponentPhysicBody> per
     // entity per physics frame.
