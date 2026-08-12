@@ -8,14 +8,16 @@ PRIVATE
 # Linux uses GNU ld, which extracts static archives single-pass
 # left-to-right.  TryLoadBlob/TrySaveBlob are defined in oge::platform::sdl3
 # but referenced from game_ctrl (scene.cpp) and oge_runtime
-# (asset_manager.cpp) — transitive deps that CMake places AFTER the direct
-# sdl3 lib — so wrap sdl3 in a --start-group/--end-group rescan group.
-# ld64/lld/link.exe rescan archives by default, so other platforms link it
-# plainly.
+# (asset_manager.cpp), which CMake places as transitive deps AFTER the
+# direct sdl3 lib — so GNU ld never pulls the provider out of the archive.
+# Wrap the referencing archives AND the provider in a
+# --start-group/--end-group rescan group so the linker keeps scanning until
+# every reference resolves.  ld64/lld/link.exe rescan archives by default,
+# so other platforms link sdl3 plainly.
 target_link_libraries(game_desktop PRIVATE
     game::gui
     oge::graphics::vulkan
-    $<$<PLATFORM_ID:Linux>:$<LINK_GROUP:RESCAN,oge::platform::sdl3>>
+    $<$<PLATFORM_ID:Linux>:$<LINK_GROUP:RESCAN,game::ctrl,oge::runtime,oge::platform::sdl3>>
     $<$<NOT:$<PLATFORM_ID:Linux>>:oge::platform::sdl3>
 )
 
