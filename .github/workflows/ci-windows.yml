@@ -21,10 +21,32 @@ jobs:
       - name: Build
         run: cmake --build out/build/x64-debug
 
-      - name: Test
+      # TEMP diagnostics: locate the startup crash. Probes in increasing
+      # complexity — bare CRT, test-macro static init, real binary.
+      - name: Diagnose startup crash
         shell: pwsh
         run: |
-          ctest --test-dir out/build/x64-debug -V --output-on-failure 2>&1 | ForEach-Object {
-            if ($_ -match 'Exit code') { Write-Output "::error::$_" }
-          }
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ErrorActionPreference = 'Continue'
+          Set-Content -Path diag1.cpp -Value 'int main() { return 0; }'
+          clang-cl /nologo /EHsc diag1.cpp /Fe:diag1.exe 2>&1 | Out-Host
+          & .\diag1.exe
+          Write-Output "PROBE1 bare-main exit code: $LASTEXITCODE"
+
+          @'
+          #include <unordered_map>
+          #include <string>
+          inline std::unordered_map<std::string, int> g_map;
+          struct Reg { Reg() { g_map.emplace("a", 1); } };
+          static Reg reg;
+          int main() { return g_map.size() == 1 ? 0 : 1; }
+          '@ | Set-Content -Path diag2.cpp
+          clang-cl /nologo /EHsc diag2.cpp /Fe:diag2.exe 2>&1 | Out-Host
+          & .\diag2.exe
+          Write-Output "PROBE2 static-init-map exit code: $LASTEXITCODE"
+
+          & .\out\build\x64-debug\engine\modules\core\datastruct_test.exe
+          Write-Output "PROBE3 datastruct_test exit code: $LASTEXITCODE"
+          if (Test-Path diag1.cpp) { Remove-Item diag1.cpp, diag2.cpp, diag1.exe, diag2.exe }
+
+      - name: Test
+        run: ctest --test-dir out/build/x64-debug --output-on-failure
