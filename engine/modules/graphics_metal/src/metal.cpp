@@ -1093,11 +1093,9 @@ GPUPipelineHandle MetalBackend::CreateGraphicsPipeline(
     auto* ca = rpDesc->colorAttachments()->object(0);
     ca->setPixelFormat(MTL::PixelFormatBGRA8Unorm_sRGB);
 
-    if (desc.depthTest)
-    {
-        rpDesc->setDepthAttachmentPixelFormat(
-            ToMetalPixelFormat(TextureFormat::Depth32Float));
-    }
+    // Always match the depth format our render pass provides.
+    rpDesc->setDepthAttachmentPixelFormat(
+        ToMetalPixelFormat(TextureFormat::Depth32Float));
 
     NS::Error* error = nullptr;
     MTL::RenderPipelineState* pso =
@@ -1336,13 +1334,24 @@ NS::SharedPtr<MTL::Function> MetalBackend::CreateShaderFunction(
 GPUTextureHandle MetalBackend::CreateDepthTexture(uint32_t width,
                                                    uint32_t height)
 {
-    TextureDesc desc{};
-    desc.format = TextureFormat::Depth32Float;
-    desc.width = width;
-    desc.height = height;
-    desc.depth = 1;
-    desc.usage = TextureUsage::DepthAttachment;
-    return CreateTexture(desc);
+    auto pixelFmt = ToMetalPixelFormat(TextureFormat::Depth32Float);
+    auto* mtlDesc = MTL::TextureDescriptor::texture2DDescriptor(
+        pixelFmt, width, height, false);
+    mtlDesc->setUsage(MTL::TextureUsageRenderTarget);
+    mtlDesc->setStorageMode(MTL::StorageModePrivate);
+
+    MTL::Texture* tex = m_device.device->newTexture(mtlDesc);
+    mtlDesc->release();
+    if (tex == nullptr) return {};
+
+    MetalTexture result{};
+    result.texture = NS::RetainPtr(tex);
+    result.desc.format = TextureFormat::Depth32Float;
+    result.desc.width = width;
+    result.desc.height = height;
+    result.desc.depth = 1;
+    result.isDepthTexture = true;
+    return m_textures.Create(result);
 }
 
 }  // namespace oge::graphics::metal

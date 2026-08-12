@@ -76,6 +76,10 @@ class MetalCommandBuffer final : public ICommandList
     MTL::RenderCommandEncoder* m_encoder = nullptr;
     GPUPipelineHandle m_currentPipeline;
 
+    NS::SharedPtr<MTL::Buffer> m_indexBuffer;
+    uint64_t m_indexBufferOffset = 0;
+    MTL::IndexType m_indexType = MTL::IndexTypeUInt32;
+
     bool beginEncoder();
 };
 

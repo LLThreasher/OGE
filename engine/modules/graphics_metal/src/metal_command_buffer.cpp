@@ -111,18 +111,14 @@ void MetalCommandBuffer::BindVertexBuffer(GPUBufferHandle handle,
 void MetalCommandBuffer::BindIndexBuffer(GPUBufferHandle handle,
                                          uint64_t offset, IndexFormat fmt)
 {
-    if (beginEncoder())
+    auto* b = m_backend.m_buffers.Get(handle);
+    if (b != nullptr)
     {
-        auto* b = m_backend.m_buffers.Get(handle);
-        if (b != nullptr && b->buffer.get() != nullptr)
-        {
-            auto type = fmt == IndexFormat::Uint16
-                            ? MTL::IndexTypeUInt16
-                            : MTL::IndexTypeUInt32;
-            m_encoder->setVertexBuffer(b->buffer.get(), offset, 0);
-            // Store index buffer info for drawIndexed
-            (void)type;
-        }
+        m_indexBuffer = b->buffer;
+        m_indexBufferOffset = offset;
+        m_indexType = fmt == IndexFormat::Uint16
+                          ? MTL::IndexTypeUInt16
+                          : MTL::IndexTypeUInt32;
     }
 }
 
@@ -197,16 +193,13 @@ void MetalCommandBuffer::DrawIndexed(uint32_t indexCount, uint32_t instCount,
                                      uint32_t firstInst)
 {
     if (!beginEncoder()) return;
+    if (m_indexBuffer.get() == nullptr) return;
     auto* p = m_backend.m_pipelines.Get(m_currentPipeline);
     auto prim = p != nullptr ? p->primitiveType
                              : MTL::PrimitiveTypeTriangle;
-    // Index buffer must have been bound via BindIndexBuffer.
-    // Metal doesn't have a separate index buffer binding — it's
-    // passed directly to drawIndexedPrimitives.
     m_encoder->drawIndexedPrimitives(
-        prim, indexCount, MTL::IndexTypeUInt32,
-        nullptr,  // index buffer bound as vertex buffer 0
-        0,        // index buffer offset
+        prim, indexCount, m_indexType,
+        m_indexBuffer.get(), m_indexBufferOffset,
         instCount, firstIndex, vertOff);
     (void)firstInst;
 }
