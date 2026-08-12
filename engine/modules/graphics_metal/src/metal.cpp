@@ -970,9 +970,13 @@ void MetalBackend::FlushStagingBufferRanges(
 GPUTextureHandle MetalBackend::CreateTexture(const TextureDesc& desc)
 {
     auto pixelFmt = ToMetalPixelFormat(desc.format);
+    LOG_INFO("CreateTexture: fmt={} w={} h={} d={} mips={} layers={} usage={}",
+             (int)pixelFmt, desc.width, desc.height, desc.depth,
+             desc.mipLevels, desc.layers, (uint32_t)desc.usage);
+
     auto* mtlDesc = MTL::TextureDescriptor::texture2DDescriptor(
         pixelFmt, desc.width, desc.height,
-        desc.mipLevels > 1);  // mipmapped flag
+        desc.mipLevels > 1);
     if (desc.mipLevels > 1)
         mtlDesc->setMipmapLevelCount(desc.mipLevels);
     if (desc.layers > 1)
