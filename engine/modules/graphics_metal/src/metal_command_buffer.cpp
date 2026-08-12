@@ -95,12 +95,21 @@ void MetalCommandBuffer::EndRenderPass()
 
 void MetalCommandBuffer::BindGraphicsPipeline(GPUPipelineHandle handle)
 {
-    if (!handle.IsValid()) return;
+    if (!handle.IsValid())
+    {
+        LOG_WARN("Metal: BindGraphicsPipeline — invalid handle, draw skipped");
+        m_currentPipeline = {};  // Invalidate so subsequent draws no-op.
+        return;
+    }
     m_currentPipeline = handle;
     if (!beginEncoder()) return;
 
     auto* p = m_backend.m_pipelines.Get(handle);
-    if (p == nullptr || p->renderPipeline.get() == nullptr) return;
+    if (p == nullptr || p->renderPipeline.get() == nullptr)
+    {
+        LOG_WARN("Metal: BindGraphicsPipeline — nil PSO, draw skipped");
+        return;
+    }
     m_encoder->setRenderPipelineState(p->renderPipeline.get());
 }
 

@@ -1086,19 +1086,21 @@ GPUPipelineHandle MetalBackend::CreateGraphicsPipeline(
     if (!desc.vertexLayout.empty())
     {
         auto* vd = MTL::VertexDescriptor::alloc()->init();
-        uint32_t offset = 0;
+        uint32_t byteOffset = 0;
         for (size_t i = 0; i < desc.vertexLayout.size(); ++i)
         {
+            uint32_t size = 0;
             auto* attr = vd->attributes()->object(i);
             attr->setBufferIndex(
                 MetalCommandBuffer::kVertexBufferSlot);
-            attr->setOffset(offset);
+            attr->setOffset(byteOffset);
             attr->setFormat(
-                ToMetalVertexFormat(desc.vertexLayout[i], &offset));
+                ToMetalVertexFormat(desc.vertexLayout[i], &size));
+            byteOffset += size;
         }
         auto* layout = vd->layouts()->object(
             MetalCommandBuffer::kVertexBufferSlot);
-        layout->setStride(offset);
+        layout->setStride(byteOffset);
         layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
         rpDesc->setVertexDescriptor(vd);
         vd->release();
