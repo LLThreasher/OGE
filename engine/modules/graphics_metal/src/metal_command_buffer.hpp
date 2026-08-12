@@ -2,11 +2,16 @@
 
 #include <Metal/Metal.hpp>
 
-#include "metal.hpp"
+#include <array>
+#include <cstdint>
+#include <span>
+
 #include "oge/graphics/command_list.hpp"
 
 namespace oge::graphics::metal
 {
+
+class MetalBackend;  // forward — full definition in metal.hpp
 
 /// Implements ICommandList by wrapping MTL::CommandBuffer and
 /// MTL::RenderCommandEncoder.  Created once per frame by
@@ -17,8 +22,12 @@ class MetalCommandBuffer final : public ICommandList
     // Metal buffer index for vertex data, above uniform/storage slots.
     static constexpr uint32_t kVertexBufferSlot = 30;
 
+    MetalCommandBuffer() : m_mtlCmdBuf(nullptr), m_backend(nullptr) {}
     MetalCommandBuffer(MTL::CommandBuffer* mtlCB, MetalBackend& backend);
     ~MetalCommandBuffer() override;
+
+    /// Reset this wrapper for a new MTL::CommandBuffer (used by the pool).
+    void Reset(MTL::CommandBuffer* mtlCB, MetalBackend& backend);
 
     // ICommandList
     void SetViewRect(int32_t x, int32_t y, uint32_t w, uint32_t h) override;
@@ -74,7 +83,7 @@ class MetalCommandBuffer final : public ICommandList
 
    private:
     MTL::CommandBuffer* m_mtlCmdBuf;
-    MetalBackend& m_backend;
+    MetalBackend* m_backend;
 
     MTL::RenderCommandEncoder* m_encoder = nullptr;
     GPUPipelineHandle m_currentPipeline;

@@ -902,8 +902,7 @@ void MetalBackend::Shutdown()
 
     for (auto& f : m_frames)
     {
-        delete f.commandList;
-        f.commandList = nullptr;
+        f.cmdBuffers.clear();
 
         if (f.inFlightSemaphore != nullptr)
         {
@@ -933,6 +932,11 @@ BeginFrameAction MetalBackend::BeginFrame()
     if (frame.inFlightSemaphore != nullptr)
         dispatch_semaphore_wait(frame.inFlightSemaphore, DISPATCH_TIME_FOREVER);
 
+    // Reset the command-list pool and clear the previous frame's
+    // MTL::CommandBuffer so CreateCommandList creates a fresh one.
+    frame.commandBuffer = nullptr;
+    frame.cmdUsedCount = 0;
+
     if (m_swapchain.isDirty && m_swapchain.layer != nullptr)
         RecreateSwapchain();
 
@@ -949,23 +953,30 @@ EndFrameAction MetalBackend::EndFrame()
 
     if (frame.commandBuffer.get() != nullptr)
     {
+        // Present the drawable before committing the render CB.
+        if (m_swapchain.currentDrawable != nullptr)
+        {
+            frame.commandBuffer->presentDrawable(m_swapchain.currentDrawable);
+            // nextDrawable() returns +1; presentDrawable gives Metal its own
+            // reference.  Release ours so the drawable can return to the pool.
+            m_swapchain.currentDrawable->release();
+            m_swapchain.currentDrawable = nullptr;
+            m_swapchain.currentColorTexture = {};
+        }
+
+        // Signal the semaphore only after the GPU completes this CB.
+        // Using addCompletedHandler prevents the CPU from racing ahead
+        // and accumulating unbounded pending command buffers in Metal's
+        // driver (which shows as native-block growth).
+        dispatch_semaphore_t sem = frame.inFlightSemaphore;
+        frame.commandBuffer->addCompletedHandler(
+            [sem](MTL::CommandBuffer*) {
+                if (sem) dispatch_semaphore_signal(sem);
+            });
+
         frame.commandBuffer->commit();
         frame.commandBuffer = nullptr;
     }
-
-    if (m_swapchain.currentDrawable != nullptr)
-    {
-        auto* cb = m_device.graphicsQueue->commandBuffer();
-        cb->presentDrawable(m_swapchain.currentDrawable);
-        cb->commit();
-        cb->waitUntilCompleted();
-        cb->release();
-        m_swapchain.currentDrawable = nullptr;
-        m_swapchain.currentColorTexture = {};
-    }
-
-    if (frame.inFlightSemaphore != nullptr)
-        dispatch_semaphore_signal(frame.inFlightSemaphore);
 
     m_frameIndex = (m_frameIndex + 1) % static_cast<uint32_t>(m_frames.size());
     return EndFrameAction::Continue;
@@ -976,23 +987,38 @@ EndFrameAction MetalBackend::EndFrame()
 ICommandList& MetalBackend::CreateCommandList(QueueType type)
 {
     auto& frame = m_frames[m_frameIndex];
+    (void)type;  // Metal uses a single graphics queue for everything
 
-    // Reuse the same MTL::CommandBuffer for all encoders within a frame
-    // (blit for upload, then render for drawing).  This avoids per-queue
-    // command-buffer churn which grows Metal's internal pool.
+    // Both Transfer and Present command lists share a single
+    // MTL::CommandBuffer per frame (first call creates it).
     if (frame.commandBuffer.get() == nullptr)
     {
-        // Always use the graphics queue — transfer/upload blits also work
-        // on the graphics queue and this keeps everything in one CB.
         frame.commandBuffer = NS::RetainPtr(
             m_device.graphicsQueue->commandBuffer());
     }
 
-    // Delete the previous command list (from upload or prior frame).
-    delete frame.commandList;
+    // Pooled allocation: reuse a wrapper from the previous frame,
+    // growing the pool lazily up to kMaxCmdBuffers per frame-slot.
+    MetalCommandBuffer* cmd = nullptr;
+    if (frame.cmdUsedCount < frame.cmdBuffers.size())
+    {
+        cmd = &frame.cmdBuffers[frame.cmdUsedCount];
+        cmd->Reset(frame.commandBuffer.get(), *this);
+    }
+    else if (frame.cmdBuffers.size() >= MetalFrameData::kMaxCmdBuffers)
+    {
+        // Pool exhausted — fallback to the first wrapper (shouldn't
+        // happen under normal use; 2 lists per frame is typical).
+        cmd = &frame.cmdBuffers[0];
+        cmd->Reset(frame.commandBuffer.get(), *this);
+    }
+    else
+    {
+        cmd = &frame.cmdBuffers.emplace_back();
+        cmd->Reset(frame.commandBuffer.get(), *this);
+    }
 
-    auto* cmd = new MetalCommandBuffer(frame.commandBuffer.get(), *this);
-    frame.commandList = cmd;
+    frame.cmdUsedCount++;
     return *cmd;
 }
 

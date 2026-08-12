@@ -10,11 +10,10 @@
 #include "oge/pool.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/platform/window_handle.hpp"
+#include "metal_command_buffer.hpp"
 
 namespace oge::graphics::metal
 {
-
-class MetalCommandBuffer;
 
 struct MetalDevice
 {
@@ -53,7 +52,11 @@ struct MetalFrameData
 {
     NS::SharedPtr<MTL::CommandBuffer> commandBuffer = nullptr;
     dispatch_semaphore_t inFlightSemaphore = nullptr;
-    ICommandList* commandList = nullptr;
+
+    // Pool of reusable MetalCommandBuffer wrappers (recycled each frame).
+    std::vector<MetalCommandBuffer> cmdBuffers = {};
+    uint32_t cmdUsedCount = 0;
+    static constexpr uint32_t kMaxCmdBuffers = 4;
 };
 
 struct MetalBuffer

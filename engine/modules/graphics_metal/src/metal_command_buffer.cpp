@@ -1,4 +1,5 @@
 #include "metal_command_buffer.hpp"
+#include "metal.hpp"  // full MetalBackend / MetalSwapchain / Pool definitions
 
 #define LOGGER_NAME "Metal"
 #include "oge/log.hpp"
@@ -8,7 +9,7 @@ namespace oge::graphics::metal
 
 MetalCommandBuffer::MetalCommandBuffer(MTL::CommandBuffer* mtlCB,
                                        MetalBackend& backend)
-    : m_mtlCmdBuf(mtlCB), m_backend(backend)
+    : m_mtlCmdBuf(mtlCB), m_backend(&backend)
 {
 }
 
@@ -21,18 +22,37 @@ MetalCommandBuffer::~MetalCommandBuffer()
     }
 }
 
+void MetalCommandBuffer::Reset(MTL::CommandBuffer* mtlCB,
+                               MetalBackend& backend)
+{
+    if (m_encoder != nullptr)
+    {
+        m_encoder->endEncoding();
+        m_encoder = nullptr;
+    }
+    m_mtlCmdBuf = mtlCB;
+    m_backend = &backend;
+    m_currentPipeline = {};
+    m_renderPassDesc = {};
+    m_clearColor = {0.1f, 0.12f, 0.15f, 1.0f};
+    m_clearDepth = 1.0f;
+    m_indexBuffer = nullptr;
+    m_indexBufferOffset = 0;
+    m_indexType = MTL::IndexTypeUInt32;
+}
+
 bool MetalCommandBuffer::beginEncoder()
 {
     if (m_encoder != nullptr) return true;
 
-    auto& sc = m_backend.m_swapchain;
+    auto& sc = m_backend->m_swapchain;
     if (sc.currentDrawable == nullptr) return false;
 
     // Create depth texture on first use.
     if (!sc.currentDepthTexture.IsValid() &&
         sc.extent.x > 0 && sc.extent.y > 0)
     {
-        sc.currentDepthTexture = m_backend.CreateDepthTexture(
+        sc.currentDepthTexture = m_backend->CreateDepthTexture(
             sc.extent.x, sc.extent.y);
     }
 
@@ -47,7 +67,7 @@ bool MetalCommandBuffer::beginEncoder()
     // Depth attachment.
     if (sc.currentDepthTexture.IsValid())
     {
-        auto* t = m_backend.m_textures.Get(sc.currentDepthTexture);
+        auto* t = m_backend->m_textures.Get(sc.currentDepthTexture);
         if (t != nullptr && t->texture.get() != nullptr)
         {
             auto* da = rpDesc->depthAttachment();
@@ -104,7 +124,7 @@ void MetalCommandBuffer::BindGraphicsPipeline(GPUPipelineHandle handle)
     m_currentPipeline = handle;
     if (!beginEncoder()) return;
 
-    auto* p = m_backend.m_pipelines.Get(handle);
+    auto* p = m_backend->m_pipelines.Get(handle);
     if (p == nullptr || p->renderPipeline.get() == nullptr)
     {
         LOG_WARN("Metal: BindGraphicsPipeline — nil PSO, draw skipped");
@@ -114,7 +134,7 @@ void MetalCommandBuffer::BindGraphicsPipeline(GPUPipelineHandle handle)
     m_encoder->setDepthStencilState(
         p->depthStencilState.get() != nullptr
             ? p->depthStencilState.get()
-            : m_backend.m_noDepthDSS.get());
+            : m_backend->m_noDepthDSS.get());
 }
 
 void MetalCommandBuffer::BindComputePipeline(GPUPipelineHandle) {}
@@ -124,7 +144,7 @@ void MetalCommandBuffer::BindVertexBuffer(GPUBufferHandle handle,
 {
     if (beginEncoder())
     {
-        auto* b = m_backend.m_buffers.Get(handle);
+        auto* b = m_backend->m_buffers.Get(handle);
         if (b != nullptr && b->buffer.get() != nullptr)
             // Use high slot to avoid clashing with uniform buffers at slot 0.
             m_encoder->setVertexBuffer(b->buffer.get(), offset,
@@ -135,7 +155,7 @@ void MetalCommandBuffer::BindVertexBuffer(GPUBufferHandle handle,
 void MetalCommandBuffer::BindIndexBuffer(GPUBufferHandle handle,
                                          uint64_t offset, IndexFormat fmt)
 {
-    auto* b = m_backend.m_buffers.Get(handle);
+    auto* b = m_backend->m_buffers.Get(handle);
     if (b != nullptr)
     {
         m_indexBuffer = b->buffer;
@@ -153,29 +173,29 @@ void MetalCommandBuffer::BindBindingGroup(GPUBindingGroupHandle handle,
     if (!beginEncoder()) return;
     (void)setIndex;
 
-    auto* group = m_backend.m_bindingGroups.Get(handle);
+    auto* group = m_backend->m_bindingGroups.Get(handle);
     if (group == nullptr) return;
 
     // Bind textures to fragment shader slots.
     for (size_t i = 0; i < group->desc.textures.size(); ++i)
     {
-        auto* t = m_backend.m_textures.Get(group->desc.textures[i]);
+        auto* t = m_backend->m_textures.Get(group->desc.textures[i]);
         if (t != nullptr && t->texture.get() != nullptr)
         {
             m_encoder->setFragmentTexture(t->texture.get(), i);
             // Use cached nearest sampler, created once per device.
-            if (m_backend.m_defaultSampler.get() == nullptr)
+            if (m_backend->m_defaultSampler.get() == nullptr)
             {
                 auto* desc = MTL::SamplerDescriptor::alloc()->init();
                 desc->setMinFilter(MTL::SamplerMinMagFilterNearest);
                 desc->setMagFilter(MTL::SamplerMinMagFilterNearest);
                 desc->setMipFilter(MTL::SamplerMipFilterNearest);
-                m_backend.m_defaultSampler = NS::TransferPtr(
-                    m_backend.m_device.device->newSamplerState(desc));
+                m_backend->m_defaultSampler = NS::TransferPtr(
+                    m_backend->m_device.device->newSamplerState(desc));
                 desc->release();
             }
             m_encoder->setFragmentSamplerState(
-                m_backend.m_defaultSampler.get(), i);
+                m_backend->m_defaultSampler.get(), i);
         }
     }
 
@@ -183,7 +203,7 @@ void MetalCommandBuffer::BindBindingGroup(GPUBindingGroupHandle handle,
     for (size_t i = 0; i < group->desc.buffers.size(); ++i)
     {
         auto& bd = group->desc.buffers[i];
-        auto* b = m_backend.m_buffers.Get(bd.gpuBuffer);
+        auto* b = m_backend->m_buffers.Get(bd.gpuBuffer);
         if (b == nullptr || b->buffer.get() == nullptr) continue;
 
         uint64_t off = (i < dynamicOffsets.size()) ? dynamicOffsets[i] : 0;
@@ -205,7 +225,7 @@ void MetalCommandBuffer::PushConstants(ShaderStage stage, const void* data,
 void MetalCommandBuffer::UpdateBuffer(GPUBufferHandle handle, uint64_t offset,
                                       uint64_t size, const void* data)
 {
-    auto* b = m_backend.m_buffers.Get(handle);
+    auto* b = m_backend->m_buffers.Get(handle);
     if (b == nullptr || b->buffer.get() == nullptr || data == nullptr) return;
 
     void* dst = b->buffer->contents();
@@ -224,8 +244,8 @@ void MetalCommandBuffer::CopyBuffer(GPUBufferHandle srcHandle,
                                     uint64_t size, uint64_t srcOff,
                                     uint64_t dstOff)
 {
-    auto* src = m_backend.m_buffers.Get(srcHandle);
-    auto* dst = m_backend.m_buffers.Get(dstHandle);
+    auto* src = m_backend->m_buffers.Get(srcHandle);
+    auto* dst = m_backend->m_buffers.Get(dstHandle);
     if (src == nullptr || dst == nullptr) return;
     if (src->buffer.get() == nullptr || dst->buffer.get() == nullptr) return;
 
@@ -241,8 +261,8 @@ void MetalCommandBuffer::CopyBufferToTexture(GPUBufferHandle srcBuf,
                                              uint32_t bufOff,
                                              CopyTextureTarget tgt)
 {
-    auto* src = m_backend.m_buffers.Get(srcBuf);
-    auto* dst = m_backend.m_textures.Get(dstTex);
+    auto* src = m_backend->m_buffers.Get(srcBuf);
+    auto* dst = m_backend->m_textures.Get(dstTex);
     if (src == nullptr || dst == nullptr) return;
     if (src->buffer.get() == nullptr || dst->texture.get() == nullptr) return;
 
@@ -263,7 +283,7 @@ void MetalCommandBuffer::Draw(uint32_t vertexCount, uint32_t instanceCount,
                               uint32_t firstVertex, uint32_t firstInstance)
 {
     if (!beginEncoder()) return;
-    auto* p = m_backend.m_pipelines.Get(m_currentPipeline);
+    auto* p = m_backend->m_pipelines.Get(m_currentPipeline);
     auto prim = p != nullptr ? p->primitiveType
                              : MTL::PrimitiveTypeTriangle;
     m_encoder->drawPrimitives(prim, firstVertex, vertexCount, instanceCount,
@@ -277,7 +297,7 @@ void MetalCommandBuffer::DrawIndexed(uint32_t indexCount, uint32_t instCount,
 {
     if (!beginEncoder()) return;
     if (m_indexBuffer.get() == nullptr) return;
-    auto* p = m_backend.m_pipelines.Get(m_currentPipeline);
+    auto* p = m_backend->m_pipelines.Get(m_currentPipeline);
     auto prim = p != nullptr ? p->primitiveType
                              : MTL::PrimitiveTypeTriangle;
     // Metal has no "firstIndex" — offset into the index buffer includes it.
@@ -292,7 +312,7 @@ void MetalCommandBuffer::DrawIndexed(uint32_t indexCount, uint32_t instCount,
 void MetalCommandBuffer::Dispatch(uint32_t gx, uint32_t gy, uint32_t gz)
 {
     if (!beginEncoder()) return;
-    auto* p = m_backend.m_pipelines.Get(m_currentPipeline);
+    auto* p = m_backend->m_pipelines.Get(m_currentPipeline);
     if (p != nullptr && p->computePipeline.get() != nullptr)
     {
         m_encoder->endEncoding();
