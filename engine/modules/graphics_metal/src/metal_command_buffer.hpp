@@ -14,6 +14,9 @@ namespace oge::graphics::metal
 class MetalCommandBuffer final : public ICommandList
 {
    public:
+    // Metal buffer index for vertex data, above uniform/storage slots.
+    static constexpr uint32_t kVertexBufferSlot = 30;
+
     MetalCommandBuffer(MTL::CommandBuffer* mtlCB, MetalBackend& backend);
     ~MetalCommandBuffer() override;
 

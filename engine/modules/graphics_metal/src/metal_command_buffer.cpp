@@ -104,7 +104,9 @@ void MetalCommandBuffer::BindVertexBuffer(GPUBufferHandle handle,
     {
         auto* b = m_backend.m_buffers.Get(handle);
         if (b != nullptr && b->buffer.get() != nullptr)
-            m_encoder->setVertexBuffer(b->buffer.get(), offset, 0);
+            // Use high slot to avoid clashing with uniform buffers at slot 0.
+            m_encoder->setVertexBuffer(b->buffer.get(), offset,
+                                       kVertexBufferSlot);
     }
 }
 
@@ -152,8 +154,7 @@ void MetalCommandBuffer::BindBindingGroup(GPUBindingGroupHandle handle,
         }
     }
 
-    // Bind buffers to vertex/fragment shader slots.
-    uint32_t bufSlot = 1;  // slot 0 is vertex buffer from BindVertexBuffer
+    // Bind buffers to vertex/fragment shader slots starting at 0.
     for (size_t i = 0; i < group->desc.buffers.size(); ++i)
     {
         auto& bd = group->desc.buffers[i];
@@ -161,20 +162,18 @@ void MetalCommandBuffer::BindBindingGroup(GPUBindingGroupHandle handle,
         if (b == nullptr || b->buffer.get() == nullptr) continue;
 
         uint64_t off = (i < dynamicOffsets.size()) ? dynamicOffsets[i] : 0;
-        m_encoder->setVertexBuffer(b->buffer.get(), off, bufSlot);
-        m_encoder->setFragmentBuffer(b->buffer.get(), off, bufSlot);
-        ++bufSlot;
+        m_encoder->setVertexBuffer(b->buffer.get(), off, i);
+        m_encoder->setFragmentBuffer(b->buffer.get(), off, i);
     }
 }
 
 void MetalCommandBuffer::PushConstants(ShaderStage stage, const void* data,
                                        uint32_t size)
 {
-    // Map to setVertexBytes / setFragmentBytes.
     if (beginEncoder() && data != nullptr && size > 0)
     {
         if (stage == ShaderStage::Vertex || stage == ShaderStage::Fragment)
-            m_encoder->setVertexBytes(data, size, 1);
+            m_encoder->setVertexBytes(data, size, 0);
     }
 }
 
@@ -234,11 +233,13 @@ void MetalCommandBuffer::DrawIndexed(uint32_t indexCount, uint32_t instCount,
     auto* p = m_backend.m_pipelines.Get(m_currentPipeline);
     auto prim = p != nullptr ? p->primitiveType
                              : MTL::PrimitiveTypeTriangle;
+    // Metal has no "firstIndex" — offset into the index buffer includes it.
+    uint64_t idxOff = m_indexBufferOffset
+        + firstIndex * (m_indexType == MTL::IndexTypeUInt16 ? 2u : 4u);
     m_encoder->drawIndexedPrimitives(
         prim, indexCount, m_indexType,
-        m_indexBuffer.get(), m_indexBufferOffset,
-        instCount, firstIndex, vertOff);
-    (void)firstInst;
+        m_indexBuffer.get(), idxOff,
+        instCount, vertOff, firstInst);
 }
 
 void MetalCommandBuffer::Dispatch(uint32_t gx, uint32_t gy, uint32_t gz)

@@ -842,8 +842,8 @@ void MetalBackend::Initialize(const BackendDesc& desc)
     CreateCommandQueues();
     CreateSwapchain(&desc.window);
 
-    uint32_t n = std::max<uint32_t>(2u, 3);
-    n = std::min(n, 3u);
+    uint32_t n = MAX_FRAMES_IN_FLIGHT > 3 ? 3u
+                 : static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     m_frames.resize(n);
     for (auto& f : m_frames)
         f.inFlightSemaphore = dispatch_semaphore_create(1);
@@ -1084,12 +1084,14 @@ GPUPipelineHandle MetalBackend::CreateGraphicsPipeline(
         for (size_t i = 0; i < desc.vertexLayout.size(); ++i)
         {
             auto* attr = vd->attributes()->object(i);
-            attr->setBufferIndex(0);
+            attr->setBufferIndex(
+                MetalCommandBuffer::kVertexBufferSlot);
             attr->setOffset(offset);
             attr->setFormat(
                 ToMetalVertexFormat(desc.vertexLayout[i], &offset));
         }
-        auto* layout = vd->layouts()->object(0);
+        auto* layout = vd->layouts()->object(
+            MetalCommandBuffer::kVertexBufferSlot);
         layout->setStride(offset);
         layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
         rpDesc->setVertexDescriptor(vd);
