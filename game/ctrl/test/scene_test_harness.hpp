@@ -107,8 +107,14 @@ struct NetSceneHarness
 
         // When prediction is enabled, run local simulation on the client
         // so the local player entity drives physics/creature locally.
+        // Mirror the real client config (ClientConnScene's default): the
+        // FixedStep player runs in the realtime pipeline and processes
+        // action events (jump/dig/place) — without it the prediction copy
+        // never jumps and diverges from the authoritative copy.
         if (m_clientPrediction)
         {
+            cliConfig.realtimeSubsystems.push_back(
+                m_clientRunner.Id<game::sim::SubsystemPlayer<game::UpdateType::FixedStep>>());
             cliConfig.realtimeSubsystems.push_back(
                 m_clientRunner.Id<game::sim::SubsystemPlayer<game::UpdateType::Realtime>>());
             cliConfig.realtimeSubsystems.push_back(
