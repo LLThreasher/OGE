@@ -214,9 +214,20 @@ void MetalCommandBuffer::UpdateBuffer(GPUBufferHandle handle, uint64_t offset,
     }
 }
 
-void MetalCommandBuffer::CopyBuffer(GPUBufferHandle, GPUBufferHandle,
-                                    uint64_t, uint64_t, uint64_t)
+void MetalCommandBuffer::CopyBuffer(GPUBufferHandle srcHandle,
+                                    GPUBufferHandle dstHandle,
+                                    uint64_t size, uint64_t srcOff,
+                                    uint64_t dstOff)
 {
+    auto* src = m_backend.m_buffers.Get(srcHandle);
+    auto* dst = m_backend.m_buffers.Get(dstHandle);
+    if (src == nullptr || dst == nullptr) return;
+    if (src->buffer.get() == nullptr || dst->buffer.get() == nullptr) return;
+
+    auto* blit = m_mtlCmdBuf->blitCommandEncoder();
+    blit->copyFromBuffer(src->buffer.get(), srcOff,
+                         dst->buffer.get(), dstOff, size);
+    blit->endEncoding();
 }
 
 void MetalCommandBuffer::CopyBufferToTexture(GPUBufferHandle srcBuf,
