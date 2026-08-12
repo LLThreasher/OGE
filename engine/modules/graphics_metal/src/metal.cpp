@@ -1114,13 +1114,18 @@ GPUPipelineHandle MetalBackend::CreateGraphicsPipeline(
     rpDesc->setDepthAttachmentPixelFormat(
         ToMetalPixelFormat(TextureFormat::Depth32Float));
 
-    // Depth-stencil state.
-    auto* dssDesc = MTL::DepthStencilDescriptor::alloc()->init();
-    dssDesc->setDepthCompareFunction(
-        ToMetalCompareFunction(desc.depthCompareOp));
-    dssDesc->setDepthWriteEnabled(desc.writeDepth);
-    auto* dss = m_device.device->newDepthStencilState(dssDesc);
-    dssDesc->release();
+    // Depth-stencil state — only when depth testing is enabled.
+    NS::SharedPtr<MTL::DepthStencilState> dss;
+    if (desc.depthTest)
+    {
+        auto* dssDesc = MTL::DepthStencilDescriptor::alloc()->init();
+        dssDesc->setDepthCompareFunction(
+            ToMetalCompareFunction(desc.depthCompareOp));
+        dssDesc->setDepthWriteEnabled(desc.writeDepth);
+        dss = NS::RetainPtr(
+            m_device.device->newDepthStencilState(dssDesc));
+        dssDesc->release();
+    }
 
     NS::Error* error = nullptr;
     MTL::RenderPipelineState* pso =
@@ -1144,7 +1149,7 @@ GPUPipelineHandle MetalBackend::CreateGraphicsPipeline(
 
     MetalPipeline result{};
     result.renderPipeline = NS::RetainPtr(pso);
-    result.depthStencilState = NS::RetainPtr(dss);
+    result.depthStencilState = dss;
     result.graphicsDesc = desc;
     result.primitiveType = ToMetalPrimitiveType(desc.topology);
     return m_pipelines.Create(result);
