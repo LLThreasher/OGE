@@ -567,6 +567,12 @@ MTL::VertexFormat MetalBackend::ToMetalVertexFormat(
             *outSize = 4;  return MTL::VertexFormatUShort2;
         case VertexAttributeFormat::Uint8:
             *outSize = 1;  return MTL::VertexFormatUChar;
+        case VertexAttributeFormat::UniformUint16:
+            *outSize = 2;  return MTL::VertexFormatUShortNormalized;
+        case VertexAttributeFormat::UniformUint16x2:
+            *outSize = 4;  return MTL::VertexFormatUShort2Normalized;
+        case VertexAttributeFormat::UniformUint8x4:
+            *outSize = 4;  return MTL::VertexFormatUChar4Normalized;
         default:
             *outSize = 16; return MTL::VertexFormatFloat4;
     }

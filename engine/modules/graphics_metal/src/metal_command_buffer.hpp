@@ -78,6 +78,9 @@ class MetalCommandBuffer final : public ICommandList
 
     MTL::RenderCommandEncoder* m_encoder = nullptr;
     GPUPipelineHandle m_currentPipeline;
+    GPURenderPassDesc m_renderPassDesc = {};
+    std::array<float, 4> m_clearColor = {0.1f, 0.12f, 0.15f, 1.0f};
+    float m_clearDepth = 1.0f;
 
     NS::SharedPtr<MTL::Buffer> m_indexBuffer;
     uint64_t m_indexBufferOffset = 0;

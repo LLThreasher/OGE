@@ -40,7 +40,8 @@ bool MetalCommandBuffer::beginEncoder()
     auto* ca = rpDesc->colorAttachments()->object(0);
     ca->setTexture(sc.currentDrawable->texture());
     ca->setLoadAction(MTL::LoadActionClear);
-    ca->setClearColor(MTL::ClearColor::Make(0.1f, 0.12f, 0.15f, 1.0f));
+    ca->setClearColor(MTL::ClearColor::Make(
+        m_clearColor[0], m_clearColor[1], m_clearColor[2], m_clearColor[3]));
     ca->setStoreAction(MTL::StoreActionStore);
 
     // Depth attachment.
@@ -52,7 +53,7 @@ bool MetalCommandBuffer::beginEncoder()
             auto* da = rpDesc->depthAttachment();
             da->setTexture(t->texture.get());
             da->setLoadAction(MTL::LoadActionClear);
-            da->setClearDepth(1.0);
+            da->setClearDepth(m_clearDepth);
             da->setStoreAction(MTL::StoreActionDontCare);
         }
     }
@@ -74,9 +75,13 @@ void MetalCommandBuffer::SetViewRect(int32_t x, int32_t y, uint32_t w,
                           0.0, 1.0});
 }
 
-void MetalCommandBuffer::BeginRenderPass(const GPURenderPassDesc&)
+void MetalCommandBuffer::BeginRenderPass(const GPURenderPassDesc& desc)
 {
-    // Render pass is begun lazily on first draw/bind.
+    m_renderPassDesc = desc;
+    // Use engine-provided clear color (colorAttachments[0]).
+    auto& cc = desc.clearValues.colorClears[0];
+    m_clearColor = {cc[0], cc[1], cc[2], cc[3]};
+    m_clearDepth = desc.clearValues.depthClear;
 }
 
 void MetalCommandBuffer::EndRenderPass()
@@ -181,9 +186,21 @@ void MetalCommandBuffer::PushConstants(ShaderStage stage, const void* data,
     }
 }
 
-void MetalCommandBuffer::UpdateBuffer(GPUBufferHandle, uint64_t, uint64_t,
-                                      const void*)
+void MetalCommandBuffer::UpdateBuffer(GPUBufferHandle handle, uint64_t offset,
+                                      uint64_t size, const void* data)
 {
+    auto* b = m_backend.m_buffers.Get(handle);
+    if (b == nullptr || b->buffer.get() == nullptr || data == nullptr) return;
+
+    void* dst = b->buffer->contents();
+    if (dst != nullptr)
+    {
+        std::memcpy(static_cast<char*>(dst) + offset, data, size);
+        // Apple Silicon unified memory is automatically coherent.
+        // didModifyRange only works for managed storage (discrete GPUs).
+        if (b->buffer->storageMode() == MTL::StorageModeManaged)
+            b->buffer->didModifyRange(NS::Range::Make(offset, size));
+    }
 }
 
 void MetalCommandBuffer::CopyBuffer(GPUBufferHandle, GPUBufferHandle,
