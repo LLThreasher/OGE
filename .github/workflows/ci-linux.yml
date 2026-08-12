@@ -29,3 +29,10 @@ jobs:
 
       - name: Test
         run: ctest --test-dir out/build/linux-debug --output-on-failure
+
+      - name: Upload game_desktop binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: game_desktop-linux
+          path: out/build/linux-debug/game_desktop/game_desktop
+          if-no-files-found: error
