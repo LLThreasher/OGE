@@ -106,6 +106,9 @@ class MetalBackend final : public IGraphicsBackend
     friend class MetalCommandBuffer;
 
    public:
+    // Pools accessible to MetalCommandBuffer for resource lookups.
+
+   public:
     MetalBackend();
     ~MetalBackend() override;
 

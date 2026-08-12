@@ -19,6 +19,8 @@
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/configs.hpp"
 
+#include "metal_command_buffer.hpp"
+
 #define LOGGER_NAME "Metal"
 #include "oge/log.hpp"
 #include "oge/math.hpp"
@@ -962,7 +964,12 @@ ICommandList& MetalBackend::CreateCommandList(QueueType type)
     }
     auto* mtlCB = queue->commandBuffer();
     frame.commandBuffer = NS::RetainPtr(mtlCB);
-    return *reinterpret_cast<ICommandList*>(mtlCB);
+
+    // Leaked intentionally — lives for the frame and cleaned up when the
+    // backend destroys frame data.  The caller stores the returned reference
+    // but never calls delete.
+    auto* cmd = new MetalCommandBuffer(mtlCB, *this);
+    return *cmd;
 }
 
 // --- Buffers -----------------------------------------------------------
