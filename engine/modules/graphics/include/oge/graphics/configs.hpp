@@ -6,15 +6,6 @@
 #include "oge/flag_helper.hpp"
 #include "oge/handle.hpp"
 
-// X11 (reached via vulkan.h) defines `None` and `Always` as macros that
-// collide with enumerators below — drop them so the enums parse cleanly.
-#ifdef None
-#undef None
-#endif
-#ifdef Always
-#undef Always
-#endif
-
 namespace oge::graphics
 {
 using namespace oge::flag_helper;
