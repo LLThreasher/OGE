@@ -64,20 +64,12 @@ void MetalCommandBuffer::EndRenderPass()
 
 void MetalCommandBuffer::BindGraphicsPipeline(GPUPipelineHandle handle)
 {
+    if (!handle.IsValid()) return;
     m_currentPipeline = handle;
     if (!beginEncoder()) return;
 
     auto* p = m_backend.m_pipelines.Get(handle);
-    if (p == nullptr)
-    {
-        LOG_ERROR("Metal: BindGraphicsPipeline — pipeline not found in pool");
-        return;
-    }
-    if (p->renderPipeline.get() == nullptr)
-    {
-        LOG_ERROR("Metal: BindGraphicsPipeline — pipeline has nil PSO");
-        return;
-    }
+    if (p == nullptr || p->renderPipeline.get() == nullptr) return;
     m_encoder->setRenderPipelineState(p->renderPipeline.get());
 }
 
