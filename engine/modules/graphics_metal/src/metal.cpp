@@ -993,12 +993,10 @@ void MetalBackend::DestroyBuffer(GPUBufferHandle handle)
 void MetalBackend::FlushStagingBufferRanges(
     const std::span<GPUBufferSpan> ranges)
 {
-    for (auto& r : ranges)
-    {
-        auto* b = m_buffers.Get(r.buffer);
-        if (b != nullptr && b->buffer.get() != nullptr)
-            b->buffer->didModifyRange(NS::Range::Make(r.offset, r.size));
-    }
+    // Apple Silicon uses unified memory — shared buffers are automatically
+    // coherent between CPU and GPU.  didModifyRange only applies to managed
+    // storage mode which doesn't exist on Apple GPUs.
+    (void)ranges;
 }
 
 // --- Textures ----------------------------------------------------------

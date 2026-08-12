@@ -30,6 +30,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     )
 endif()
 
+# Metal debug layer (set MTL_DEBUG_LAYER=1 / MTL_SHADER_VALIDATION=1
+# in the environment at runtime).  This option adds a compile-time hint.
+option(METAL_DEBUG "Enable Metal debug layer hints" OFF)
+if(METAL_DEBUG)
+    target_compile_definitions(oge_graphics_metal PUBLIC OGE_METAL_DEBUG)
+endif()
+
 target_link_libraries(oge_graphics_metal
 PUBLIC
     oge::graphics
