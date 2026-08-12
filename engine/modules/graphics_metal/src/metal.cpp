@@ -973,9 +973,10 @@ GPUTextureHandle MetalBackend::CreateTexture(const TextureDesc& desc)
     auto* mtlDesc = MTL::TextureDescriptor::texture2DDescriptor(
         pixelFmt, desc.width, desc.height,
         desc.mipLevels > 1);  // mipmapped flag
-    mtlDesc->setMipmapLevelCount(std::max(1u, desc.mipLevels));
-    mtlDesc->setDepth(std::max(1u, desc.depth));
-    mtlDesc->setArrayLength(std::max(1u, desc.layers));
+    if (desc.mipLevels > 1)
+        mtlDesc->setMipmapLevelCount(desc.mipLevels);
+    if (desc.layers > 1)
+        mtlDesc->setArrayLength(desc.layers);
     mtlDesc->setUsage(ToMetalTextureUsage(desc.usage));
     mtlDesc->setStorageMode(ToMetalStorageMode(MemoryUsage::GPUOnly));
 
