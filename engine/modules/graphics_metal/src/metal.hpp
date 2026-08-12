@@ -9,6 +9,7 @@
 
 #include "oge/pool.hpp"
 #include "oge/graphics/backend.hpp"
+#include "oge/platform/window_handle.hpp"
 
 namespace oge::graphics::metal
 {
@@ -203,11 +204,11 @@ class MetalBackend final : public IGraphicsBackend
         const GPURenderPassDesc& desc,
         const ClearValues& clearValues);
 
-    void DestroyTextureInternal(MetalTexture& texture);
+    void DestroyTextureInternal(GPUTextureHandle handle);
     void DestroyBufferInternal(MetalBuffer& buffer);
 
     NS::SharedPtr<MTL::Function> CreateShaderFunction(
-        const ShaderDesc& shaderDesc);
+        const std::vector<char>& code, const char* entry);
 
     NS::SharedPtr<MTL::DepthStencilState> CreateDepthStencilState(
         const GraphicsPipelineDesc& desc);

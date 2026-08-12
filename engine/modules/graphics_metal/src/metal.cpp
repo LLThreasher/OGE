@@ -12,14 +12,8 @@
 #include <string_view>
 #include <vector>
 
-#include "binding_group.hpp"
-#include "buffer.hpp"
-#include "command_buffer.hpp"
-#include "fence.hpp"
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/configs.hpp"
-#include "pipeline.hpp"
-#include "texture.hpp"
 
 #define LOGGER_NAME "Metal"
 #include "oge/log.hpp"
@@ -238,7 +232,7 @@ static NS::SharedPtr<MTL::Device> SelectMetalDevice()
 
     devices->release();
 
-    if (result == nullptr)
+    if (result.get() == nullptr)
     {
         throw std::runtime_error("Failed to select suitable Metal device!");
     }
@@ -326,7 +320,7 @@ GPUInfo MetalBackend::GetGPUInfo() const
 {
     GPUInfo result{};
 
-    if (m_device.device == nullptr)
+    if (m_device.device.get() == nullptr)
     {
         return result;
     }
@@ -349,7 +343,7 @@ GPUMemoryUsage MetalBackend::GetGPUMemoryUsage() const
 {
     GPUMemoryUsage result{};
 
-    if (m_device.device == nullptr)
+    if (m_device.device.get() == nullptr)
     {
         return result;
     }
@@ -399,13 +393,10 @@ MTL::PixelFormat MetalBackend::ToMetalPixelFormat(TextureFormat format) const
         case TextureFormat::RGBA32Float:
             return MTL::PixelFormatRGBA32Float;
 
-        case TextureFormat::Depth16Unorm:
-            return MTL::PixelFormatDepth16Unorm;
-
         case TextureFormat::Depth32Float:
             return MTL::PixelFormatDepth32Float;
 
-        case TextureFormat::Depth24Stencil8:
+        case TextureFormat::Depth24FloatStencil8:
             return MTL::PixelFormatDepth24Unorm_Stencil8;
 
         case TextureFormat::Depth32FloatStencil8:
@@ -418,7 +409,7 @@ MTL::PixelFormat MetalBackend::ToMetalPixelFormat(TextureFormat format) const
 }
 
 MTL::TextureUsage MetalBackend::ToMetalTextureUsage(
-    TextureUsageFlags usage) const
+    TextureUsage usage) const
 {
     MTL::TextureUsage result = MTL::TextureUsageUnknown;
 
@@ -432,8 +423,8 @@ MTL::TextureUsage MetalBackend::ToMetalTextureUsage(
         result |= MTL::TextureUsageShaderWrite;
     }
 
-    if ((usage & TextureUsage::RenderAttachment) ==
-        TextureUsage::RenderAttachment)
+    if ((usage & TextureUsage::ColorAttachment) ==
+        TextureUsage::ColorAttachment)
     {
         result |= MTL::TextureUsageRenderTarget;
     }
@@ -463,18 +454,9 @@ MTL::ResourceOptions MetalBackend::ToMetalResourceOptions(
 
     switch (usage)
     {
-        case MemoryUsage::CPUOnly:
-            options |= MTL::ResourceStorageModeShared;
-            break;
-
         case MemoryUsage::CPUToGPU:
-            options |= MTL::ResourceStorageModeShared;
-            break;
-
         case MemoryUsage::GPUToCPU:
-            options |= MTL::ResourceStorageModeShared;
-            break;
-
+            options |= MTL::ResourceStorageModeShared; break;
         case MemoryUsage::GPUOnly:
             options |= MTL::ResourceStorageModePrivate;
             break;
@@ -491,7 +473,6 @@ MTL::StorageMode MetalBackend::ToMetalStorageMode(MemoryUsage usage) const
 {
     switch (usage)
     {
-        case MemoryUsage::CPUOnly:
         case MemoryUsage::CPUToGPU:
         case MemoryUsage::GPUToCPU:
             return MTL::StorageModeShared;
@@ -508,7 +489,6 @@ MTL::CPUCacheMode MetalBackend::ToMetalCPUCacheMode(MemoryUsage usage) const
 {
     switch (usage)
     {
-        case MemoryUsage::CPUOnly:
         case MemoryUsage::CPUToGPU:
         case MemoryUsage::GPUToCPU:
             return MTL::CPUCacheModeDefaultCache;
@@ -559,20 +539,14 @@ MTL::PrimitiveType MetalBackend::ToMetalPrimitiveType(
 {
     switch (topology)
     {
-        case PrimitiveTopology::PointList:
-            return MTL::PrimitiveTypePoint;
 
         case PrimitiveTopology::LineList:
             return MTL::PrimitiveTypeLine;
 
-        case PrimitiveTopology::LineStrip:
-            return MTL::PrimitiveTypeLineStrip;
 
         case PrimitiveTopology::TriangleList:
             return MTL::PrimitiveTypeTriangle;
 
-        case PrimitiveTopology::TriangleStrip:
-            return MTL::PrimitiveTypeTriangleStrip;
 
         default:
             return MTL::PrimitiveTypeTriangle;
@@ -583,10 +557,10 @@ MTL::IndexType MetalBackend::ToMetalIndexType(IndexFormat format) const
 {
     switch (format)
     {
-        case IndexFormat::UInt16:
+        case IndexFormat::Uint16:
             return MTL::IndexTypeUInt16;
 
-        case IndexFormat::UInt32:
+        case IndexFormat::Uint32:
             return MTL::IndexTypeUInt32;
 
         default:
@@ -595,32 +569,32 @@ MTL::IndexType MetalBackend::ToMetalIndexType(IndexFormat format) const
 }
 
 MTL::CompareFunction MetalBackend::ToMetalCompareFunction(
-    CompareFunction function) const
+    DepthCompareOp function) const
 {
     switch (function)
     {
-        case CompareFunction::Never:
+        case DepthCompareOp::Never:
             return MTL::CompareFunctionNever;
 
-        case CompareFunction::Less:
+        case DepthCompareOp::Less:
             return MTL::CompareFunctionLess;
 
-        case CompareFunction::Equal:
+        case DepthCompareOp::Equal:
             return MTL::CompareFunctionEqual;
 
-        case CompareFunction::LessEqual:
+        case DepthCompareOp::LessEqual:
             return MTL::CompareFunctionLessEqual;
 
-        case CompareFunction::Greater:
+        case DepthCompareOp::Greater:
             return MTL::CompareFunctionGreater;
 
-        case CompareFunction::NotEqual:
+        case DepthCompareOp::NotEqual:
             return MTL::CompareFunctionNotEqual;
 
-        case CompareFunction::GreaterEqual:
+        case DepthCompareOp::GreaterEqual:
             return MTL::CompareFunctionGreaterEqual;
 
-        case CompareFunction::Always:
+        case DepthCompareOp::Always:
             return MTL::CompareFunctionAlways;
 
         default:
@@ -650,10 +624,10 @@ MTL::Winding MetalBackend::ToMetalWinding(FrontFace face) const
 {
     switch (face)
     {
-        case FrontFace::Clockwise:
+        case FrontFace::CW:
             return MTL::WindingClockwise;
 
-        case FrontFace::CounterClockwise:
+        case FrontFace::CCW:
             return MTL::WindingCounterClockwise;
 
         default:
@@ -665,7 +639,7 @@ bool MetalBackend::CreateDevice()
 {
     m_device.device = SelectMetalDevice();
 
-    if (m_device.device == nullptr)
+    if (m_device.device.get() == nullptr)
     {
         return false;
     }
@@ -681,7 +655,7 @@ bool MetalBackend::CreateDevice()
 
 void MetalBackend::CreateCommandQueues()
 {
-    if (m_device.device == nullptr)
+    if (m_device.device.get() == nullptr)
     {
         throw std::runtime_error("Cannot create Metal command queues without device");
     }
@@ -693,23 +667,23 @@ void MetalBackend::CreateCommandQueues()
     m_device.transferQueue =
         NS::TransferPtr(m_device.device->newCommandQueue());
 
-    if (m_device.graphicsQueue == nullptr)
+    if (m_device.graphicsQueue.get() == nullptr)
     {
         throw std::runtime_error("Failed to create Metal graphics command queue");
     }
 
-    if (m_device.computeQueue == nullptr)
+    if (m_device.computeQueue.get() == nullptr)
     {
         throw std::runtime_error("Failed to create Metal compute command queue");
     }
 
-    if (m_device.transferQueue == nullptr)
+    if (m_device.transferQueue.get() == nullptr)
     {
         throw std::runtime_error("Failed to create Metal transfer command queue");
     }
 }
 
-static CA::MetalLayer* RetainMetalLayer(WindowHandle* handle)
+CA::MetalLayer* RetainMetalLayer(WindowHandle* handle)
 {
     if (handle == nullptr)
     {
@@ -798,288 +772,449 @@ void MetalBackend::DestroySwapchain()
     m_swapchain.wasRecreated = false;
 }
 
-void MetalBackend::RecreateSurface(WindowHandle* handle)
-{
-    WaitDeviceIdle();
-
-    DestroySwapchain();
-    CreateSwapchain(handle);
-}
-
 void MetalBackend::Resize(uint32_t width, uint32_t height)
 {
     m_swapchain.nextExtent = {
         static_cast<uint16_t>(width),
         static_cast<uint16_t>(height),
     };
-
     if (m_swapchain.layer != nullptr)
     {
         CGSize size;
         size.width = static_cast<CGFloat>(width);
         size.height = static_cast<CGFloat>(height);
-
         m_swapchain.layer->setDrawableSize(size);
     }
-
     m_swapchain.isDirty = true;
 }
 
 void MetalBackend::Initialize(const BackendDesc& desc)
 {
-#ifndef PLATFORM_DARWIN
-    (void)desc;
-    throw std::runtime_error("Metal backend is only supported on Darwin platforms");
-#else
-    if (desc.window == nullptr)
-    {
-        throw std::runtime_error("MetalBackend::Initialize failed: BackendDesc::window is null");
-    }
-
-    if (desc.window->metalLayer == nullptr)
-    {
-        throw std::runtime_error("MetalBackend::Initialize failed: WindowHandle::metalLayer is null");
-    }
+    if (desc.window.metalLayer == nullptr)
+        throw std::runtime_error(
+            "MetalBackend::Initialize: metalLayer is null");
 
     LOG_INFO("Initializing Metal backend");
-
     m_frameIndex = 0;
 
-    // Store frame pacing preference if your backend has such a field.
-    // Otherwise remove this line.
-    m_frameTimePreference = desc.frameTime;
-
     if (!CreateDevice())
-    {
-        throw std::runtime_error("MetalBackend::Initialize failed: failed to create Metal device");
-    }
+        throw std::runtime_error(
+            "MetalBackend::Initialize: failed to create Metal device");
 
     CreateCommandQueues();
+    CreateSwapchain(&desc.window);
 
-    CreateSwapchain(desc.window);
-
-    // If you have explicit per-frame resources, initialize them here.
-    //
-    // Example:
-    //
-    // constexpr uint32_t framesInFlight = 2;
-    // m_frames.resize(framesInFlight);
-    //
-    //
-    // If your MetalFrame struct only contains NS::SharedPtr/engine handles,
-    // resize alone may be enough.
-    for (uint32_t i = 0; i < m_frames.size(); ++i)
-    {
-        m_frames[i].inFlightSemaphore = dispatch_semaphore_create(1);
-    }
-    if (m_frames.empty())
-    {
-        uint32_t drawableCount = std::clamp(MAX_FRAMES_IN_FLIGHT, 2u, 3u);
-        m_frames.resize(drawableCount);
-    }
+    uint32_t n = std::max<uint32_t>(2u, 3);
+    n = std::min(n, 3u);
+    m_frames.resize(n);
+    for (auto& f : m_frames)
+        f.inFlightSemaphore = dispatch_semaphore_create(1);
 
     m_swapchain.wasRecreated = true;
     m_swapchain.isDirty = false;
-
     LOG_INFO("Metal backend initialized");
-#endif
 }
 
-void MetalBackend::RecreateSurface(WindowHandle* handle)
+void MetalBackend::RecreateSurface(WindowHandle& handle)
 {
-#ifndef PLATFORM_DARWIN
-    (void)handle;
-    throw std::runtime_error("Metal backend is only supported on Darwin platforms");
-#else
-    if (handle == nullptr)
-    {
-        throw std::runtime_error("MetalBackend::RecreateSurface failed: WindowHandle is null");
-    }
-
-    if (handle->metalLayer == nullptr)
-    {
-        throw std::runtime_error("MetalBackend::RecreateSurface failed: WindowHandle::metalLayer is null");
-    }
+    if (handle.metalLayer == nullptr)
+        throw std::runtime_error("MetalBackend::RecreateSurface: metalLayer is null");
 
     LOG_INFO("Recreating Metal surface");
-
     WaitDeviceIdle();
-
     DestroySwapchain();
-    CreateSwapchain(handle);
-
+    CreateSwapchain(&handle);
     m_swapchain.wasRecreated = true;
     m_swapchain.isDirty = false;
-
     LOG_INFO("Metal surface recreated");
-#endif
 }
 
 void MetalBackend::WaitDeviceIdle()
 {
-    if (m_device.graphicsQueue == nullptr)
-    {
-        return;
-    }
-
-    MTL::CommandBuffer* commandBuffer =
-        m_device.graphicsQueue->commandBuffer();
-
-    if (commandBuffer == nullptr)
-    {
-        return;
-    }
-
-    commandBuffer->commit();
-    commandBuffer->waitUntilCompleted();
-
-    commandBuffer->release();
+    if (m_device.graphicsQueue.get() == nullptr) return;
+    MTL::CommandBuffer* cb = m_device.graphicsQueue->commandBuffer();
+    if (cb == nullptr) return;
+    cb->commit();
+    cb->waitUntilCompleted();
+    cb->release();
 }
 
 void MetalBackend::Shutdown()
 {
     LOG_INFO("Shutting down Metal backend");
-
     WaitDeviceIdle();
-
     DestroySwapchain();
 
-    // Destroy per-frame resources if your frame struct owns any raw Objective-C
-    // objects or dispatch semaphores.
-    //
-    // Example:
-    //
-    // for (auto& frame : m_frames)
-    // {
-    //     if (frame.inFlightSemaphore != nullptr)
-    //     {
-    //         dispatch_release(frame.inFlightSemaphore);
-    //         frame.inFlightSemaphore = nullptr;
-    //     }
-    // }
-    //
-    // For NS::SharedPtr-only frame resources, clear is enough.
+    for (auto& f : m_frames)
+    {
+        if (f.inFlightSemaphore != nullptr)
+        {
+            dispatch_release(f.inFlightSemaphore);
+            f.inFlightSemaphore = nullptr;
+        }
+    }
     m_frames.clear();
-
     m_frameIndex = 0;
-
     m_device.layer = nullptr;
-
     m_device.transferQueue = nullptr;
     m_device.computeQueue = nullptr;
     m_device.graphicsQueue = nullptr;
     m_device.device = nullptr;
-
     m_device.swapchainFormat = MTL::PixelFormatInvalid;
     m_device.depthFormat = MTL::PixelFormatInvalid;
-
     LOG_INFO("Metal backend shut down");
 }
 
-void MetalBackend::CreateSwapchain(WindowHandle* handle)
+// --- Frame loop --------------------------------------------------------
+
+BeginFrameAction MetalBackend::BeginFrame()
 {
-#ifndef PLATFORM_DARWIN
-    (void)handle;
-    throw std::runtime_error("Metal backend is only supported on Darwin platforms");
-#else
-    if (m_device.device == nullptr)
-    {
-        throw std::runtime_error("MetalBackend::CreateSwapchain failed: Metal device is null");
-    }
+    auto& frame = m_frames[m_frameIndex];
+    if (frame.inFlightSemaphore != nullptr)
+        dispatch_semaphore_wait(frame.inFlightSemaphore, DISPATCH_TIME_FOREVER);
 
-    if (handle == nullptr)
-    {
-        throw std::runtime_error("MetalBackend::CreateSwapchain failed: WindowHandle is null");
-    }
+    if (m_swapchain.isDirty && m_swapchain.layer != nullptr)
+        RecreateSwapchain();
 
-    if (handle->metalLayer == nullptr)
-    {
-        throw std::runtime_error("MetalBackend::CreateSwapchain failed: WindowHandle::metalLayer is null");
-    }
+    if (!AcquireNextDrawable())
+        return BeginFrameAction::RecreateSurface;
 
-    m_swapchain.layer = CreateMetalLayer(handle);
-    m_device.layer = m_swapchain.layer;
-
-    m_swapchain.layer->setDevice(m_device.device.get());
-    m_swapchain.layer->setPixelFormat(m_device.swapchainFormat);
-    m_swapchain.layer->setFramebufferOnly(true);
-
-    switch (m_frameTimePreference)
-    {
-        case FrameTimePreference::VSync:
-            m_swapchain.layer->setDisplaySyncEnabled(true);
-            break;
-
-        case FrameTimePreference::Immediate:
-            m_swapchain.layer->setDisplaySyncEnabled(false);
-            break;
-
-        default:
-            m_swapchain.layer->setDisplaySyncEnabled(true);
-            break;
-    }
-
-    CGSize drawableSize = m_swapchain.layer->drawableSize();
-
-    uint32_t width = static_cast<uint32_t>(drawableSize.width);
-    uint32_t height = static_cast<uint32_t>(drawableSize.height);
-
-    width = std::min<uint32_t>(width, UINT16_MAX);
-    height = std::min<uint32_t>(height, UINT16_MAX);
-
-    m_swapchain.extent = {
-        static_cast<uint16_t>(width),
-        static_cast<uint16_t>(height),
-    };
-
-    m_swapchain.nextExtent = m_swapchain.extent;
-    m_swapchain.currentTransform = math::Orientation::IDENTITY;
-    m_swapchain.isDirty = false;
-    m_swapchain.wasRecreated = true;
-#endif
+    m_swapchain.wasRecreated = false;
+    return BeginFrameAction::Continue;
 }
 
-void MetalBackend::DestroySwapchain()
+EndFrameAction MetalBackend::EndFrame()
 {
+    auto& frame = m_frames[m_frameIndex];
+
+    if (frame.commandBuffer.get() != nullptr)
+    {
+        frame.commandBuffer->commit();
+        frame.commandBuffer = nullptr;
+    }
+
+    if (m_swapchain.currentDrawable != nullptr)
+    {
+        auto* cb = m_device.graphicsQueue->commandBuffer();
+        cb->presentDrawable(m_swapchain.currentDrawable);
+        cb->commit();
+        cb->waitUntilCompleted();
+        cb->release();
+        m_swapchain.currentDrawable = nullptr;
+        m_swapchain.currentColorTexture = {};
+    }
+
+    if (frame.inFlightSemaphore != nullptr)
+        dispatch_semaphore_signal(frame.inFlightSemaphore);
+
+    m_frameIndex = (m_frameIndex + 1) % static_cast<uint32_t>(m_frames.size());
+    return EndFrameAction::Continue;
+}
+
+// --- Command list ------------------------------------------------------
+
+ICommandList& MetalBackend::CreateCommandList(QueueType type)
+{
+    auto& frame = m_frames[m_frameIndex];
+    MTL::CommandQueue* queue = nullptr;
+    switch (type)
+    {
+        case QueueType::Graphics: queue = m_device.graphicsQueue.get(); break;
+        case QueueType::Compute:  queue = m_device.computeQueue.get();  break;
+        case QueueType::Transfer: queue = m_device.transferQueue.get(); break;
+        default:                  queue = m_device.graphicsQueue.get(); break;
+    }
+    auto* mtlCB = queue->commandBuffer();
+    frame.commandBuffer = NS::RetainPtr(mtlCB);
+    return *reinterpret_cast<ICommandList*>(mtlCB);
+}
+
+// --- Buffers -----------------------------------------------------------
+
+GPUBufferHandle MetalBackend::CreateBuffer(const BufferDesc& desc,
+                                           void** stagingMemory)
+{
+    MTL::ResourceOptions opts = ToMetalResourceOptions(desc.memory);
+    MTL::Buffer* buf = m_device.device->newBuffer(desc.size, opts);
+    if (buf == nullptr)
+        throw std::runtime_error("Metal: failed to create buffer");
+
+    MetalBuffer result{};
+    result.buffer = NS::RetainPtr(buf);
+    result.desc = desc;
+    if (stagingMemory != nullptr)
+        *stagingMemory = buf->contents();
+    return m_buffers.Create(result);
+}
+
+void MetalBackend::DestroyBuffer(GPUBufferHandle handle)
+{
+    auto* b = m_buffers.Get(handle);
+    if (b != nullptr) b->buffer = nullptr;
+    m_buffers.Destroy(handle);
+}
+
+void MetalBackend::FlushStagingBufferRanges(
+    const std::span<GPUBufferSpan> ranges)
+{
+    for (auto& r : ranges)
+    {
+        auto* b = m_buffers.Get(r.buffer);
+        if (b != nullptr && b->buffer.get() != nullptr)
+            b->buffer->didModifyRange(NS::Range::Make(r.offset, r.size));
+    }
+}
+
+// --- Textures ----------------------------------------------------------
+
+GPUTextureHandle MetalBackend::CreateTexture(const TextureDesc& desc)
+{
+    auto* mtlDesc = MTL::TextureDescriptor::alloc()->init();
+    mtlDesc->setPixelFormat(ToMetalPixelFormat(desc.format));
+    mtlDesc->setWidth(desc.width);
+    mtlDesc->setHeight(desc.height);
+    mtlDesc->setDepth(desc.depth);
+    mtlDesc->setMipmapLevelCount(desc.mipLevels);
+    mtlDesc->setArrayLength(desc.layers);
+    mtlDesc->setUsage(ToMetalTextureUsage(desc.usage));
+    mtlDesc->setStorageMode(ToMetalStorageMode(MemoryUsage::GPUOnly));
+
+    MTL::Texture* tex = m_device.device->newTexture(mtlDesc);
+    mtlDesc->release();
+    if (tex == nullptr)
+        throw std::runtime_error("Metal: failed to create texture");
+
+    MetalTexture result{};
+    result.texture = NS::RetainPtr(tex);
+    result.desc = desc;
+    return m_textures.Create(result);
+}
+
+void MetalBackend::DestroyTexture(GPUTextureHandle handle)
+{
+    DestroyTextureInternal(handle);
+}
+
+// --- Pipelines ---------------------------------------------------------
+
+GPUPipelineHandle MetalBackend::CreateGraphicsPipeline(
+    const GraphicsPipelineDesc& desc)
+{
+    auto* rpDesc = MTL::RenderPipelineDescriptor::alloc()->init();
+
+    if (!desc.vertexShader.empty())
+        rpDesc->setVertexFunction(
+            CreateShaderFunction(desc.vertexShader, "vertexMain").get());
+    if (!desc.fragmentShader.empty())
+        rpDesc->setFragmentFunction(
+            CreateShaderFunction(desc.fragmentShader, "fragmentMain").get());
+
+    // Default color attachment (BGRA8Unorm sRGB, matching swapchain).
+    auto* ca = rpDesc->colorAttachments()->object(0);
+    ca->setPixelFormat(MTL::PixelFormatBGRA8Unorm_sRGB);
+
+    if (desc.depthTest)
+    {
+        rpDesc->setDepthAttachmentPixelFormat(
+            ToMetalPixelFormat(TextureFormat::Depth32Float));
+    }
+
+    NS::Error* error = nullptr;
+    MTL::RenderPipelineState* pso =
+        m_device.device->newRenderPipelineState(rpDesc, &error);
+    rpDesc->release();
+
+    if (pso == nullptr)
+    {
+        LOG_ERROR("Metal: failed to create render pipeline");
+        if (error != nullptr) error->release();
+        return {};
+    }
+
+    MetalPipeline result{};
+    result.renderPipeline = NS::RetainPtr(pso);
+    result.graphicsDesc = desc;
+    result.primitiveType = ToMetalPrimitiveType(desc.topology);
+    return m_pipelines.Create(result);
+}
+
+GPUPipelineHandle MetalBackend::CreateComputePipeline(
+    const ComputePipelineDesc& desc)
+{
+    auto* cpDesc = MTL::ComputePipelineDescriptor::alloc()->init();
+    cpDesc->setComputeFunction(
+        CreateShaderFunction(desc.shader, "kernelMain").get());
+
+    NS::Error* error = nullptr;
+    MTL::ComputePipelineState* pso =
+        m_device.device->newComputePipelineState(
+            cpDesc, MTL::PipelineOptionNone, nullptr, &error);
+    cpDesc->release();
+
+    if (pso == nullptr)
+    {
+        LOG_ERROR("Metal: failed to create compute pipeline");
+        if (error != nullptr) error->release();
+        return {};
+    }
+
+    MetalPipeline result{};
+    result.computePipeline = NS::RetainPtr(pso);
+    result.computeDesc = desc;
+    return m_pipelines.Create(result);
+}
+
+void MetalBackend::DestroyPipeline(GPUPipelineHandle handle)
+{
+    auto* p = m_pipelines.Get(handle);
+    if (p != nullptr)
+    {
+        p->renderPipeline = nullptr;
+        p->computePipeline = nullptr;
+        p->depthStencilState = nullptr;
+    }
+    m_pipelines.Destroy(handle);
+}
+
+// --- Binding groups ----------------------------------------------------
+
+GPUBindingGroupLayoutHandle MetalBackend::CreateBindingGroupLayout(
+    const BindingGroupLayoutDesc& desc)
+{
+    MetalBindingGroupLayout r{};
+    r.desc = desc;
+    return m_bindingGroupLayouts.Create(r);
+}
+
+void MetalBackend::DestroyBindingGroupLayout(GPUBindingGroupLayoutHandle h)
+{
+    m_bindingGroupLayouts.Destroy(h);
+}
+
+GPUBindingGroupHandle MetalBackend::CreateBindingGroup(
+    const BindingGroupDesc& desc)
+{
+    MetalBindingGroup r{};
+    r.desc = desc;
+    return m_bindingGroups.Create(r);
+}
+
+void MetalBackend::DestroyBindingGroup(GPUBindingGroupHandle h)
+{
+    m_bindingGroups.Destroy(h);
+}
+
+// --- Fences ------------------------------------------------------------
+
+GPUFenceHandle MetalBackend::CreateFence(bool signaled)
+{
+    MetalFence r{};
+    r.signaled = signaled;
+    return m_fences.Create(r);
+}
+
+void MetalBackend::WaitForFence(GPUFenceHandle handle)
+{
+    auto* f = m_fences.Get(handle);
+    if (f != nullptr && !f->signaled &&
+        f->commandBuffer.get() != nullptr)
+    {
+        f->commandBuffer->waitUntilCompleted();
+        f->signaled = true;
+    }
+}
+
+bool MetalBackend::IsFenceSignaled(GPUFenceHandle handle)
+{
+    auto* f = m_fences.Get(handle);
+    return f != nullptr && f->signaled;
+}
+
+void MetalBackend::ResetFence(GPUFenceHandle handle)
+{
+    auto* f = m_fences.Get(handle);
+    if (f != nullptr)
+    {
+        f->signaled = false;
+        f->commandBuffer = nullptr;
+    }
+}
+
+// --- Internal helpers --------------------------------------------------
+
+void MetalBackend::DestroyTextureInternal(GPUTextureHandle handle)
+{
+    auto* t = m_textures.Get(handle);
+    if (t != nullptr) t->texture = nullptr;
+    m_textures.Destroy(handle);
+}
+
+bool MetalBackend::AcquireNextDrawable()
+{
+    if (m_swapchain.layer == nullptr) return false;
+
     if (m_swapchain.currentDrawable != nullptr)
     {
         m_swapchain.currentDrawable->release();
         m_swapchain.currentDrawable = nullptr;
     }
 
-    // If you wrap the current CAMetalDrawable texture in an engine TextureHandle,
-    // clear/destroy it here.
-    //
-    // Example:
-    //
-    // if (m_swapchain.currentColorTexture.IsValid())
-    // {
-    //     MetalTexture* tex = m_textures.Get(m_swapchain.currentColorTexture);
-    //     if (tex != nullptr)
-    //     {
-    //         tex->texture = nullptr;
-    //     }
-    //
-    //     m_textures.Destroy(m_swapchain.currentColorTexture);
-    //     m_swapchain.currentColorTexture = {};
-    // }
+    m_swapchain.currentDrawable = m_swapchain.layer->nextDrawable();
+    return m_swapchain.currentDrawable != nullptr;
+}
 
-    if (m_swapchain.currentDepthTexture.IsValid())
+bool MetalBackend::RecreateSwapchain()
+{
+    auto* cb = m_device.graphicsQueue->commandBuffer();
+    cb->commit();
+    cb->waitUntilCompleted();
+    cb->release();
+
+    if (m_swapchain.nextExtent.x > 0 && m_swapchain.nextExtent.y > 0)
     {
-        DestroyTexture(m_swapchain.currentDepthTexture);
-        m_swapchain.currentDepthTexture = {};
+        m_swapchain.extent = m_swapchain.nextExtent;
+        m_swapchain.nextExtent = {};
     }
 
-    DestroyMetalLayer(nullptr, m_swapchain.layer);
-    m_swapchain.layer = nullptr;
-
-    m_device.layer = nullptr;
-
-    m_swapchain.extent = {};
-    m_swapchain.nextExtent = {};
-    m_swapchain.currentTransform = math::Orientation::IDENTITY;
     m_swapchain.isDirty = false;
-    m_swapchain.wasRecreated = false;
+    m_swapchain.wasRecreated = true;
+    return true;
+}
+
+NS::SharedPtr<MTL::Function> MetalBackend::CreateShaderFunction(
+    const std::vector<char>& code, const char* entry)
+{
+    if (m_defaultLibrary.get() == nullptr && !code.empty())
+    {
+        NS::Error* error = nullptr;
+        auto* src = NS::String::string(code.data(), NS::UTF8StringEncoding);
+        auto* lib = m_device.device->newLibrary(src, nullptr, &error);
+        if (lib == nullptr)
+        {
+            LOG_ERROR("Metal: failed to create shader library");
+            if (error != nullptr) error->release();
+            return nullptr;
+        }
+        m_defaultLibrary = NS::RetainPtr(lib);
+    }
+
+    if (m_defaultLibrary.get() == nullptr) return nullptr;
+
+    auto* fnName = NS::String::string(entry, NS::UTF8StringEncoding);
+    auto* fn = m_defaultLibrary->newFunction(fnName);
+    return NS::RetainPtr(fn);
+}
+
+GPUTextureHandle MetalBackend::CreateDepthTexture(uint32_t width,
+                                                   uint32_t height)
+{
+    TextureDesc desc{};
+    desc.format = TextureFormat::Depth32Float;
+    desc.width = width;
+    desc.height = height;
+    desc.depth = 1;
+    desc.usage = TextureUsage::DepthAttachment;
+    return CreateTexture(desc);
 }
 
 }  // namespace oge::graphics::metal

@@ -5,6 +5,9 @@
 #include <vector>
 
 #include "oge/graphics/vulkan/create_backend.hpp"
+#ifdef OGE_USE_METAL
+#include "oge/graphics/metal/create_backend.hpp"
+#endif
 #include "oge/platform/sdl3/create_window.hpp"
 #include "oge/platform/window.hpp"
 #include "oge/platform/window_app.hpp"
@@ -79,6 +82,13 @@ extern "C"
             return reinterpret_cast<Backend_t*>(new Backend{
                 oge::graphics::vulkan::CreateVulkanBackend()});
         }
+#ifdef OGE_USE_METAL
+        if (std::strcmp(name, "Metal") == 0)
+        {
+            return reinterpret_cast<Backend_t*>(new Backend{
+                oge::graphics::metal::CreateMetalBackend()});
+        }
+#endif
         return nullptr;
     }
 

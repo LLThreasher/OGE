@@ -4,7 +4,7 @@
 
 #include "oge/graphics/backend.hpp"
 
-namespace oge::graphics::vulkan
+namespace oge::graphics::metal
 {
 std::unique_ptr<IGraphicsBackend> CreateMetalBackend();
-}  // namespace oge::graphics::vulkan
+}  // namespace oge::graphics::metal
