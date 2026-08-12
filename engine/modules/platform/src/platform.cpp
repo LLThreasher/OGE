@@ -31,9 +31,9 @@ void PrintStackTrace()
 
     free(symbol);
 }
-unsigned long long GetRAMUsage()
+RAMInfo GetRAMUsage()
 {
-    return 0;
+    return {};
 }
 double GetCPUUsage()
 {
@@ -342,7 +342,9 @@ double GetCPUUsage()
 }  // namespace oge::platform
 
 #else
-void oge::platform::PrintStackTrace()
+namespace oge::platform
+{
+void PrintStackTrace()
 {
 }
 RAMInfo GetRAMUsage()
@@ -357,4 +359,5 @@ double GetGPUUsage()
 {
     return -1.0;
 }
+}  // namespace oge::platform
 #endif
