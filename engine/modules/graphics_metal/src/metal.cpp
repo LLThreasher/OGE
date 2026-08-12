@@ -538,6 +538,38 @@ MTL::StoreAction MetalBackend::ToMetalStoreAction(StoreOp op) const
     }
 }
 
+MTL::VertexFormat MetalBackend::ToMetalVertexFormat(
+    VertexAttributeFormat fmt, uint32_t* outSize) const
+{
+    switch (fmt)
+    {
+        case VertexAttributeFormat::Float32:
+            *outSize = 4;  return MTL::VertexFormatFloat;
+        case VertexAttributeFormat::Float32x2:
+            *outSize = 8;  return MTL::VertexFormatFloat2;
+        case VertexAttributeFormat::Float32x3:
+            *outSize = 12; return MTL::VertexFormatFloat3;
+        case VertexAttributeFormat::Float32x4:
+            *outSize = 16; return MTL::VertexFormatFloat4;
+        case VertexAttributeFormat::Uint32:
+            *outSize = 4;  return MTL::VertexFormatUInt;
+        case VertexAttributeFormat::Uint32x2:
+            *outSize = 8;  return MTL::VertexFormatUInt2;
+        case VertexAttributeFormat::Uint32x3:
+            *outSize = 12; return MTL::VertexFormatUInt3;
+        case VertexAttributeFormat::Uint32x4:
+            *outSize = 16; return MTL::VertexFormatUInt4;
+        case VertexAttributeFormat::Uint16:
+            *outSize = 2;  return MTL::VertexFormatUShort;
+        case VertexAttributeFormat::Uint16x2:
+            *outSize = 4;  return MTL::VertexFormatUShort2;
+        case VertexAttributeFormat::Uint8:
+            *outSize = 1;  return MTL::VertexFormatUChar;
+        default:
+            *outSize = 16; return MTL::VertexFormatFloat4;
+    }
+}
+
 MTL::PrimitiveType MetalBackend::ToMetalPrimitiveType(
     PrimitiveTopology topology) const
 {
@@ -1030,6 +1062,26 @@ GPUPipelineHandle MetalBackend::CreateGraphicsPipeline(
                                            "fragmentMain");
         if (fragFn.get() != nullptr)
             rpDesc->setFragmentFunction(fragFn.get());
+    }
+
+    // Vertex descriptor — map vertexLayout to Metal vertex attributes.
+    if (!desc.vertexLayout.empty())
+    {
+        auto* vd = MTL::VertexDescriptor::alloc()->init();
+        uint32_t offset = 0;
+        for (size_t i = 0; i < desc.vertexLayout.size(); ++i)
+        {
+            auto* attr = vd->attributes()->object(i);
+            attr->setBufferIndex(0);
+            attr->setOffset(offset);
+            attr->setFormat(
+                ToMetalVertexFormat(desc.vertexLayout[i], &offset));
+        }
+        auto* layout = vd->layouts()->object(0);
+        layout->setStride(offset);
+        layout->setStepFunction(MTL::VertexStepFunctionPerVertex);
+        rpDesc->setVertexDescriptor(vd);
+        vd->release();
     }
 
     // Default color attachment (BGRA8Unorm sRGB, matching swapchain).

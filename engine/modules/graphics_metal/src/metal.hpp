@@ -231,6 +231,8 @@ class MetalBackend final : public IGraphicsBackend
 
     MTL::PrimitiveType ToMetalPrimitiveType(PrimitiveTopology topology) const;
     MTL::IndexType ToMetalIndexType(IndexFormat format) const;
+    MTL::VertexFormat ToMetalVertexFormat(VertexAttributeFormat fmt,
+                                          uint32_t* outSize) const;
 
     MTL::CompareFunction ToMetalCompareFunction(DepthCompareOp function) const;
     MTL::CullMode ToMetalCullMode(CullMode mode) const;
