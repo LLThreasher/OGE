@@ -342,19 +342,22 @@ double GetCPUUsage()
 }  // namespace oge::platform
 
 #else
-void oge::platform::PrintStackTrace()
+namespace oge::platform
+{
+void PrintStackTrace()
 {
 }
-oge::platform::RAMInfo GetRAMUsage()
+RAMInfo GetRAMUsage()
 {
     return {};
 }
-double oge::platform::GetCPUUsage()
+double GetCPUUsage()
 {
     return -1.0;
 }
-double oge::platform::GetGPUUsage()
+double GetGPUUsage()
 {
     return -1.0;
 }
+}  // namespace oge::platform
 #endif
