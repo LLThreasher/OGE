@@ -180,6 +180,7 @@ class MetalBackend final : public IGraphicsBackend
     std::vector<MetalFrameData> m_frames = {};
 
     NS::SharedPtr<MTL::Library> m_defaultLibrary = nullptr;
+    NS::SharedPtr<MTL::SamplerState> m_defaultSampler = nullptr;
 
     Pool<GPUObjectType::Buffer, MetalBuffer> m_buffers;
     Pool<GPUObjectType::Texture, MetalTexture> m_textures;

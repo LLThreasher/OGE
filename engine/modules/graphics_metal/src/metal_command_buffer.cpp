@@ -161,16 +161,19 @@ void MetalCommandBuffer::BindBindingGroup(GPUBindingGroupHandle handle,
         if (t != nullptr && t->texture.get() != nullptr)
         {
             m_encoder->setFragmentTexture(t->texture.get(), i);
-            // Create a default sampler for this texture slot.
-            auto* samplerDesc = MTL::SamplerDescriptor::alloc()->init();
-            samplerDesc->setMinFilter(MTL::SamplerMinMagFilterNearest);
-            samplerDesc->setMagFilter(MTL::SamplerMinMagFilterNearest);
-            samplerDesc->setMipFilter(MTL::SamplerMipFilterNearest);
-            auto* device = t->texture->device();
-            auto* sampler = device->newSamplerState(samplerDesc);
-            samplerDesc->release();
-            m_encoder->setFragmentSamplerState(sampler, i);
-            sampler->release();
+            // Use cached nearest sampler, created once per device.
+            if (m_backend.m_defaultSampler.get() == nullptr)
+            {
+                auto* desc = MTL::SamplerDescriptor::alloc()->init();
+                desc->setMinFilter(MTL::SamplerMinMagFilterNearest);
+                desc->setMagFilter(MTL::SamplerMinMagFilterNearest);
+                desc->setMipFilter(MTL::SamplerMipFilterNearest);
+                m_backend.m_defaultSampler = NS::TransferPtr(
+                    m_backend.m_device.device->newSamplerState(desc));
+                desc->release();
+            }
+            m_encoder->setFragmentSamplerState(
+                m_backend.m_defaultSampler.get(), i);
         }
     }
 

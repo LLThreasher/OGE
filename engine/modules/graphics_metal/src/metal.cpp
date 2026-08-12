@@ -906,6 +906,7 @@ void MetalBackend::Shutdown()
     m_device.transferQueue = nullptr;
     m_device.computeQueue = nullptr;
     m_device.graphicsQueue = nullptr;
+    m_defaultSampler = nullptr;
     m_device.device = nullptr;
     m_device.swapchainFormat = MTL::PixelFormatInvalid;
     m_device.depthFormat = MTL::PixelFormatInvalid;
