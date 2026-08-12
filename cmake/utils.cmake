@@ -83,6 +83,14 @@ function(add_test_target NAME)
     target_link_libraries(${NAME} PRIVATE oge::test_support ${ARG_LIBRARIES})
     target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
+    # The event-log ring buffer (EventLogStream<> holds 32768 * 24 B = ~790 KB
+    # inline in RingBuffer) is often stack-allocated by tests.  Windows' 1 MB
+    # default main-thread stack is not enough (macOS/Linux default to 8 MB),
+    # which crashes the wire/fuzz tests with STATUS_STACK_OVERFLOW.
+    if(MSVC)
+        target_link_options(${NAME} PRIVATE /STACK:8388608)
+    endif()
+
     # 2. Run the Python script to extract test names from the source files.
     #    Build absolute paths so the script can find files regardless of
     #    the working directory.
