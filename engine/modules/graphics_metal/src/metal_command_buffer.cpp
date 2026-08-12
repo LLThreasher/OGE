@@ -163,9 +163,9 @@ void MetalCommandBuffer::BindBindingGroup(GPUBindingGroupHandle handle,
             m_encoder->setFragmentTexture(t->texture.get(), i);
             // Create a default sampler for this texture slot.
             auto* samplerDesc = MTL::SamplerDescriptor::alloc()->init();
-            samplerDesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
-            samplerDesc->setMagFilter(MTL::SamplerMinMagFilterLinear);
-            samplerDesc->setMipFilter(MTL::SamplerMipFilterLinear);
+            samplerDesc->setMinFilter(MTL::SamplerMinMagFilterNearest);
+            samplerDesc->setMagFilter(MTL::SamplerMinMagFilterNearest);
+            samplerDesc->setMipFilter(MTL::SamplerMipFilterNearest);
             auto* device = t->texture->device();
             auto* sampler = device->newSamplerState(samplerDesc);
             samplerDesc->release();
