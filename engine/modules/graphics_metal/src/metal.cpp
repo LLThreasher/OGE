@@ -1121,15 +1121,18 @@ GPUPipelineHandle MetalBackend::CreateGraphicsPipeline(
 
     if (pso == nullptr)
     {
-        // Shader compilation may fail if SPIR-V is passed (Metal needs MSL).
-        // Return empty handle so the caller gets a no-op pipeline.
         auto errMsg = error != nullptr
                           ? error->localizedDescription()->utf8String()
                           : "unknown";
-        LOG_ERROR("Metal: failed to create render pipeline: {}", errMsg);
+        LOG_ERROR("Metal: failed to create render pipeline (vs={}, fs={}): {}",
+                  desc.vertexShader.size(), desc.fragmentShader.size(), errMsg);
         if (error != nullptr) error->release();
         return {};
     }
+
+    LOG_INFO("Metal: pipeline created OK (vs={} fs={} layout={})",
+             desc.vertexShader.size(), desc.fragmentShader.size(),
+             desc.vertexLayout.size());
 
     MetalPipeline result{};
     result.renderPipeline = NS::RetainPtr(pso);
