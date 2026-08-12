@@ -21,11 +21,34 @@
 #include "game/components.hpp"
 #include "game/net/replication_events.hpp"
 #include "game/net/rollback_event_log_stream.hpp"
+#include "oge/log.hpp"
 #include "oge/platform/io.hpp"
 #include "scene_test_harness.hpp"
 
 namespace
 {
+// Temporary CI diagnostic: the default test logger is a stub, so install a
+// stderr logger to trace the ENet/scene handshake flow on the Linux runner.
+struct StderrLogger : oge::ILogger
+{
+    void Log(oge::LogLevel lvl, std::string_view msg) override
+    {
+        const char* name = "?";
+        switch (lvl)
+        {
+            case oge::LogLevel::Debug: name = "DEBUG"; break;
+            case oge::LogLevel::Info: name = "INFO"; break;
+            case oge::LogLevel::Warn: name = "WARN"; break;
+            case oge::LogLevel::Error: name = "ERROR"; break;
+            case oge::LogLevel::Critical: name = "CRIT"; break;
+            default: break;
+        }
+        fprintf(stderr, "[%s] %.*s\n", name, (int)msg.size(), msg.data());
+    }
+    void SetSink(oge::ILogger::SinkFn, void*) override {}
+    void ClearSink() override {}
+};
+
 // The platform IO layer resolves blob paths relative to the executable
 // directory, e.g. "{binaryDir}/assets/player.bin".  Mirror that resolution
 // so the test can pre-write player.bin where LoadOrCreatePlayer will find it.
@@ -155,6 +178,10 @@ TEST(e2e_player_replicated_to_client)
 
 TEST(e2e_player_replicated_to_client_twice)
 {
+    // Temporary CI diagnostic.
+    static StderrLogger s_stderrLogger;
+    oge::SetLogger(&s_stderrLogger);
+
     // Pre-write player.bin with a known uuid so LoadOrCreatePlayer is
     // deterministic and the replicated client player can be matched.
     const std::array<uint8_t, 16> kPlayerUuid{
@@ -175,8 +202,13 @@ TEST(e2e_player_replicated_to_client_twice)
 
     for (size_t i = 0; i < 4; i++)
     {
+        // Temporary CI diagnostic.
+        fprintf(stderr, "[twice] === round %zu: connect\n", i);
         CHECK(h.connect());
-        CHECK(h.waitForHandshake());
+        bool handshakeOk = h.waitForHandshake();
+        fprintf(stderr, "[twice] === round %zu: handshake=%d\n", i,
+                (int)handshakeOk);
+        CHECK(handshakeOk);
 
         // Wait for replication to land on the client.  The snapshot events
         // travel: server AddPeer → GenerateSnapshot → ENet → client
