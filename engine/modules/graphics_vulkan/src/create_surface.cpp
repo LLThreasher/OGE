@@ -5,6 +5,24 @@
 #endif
 #include <vulkan/vulkan.h>
 
+// With VK_USE_PLATFORM_XLIB_KHR, vulkan.h pulls in X11/Xlib.h, which
+// defines macros (None, Always, Status, Bool, Success, event types, ...)
+// that collide with C++ identifiers in the engine headers below — drop
+// them so everything after this point parses cleanly.
+#undef None
+#undef Always
+#undef Status
+#undef Bool
+#undef Success
+#undef CursorShape
+#undef Expose
+#undef KeyPress
+#undef KeyRelease
+#undef FocusIn
+#undef FocusOut
+#undef FontChange
+#undef Unsorted
+
 #include "oge/platform/window_handle.hpp"
 #include "vulkan.hpp"
 

@@ -1,5 +1,24 @@
 function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
 
+    # Resolve shader-tool paths.  Precedence:
+    #   1. VULKAN_SHADER_TOOLS      → ${VULKAN_SHADER_TOOLS}/glslc  etc.
+    #   2. Vulkan_GLSLC_EXECUTABLE  → explicit per-tool override
+    #   3. bare command name        → rely on PATH (desktop SDK)
+    if (DEFINED VULKAN_SHADER_TOOLS)
+        set(GLSLC "${VULKAN_SHADER_TOOLS}/glslc")
+        set(SPIRV_OPT_CMD "${VULKAN_SHADER_TOOLS}/spirv-opt")
+    elseif (DEFINED Vulkan_GLSLC_EXECUTABLE)
+        set(GLSLC "${Vulkan_GLSLC_EXECUTABLE}")
+        if (DEFINED Vulkan_SPIRV_OPT_EXECUTABLE)
+            set(SPIRV_OPT_CMD "${Vulkan_SPIRV_OPT_EXECUTABLE}")
+        else()
+            set(SPIRV_OPT_CMD spirv-opt)
+        endif()
+    else()
+        set(GLSLC glslc)
+        set(SPIRV_OPT_CMD spirv-opt)
+    endif()
+
     # Collect all shader files
     file(GLOB_RECURSE SHADER_FILES
         CONFIGURE_DEPENDS
@@ -23,8 +42,8 @@ function(compile_shaders TARGET SHADER_DIR ASSET_TARGET_DIR)
             OUTPUT ${SPIRV_OPT}
             COMMAND ${CMAKE_COMMAND} -E make_directory
                     ${ASSET_TARGET_DIR}
-            COMMAND glslc -O ${SHADER} -o ${SPIRV}
-            COMMAND spirv-opt ${SPIRV} -o ${SPIRV_OPT}
+            COMMAND ${GLSLC} -O ${SHADER} -o ${SPIRV}
+            COMMAND ${SPIRV_OPT_CMD} ${SPIRV} -o ${SPIRV_OPT}
             DEPENDS ${SHADER}
             COMMENT "Compiling shader ${FILE_NAME}"
             VERBATIM
@@ -63,6 +82,14 @@ function(add_test_target NAME)
     add_executable(${NAME} ${ARG_SOURCES})
     target_link_libraries(${NAME} PRIVATE oge::test_support ${ARG_LIBRARIES})
     target_include_directories(${NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+    # The event-log ring buffer (EventLogStream<> holds 32768 * 24 B = ~790 KB
+    # inline in RingBuffer) is often stack-allocated by tests.  Windows' 1 MB
+    # default main-thread stack is not enough (macOS/Linux default to 8 MB),
+    # which crashes the wire/fuzz tests with STATUS_STACK_OVERFLOW.
+    if(MSVC)
+        target_link_options(${NAME} PRIVATE /STACK:8388608)
+    endif()
 
     # 2. Run the Python script to extract test names from the source files.
     #    Build absolute paths so the script can find files regardless of
