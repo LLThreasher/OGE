@@ -4,7 +4,9 @@
 #include <memory>
 #include <vector>
 
+#ifdef OGE_USE_VULKAN
 #include "oge/graphics/vulkan/create_backend.hpp"
+#endif
 #ifdef OGE_USE_METAL
 #include "oge/graphics/metal/create_backend.hpp"
 #endif
@@ -77,11 +79,13 @@ extern "C"
 
     Backend_t* OGE_Backend_Create(const char* name)
     {
+#ifdef OGE_USE_VULKAN
         if (std::strcmp(name, "Vulkan") == 0)
         {
             return reinterpret_cast<Backend_t*>(new Backend{
                 oge::graphics::vulkan::CreateVulkanBackend()});
         }
+#endif
 #ifdef OGE_USE_METAL
         if (std::strcmp(name, "Metal") == 0)
         {

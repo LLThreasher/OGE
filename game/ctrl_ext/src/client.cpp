@@ -18,12 +18,13 @@
 
 namespace game
 {
-Client::Client()
+Client::Client(const char* backendName)
     : m_am(m_ctx.Emplace<AssetManager>()),
       m_sm(m_ctx.Emplace<StreamingManager>()),
       m_ap(m_ctx.Emplace<AssetPool>()),
       m_ca(m_ctx.Emplace<DynamicChunkAllocator>()),
       m_sa(m_ctx.Emplace<DynamicSkylineAllocator>()),
+      m_backendName(backendName),
       SceneRunner()
 {
     using namespace sim;
@@ -36,7 +37,7 @@ Client::Client()
 
 void Client::Initialize(WindowHandle& handle)
 {
-    auto* api_backend = OGE_Backend_Create("Vulkan");
+    auto* api_backend = OGE_Backend_Create(m_backendName);
     auto* rawBackend =
         static_cast<IGraphicsBackend*>(OGE_Backend_Release(api_backend));
     m_backend =
