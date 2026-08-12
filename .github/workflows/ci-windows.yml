@@ -22,4 +22,9 @@ jobs:
         run: cmake --build out/build/x64-debug
 
       - name: Test
-        run: ctest --test-dir out/build/x64-debug --output-on-failure
+        shell: pwsh
+        run: |
+          ctest --test-dir out/build/x64-debug -V --output-on-failure 2>&1 | ForEach-Object {
+            if ($_ -match 'Exit code') { Write-Output "::error::$_" }
+          }
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
