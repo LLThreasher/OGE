@@ -977,30 +977,21 @@ ICommandList& MetalBackend::CreateCommandList(QueueType type)
 {
     auto& frame = m_frames[m_frameIndex];
 
-    // Commit any pending command buffer from a previous queue before
-    // creating a new one (e.g. transfer upload before graphics render).
-    if (frame.commandBuffer.get() != nullptr)
+    // Reuse the same MTL::CommandBuffer for all encoders within a frame
+    // (blit for upload, then render for drawing).  This avoids per-queue
+    // command-buffer churn which grows Metal's internal pool.
+    if (frame.commandBuffer.get() == nullptr)
     {
-        frame.commandBuffer->commit();
-        frame.commandBuffer->waitUntilCompleted();
-        frame.commandBuffer = nullptr;
+        // Always use the graphics queue — transfer/upload blits also work
+        // on the graphics queue and this keeps everything in one CB.
+        frame.commandBuffer = NS::RetainPtr(
+            m_device.graphicsQueue->commandBuffer());
     }
-
-    MTL::CommandQueue* queue = nullptr;
-    switch (type)
-    {
-        case QueueType::Graphics: queue = m_device.graphicsQueue.get(); break;
-        case QueueType::Compute:  queue = m_device.computeQueue.get();  break;
-        case QueueType::Transfer: queue = m_device.transferQueue.get(); break;
-        default:                  queue = m_device.graphicsQueue.get(); break;
-    }
-    auto* mtlCB = queue->commandBuffer();
-    frame.commandBuffer = NS::RetainPtr(mtlCB);
 
     // Delete the previous command list (from upload or prior frame).
     delete frame.commandList;
 
-    auto* cmd = new MetalCommandBuffer(mtlCB, *this);
+    auto* cmd = new MetalCommandBuffer(frame.commandBuffer.get(), *this);
     frame.commandList = cmd;
     return *cmd;
 }
