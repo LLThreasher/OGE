@@ -1,0 +1,25 @@
+name: CI - Windows
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Vulkan SDK
+        uses: jakoch/install-vulkan-sdk-action@v1.6.0
+
+      - name: Configure
+        run: cmake --preset x64-debug
+
+      - name: Build
+        run: cmake --build out/build/x64-debug
+
+      - name: Test
+        run: ctest --test-dir out/build/x64-debug --output-on-failure

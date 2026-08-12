@@ -2,8 +2,8 @@
 #include <SDL3/SDL_main.h>
 
 #include "game/client.hpp"
-#include "game/debug_scene.hpp"
-#include "game/debug_scene2.hpp"
+#include "game/client_scene2.hpp"
+#include "game/debug_voxel_view.hpp"
 #include "oge/platform/sdl3/create_window.hpp"
 #include "oge/platform/window.hpp"
 #include "oge/platform/window_app.hpp"
@@ -21,14 +21,9 @@ extern "C"
 
         auto window = CreateSDL3Window("OneGame", 0, 0);
         auto app = game::Client();
-        app.RegisterScene<game::DebugScene3>();
-        app.SwitchToScene<game::DebugScene3>();
+        app.RegisterScene<game::DebugVoxelView<game::ClientScene2>>();
+        app.SwitchToScene<game::DebugVoxelView<game::ClientScene2>>();
         window->Run(app);
-        // app.RegisterScene<DebugScene3>();
-        // app.SwitchToScene<DebugScene3>();
-        // app.RegisterScene<DebugClient>();
-        // app.SwitchToScene<DebugClient>();
-        // window->Run(app);
         return 0;
     }
 }

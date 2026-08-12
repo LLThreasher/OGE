@@ -5,7 +5,23 @@ PRIVATE
     main.cpp
  )
 
-target_link_libraries(game_desktop PRIVATE game::gui oge::platform::sdl3 oge::graphics::vulkan)
+# Linux uses GNU ld, which extracts static archives single-pass
+# left-to-right.  TryLoadBlob/TrySaveBlob are defined in oge::platform::sdl3
+# but referenced from game_ctrl (scene.cpp) and oge_runtime
+# (asset_manager.cpp), which CMake would otherwise place as transitive deps
+# AFTER the direct sdl3 lib — so GNU ld never pulls the provider out of the
+# archive.  List the referencing libraries explicitly BEFORE sdl3 (CMake
+# emits direct libraries in the listed order, ahead of the transitive
+# closure).  ld64/lld/link.exe rescan archives by default, so other
+# platforms keep the original link line.
+target_link_libraries(game_desktop PRIVATE
+    game::gui
+    oge::graphics::vulkan
+    $<$<PLATFORM_ID:Linux>:game::ctrl>
+    $<$<PLATFORM_ID:Linux>:oge::runtime>
+    $<$<PLATFORM_ID:Linux>:oge::platform::sdl3>
+    $<$<NOT:$<PLATFORM_ID:Linux>>:oge::platform::sdl3>
+)
 
 compile_shaders(game_desktop ../shaders "${CMAKE_CURRENT_BINARY_DIR}/assets")
 copy_assets(game_desktop ../assets "${CMAKE_CURRENT_BINARY_DIR}/assets")

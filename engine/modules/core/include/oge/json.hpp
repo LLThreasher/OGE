@@ -3,6 +3,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <unordered_map>
@@ -267,9 +268,9 @@ struct ObjectTraits
 };
 }  // namespace oge::json
 
-#define DECL_JSON_OBJ(Type, BODY)                                          \
-    template <>                                                            \
-    struct ::oge::json::JsonTraits<Type> : ::oge::json::ObjectTraits<Type> \
+#define DECL_JSON_OBJ(Type, BODY)                                         \
+    template <>                                                           \
+    struct oge::json::JsonTraits<Type> : oge::json::ObjectTraits<Type>    \
     {                                                                      \
         template <typename F>                                              \
         static void VisitFields(Type& self, F&& visit)                     \

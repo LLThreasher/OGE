@@ -1,8 +1,11 @@
 #pragma once
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <span>
+#include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "oge/macros.hpp"

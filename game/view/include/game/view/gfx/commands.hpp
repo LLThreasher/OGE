@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 #include "oge/color.hpp"
 #include "oge/point3.hpp"
 #include "oge/rect.hpp"

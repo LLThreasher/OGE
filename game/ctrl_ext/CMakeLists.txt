@@ -39,5 +39,9 @@ add_library(game::gui ALIAS game_ctrl_ext)
 
 add_test_target(debug_scene3_test
     SOURCES test/debug_scene3_test.cpp
-    LIBRARIES game_ctrl_ext oge::platform::native
+    # game::ctrl must come before oge::platform::native: GNU ld extracts
+    # archives single-pass left-to-right, and scene.cpp inside libgame_ctrl.a
+    # references TryLoadBlob/TrySaveBlob which only platform_native provides.
+    # (ld64 on macOS rescans, which is why this only breaks on Linux.)
+    LIBRARIES game_ctrl_ext game::ctrl oge::platform::native
 )

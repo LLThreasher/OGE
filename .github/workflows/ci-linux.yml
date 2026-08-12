@@ -1,0 +1,31 @@
+name: CI - Linux
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Vulkan SDK
+        uses: jakoch/install-vulkan-sdk-action@v1.6.0
+
+      - name: Install Ninja
+        run: sudo apt-get update && sudo apt-get install -y ninja-build
+
+      - name: Install SDL3 dependencies (X11/Wayland)
+        run: sudo apt-get install -y libx11-dev libxext-dev libwayland-dev libxkbcommon-dev libxrandr-dev libxcursor-dev libxi-dev libxinerama-dev libxss-dev
+
+      - name: Configure
+        run: cmake --preset linux-debug
+
+      - name: Build
+        run: cmake --build out/build/linux-debug
+
+      - name: Test
+        run: ctest --test-dir out/build/linux-debug --output-on-failure

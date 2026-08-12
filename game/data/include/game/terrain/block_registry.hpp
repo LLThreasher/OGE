@@ -35,7 +35,8 @@ inline BlockMetadata GetMetadata(uint32_t blockValue)
 constexpr uint32_t BLOCK_FLAG_OPAQUE_TO_MESHER = 1 << 0;
 constexpr uint32_t BLOCK_FLAG_OPAQUE_TO_LIGHT = 1 << 1;
 
-constexpr AABB DEFAULT_BLOCK_AABB = AABB{{0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}};
+// Not constexpr: glm::vec3 constructors are not constexpr in all GLM versions.
+inline const AABB DEFAULT_BLOCK_AABB = AABB{{0.f, 0.f, 0.f}, {1.f, 1.f, 1.f}};
 
 struct BlockConfig
 {
@@ -83,7 +84,7 @@ class BlockRegistry
 };
 }  // namespace game::terrain
 
-DECL_JSON_OBJ(::oge::AABB, {
+DECL_JSON_OBJ(oge::AABB, {
     visit("min.x", self.min.x);
     visit("min.y", self.min.y);
     visit("min.z", self.min.z);
@@ -92,7 +93,7 @@ DECL_JSON_OBJ(::oge::AABB, {
     visit("max.z", self.max.z);
 })
 
-DECL_JSON_OBJ(::game::terrain::BlockConfig, {
+DECL_JSON_OBJ(game::terrain::BlockConfig, {
     visit("display_name", self.blockDisplayName);
     visit("texture_slot_per_face", self.textureSlotPerFace);
     visit("block_flags", self.blockFlags);

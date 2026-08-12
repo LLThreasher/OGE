@@ -101,7 +101,7 @@ class TerrainMeshBuilder
     void BuildChunkMeshes(
         const TerrainData& terrain, const BlockRegistry& blocks,
         TerrainPresentationData& terrainPData,
-        std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
+        std::pmr::memory_resource* memory = std::pmr::get_default_resource());
     void SetVertexBudget(uint32_t val)
     {
         m_vertexBudget = val;

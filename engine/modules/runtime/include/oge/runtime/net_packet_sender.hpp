@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 #include "oge/runtime/net_serializer.hpp"
 
 struct _ENetPeer;

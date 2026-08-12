@@ -1,5 +1,7 @@
 #include "game/view/gfx/terrain_pass2.hpp"
 
+#include <cstring>
+
 #include "game/terrain/defs.hpp"
 #include "internals.hpp"
 #include "oge/runtime/gfx/chunk_allocator2.hpp"

@@ -160,10 +160,10 @@ struct ObjectTraits
     }
 };
 
-#define DECL_NET_OBJ(Type, BODY)                             \
-    template <>                                              \
-    struct ::oge::runtime::net::NetTraits<Type>              \
-        : ::oge::runtime::net::ObjectTraits<Type>            \
+#define DECL_NET_OBJ(Type, BODY)                            \
+    template <>                                             \
+    struct oge::runtime::net::NetTraits<Type>               \
+        : oge::runtime::net::ObjectTraits<Type>             \
     {                                                        \
         template <typename F>                                \
         static void VisitFields(Type& self, F&& visit)       \
@@ -180,7 +180,7 @@ struct ObjectTraits
 
 #define DECL_NET_OBJ_PACKED(Type, Packed, ToPacked, FromPacked)  \
     template <>                                                  \
-    struct ::oge::runtime::net::NetTraits<Type>                  \
+    struct oge::runtime::net::NetTraits<Type>                    \
     {                                                            \
         static uint64_t Size(const Type& value)                  \
         {                                                        \

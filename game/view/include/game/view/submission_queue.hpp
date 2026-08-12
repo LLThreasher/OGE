@@ -1,5 +1,7 @@
 #pragma once
 
+#include <bit>
+
 #include "game/view/gfx/commands.hpp"
 #include "game/view/gfx/gizmo_commands.hpp"
 #include "oge/array_helper.hpp"

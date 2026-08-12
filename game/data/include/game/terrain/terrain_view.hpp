@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <optional>
 #include <queue>
 #include <span>
 #include <unordered_map>
@@ -315,4 +316,4 @@ class TerrainView
 }  // namespace terrain
 }  // namespace game
 
-DECL_TYPE_NAME(::game::terrain::TerrainView, "core::TerrainView")
+DECL_TYPE_NAME(game::terrain::TerrainView, "core::TerrainView")

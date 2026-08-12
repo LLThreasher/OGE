@@ -23,7 +23,7 @@
     {                                                        \
         R##name()                                            \
         {                                                    \
-            _g_tests.emplace(#name, TestEntry{#name, name}); \
+            TestRegistry().emplace(#name, TestEntry{#name, name}); \
         }                                                    \
     } r##name;                                               \
     static void name()
@@ -58,7 +58,17 @@ struct TestEntry
     void (*fn)();
 };
 
-inline std::unordered_map<std::string, TestEntry> _g_tests;
+// Registry is a function-local static so it is constructed on first use.
+// An `inline` map here has unordered dynamic initialization (C++17
+// [basic.start.dynamic]) — on clang-cl/MSVC the TEST registration
+// constructors run before the map is built, crashing every test binary
+// at startup.
+inline std::unordered_map<std::string, TestEntry>& TestRegistry()
+{
+    static std::unordered_map<std::string, TestEntry> tests;
+    return tests;
+}
+
 inline int _g_passed = 0;
 inline int _g_failed = 0;
 
@@ -78,8 +88,8 @@ inline int _g_failed = 0;
         std::fprintf(stdout, "=== %s ===\n", title);                         \
         if (filter)                                                          \
         {                                                                    \
-            auto it = _g_tests.find(std::string(filter));                     \
-            if (it != _g_tests.end())                                        \
+            auto it = TestRegistry().find(std::string(filter));                \
+            if (it != TestRegistry().end())                                   \
             {                                                                \
                 auto& e = it->second;                                        \
                 int b = _g_failed;                                           \
@@ -98,7 +108,7 @@ inline int _g_failed = 0;
         }                                                                    \
         else                                                                 \
         {                                                                    \
-            for (auto& [_, e] : _g_tests)                                    \
+            for (auto& [_, e] : TestRegistry())                               \
             {                                                                \
                 int b = _g_failed;                                           \
                 e.fn();                                                      \

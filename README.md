@@ -1,5 +1,10 @@
 # OneGame::Engine
 
+[![Linux](https://github.com/LLThreasher/OGE/actions/workflows/ci-linux.yml/badge.svg)](https://github.com/LLThreasher/OGE/actions/workflows/ci-linux.yml)
+[![macOS](https://github.com/LLThreasher/OGE/actions/workflows/ci-macos.yml/badge.svg)](https://github.com/LLThreasher/OGE/actions/workflows/ci-macos.yml)
+[![Windows](https://github.com/LLThreasher/OGE/actions/workflows/ci-windows.yml/badge.svg)](https://github.com/LLThreasher/OGE/actions/workflows/ci-windows.yml)
+[![Android](https://github.com/LLThreasher/OGE/actions/workflows/ci-android.yml/badge.svg)](https://github.com/LLThreasher/OGE/actions/workflows/ci-android.yml)
+
 You build Minecraft when you want to find a reason to write C++. 
 
 ## Building

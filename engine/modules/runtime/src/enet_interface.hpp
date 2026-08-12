@@ -24,7 +24,7 @@ extern "C"
                                               abort};
 
     inline int oge_enet_initialize(
-        std::pmr::memory_resource* memory = std::pmr::new_delete_resource())
+        std::pmr::memory_resource* memory = std::pmr::get_default_resource())
     {
         oge_enet_memory = memory;
         return enet_initialize_with_callbacks(ENET_VERSION, &oge_enet_callback);

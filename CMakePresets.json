@@ -59,6 +59,8 @@
         "CMAKE_C_COMPILER": "clang-cl.exe",
         "CMAKE_CXX_COMPILER": "clang-cl.exe",
         "MAX_FRAMES_IN_FLIGHT": "2",
+        "BUILD_VULKAN": "ON",
+        "BUILD_WINDOW_SDL3": "ON",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       },
       "condition": {
@@ -78,6 +80,8 @@
         "CMAKE_C_COMPILER": "gcc",
         "CMAKE_CXX_COMPILER": "g++",
         "MAX_FRAMES_IN_FLIGHT": "1",
+        "BUILD_VULKAN": "ON",
+        "BUILD_WINDOW_SDL3": "ON",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
       },
       "condition": {

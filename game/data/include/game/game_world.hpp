@@ -72,17 +72,17 @@ using AuthoritativeGameWorld = GameWorld;
 
 }  // namespace game
 
-DECL_JSON_OBJ(::game::BlockEntry, {
+DECL_JSON_OBJ(game::BlockEntry, {
     visit("id", std::get<std::pmr::string>(self));
     visit("config", std::get<::game::terrain::BlockConfig>(self));
 })
 
-DECL_JSON_OBJ(::game::terrain::TerrainDesc, {
+DECL_JSON_OBJ(game::terrain::TerrainDesc, {
     visit("chunk_view_distance", self.chunkViewDistance);
     visit("terrain_gen_chunk_budget", self.terrainGenChunkBudget);
 })
 
-DECL_JSON_OBJ(::game::SceneConfig, {
+DECL_JSON_OBJ(game::SceneConfig, {
     visit("load_mask", self.loadMask);
     visit("blocks", self.blocks);
     visit("terrain_desc", self.terrainDesc);

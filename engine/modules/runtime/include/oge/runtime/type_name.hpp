@@ -17,9 +17,9 @@ struct TypeName
 
 }  // namespace oge::runtime
 
-#define DECL_TYPE_NAME(Type, Name)         \
-    template <>                            \
-    struct ::oge::runtime::TypeName<Type>  \
+#define DECL_TYPE_NAME(Type, Name)        \
+    template <>                           \
+    struct oge::runtime::TypeName<Type>   \
     {                                      \
         static constexpr std::string Get() \
         {                                  \

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <memory_resource>
 
 #include "oge/log.hpp"
 #include "oge/runtime/entt.hpp"
@@ -46,7 +47,7 @@ class NetServer : public NetPacketSender
 
     bool Initialize(
         uint16_t port, size_t maxClients, size_t channelCount = 2,
-        std::pmr::memory_resource* memory = std::pmr::new_delete_resource());
+        std::pmr::memory_resource* memory = std::pmr::get_default_resource());
 
     void Poll(entt::dispatcher& dispatcher, float dt, uint32_t timeoutMs = 0);
 

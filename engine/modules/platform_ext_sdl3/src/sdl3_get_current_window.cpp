@@ -1,5 +1,9 @@
 #include "sdl3_window.hpp"
 
+#ifdef PLATFORM_WINDOWS
+#include <windows.h>
+#endif
+
 namespace oge::platform::sdl3
 {
 
