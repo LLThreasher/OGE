@@ -12,6 +12,10 @@
 #include <string_view>
 #include <vector>
 
+#ifdef OGE_HAS_SPIRV_CROSS
+#include <spirv_cross/spirv_msl.hpp>
+#endif
+
 #include "oge/graphics/backend.hpp"
 #include "oge/graphics/configs.hpp"
 
@@ -1208,24 +1212,67 @@ bool MetalBackend::RecreateSwapchain()
 NS::SharedPtr<MTL::Function> MetalBackend::CreateShaderFunction(
     const std::vector<char>& code, const char* entry)
 {
-    if (m_defaultLibrary.get() == nullptr && !code.empty())
+    if (code.empty()) return nullptr;
+
+    // SPIR-V → MSL conversion, and the actual entry-point name.
+    std::string mslSource;
+    std::string realEntry = entry;  // may be overridden by SPIR-V reflection
+#ifdef OGE_HAS_SPIRV_CROSS
     {
-        NS::Error* error = nullptr;
-        auto* src = NS::String::string(code.data(), NS::UTF8StringEncoding);
-        auto* lib = m_device.device->newLibrary(src, nullptr, &error);
-        if (lib == nullptr)
+        auto* words = reinterpret_cast<const uint32_t*>(code.data());
+        size_t wordCount = code.size() / sizeof(uint32_t);
+        std::vector<uint32_t> spirv(words, words + wordCount);
+        try
         {
-            LOG_ERROR("Metal: failed to create shader library");
-            if (error != nullptr) error->release();
+            spirv_cross::CompilerMSL compiler(std::move(spirv));
+            auto opts = compiler.get_msl_options();
+            compiler.set_msl_options(opts);
+
+            auto entryPoints = compiler.get_entry_points_and_stages();
+            if (!entryPoints.empty())
+                realEntry = entryPoints[0].name;
+
+            mslSource = compiler.compile();
+        }
+        catch (const std::exception& e)
+        {
+            LOG_ERROR("Metal: SPIR-V -> MSL failed: {}", e.what());
             return nullptr;
         }
-        m_defaultLibrary = NS::RetainPtr(lib);
+    }
+#else
+    mslSource.assign(code.data(), code.size());
+#endif
+
+    NS::Error* error = nullptr;
+    auto* src = NS::String::string(mslSource.c_str(), NS::UTF8StringEncoding);
+    auto* lib = m_device.device->newLibrary(src, nullptr, &error);
+    if (lib == nullptr)
+    {
+        auto* desc = error ? error->localizedDescription()->utf8String() : "?";
+        LOG_ERROR("Metal: shader library failed: {}", desc);
+        if (error) error->release();
+        return nullptr;
     }
 
-    if (m_defaultLibrary.get() == nullptr) return nullptr;
-
-    auto* fnName = NS::String::string(entry, NS::UTF8StringEncoding);
-    auto* fn = m_defaultLibrary->newFunction(fnName);
+    // SPIRV-Cross renames GLSL "main" → "main0" in MSL.  Try a few
+    // common names; the first non-null result wins.
+    auto tryFn = [&](const char* name) -> MTL::Function* {
+        return lib->newFunction(
+            NS::String::string(name, NS::UTF8StringEncoding));
+    };
+    auto* fn = tryFn(realEntry.c_str());           // reflected SPIR-V name
+    if (fn == nullptr) fn = tryFn("main0");        // SPIRV-Cross MSL convention
+    if (fn == nullptr) fn = tryFn("main");         // GLSL convention
+    if (fn == nullptr) fn = tryFn(entry);          // caller's request
+    if (fn == nullptr)
+    {
+        LOG_ERROR("Metal: entry point not found (tried '{}', 'main0', 'main', '{}')",
+                  realEntry, entry);
+        lib->release();
+        return nullptr;
+    }
+    lib->release();
     return NS::RetainPtr(fn);
 }
 

@@ -109,6 +109,7 @@ class MetalBackend final : public IGraphicsBackend
     MetalBackend();
     ~MetalBackend() override;
 
+    const char* GetBackendName() const override { return "Metal"; }
     uint32_t MaxUniformBufferSize() const override;
     uint32_t UniformBufferAlignment() const override;
 

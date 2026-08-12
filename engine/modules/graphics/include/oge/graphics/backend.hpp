@@ -186,6 +186,9 @@ class IGraphicsBackend
     NO_COPY(IGraphicsBackend)
     virtual ~IGraphicsBackend() = default;
 
+    /// Returns "Vulkan", "Metal", etc. so passes can supply matching shaders.
+    virtual const char* GetBackendName() const = 0;
+
     virtual uint32_t MaxUniformBufferSize() const = 0;
     virtual uint32_t UniformBufferAlignment() const = 0;
 

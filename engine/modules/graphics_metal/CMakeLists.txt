@@ -38,4 +38,17 @@ PRIVATE
     oge::platform
 )
 
+# SPIR-V → MSL cross-compilation (from Vulkan SDK).
+find_library(SPIRV_CROSS_MSL spirv-cross-msl HINTS /usr/local/lib)
+find_library(SPIRV_CROSS_GLSL spirv-cross-glsl HINTS /usr/local/lib)
+find_library(SPIRV_CROSS_CORE spirv-cross-core HINTS /usr/local/lib)
+find_path(SPIRV_CROSS_INC spirv_cross/spirv_msl.hpp HINTS /usr/local/include)
+if(SPIRV_CROSS_MSL AND SPIRV_CROSS_CORE AND SPIRV_CROSS_INC)
+    target_include_directories(oge_graphics_metal PRIVATE ${SPIRV_CROSS_INC})
+    target_link_libraries(oge_graphics_metal PRIVATE
+        ${SPIRV_CROSS_MSL} ${SPIRV_CROSS_GLSL} ${SPIRV_CROSS_CORE})
+    target_compile_definitions(oge_graphics_metal PRIVATE OGE_HAS_SPIRV_CROSS)
+    message(STATUS "Metal: SPIRV-Cross enabled")
+endif()
+
 add_library(oge::graphics::metal ALIAS oge_graphics_metal)
