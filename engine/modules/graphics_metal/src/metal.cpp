@@ -970,17 +970,19 @@ void MetalBackend::FlushStagingBufferRanges(
 GPUTextureHandle MetalBackend::CreateTexture(const TextureDesc& desc)
 {
     auto pixelFmt = ToMetalPixelFormat(desc.format);
-    LOG_INFO("CreateTexture: fmt={} w={} h={} d={} mips={} layers={} usage={}",
-             (int)pixelFmt, desc.width, desc.height, desc.depth,
-             desc.mipLevels, desc.layers, (uint32_t)desc.usage);
 
-    auto* mtlDesc = MTL::TextureDescriptor::texture2DDescriptor(
-        pixelFmt, desc.width, desc.height,
-        desc.mipLevels > 1);
-    if (desc.mipLevels > 1)
-        mtlDesc->setMipmapLevelCount(desc.mipLevels);
-    if (desc.layers > 1)
-        mtlDesc->setArrayLength(desc.layers);
+    // Use texture2DDescriptor for 2D textures, or manually configure
+    // a 2D-array when layers > 1.
+    auto* mtlDesc = MTL::TextureDescriptor::alloc()->init();
+    mtlDesc->setPixelFormat(pixelFmt);
+    mtlDesc->setWidth(desc.width);
+    mtlDesc->setHeight(desc.height);
+    mtlDesc->setDepth(1);
+    mtlDesc->setMipmapLevelCount(std::max(1u, desc.mipLevels));
+    mtlDesc->setArrayLength(std::max(1u, desc.layers));
+    mtlDesc->setTextureType(desc.layers > 1
+                                ? MTL::TextureType2DArray
+                                : MTL::TextureType2D);
     mtlDesc->setUsage(ToMetalTextureUsage(desc.usage));
     mtlDesc->setStorageMode(ToMetalStorageMode(MemoryUsage::GPUOnly));
 
@@ -1007,12 +1009,24 @@ GPUPipelineHandle MetalBackend::CreateGraphicsPipeline(
 {
     auto* rpDesc = MTL::RenderPipelineDescriptor::alloc()->init();
 
-    if (!desc.vertexShader.empty())
-        rpDesc->setVertexFunction(
-            CreateShaderFunction(desc.vertexShader, "vertexMain").get());
+    auto vertFn = desc.vertexShader.empty()
+                      ? nullptr
+                      : CreateShaderFunction(desc.vertexShader, "vertexMain");
+    if (vertFn.get() == nullptr)
+    {
+        LOG_ERROR("Metal: vertex shader failed — Metal needs MSL, not SPIR-V");
+        rpDesc->release();
+        return {};
+    }
+    rpDesc->setVertexFunction(vertFn.get());
+
     if (!desc.fragmentShader.empty())
-        rpDesc->setFragmentFunction(
-            CreateShaderFunction(desc.fragmentShader, "fragmentMain").get());
+    {
+        auto fragFn = CreateShaderFunction(desc.fragmentShader,
+                                           "fragmentMain");
+        if (fragFn.get() != nullptr)
+            rpDesc->setFragmentFunction(fragFn.get());
+    }
 
     // Default color attachment (BGRA8Unorm sRGB, matching swapchain).
     auto* ca = rpDesc->colorAttachments()->object(0);
@@ -1031,7 +1045,12 @@ GPUPipelineHandle MetalBackend::CreateGraphicsPipeline(
 
     if (pso == nullptr)
     {
-        LOG_ERROR("Metal: failed to create render pipeline");
+        // Shader compilation may fail if SPIR-V is passed (Metal needs MSL).
+        // Return empty handle so the caller gets a no-op pipeline.
+        auto errMsg = error != nullptr
+                          ? error->localizedDescription()->utf8String()
+                          : "unknown";
+        LOG_ERROR("Metal: failed to create render pipeline: {}", errMsg);
         if (error != nullptr) error->release();
         return {};
     }
