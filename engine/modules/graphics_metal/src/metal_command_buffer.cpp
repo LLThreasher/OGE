@@ -112,7 +112,9 @@ void MetalCommandBuffer::BindGraphicsPipeline(GPUPipelineHandle handle)
     }
     m_encoder->setRenderPipelineState(p->renderPipeline.get());
     m_encoder->setDepthStencilState(
-        p->depthStencilState.get());  // null disables depth
+        p->depthStencilState.get() != nullptr
+            ? p->depthStencilState.get()
+            : m_backend.m_noDepthDSS.get());
 }
 
 void MetalCommandBuffer::BindComputePipeline(GPUPipelineHandle) {}

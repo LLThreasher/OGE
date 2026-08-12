@@ -856,6 +856,17 @@ void MetalBackend::Initialize(const BackendDesc& desc)
 
     m_swapchain.wasRecreated = true;
     m_swapchain.isDirty = false;
+
+    // Default "no depth" DSS for passes without depth testing.
+    {
+        auto* d = MTL::DepthStencilDescriptor::alloc()->init();
+        d->setDepthCompareFunction(MTL::CompareFunctionAlways);
+        d->setDepthWriteEnabled(false);
+        m_noDepthDSS = NS::TransferPtr(
+            m_device.device->newDepthStencilState(d));
+        d->release();
+    }
+
     LOG_INFO("Metal backend initialized");
 }
 
@@ -907,6 +918,7 @@ void MetalBackend::Shutdown()
     m_device.computeQueue = nullptr;
     m_device.graphicsQueue = nullptr;
     m_defaultSampler = nullptr;
+    m_noDepthDSS = nullptr;
     m_device.device = nullptr;
     m_device.swapchainFormat = MTL::PixelFormatInvalid;
     m_device.depthFormat = MTL::PixelFormatInvalid;

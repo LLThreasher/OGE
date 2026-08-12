@@ -181,6 +181,7 @@ class MetalBackend final : public IGraphicsBackend
 
     NS::SharedPtr<MTL::Library> m_defaultLibrary = nullptr;
     NS::SharedPtr<MTL::SamplerState> m_defaultSampler = nullptr;
+    NS::SharedPtr<MTL::DepthStencilState> m_noDepthDSS = nullptr;
 
     Pool<GPUObjectType::Buffer, MetalBuffer> m_buffers;
     Pool<GPUObjectType::Texture, MetalTexture> m_textures;
