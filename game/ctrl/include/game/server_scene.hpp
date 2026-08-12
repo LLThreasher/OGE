@@ -189,6 +189,15 @@ class DebugServerScene final : public Scene
         m_netServer.Initialize(port, maxClients, 3);
 
         m_subsystems.SetUpdateInterval(1 / 20.f);
+        // UpdateTag drives which subsystems simulate an entity on the client
+        // (SubsystemCreature/SubsystemPhysics iterate only tagged entities).
+        // Registered in RegisterComponentEvents but the hooks were never
+        // installed — the client worked around it by emplacing
+        // UpdateTag<Realtime> locally (DebugVoxelView::onConstructPlayer).
+        net::InstallComponentReplicationHooks<UpdateTag<UpdateType::FixedStep>>(
+            m_world);
+        net::InstallComponentReplicationHooks<UpdateTag<UpdateType::Realtime>>(
+            m_world);
         net::InstallComponentReplicationHooks<ComponentAABBCollider>(m_world);
         net::InstallComponentReplicationHooks<ComponentPhysicBody>(m_world);
         net::InstallComponentReplicationHooks<ComponentCreature>(m_world);

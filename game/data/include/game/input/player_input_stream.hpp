@@ -126,6 +126,14 @@ struct PlayerInputFrame
         ++deltaCnt;
         hasAim = hasAim || delta.panDelta != math::vec2{};
     }
+
+    void normalize()
+    {
+        if (deltaCnt > 0)
+        {
+            move /= (float)deltaCnt;
+        }
+    }
 };
 
 using PlayerFrameStream = DiscreteEventStream<PlayerInputFrame, 16>;
@@ -160,9 +168,29 @@ class PlayerInputStream
     //
     // Call this once per simulation/input tick before polling this stream
     // for frames to send or consume.
+    //
+    // Only commits frames that carry input.  Committing empty frames on
+    // every tick — e.g. on the server, which never accumulates locally and
+    // only receives replicated frames via PushTick — interleaves empties
+    // into the 16-slot ring; once it wraps, real frames get overwritten and
+    // consumers read garbage.  Releasing all keys needs no explicit frame:
+    // consumers already reset moveOrder every tick when no frame arrives.
     void AdvanceTick()
     {
-        m_frames.Push(m_accumFrame);
+        // Average per-delta move so a tick that accumulated several deltas
+        // still yields a unit-magnitude move order (consumers assert
+        // len(moveOrder) <= 1).  Normalize at commit so local consumers and
+        // the packed wire copy observe the same value.
+        m_accumFrame.normalize();
+
+        const bool dirty = m_accumFrame.inputEventCnt > 0 ||
+                           m_accumFrame.move != math::vec3{} ||
+                           m_accumFrame.hasAim;
+        if (dirty)
+        {
+            m_frames.Push(m_accumFrame);
+        }
+
         auto aim = m_accumFrame.aim;
         m_accumFrame = {aim};
     }

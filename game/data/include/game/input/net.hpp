@@ -229,6 +229,8 @@ inline PlayerInputEvent UnpackEvent(
 inline PackedPlayerInputFrame PackFrame(
     const PlayerInputFrame& src)
 {
+    // Note: the move average is applied by PlayerInputStream::AdvanceTick at
+    // commit time, so local consumers and the packed copy stay in sync.
     PackedPlayerInputFrame dst;
 
     bool hasEvents = src.inputEventCnt > 0;
@@ -293,6 +295,9 @@ inline PlayerInputFrame UnpackFrame(const PackedPlayerInputFrame& src)
     {
         dst.aim.x = DequantizeRangeU16(src.panX, 0.f, math::pi * 2);
         dst.aim.y = DequantizeRangeS16(src.panY, math::pi);
+        // Consumers gate camera updates on hasAim — keep it consistent with
+        // the packed flags, otherwise the aim is silently dropped on apply.
+        dst.hasAim = true;
     }
 
     if ((src.flags & HasEvents) != 0)
@@ -343,6 +348,7 @@ DECL_NET_OBJ(game::input::net::PackedPlayerInputFrame, {
     {
         visit(self.moveX);
         visit(self.moveY);
+        visit(self.moveZ);
     }
 
     if ((self.flags & game::input::net::HasPan) != 0)

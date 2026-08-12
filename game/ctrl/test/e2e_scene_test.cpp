@@ -624,6 +624,138 @@ TEST(e2e_player_input_replicates)
 }
 
 // =============================================================================
+// Prediction vs authoritative — drive input on the client and check that both
+// the local prediction copy (client world) and the client-owned authoritative
+// mirror (server round-trip) apply it consistently.
+//
+// Regression coverage:
+//  - PackedPlayerInputFrame dropped moveZ on the wire (forward movement at
+//    identity camera is pure +z, so the server never moved).
+//  - UnpackFrame never restored hasAim (the server camera ignored the
+//    client's pan).
+// =============================================================================
+
+TEST(e2e_player_input_prediction_vs_authoritative)
+{
+    NetSceneHarness h;
+    h.enableClientPrediction();
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    // Wait for the player to replicate into the client's prediction world
+    // with the full component set the local SubsystemPlayer consumes.
+    entt::entity clientPlayer = entt::null;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                if (cw.all_of<game::ComponentCamera>(e) &&
+                    cw.all_of<game::ComponentPhysicBody>(e) &&
+                    cw.all_of<game::ComponentCreature>(e) &&
+                    cw.all_of<game::ComponentAABBCollider>(e) &&
+                    cw.all_of<game::ComponentPerspectiveCamera>(e))
+                {
+                    clientPlayer = e;
+                    return true;
+                }
+            }
+            return false;
+        },
+        400));
+    CHECK(clientPlayer != entt::null);
+
+    // The authoritative mirror receives only physics-related families
+    // (entity adds + AABBCollider/PhysicBody; camera/creature/player updates
+    // are masked to the prediction world).  The entity id is shared with the
+    // prediction world, so wait for the mirrored body only.
+    entt::entity authPlayer = clientPlayer;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& aw = h.clientAuthoritativeWorld();
+            return aw.valid(authPlayer) &&
+                   aw.all_of<game::ComponentPhysicBody>(authPlayer);
+        },
+        400));
+
+    // Wire up the local input stream and simulation tag (DebugVoxelView
+    // does this in the app; the tag is also replicated now, but keep the
+    // emplace defensive like e2e_local_prediction_player_moves).
+    auto& cw = h.clientWorld();
+    cw.emplace<game::input::PlayerInputStream>(clientPlayer);
+    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
+        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+    auto& clientStream =
+        cw.get<game::input::PlayerInputStream>(clientPlayer);
+
+    // Find the server's player (entity ids are shared client/server, but a
+    // view lookup keeps the test independent of id allocation order).
+    entt::entity serverPlayer = entt::null;
+    for (auto [e, player] : h.serverWorld().view<game::ComponentPlayer>()->each())
+    {
+        (void)player;
+        serverPlayer = e;
+    }
+    CHECK(serverPlayer != entt::null);
+
+    const auto predPos0 = cw.get<game::ComponentPhysicBody>(clientPlayer).pos;
+    const auto& aw = h.clientAuthoritativeWorld();
+    const auto authPos0 = aw.get<game::ComponentPhysicBody>(authPlayer).pos;
+    const float srvYaw0 =
+        h.serverWorld().get<game::ComponentCamera>(serverPlayer).yaw;
+
+    // Drive forward input (+ a rightward pan) for 90 frames, one delta per
+    // poll, then let replication settle.
+    constexpr float PanPerFrame = 0.05f;
+    constexpr int InputFrames = 90;
+    for (int i = 0; i < InputFrames; ++i)
+    {
+        game::input::PlayerInputFrameDelta delta;
+        delta.moveDelta = game::math::vec2{0.f, 1.f};  // forward (W)
+        delta.panDelta = game::math::vec2{PanPerFrame, 0.f};
+        clientStream.PushFrame(delta);
+        h.poll();
+    }
+    for (int i = 0; i < 20; ++i) h.poll();
+
+    const auto predPos1 = cw.get<game::ComponentPhysicBody>(clientPlayer).pos;
+    const auto authPos1 = aw.get<game::ComponentPhysicBody>(authPlayer).pos;
+
+    // Horizontal displacement only — gravity may differ between the two
+    // simulations.
+    const float predDist = game::math::len(
+        game::math::vec2{predPos1.x - predPos0.x, predPos1.z - predPos0.z});
+    const float authDist = game::math::len(
+        game::math::vec2{authPos1.x - authPos0.x, authPos1.z - authPos0.z});
+
+    // Local prediction applied the input.
+    CHECK(predDist > 0.5f);
+
+    // The server applied the same input and replicated it back into the
+    // authoritative mirror.  Before the moveZ wire fix, forward movement
+    // serialized to (0, 0) — the authoritative copy never moved.
+    CHECK(authDist > 0.5f);
+
+    // The authoritative copy must track the prediction instead of stuttering
+    // at a fraction of it (empty frames polluting the server's input ring).
+    CHECK(authDist > 0.6f * predDist);
+
+    // The server camera must follow the client's aim — hasAim was dropped by
+    // UnpackFrame before the fix, so the accumulated yaw stayed 0.  Allow a
+    // couple of frames of slack: the server's first poll snaps its cursor to
+    // the stream frontier and may skip the very first frame.
+    const float srvYaw =
+        h.serverWorld().get<game::ComponentCamera>(serverPlayer).yaw;
+    const float yawDelta = game::input::WrapRadians0To2Pi(srvYaw) -
+                           game::input::WrapRadians0To2Pi(srvYaw0);
+    CHECK(yawDelta > InputFrames * PanPerFrame - 0.5f);
+}
+
+// =============================================================================
 // Stability — run many frames after handshake
 // =============================================================================
 

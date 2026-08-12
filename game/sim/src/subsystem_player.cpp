@@ -1,5 +1,3 @@
-#include <iterator>
-
 #include "game/components.hpp"
 #include "game/game_world.hpp"
 #include "game/input/player_input_stream.hpp"
@@ -7,8 +5,6 @@
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/terrain_view.hpp"
 #include "oge/aabb_ops.hpp"
-#include "oge/fmt.hpp"
-#include "oge/log.hpp"
 #include "oge/math.hpp"
 
 namespace game
@@ -54,7 +50,6 @@ void ComponentPlayer::DestroyPlayer(oge::runtime::OgeRegistry& world, PlayerInfo
 namespace sim
 {
 using ::game::input::PlayerAction;
-using ::game::input::PlayerInputEvent;
 using ::game::input::PlayerInputStream;
 using ::game::terrain::BlockRegistry;
 using ::game::terrain::TerrainView;
@@ -85,25 +80,40 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
         {
             auto& cursor = player.inputCursor;
             input.AdvanceTick();
+
+            // Drain every pending frame — the client may produce input at a
+            // different rate than this world ticks.  Consuming only one
+            // frame per tick silently drops the backlog once the 16-slot
+            // ring wraps.  moveOrder is a per-tick order (magnitude <= 1),
+            // so the last frame's move wins rather than summing.
             input::PlayerInputFrame frame;
-            if (!input.PollFrame(cursor, frame)) continue;
+            bool consumed = false;
+            while (input.PollFrame(cursor, frame))
+            {
+                consumed = true;
 
-            if (frame.hasAim)
-            {
-                camera.SetYawPitch(frame.aim.x, frame.aim.y);
+                if (frame.hasAim)
+                {
+                    camera.SetYawPitch(frame.aim.x, frame.aim.y);
+                }
+
+                if (body.enableGravity)
+                {
+                    creature.moveOrder = frame.move;
+                }
+                else
+                {
+                    auto moveLen = math::len(frame.move);
+                    auto r = math::sqrt((frame.move.x * frame.move.x) +
+                                        (frame.move.z * frame.move.z));
+                    creature.moveOrder =
+                        moveLen > input::INPUT_EPSILON
+                            ? frame.move * r / moveLen
+                            : math::vec3{};
+                }
             }
 
-            auto right = camera.right();
-            if (body.enableGravity)
-            {
-                creature.moveOrder = frame.move;
-            }
-            else
-            {
-                auto r = math::sqrt((frame.move.x * frame.move.x) +
-                                    (frame.move.z * frame.move.z));
-                creature.moveOrder = frame.move * r / math::len(frame.move);
-            }
+            if (!consumed) continue;
 
             camera.position =
                 body.pos +
