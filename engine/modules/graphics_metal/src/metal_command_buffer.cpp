@@ -122,12 +122,49 @@ void MetalCommandBuffer::BindIndexBuffer(GPUBufferHandle handle,
     }
 }
 
-void MetalCommandBuffer::BindBindingGroup(GPUBindingGroupHandle,
+void MetalCommandBuffer::BindBindingGroup(GPUBindingGroupHandle handle,
                                           uint32_t setIndex,
-                                          std::span<const uint32_t>)
+                                          std::span<const uint32_t> dynamicOffsets)
 {
-    // TODO: bind textures/buffers from binding group to shader slots.
+    if (!beginEncoder()) return;
     (void)setIndex;
+
+    auto* group = m_backend.m_bindingGroups.Get(handle);
+    if (group == nullptr) return;
+
+    // Bind textures to fragment shader slots.
+    for (size_t i = 0; i < group->desc.textures.size(); ++i)
+    {
+        auto* t = m_backend.m_textures.Get(group->desc.textures[i]);
+        if (t != nullptr && t->texture.get() != nullptr)
+        {
+            m_encoder->setFragmentTexture(t->texture.get(), i);
+            // Create a default sampler for this texture slot.
+            auto* samplerDesc = MTL::SamplerDescriptor::alloc()->init();
+            samplerDesc->setMinFilter(MTL::SamplerMinMagFilterLinear);
+            samplerDesc->setMagFilter(MTL::SamplerMinMagFilterLinear);
+            samplerDesc->setMipFilter(MTL::SamplerMipFilterLinear);
+            auto* device = t->texture->device();
+            auto* sampler = device->newSamplerState(samplerDesc);
+            samplerDesc->release();
+            m_encoder->setFragmentSamplerState(sampler, i);
+            sampler->release();
+        }
+    }
+
+    // Bind buffers to vertex/fragment shader slots.
+    uint32_t bufSlot = 1;  // slot 0 is vertex buffer from BindVertexBuffer
+    for (size_t i = 0; i < group->desc.buffers.size(); ++i)
+    {
+        auto& bd = group->desc.buffers[i];
+        auto* b = m_backend.m_buffers.Get(bd.gpuBuffer);
+        if (b == nullptr || b->buffer.get() == nullptr) continue;
+
+        uint64_t off = (i < dynamicOffsets.size()) ? dynamicOffsets[i] : 0;
+        m_encoder->setVertexBuffer(b->buffer.get(), off, bufSlot);
+        m_encoder->setFragmentBuffer(b->buffer.get(), off, bufSlot);
+        ++bufSlot;
+    }
 }
 
 void MetalCommandBuffer::PushConstants(ShaderStage stage, const void* data,
