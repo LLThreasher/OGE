@@ -11,7 +11,14 @@ file(GLOB_RECURSE SOURCE_FILES_CPP
     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
 )
 
+target_include_directories(oge_platform_native
+    PUBLIC
+        ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
 target_sources(oge_platform_native
+PUBLIC
+    ${SOURCE_FILES}
 PRIVATE
     ${SOURCE_FILES_CPP}
  )

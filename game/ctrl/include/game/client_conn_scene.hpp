@@ -58,7 +58,12 @@ class ClientConnScene : public Scene
     PlayerInfo m_playerInfo;
     entt::dispatcher m_clientDispatcher;
     NetClient& m_client;
-    State m_state;
+    // Must be initialized: the first Update() checks m_state before the
+    // CONNECT event can arrive — uninitialized stack garbage equal to
+    // State::Ready made the first Update switch straight to ClientScene2,
+    // whose dispatcher has no OnClientConnected sink, so PlayerInfo was
+    // never sent and the server handshake stalled (Linux-only failure).
+    State m_state = State::Connecting;
 
     void onConnected(OnClientConnected ctx)
     {

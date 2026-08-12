@@ -24,3 +24,6 @@ PRIVATE
  )
 
 target_link_libraries(oge_c_api PRIVATE oge::platform::sdl3)
+if(BUILD_VULKAN)
+    target_link_libraries(oge_c_api PRIVATE oge::graphics::vulkan)
+endif()

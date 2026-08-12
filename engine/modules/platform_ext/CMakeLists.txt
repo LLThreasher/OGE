@@ -47,4 +47,4 @@ endif()
 
 add_library(oge::platform_ext ALIAS oge_platform_ext)
 
-target_link_libraries(oge_platform_ext PUBLIC oge::core)
+target_link_libraries(oge_platform_ext PUBLIC oge::core oge::platform)

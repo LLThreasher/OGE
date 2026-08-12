@@ -18,11 +18,12 @@ PRIVATE
     ${SOURCE_FILES_CPP}
  )
 
-target_link_libraries(game_ctrl_ext PUBLIC game_ctrl game_view oge::graphics::vulkan)
+target_link_libraries(game_ctrl_ext PUBLIC game_ctrl game_view)
+target_link_libraries(game_ctrl_ext PRIVATE oge_c_api)
 
 find_library(OGE_METAL oge::graphics::metal)
 if(OGE_METAL)
-target_link_libraries(game_ctrl_ext PUBLIC oge::graphics::metal)
+target_link_libraries(game_ctrl_ext PRIVATE oge::graphics::metal)
 endif()
 
 target_include_directories(game_ctrl_ext
