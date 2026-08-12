@@ -28,7 +28,7 @@ if (cmakeBuildDir) {
 // Provide Vulkan shader tools from the NDK as defaults.  If the top-level
 // CMake already set these in cmake_config.properties, keep those values;
 // otherwise fall back to the NDK shader-tools directory.
-if (!extraArgs.any { it.startsWith("-DVulkan_GLSLC_EXECUTABLE=") }) {
+if (!extraArgs.any { it.startsWith("-DVULKAN_SHADER_TOOLS=") }) {
     try {
         def hostTag = System.getProperty("os.name").toLowerCase().contains("mac")
             ? "darwin-x86_64"
@@ -37,7 +37,7 @@ if (!extraArgs.any { it.startsWith("-DVulkan_GLSLC_EXECUTABLE=") }) {
                 : "linux-x86_64"
         def shaderToolsDir = "${android.ndkDirectory}/shader-tools/${hostTag}"
         extraArgs.add("-DVULKAN_SHADER_TOOLS=${shaderToolsDir}")
-    } catch (Exception e) {
+    } catch (Throwable e) {
         logger.warn("NDK not available; skipping shader-tool defaults: ${e.message}")
     }
 }
