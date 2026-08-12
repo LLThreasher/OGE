@@ -954,6 +954,16 @@ EndFrameAction MetalBackend::EndFrame()
 ICommandList& MetalBackend::CreateCommandList(QueueType type)
 {
     auto& frame = m_frames[m_frameIndex];
+
+    // Commit any pending command buffer from a previous queue before
+    // creating a new one (e.g. transfer upload before graphics render).
+    if (frame.commandBuffer.get() != nullptr)
+    {
+        frame.commandBuffer->commit();
+        frame.commandBuffer->waitUntilCompleted();
+        frame.commandBuffer = nullptr;
+    }
+
     MTL::CommandQueue* queue = nullptr;
     switch (type)
     {
@@ -965,9 +975,6 @@ ICommandList& MetalBackend::CreateCommandList(QueueType type)
     auto* mtlCB = queue->commandBuffer();
     frame.commandBuffer = NS::RetainPtr(mtlCB);
 
-    // Leaked intentionally — lives for the frame and cleaned up when the
-    // backend destroys frame data.  The caller stores the returned reference
-    // but never calls delete.
     auto* cmd = new MetalCommandBuffer(mtlCB, *this);
     return *cmd;
 }
