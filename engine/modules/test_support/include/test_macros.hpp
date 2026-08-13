@@ -14,7 +14,71 @@
 //   #include <test_macros.hpp>
 //   TEST(my_test) { CHECK(1 + 1 == 2); CHECK_EQ(x, 42); }
 //   int main() { RUN_TESTS("My Suite"); }
+//
+// When oge/log.hpp is on the include path (the test binary links oge::core),
+// a capturing logger is installed before each test and its output is dumped
+// to stderr only when the test fails.
 // =========================================================================
+
+// ---- Optional log capture (requires oge::core) -------------------------
+// Define INIT_LOGGER before including this header to enable per-test log
+// capture.  Captured output is dumped to stderr only when the test fails.
+// The test binary must link oge::core.
+#ifdef INIT_LOGGER
+#include "oge/log.hpp"
+#include <sstream>
+
+/// Captures log output during a test run.  On failure the captured lines
+/// are dumped to stderr; on success they are silently discarded.
+struct TestLogCapture : oge::ILogger
+{
+    std::ostringstream buffer;
+
+    void Log(oge::LogLevel lvl, std::string_view msg) override
+    {
+        const char* prefix = "?";
+        switch (lvl)
+        {
+            case oge::LogLevel::Trace:    prefix = "[T]"; break;
+            case oge::LogLevel::Debug:    prefix = "[D]"; break;
+            case oge::LogLevel::Info:     prefix = "[I]"; break;
+            case oge::LogLevel::Warn:     prefix = "[W]"; break;
+            case oge::LogLevel::Error:    prefix = "[E]"; break;
+            case oge::LogLevel::Critical: prefix = "[C]"; break;
+        }
+        buffer << prefix << " " << msg << "\n";
+    }
+
+    void SetSink(oge::ILogger::SinkFn, void*) override {}
+    void ClearSink() override {}
+
+    void Dump()
+    {
+        auto s = buffer.str();
+        if (!s.empty())
+        {
+            std::fprintf(stderr, "  --- captured logs ---\n%s"
+                                "  --- end logs ---\n",
+                         s.c_str());
+        }
+        Clear();
+    }
+
+    void Clear() { buffer.str(""); buffer.clear(); }
+};
+
+inline TestLogCapture& GetTestLogCapture()
+{
+    static TestLogCapture capture;
+    return capture;
+}
+
+inline void InstallTestLogCapture()
+{
+    GetTestLogCapture().Clear();
+    oge::SetLogger(&GetTestLogCapture());
+}
+#endif  // INIT_LOGGER
 
 #ifndef EXTRACT_TESTS
 #define TEST(name)                                           \
@@ -72,6 +136,15 @@ inline std::unordered_map<std::string, TestEntry>& TestRegistry()
 inline int _g_passed = 0;
 inline int _g_failed = 0;
 
+#define RUN_TEST_FN(e)                                                 \
+    do                                                                 \
+    {                                                                  \
+        int b = _g_failed;                                             \
+        InstallTestLogCapture();                                       \
+        e.fn();                                                        \
+        if (_g_failed != b) GetTestLogCapture().Dump();                \
+    } while (0)
+
 #define RUN_TESTS(title)                                                     \
     int main(int argc, char* argv[])                                         \
     {                                                                        \
@@ -93,7 +166,7 @@ inline int _g_failed = 0;
             {                                                                \
                 auto& e = it->second;                                        \
                 int b = _g_failed;                                           \
-                e.fn();                                                      \
+                RUN_TEST_FN(e);                                              \
                 if (_g_failed == b)                                          \
                 {                                                            \
                     ++_g_passed;                                             \
@@ -111,7 +184,7 @@ inline int _g_failed = 0;
             for (auto& [_, e] : TestRegistry())                               \
             {                                                                \
                 int b = _g_failed;                                           \
-                e.fn();                                                      \
+                RUN_TEST_FN(e);                                              \
                 if (_g_failed == b)                                          \
                 {                                                            \
                     ++_g_passed;                                             \
@@ -123,5 +196,14 @@ inline int _g_failed = 0;
                      _g_failed);                                             \
         return _g_failed > 0 ? EXIT_FAILURE : EXIT_SUCCESS;                  \
     }
-#else
+
+// No-op stubs when INIT_LOGGER is not defined — must appear before
+// RUN_TEST_FN which references them.
+#ifndef INIT_LOGGER
+inline void InstallTestLogCapture() {}
+struct TestLogCapture { void Dump() {} void Clear() {} };
+inline TestLogCapture& GetTestLogCapture() { static TestLogCapture c; return c; }
+#endif
+
+#else  // EXTRACT_TESTS
 #endif
