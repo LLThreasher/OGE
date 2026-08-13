@@ -23,3 +23,10 @@ jobs:
 
       - name: Test
         run: ctest --test-dir out/build/x64-debug --output-on-failure
+
+      - name: Upload game_desktop binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: game_desktop-windows
+          path: out/build/x64-debug/game_desktop/game_desktop.exe
+          if-no-files-found: error

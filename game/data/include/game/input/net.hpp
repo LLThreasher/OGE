@@ -87,6 +87,7 @@ enum PlayerInputFrameFlags : uint8_t
     HasEvents = 1 << 0,
     HasMove = 1 << 1,
     HasPan = 1 << 2,
+    HasJump = 1 << 3,
 };
 
 struct PackedPlayerInputEvent
@@ -110,6 +111,13 @@ struct PackedPlayerInputFrame
 
     int16_t panX = 0;
     int16_t panY = 0;
+
+    // Client-decided jump stamp: lift-off position (raw floats — world
+    // coordinates exceed the small quantized ranges; jumps are rare so the
+    // 12 bytes are negligible).
+    float jumpX = 0.f;
+    float jumpY = 0.f;
+    float jumpZ = 0.f;
 
     std::vector<PackedPlayerInputEvent> inputEvents;
 
@@ -229,6 +237,8 @@ inline PlayerInputEvent UnpackEvent(
 inline PackedPlayerInputFrame PackFrame(
     const PlayerInputFrame& src)
 {
+    // Note: the move average is applied by PlayerInputStream::AdvanceTick at
+    // commit time, so local consumers and the packed copy stay in sync.
     PackedPlayerInputFrame dst;
 
     bool hasEvents = src.inputEventCnt > 0;
@@ -262,6 +272,15 @@ inline PackedPlayerInputFrame PackFrame(
         dst.panY = QuantizeRangeS16(src.aim.y, math::pi);
     }
 
+    if (src.jumped)
+    {
+        dst.flags = static_cast<uint8_t>(dst.flags | HasJump);
+
+        dst.jumpX = src.jumpPos.x;
+        dst.jumpY = src.jumpPos.y;
+        dst.jumpZ = src.jumpPos.z;
+    }
+
     if (hasEvents)
     {
         const std::size_t count =
@@ -293,6 +312,15 @@ inline PlayerInputFrame UnpackFrame(const PackedPlayerInputFrame& src)
     {
         dst.aim.x = DequantizeRangeU16(src.panX, 0.f, math::pi * 2);
         dst.aim.y = DequantizeRangeS16(src.panY, math::pi);
+        // Consumers gate camera updates on hasAim — keep it consistent with
+        // the packed flags, otherwise the aim is silently dropped on apply.
+        dst.hasAim = true;
+    }
+
+    if ((src.flags & HasJump) != 0)
+    {
+        dst.jumped = true;
+        dst.jumpPos = {src.jumpX, src.jumpY, src.jumpZ};
     }
 
     if ((src.flags & HasEvents) != 0)
@@ -343,12 +371,20 @@ DECL_NET_OBJ(game::input::net::PackedPlayerInputFrame, {
     {
         visit(self.moveX);
         visit(self.moveY);
+        visit(self.moveZ);
     }
 
     if ((self.flags & game::input::net::HasPan) != 0)
     {
         visit(self.panX);
         visit(self.panY);
+    }
+
+    if ((self.flags & game::input::net::HasJump) != 0)
+    {
+        visit(self.jumpX);
+        visit(self.jumpY);
+        visit(self.jumpZ);
     }
 
     if ((self.flags & game::input::net::HasEvents) != 0)

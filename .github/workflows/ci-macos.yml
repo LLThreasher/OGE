@@ -26,3 +26,10 @@ jobs:
 
       - name: Test
         run: ctest --test-dir out/build/apple-debug --output-on-failure
+
+      - name: Upload game_desktop binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: game_desktop-macos
+          path: out/build/apple-debug/game_desktop/game_desktop
+          if-no-files-found: error

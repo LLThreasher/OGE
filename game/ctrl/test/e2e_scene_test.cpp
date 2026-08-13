@@ -624,6 +624,302 @@ TEST(e2e_player_input_replicates)
 }
 
 // =============================================================================
+// Prediction vs authoritative — drive input on the client and check that both
+// the local prediction copy (client world) and the client-owned authoritative
+// mirror (server round-trip) apply it consistently.
+//
+// Regression coverage:
+//  - PackedPlayerInputFrame dropped moveZ on the wire (forward movement at
+//    identity camera is pure +z, so the server never moved).
+//  - UnpackFrame never restored hasAim (the server camera ignored the
+//    client's pan).
+// =============================================================================
+
+TEST(e2e_player_input_prediction_vs_authoritative)
+{
+    NetSceneHarness h;
+    h.enableClientPrediction();
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    // Wait for the player to replicate into the client's prediction world
+    // with the full component set the local SubsystemPlayer consumes.
+    entt::entity clientPlayer = entt::null;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                if (cw.all_of<game::ComponentCamera>(e) &&
+                    cw.all_of<game::ComponentPhysicBody>(e) &&
+                    cw.all_of<game::ComponentCreature>(e) &&
+                    cw.all_of<game::ComponentAABBCollider>(e) &&
+                    cw.all_of<game::ComponentPerspectiveCamera>(e))
+                {
+                    clientPlayer = e;
+                    return true;
+                }
+            }
+            return false;
+        },
+        400));
+    CHECK(clientPlayer != entt::null);
+
+    // The authoritative mirror receives only physics-related families
+    // (entity adds + AABBCollider/PhysicBody; camera/creature/player updates
+    // are masked to the prediction world).  The entity id is shared with the
+    // prediction world, so wait for the mirrored body only.
+    entt::entity authPlayer = clientPlayer;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& aw = h.clientAuthoritativeWorld();
+            return aw.valid(authPlayer) &&
+                   aw.all_of<game::ComponentPhysicBody>(authPlayer);
+        },
+        400));
+
+    // Wire up the local input stream and simulation tag (DebugVoxelView
+    // does this in the app; the tag is also replicated now, but keep the
+    // emplace defensive like e2e_local_prediction_player_moves).
+    auto& cw = h.clientWorld();
+    cw.emplace<game::input::PlayerInputStream>(clientPlayer);
+    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
+        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+    auto& clientStream =
+        cw.get<game::input::PlayerInputStream>(clientPlayer);
+
+    // Find the server's player (entity ids are shared client/server, but a
+    // view lookup keeps the test independent of id allocation order).
+    entt::entity serverPlayer = entt::null;
+    for (auto [e, player] : h.serverWorld().view<game::ComponentPlayer>()->each())
+    {
+        (void)player;
+        serverPlayer = e;
+    }
+    CHECK(serverPlayer != entt::null);
+
+    const auto predPos0 = cw.get<game::ComponentPhysicBody>(clientPlayer).pos;
+    const auto& aw = h.clientAuthoritativeWorld();
+    const auto authPos0 = aw.get<game::ComponentPhysicBody>(authPlayer).pos;
+    const float srvYaw0 =
+        h.serverWorld().get<game::ComponentCamera>(serverPlayer).yaw;
+
+    // Drive forward input (+ a rightward pan) for 90 frames, one delta per
+    // poll, then let replication settle.
+    constexpr float PanPerFrame = 0.05f;
+    constexpr int InputFrames = 90;
+    for (int i = 0; i < InputFrames; ++i)
+    {
+        game::input::PlayerInputFrameDelta delta;
+        delta.moveDelta = game::math::vec2{0.f, 1.f};  // forward (W)
+        delta.panDelta = game::math::vec2{PanPerFrame, 0.f};
+        clientStream.PushFrame(delta);
+        h.poll();
+    }
+    for (int i = 0; i < 20; ++i) h.poll();
+
+    const auto predPos1 = cw.get<game::ComponentPhysicBody>(clientPlayer).pos;
+    const auto authPos1 = aw.get<game::ComponentPhysicBody>(authPlayer).pos;
+
+    // Horizontal displacement only — gravity may differ between the two
+    // simulations.
+    const float predDist = game::math::len(
+        game::math::vec2{predPos1.x - predPos0.x, predPos1.z - predPos0.z});
+    const float authDist = game::math::len(
+        game::math::vec2{authPos1.x - authPos0.x, authPos1.z - authPos0.z});
+
+    // Local prediction applied the input.
+    CHECK(predDist > 0.5f);
+
+    // The server applied the same input and replicated it back into the
+    // authoritative mirror.  Before the moveZ wire fix, forward movement
+    // serialized to (0, 0) — the authoritative copy never moved.
+    CHECK(authDist > 0.5f);
+
+    // The authoritative copy must track the prediction instead of stuttering
+    // at a fraction of it (empty frames polluting the server's input ring).
+    CHECK(authDist > 0.6f * predDist);
+
+    // The server camera must follow the client's aim — hasAim was dropped by
+    // UnpackFrame before the fix, so the accumulated yaw stayed 0.  Allow a
+    // couple of frames of slack: the server's first poll snaps its cursor to
+    // the stream frontier and may skip the very first frame.
+    const float srvYaw =
+        h.serverWorld().get<game::ComponentCamera>(serverPlayer).yaw;
+    const float yawDelta = game::input::WrapRadians0To2Pi(srvYaw) -
+                           game::input::WrapRadians0To2Pi(srvYaw0);
+    CHECK(yawDelta > InputFrames * PanPerFrame - 0.5f);
+}
+
+// =============================================================================
+// Jump + move + aim at the same time — the prediction and authoritative
+// copies must both jump.  The real client config runs
+// SubsystemPlayer<FixedStep> in the realtime pipeline to process action
+// events; if the prediction world lacks it, the local copy stays grounded
+// while the authoritative copy hops ~1.65 m — a visible divergence.
+// =============================================================================
+
+TEST(e2e_player_input_jump_move_aim_sync)
+{
+    NetSceneHarness h;
+    h.enableClientPrediction();
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    // Wait for the player to replicate to the client's prediction world.
+    entt::entity clientPlayer = entt::null;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                clientPlayer = e;
+                return true;
+            }
+            return false;
+        },
+        400));
+    CHECK(clientPlayer != entt::null);
+
+    // The authoritative mirror only carries the physics body (see
+    // e2e_player_input_prediction_vs_authoritative).
+    entt::entity authPlayer = clientPlayer;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& aw = h.clientAuthoritativeWorld();
+            return aw.valid(authPlayer) &&
+                   aw.all_of<game::ComponentPhysicBody>(authPlayer);
+        },
+        400));
+
+    // Wire up local input + simulation tag (DebugVoxelView does this in the
+    // app).
+    auto& cw = h.clientWorld();
+    cw.emplace<game::input::PlayerInputStream>(clientPlayer);
+    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
+        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+    auto& clientStream =
+        cw.get<game::input::PlayerInputStream>(clientPlayer);
+
+    entt::entity serverPlayer = entt::null;
+    for (auto [e, player] : h.serverWorld().view<game::ComponentPlayer>()->each())
+    {
+        (void)player;
+        serverPlayer = e;
+    }
+    CHECK(serverPlayer != entt::null);
+
+    // Let the player fall onto terrain and come to rest — the jump impulse
+    // is gated on isGrounded.  Both copies must be grounded: the client's
+    // prediction world collides against its own replicated terrain.
+    auto& sw = h.serverWorld();
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            return sw.get<game::ComponentPhysicBody>(serverPlayer).isGrounded;
+        },
+        600));
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            return cw.get<game::ComponentPhysicBody>(clientPlayer).isGrounded;
+        },
+        600));
+
+    const float groundY =
+        sw.get<game::ComponentPhysicBody>(serverPlayer).pos.y;
+    const float predGroundY =
+        cw.get<game::ComponentPhysicBody>(clientPlayer).pos.y;
+
+    // Drive the input in two phases: run + aim first (build speed on landed
+    // terrain), then add the held jump so the jump fires mid-stride.  Track
+    // each copy's peak height, lift poll, and lift-off position — CreatePlayer
+    // sets a ~1.65 m jump (SetMaxJumpHeight).
+    constexpr int RunFrames = 40;
+    constexpr int JumpFrames = 60;
+    float predPeak = predGroundY;
+    float authPeak = groundY;
+    int predLiftPoll = -1;
+    int authLiftPoll = -1;
+    game::math::vec3 predLiftPos{};
+    game::math::vec3 authLiftPos{};
+
+    auto pushInput = [&](bool jump)
+    {
+        game::input::PlayerInputFrameDelta delta;
+        delta.moveDelta = game::math::vec2{0.f, 1.f};  // forward (W)
+        delta.panDelta = game::math::vec2{0.05f, 0.f};
+        if (jump)
+            delta.inputEvent = game::input::PlayerInputEvent{
+                game::math::vec2{0.f, 0.f}, game::input::PlayerAction::Jump};
+        clientStream.PushFrame(delta);
+        h.poll();
+    };
+
+    for (int i = 0; i < RunFrames; ++i) pushInput(false);
+
+    for (int i = 0; i < JumpFrames; ++i)
+    {
+        pushInput(true);
+
+        const auto& predBody = cw.get<game::ComponentPhysicBody>(clientPlayer);
+        const auto& authBody = h.clientAuthoritativeWorld()
+                                   .get<game::ComponentPhysicBody>(authPlayer);
+        predPeak = game::math::max(predPeak, predBody.pos.y);
+        authPeak = game::math::max(authPeak, authBody.pos.y);
+        if (predLiftPoll < 0 && predBody.pos.y > predGroundY + 0.1f)
+        {
+            predLiftPoll = RunFrames + i;
+            predLiftPos = predBody.pos;
+        }
+        if (authLiftPoll < 0 && authBody.pos.y > groundY + 0.1f)
+        {
+            authLiftPoll = RunFrames + i;
+            authLiftPos = authBody.pos;
+        }
+    }
+    for (int i = 0; i < 20; ++i) h.poll();
+
+    const float predLift = predPeak - predGroundY;
+    const float authLift = authPeak - groundY;
+
+    // The authoritative copy jumped...
+    CHECK(authLift > 0.5f);
+
+    // ...and so did the prediction copy.
+    CHECK(predLift > 0.5f);
+
+    // The prediction copy must jump on its own — BEFORE the server round
+    // trip lands in the authoritative mirror.  If it only moves because the
+    // rollback pass restores server truth, predLiftPoll >= authLiftPoll and
+    // the player visibly pops instead of predicting.
+    CHECK(predLiftPoll >= 0);
+    CHECK(authLiftPoll >= 0);
+    CHECK(predLiftPoll < authLiftPoll);
+
+    // Both copies agree on the jump height (the server's fixed-step physics
+    // double-integrates gravity, so allow a small skew).
+    CHECK(std::abs(predLift - authLift) < 0.5f);
+
+    // The arcs must start from the same spot: the server re-deriving the
+    // jump tick from its own physics shifts lift-off forward by
+    // latency × run speed (~0.25–0.4 m).  With the client-stamped jump the
+    // server anchors to the stamped lift-off position.
+    const float liftDrift = game::math::len(
+        game::math::vec2{predLiftPos.x - authLiftPos.x,
+                         predLiftPos.z - authLiftPos.z});
+    CHECK(liftDrift < 0.15f);
+}
+
+// =============================================================================
 // Stability — run many frames after handshake
 // =============================================================================
 
