@@ -5,6 +5,14 @@ PRIVATE
     main.cpp
  )
 
+# Pick the graphics backend.
+if(BUILD_VULKAN)
+    target_link_libraries(game_desktop PRIVATE oge::graphics::vulkan)
+endif()
+if(BUILD_METAL)
+    target_link_libraries(game_desktop PRIVATE oge::graphics::metal)
+endif()
+
 # Linux uses GNU ld, which extracts static archives single-pass
 # left-to-right.  TryLoadBlob/TrySaveBlob are defined in oge::platform::sdl3
 # but referenced from game_ctrl (scene.cpp) and oge_runtime
@@ -16,7 +24,6 @@ PRIVATE
 # platforms keep the original link line.
 target_link_libraries(game_desktop PRIVATE
     game::gui
-    oge::graphics::vulkan
     $<$<PLATFORM_ID:Linux>:game::ctrl>
     $<$<PLATFORM_ID:Linux>:oge::runtime>
     $<$<PLATFORM_ID:Linux>:oge::platform::sdl3>
@@ -34,7 +41,13 @@ set_source_files_properties(${APP_ICON} PROPERTIES
 )
 
 add_executable(${APP_NAME} MACOSX_BUNDLE main.cpp ${APP_ICON})
-target_link_libraries(${APP_NAME} PRIVATE game::gui oge::platform::sdl3 oge::graphics::vulkan)
+target_link_libraries(${APP_NAME} PRIVATE game::gui oge::platform::sdl3)
+if(BUILD_VULKAN)
+    target_link_libraries(${APP_NAME} PRIVATE oge::graphics::vulkan)
+endif()
+if(BUILD_METAL)
+    target_link_libraries(${APP_NAME} PRIVATE oge::graphics::metal)
+endif()
 
 set_target_properties(${APP_NAME} PROPERTIES
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${MARKETING_VERSION}"

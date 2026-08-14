@@ -18,12 +18,25 @@ using namespace oge::platform::sdl3;
 
 int main(int argc, char* argv[])
 {
-    // Scene to start with: argv[1] as short ("DebugScene3") or full
-    // ("core::DebugScene3") type name.  Defaults to DebugScene3.
+    // Backend: argv[1] as "Vulkan" or "Metal".  Defaults to "Vulkan".
+    const char* backendName = "Vulkan";
+    int argIdx = 1;
+
+    // Scene: next arg as short ("DebugScene3") or full type name.
+    // Defaults to DebugVoxelView<Scene>.
     std::string sceneName = "core::DebugVoxelView<" "core::Scene" ">";
-    if (argc > 1)
+    if (argc > argIdx)
     {
-        std::string arg = argv[1];
+        std::string arg = argv[argIdx];
+        if (arg == "Metal" || arg == "Vulkan")
+        {
+            backendName = argv[argIdx];
+            ++argIdx;
+        }
+    }
+    if (argc > argIdx)
+    {
+        std::string arg = argv[argIdx];
         if (arg.find("::") == std::string::npos)
         {
             arg = "core::DebugView<" "core::" + arg + ">";
@@ -38,7 +51,7 @@ int main(int argc, char* argv[])
     std::string app_name = fmt::format("{} {}", APP_NAME, MARKETING_VERSION);
 #endif
     auto window = CreateSDL3Window(app_name, 1280, 720);
-    auto app = game::Client();
+    auto app = game::Client(backendName);
 
     app.AF().RegisterABC<game::Scene>();
     app.AF().RegisterDerived<game::Scene, game::Scene>();

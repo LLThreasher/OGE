@@ -78,6 +78,7 @@ void RawInputStream::SetKey(KeyCode key, bool down)
 void RawInputStream::SetMouseButton(int id, MouseButton button, bool down)
 {
     auto ptr_idx = FindMouse(id);
+    if (ptr_idx == MaxMousePtrCount) return; // ignore mouse not found
     InputEvent res{down ? InputEventType::MouseButtonDown
                         : InputEventType::MouseButtonUp};
     res.mouse = {ptr_idx, button};
@@ -87,6 +88,7 @@ void RawInputStream::SetMouseButton(int id, MouseButton button, bool down)
 void RawInputStream::SetMouseDelta(int id, float dx, float dy)
 {
     auto mId = FindMouse(id);
+    if (mId == MaxMousePtrCount) return; // ignore mouse not found
     auto& ptr = pointerPos[mId];
     ptr += math::vec2{dx, dy};
     dirtyPtrs.add(mId);
@@ -95,6 +97,7 @@ void RawInputStream::SetMouseDelta(int id, float dx, float dy)
 void RawInputStream::SetMousePosition(int id, float x, float y)
 {
     auto idx = FindMouse(id);
+    if (idx == MaxMousePtrCount) return; // ignore mouse not found
     LOG_DEBUG("set mouse pos {} at slot {}", id, idx);
     if (idx == MaxMousePtrCount) return;
     auto& ptr = pointerPos[idx];

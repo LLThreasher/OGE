@@ -18,7 +18,7 @@ using namespace oge::runtime;
 class Client : public WindowApp, public SceneRunner<SceneView>
 {
    public:
-    Client();
+    explicit Client(const char* backendName = "Vulkan");
     void Initialize(WindowHandle&) override;
     AppFrameAction Update(float dt, InputProvider pollInputs) override;
     void Shutdown() override;
@@ -30,6 +30,7 @@ class Client : public WindowApp, public SceneRunner<SceneView>
     oge::input::RawInputStream m_input;
     FramePerfStatus m_perfStats;
 
+    const char* m_backendName;
     IGraphicsBackend* m_backend;
 
     AssetManager& m_am;

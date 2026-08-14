@@ -492,6 +492,7 @@ class VulkanBackend final : public IGraphicsBackend
     VulkanBackend();
     ~VulkanBackend() override;
 
+    const char* GetBackendName() const override { return "Vulkan"; }
     uint32_t MaxUniformBufferSize() const override;
     uint32_t UniformBufferAlignment() const override;
 

@@ -58,10 +58,8 @@ FetchContent_Declare(
 FetchContent_Declare(
     enet
     GIT_REPOSITORY https://github.com/Lixue9jiu/enet.git
-    GIT_TAG        jiuru/impl
+    GIT_TAG        v1.3.18-custom
 )
-
-# add_subdirectory(enet)
 
 FetchContent_Declare(
     fmt
@@ -83,6 +81,8 @@ FetchContent_MakeAvailable(fmt)
 
 # Header-only JSON parser/emitter, consumed by oge_core's json.cpp.
 set(JSON_BuildTests OFF CACHE BOOL "" FORCE)
+set(JSON_MultipleHeaders ON CACHE BOOL "" FORCE)
+set(JSON_Install OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(nlohmann_json)
 
 if(BUILD_METAL)
