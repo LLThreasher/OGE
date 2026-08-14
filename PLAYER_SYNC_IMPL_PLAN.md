@@ -6,6 +6,16 @@ decision record below pins every choice that sketch left open.
 
 Working branch: `dev/player-sync-tickspace`.
 
+> **Implementation status (2026-08-14):** Phases 1–4 implemented and verified on
+> `worktree-player-sync-tickspace-impl` (PR #8) — commits 589b0ca … 1d53e9a.
+> Full ctest 145/145 twice; e2e 18/18 three times.  The jump stamp is deleted
+> (Phase 3) and the interpolation buffer is in (Phase 4).  Two planned numeric
+> bounds were adjusted during implementation, both documented in the test
+> comments: T4's absolute per-tick bounds (the Phase 3 mechanism fix removed the
+> per-tick re-anchor they assumed) and T6's 0.3 m/frame bound (unattainable
+> alongside k ≈ 12/s for a 100+ m snap).  Phase 5 stays out of scope.  See
+> HANDOFF.md for the implemented state.
+
 > **Revision 3** (per design review):
 > - The client runs the player sim at **both** cadences in parallel — the 20 tps
 >   fixed pipeline (parity sim) and a 60 Hz realtime sim (aim + action authority).
