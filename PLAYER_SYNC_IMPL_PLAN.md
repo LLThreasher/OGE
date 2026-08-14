@@ -4,7 +4,9 @@ Executable, code-level plan for the tick-stamped input + single-cadence player s
 redesign.  Supersedes the sketch in `PLAYER_SYNC_PLAN.md` where they disagree; the
 decision record below pins every choice that sketch left open.
 
-Working branch: `dev/player-sync-tickspace`.
+Working branch: `worktree-player-sync-tickspace-impl` (PR #8 targets `main`;
+`dev/player-sync-tickspace` carried this plan's drafts and the superseded
+jump-stamp experiments).
 
 > **Implementation status (2026-08-14):** Phases 1–4 implemented and verified on
 > `worktree-player-sync-tickspace-impl` (PR #8) — commits 589b0ca … 1d53e9a.

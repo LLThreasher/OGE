@@ -1,7 +1,10 @@
 # HANDOFF — deterministic player sync (branch `worktree-player-sync-tickspace-impl`, PR #8)
 
 **Status: Phases 1–4 IMPLEMENTED and verified.  Working tree clean, all commits pushed.**
-Target branch: `dev/player-sync-tickspace`.  Read `PLAYER_SYNC_IMPL_PLAN.md` for the
+Target branch: `main` (PR #8 was retargeted from `dev/player-sync-tickspace` on
+2026-08-14 — the branch is a linear extension of `origin/main` at 98327ce, so the
+merge is conflict-free; the old target's jump-stamp experiments are superseded).
+Read `PLAYER_SYNC_IMPL_PLAN.md` for the
 full spec; this file is the implemented state, the two documented plan deviations,
 and what remains.
 
