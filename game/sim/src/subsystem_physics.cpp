@@ -208,22 +208,6 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
                                body.acceleration.y -= 9.8f;
                            body.velocity += body.acceleration * ctx.dt;
                            body.acceleration = {};
-                           // TEMPORARY PFX-DBG (Phase 3 impulse diagnosis —
-                           // remove before commit): velocity after gravity,
-                           // before collision resolution.
-                           if constexpr (utype == UpdateType::Realtime)
-                           {
-                               if (game.ctx().contains<SimTickContext>())
-                               {
-                                   auto& tctx =
-                                       game.ctx().get<SimTickContext>();
-                                   if (tctx.currentTick >= 32 &&
-                                       tctx.currentTick <= 38)
-                                       fprintf(stderr,
-                                               "PHYG vy=%.4f dt=%.5f\n",
-                                               body.velocity.y, ctx.dt);
-                               }
-                           }
                        });
 
     // Track which entities are modified by collision resolution so we can
@@ -268,20 +252,6 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
             body.onTopOfBlkValue = blkVals;
         else
             body.onTopOfBlkValue = 0;
-
-        // TEMPORARY PFX-DBG (Phase 3 impulse diagnosis — remove before
-        // commit): post-Y-resolution state.
-        if constexpr (utype == UpdateType::Realtime)
-        {
-            if (game.ctx().contains<SimTickContext>())
-            {
-                auto& tctx = game.ctx().get<SimTickContext>();
-                if (tctx.currentTick >= 32 && tctx.currentTick <= 38)
-                    fprintf(stderr, "PHYR vy=%.4f gnd=%d type=%d\n",
-                            body.velocity.y, (int)body.isGrounded,
-                            (int)res.type);
-            }
-        }
 
         modified.insert(e);
     }

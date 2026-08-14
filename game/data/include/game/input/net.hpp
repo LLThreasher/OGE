@@ -86,7 +86,6 @@ enum PlayerInputFrameFlags : uint8_t
 {
     HasMove = 1 << 0,
     HasJumpInput = 1 << 1,  // the aggregated jump input flag (movement frame)
-    HasJumpStamp = 1 << 2,  // client-decided lift-off stamp (until Phase 3)
 };
 
 struct PackedPlayerInputFrame
@@ -100,13 +99,6 @@ struct PackedPlayerInputFrame
     int8_t moveX = 0;
     int8_t moveY = 0;
     int8_t moveZ = 0;
-
-    // Client-decided jump stamp: lift-off position (raw floats — world
-    // coordinates exceed the small quantized ranges; jumps are rare so the
-    // 12 bytes are negligible).  Until Phase 3.
-    float jumpX = 0.f;
-    float jumpY = 0.f;
-    float jumpZ = 0.f;
 
     PackedPlayerInputFrame() {}
     PackedPlayerInputFrame(PlayerInputFrame& e);
@@ -197,18 +189,6 @@ inline PackedPlayerInputFrame PackFrame(
         dst.moveZ = QuantizeSNorm8(src.move.z);
     }
 
-    if constexpr (kUseJumpStamp)
-    {
-        if (src.jumped)
-        {
-            dst.flags = static_cast<uint8_t>(dst.flags | HasJumpStamp);
-
-            dst.jumpX = src.jumpPos.x;
-            dst.jumpY = src.jumpPos.y;
-            dst.jumpZ = src.jumpPos.z;
-        }
-    }
-
     return dst;
 }
 
@@ -228,15 +208,6 @@ inline PlayerInputFrame UnpackFrame(const PackedPlayerInputFrame& src)
     if ((src.flags & HasJumpInput) != 0)
     {
         dst.jump = true;
-    }
-
-    if constexpr (kUseJumpStamp)
-    {
-        if ((src.flags & HasJumpStamp) != 0)
-        {
-            dst.jumped = true;
-            dst.jumpPos = {src.jumpX, src.jumpY, src.jumpZ};
-        }
     }
 
     return dst;
@@ -284,16 +255,6 @@ DECL_NET_OBJ(game::input::net::PackedPlayerInputFrame, {
         visit(self.moveX);
         visit(self.moveY);
         visit(self.moveZ);
-    }
-
-    if constexpr (game::input::kUseJumpStamp)
-    {
-        if ((self.flags & game::input::net::HasJumpStamp) != 0)
-        {
-            visit(self.jumpX);
-            visit(self.jumpY);
-            visit(self.jumpZ);
-        }
     }
 })
 

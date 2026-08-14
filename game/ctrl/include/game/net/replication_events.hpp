@@ -720,23 +720,11 @@ inline void PollPlayerInputs(OgeRegistryRef world, uint32_t tick)
                     mirrorStream->PushTick(
                         static_cast<input::PlayerInputFrame>(packed));
                 }
-                else
-                {
-                    fprintf(stderr, "PUSH-SKIP no stream tick=%u\n", tick);
-                }
             }
-            else
-            {
-                fprintf(stderr, "PUSH-SKIP invalid entity tick=%u\n", tick);
-            }
-        }
-        else
-        {
-            fprintf(stderr, "PUSH-SKIP no mirrorWorld tick=%u\n", tick);
         }
 
         // Local input: the prediction world's fixed stage reads the same
-        // frame from its own stream (jump stamp decision-maker).
+        // frame from its own stream.
         if (stream->IsLocalInput())
         {
             stream->PushTick(static_cast<input::PlayerInputFrame>(packed));

@@ -31,12 +31,6 @@ constexpr uint32_t kInputPipelineDelayTicks = 1;
 // late frames count as stale instead of blocking the scan.  8 ticks = 400 ms.
 constexpr uint32_t kMaxInputWaitTicks = 8;
 
-// Phase-3 parity gate: with the shared config + tick space (Phase 2) the
-// receiver's own derivation reproduces the client's arc, so the client-
-// decided jump stamp is redundant.  Gate first, verify the e2e suite, then
-// delete the stamp code entirely (see PLAYER_SYNC_IMPL_PLAN.md Phase 3).
-constexpr bool kUseJumpStamp = false;
-
 struct PlayerInputEvent
 {
     // normalized to view
@@ -126,13 +120,6 @@ struct PlayerInputRawFrame
     size_t deltaCnt = 0;
     bool hasAim = false;
 
-    // Client-decided jump stamp: the local simulation performed a jump this
-    // frame (grounded && jump pressed).  jumpPos is the pre-impulse lift-off
-    // position.  The server applies the impulse anchored to this position
-    // instead of re-deriving the jump from its own physics.  (Until Phase 3.)
-    bool jumped = false;
-    math::vec3 jumpPos = {};
-
     PlayerInputRawFrame(math::vec2 aimBase = {}) : aim(aimBase)
     {
     }
@@ -171,10 +158,6 @@ struct PlayerInputFrame
     uint32_t tick = 0;  // the producing tick (D3/D8)
     math::vec3 move = {};
     bool jump = false;  // OR of the window's Jump events (movement input)
-
-    // Client-decided jump stamp (until Phase 3).
-    bool jumped = false;
-    math::vec3 jumpPos = {};
 };
 
 using PlayerRawFrameStream = DiscreteEventStream<PlayerInputRawFrame, 16>;
@@ -207,14 +190,8 @@ class PlayerInputStream
     PlayerInputRawFrame m_accumFrame{};
 
     // True once PushFrame is used — local input accumulation only happens
-    // on the client.  Server streams receive replicated frames via PushTick
-    // and must neither stamp jumps nor consume stamps.
+    // on the client.  Server streams receive replicated frames via PushTick.
     bool m_isLocalInput = false;
-
-    // Pending jump stamp: latched by MarkJumpPerformed, committed into the
-    // next raw frame by AdvanceTick.  (Deleted in Phase 3.)
-    bool m_pendingJump = false;
-    math::vec3 m_jumpPos = {};
 
    public:
     // ---- raw accumulation (client view path) ----
@@ -226,8 +203,7 @@ class PlayerInputStream
     }
 
     // Commits the accumulated raw frame (dirty-only) into the raw ring.
-    // Call once per render frame before readers poll (today's mechanics,
-    // minus the tick stamp — aggregation stamps).
+    // Call once per render frame before readers poll.
     //
     // Committing empty frames on every tick would interleave empties into
     // the ring; once it wraps, real frames get overwritten and consumers
@@ -240,15 +216,9 @@ class PlayerInputStream
         // len(moveOrder) <= 1).
         m_accumFrame.normalize();
 
-        // Stamp a pending jump decision into this frame.  A jump must be
-        // committed even when the frame otherwise carries nothing.
-        m_accumFrame.jumped = m_pendingJump;
-        m_accumFrame.jumpPos = m_jumpPos;
-        m_pendingJump = false;
-
         const bool dirty = m_accumFrame.inputEventCnt > 0 ||
                            m_accumFrame.move != math::vec3{} ||
-                           m_accumFrame.hasAim || m_accumFrame.jumped;
+                           m_accumFrame.hasAim;
         if (dirty)
         {
             m_rawFrames.Push(m_accumFrame);
@@ -261,19 +231,6 @@ class PlayerInputStream
     void PushTick(const PlayerInputFrame& frame)
     {
         m_tickFrames.Push(frame);
-    }
-
-    // Record that the local simulation performed a jump this tick at the
-    // given lift-off position.  No-op on server streams — they receive
-    // replicated frames and must not stamp their own.
-    void MarkJumpPerformed(math::vec3 pos)
-    {
-        if (!m_isLocalInput)
-        {
-            return;
-        }
-        m_pendingJump = true;
-        m_jumpPos = pos;
     }
 
     bool IsLocalInput() const
@@ -343,9 +300,10 @@ inline bool TickIsStale(uint32_t a, uint32_t b)
 
 // Aggregation: read the raw window since `cursor` (the frames produced
 // during tick `tick`), average the move (weighted by delta counts — the
-// same semantics as the per-frame normalize), OR the jump events, and stamp
-// the synthetic per-tick movement frame.  Returns false when the window
-// held nothing worth shipping (empty-tick contract: absence = no input).
+// same semantics as the per-frame normalize), OR the jump events, and
+// produce the synthetic per-tick movement frame.  Returns false when the
+// window held nothing worth shipping (empty-tick contract: absence = no
+// input).
 inline bool AggregateTickInput(PlayerInputStream& stream,
                                PlayerInputStream::Cursor& cursor,
                                uint32_t tick, PlayerInputFrame& out)
@@ -363,8 +321,6 @@ inline bool AggregateTickInput(PlayerInputStream& stream,
     bool any = false;
     math::vec3 moveSum{};
     size_t moveCnt = 0;
-    bool jumped = false;
-    math::vec3 jumpPos{};
 
     for (auto i = cursor; i < frontier; ++i)
     {
@@ -383,13 +339,6 @@ inline bool AggregateTickInput(PlayerInputStream& stream,
                 any = true;
             }
         }
-        // Client-decided jump stamp (until Phase 3).
-        if (raw.jumped)
-        {
-            jumped = true;
-            jumpPos = raw.jumpPos;
-            any = true;
-        }
     }
     cursor = frontier;
     if (!any)
@@ -402,8 +351,6 @@ inline bool AggregateTickInput(PlayerInputStream& stream,
     {
         out.move = moveSum / static_cast<float>(moveCnt);
     }
-    out.jumped = jumped;
-    out.jumpPos = jumpPos;
     return true;
 }
 
@@ -490,9 +437,6 @@ struct PlayerSimInputState
     uint32_t consumedTick = 0;  // tick the fixed-stage decisions were made for
     bool hasFrame = false;      // cached movement frame valid?
     PlayerInputFrame frame{};
-    // True once a jump stamp anchored this arc (non-local streams) — repeat
-    // stamps must not re-anchor a running arc; resets when the body lands.
-    bool stampActive = false;
 };
 
 }  // namespace game::input

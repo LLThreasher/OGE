@@ -594,15 +594,13 @@ TEST(rollback_pong_partial_erase_validate_latest)
 // =========================================================================
 
 // PackedPlayerInputFrame: tick always serialized (incl. wrap values),
-// flag-gated move quantization, jump input + jump stamp round-trip.
+// flag-gated move quantization, jump input round-trip.
 TEST(packed_input_frame_rt)
 {
     game::input::PlayerInputFrame f{};
     f.tick = 0xFFFFFFFF;
     f.move = {0.5f, -0.25f, 0.125f};
     f.jump = true;
-    f.jumped = true;
-    f.jumpPos = {20.f, 18.5f, 20.f};
 
     game::input::net::PackedPlayerInputFrame p =
         game::input::net::PackFrame(f);
@@ -612,16 +610,13 @@ TEST(packed_input_frame_rt)
     CHECK_EQ(d.tick, 0xFFFFFFFFu);
     CHECK((d.flags & game::input::net::HasMove) != 0);
     CHECK((d.flags & game::input::net::HasJumpInput) != 0);
-    CHECK((d.flags & game::input::net::HasJumpStamp) != 0);
 
     auto u = game::input::net::UnpackFrame(d);
     CHECK_EQ(u.tick, f.tick);
     CHECK(u.jump);
-    CHECK(u.jumped);
     CHECK(std::abs(u.move.x - f.move.x) <= 1.f / 127.f);
     CHECK(std::abs(u.move.y - f.move.y) <= 1.f / 127.f);
     CHECK(std::abs(u.move.z - f.move.z) <= 1.f / 127.f);
-    CHECK(u.jumpPos == f.jumpPos);
 }
 
 // Empty frame: no flags, nothing flag-gated serialized, tick survives.
@@ -637,7 +632,6 @@ TEST(packed_input_frame_zero)
     CHECK_EQ(d.flags, 0);
     auto u = game::input::net::UnpackFrame(d);
     CHECK(!u.jump);
-    CHECK(!u.jumped);
     CHECK(u.move == game::math::vec3{});
 }
 
@@ -705,9 +699,9 @@ TEST(aggregate_tick_empty)
     CHECK(!game::input::AggregateTickInput(s, c, 5, out));
 }
 
-// Stamp + weighted move average (delta-count weighting matches the
+// Tick stamp + weighted move average (delta-count weighting matches the
 // per-frame normalize semantics).
-TEST(aggregate_tick_stamp_move)
+TEST(aggregate_tick_move)
 {
     game::input::PlayerInputStream s;
     game::input::PlayerInputFrameDelta d1;
@@ -722,7 +716,7 @@ TEST(aggregate_tick_stamp_move)
     CHECK(game::math::len(out.move) > 0.5f);
 }
 
-// Jump input OR + client-decided jump stamp carried through the window.
+// Jump input OR through the window.
 TEST(aggregate_tick_jump)
 {
     game::input::PlayerInputStream s;
@@ -730,15 +724,12 @@ TEST(aggregate_tick_jump)
     d.inputEvent = game::input::PlayerInputEvent{
         game::math::vec2{0.f, 0.f}, game::input::PlayerActionKind::Jump};
     s.PushFrame(d);
-    s.MarkJumpPerformed(game::math::vec3{1.f, 2.f, 3.f});
     s.AdvanceTick();
 
     game::input::PlayerInputStream::Cursor c{1};
     game::input::PlayerInputFrame out{};
     CHECK(game::input::AggregateTickInput(s, c, 7, out));
     CHECK(out.jump);
-    CHECK(out.jumped);
-    CHECK((out.jumpPos == game::math::vec3{1.f, 2.f, 3.f}));
 }
 
 // TickIsStale: wrap-safe comparisons (D8) — the inverted-branch bug made

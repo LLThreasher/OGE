@@ -6,7 +6,6 @@
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/terrain_view.hpp"
 #include "oge/aabb_ops.hpp"
-#include "oge/log.hpp"
 #include "oge/math.hpp"
 
 namespace game
@@ -65,11 +64,6 @@ void ComponentPlayer::DestroyPlayer(oge::runtime::OgeRegistry& world,
 
 namespace sim
 {
-// Max accepted distance between the server's body and the client-stamped
-// jump lift-off position.  Latency drift at run speed is a few tens of cm;
-// anything beyond this is desync or a fabricated stamp.
-constexpr float kMaxJumpStampDelta = 1.0f;
-
 using ::game::input::PlayerActionKind;
 using ::game::input::PlayerInputStream;
 using ::game::terrain::BlockRegistry;
@@ -271,78 +265,9 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                     simState.frame = frame;
                     simState.hasFrame = true;
 
-                    if constexpr (input::kUseJumpStamp)
-                    {
-                        // Landing resets the stamp gate: a fresh jump press
-                        // may stamp again.  Repeat stamps while the stamped
-                        // arc is still airborne must not re-anchor it (the
-                        // held jump input produces a fresh stamp every tick
-                        // the local copy re-decides — anchoring each one
-                        // restarts the arc and the receiver never completes
-                        // the jump).
-                        if (body.isGrounded)
-                        {
-                            simState.stampActive = false;
-                        }
-
-                        if (frame.jumped && !input.IsLocalInput() &&
-                            !simState.stampActive)
-                        {
-                            // Client-decided jump stamp (server streams only
-                            // — the client's own stamp passes through
-                            // locally and was already applied via jumpOrder
-                            // on the tick the jump fired).  Apply the
-                            // impulse anchored to the stamped lift-off
-                            // position instead of re-deriving the jump from
-                            // our own physics: grounded is evaluated at
-                            // different ticks on each side, so re-derivation
-                            // produces a different arc.
-                            const float drift =
-                                math::len(body.pos - frame.jumpPos);
-                            bool nearGround = body.isGrounded;
-                            if (!nearGround)
-                            {
-                                auto groundHit = terrain.CastRay(
-                                    body.pos, math::vec3{0.f, -1.f, 0.f});
-                                nearGround =
-                                    groundHit.has_value() &&
-                                    body.pos.y -
-                                            (static_cast<float>(
-                                                 groundHit->hitPos.y) +
-                                             1.0f) <
-                                        0.6f;
-                            }
-
-                            if (drift <= kMaxJumpStampDelta && nearGround)
-                            {
-                                body.pos = frame.jumpPos;
-                                body.velocity.y = creature.initJumpSpeed;
-                                simState.stampActive = true;
-                            }
-                            else
-                            {
-                                LOG_WARN(
-                                    "rejected jump stamp: drift={} "
-                                    "nearGround={} (entity {})",
-                                    drift, nearGround,
-                                    static_cast<uint32_t>(entity));
-                            }
-                            // The stamped frame also carries the held jump
-                            // input — do not feed it back through the
-                            // jumpOrder path.
-                            creature.jumpOrder = false;
-                        }
-                        else
-                        {
-                            creature.jumpOrder = frame.jump;
-                        }
-                    }
-                    else
-                    {
-                        // Parity path (Phase 3): every stream re-derives the
-                        // jump from its own physics over the shared frame.
-                        creature.jumpOrder = frame.jump;
-                    }
+                    // Parity path (Phase 3): every stream re-derives the
+                    // jump from its own physics over the shared frame.
+                    creature.jumpOrder = frame.jump;
                 }
                 else
                 {
@@ -372,33 +297,7 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
             creature.moveOrder =
                 simState.hasFrame ? simState.frame.move : math::vec3{};
 
-            if constexpr (input::kUseJumpStamp)
-            {
-                // Local streams: the creature is about to fire the impulse
-                // this tick (same grounded value from the last physics
-                // tick), so stamp the decision with the pre-impulse
-                // lift-off position.
-                if (input.IsLocalInput() && body.isGrounded &&
-                    creature.jumpOrder)
-                {
-                    input.MarkJumpPerformed(body.pos);
-                }
-            }
-
             player.lastActionTime -= ctx.dt;
-
-            if (tickCtx.currentTick >= 29)
-            {
-                fprintf(stderr,
-                        "PFX %s(%p) tick=%u s=%u pos=(%.3f,%.3f,%.3f) vy=%.2f "
-                        "gnd=%d hasF=%d jump=%d lastApp=%u stamp=%u\n",
-                        input.IsLocalInput() ? "LOC" : "SRV",
-                        (void*)&ctx.world, tickCtx.currentTick,
-                        tickCtx.subStepIdx, body.pos.x, body.pos.y, body.pos.z,
-                        body.velocity.y, (int)body.isGrounded,
-                        (int)simState.hasFrame, (int)creature.jumpOrder,
-                        simState.lastAppliedTick, simState.frame.tick);
-            }
         }
     }
 }
