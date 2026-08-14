@@ -31,6 +31,12 @@ constexpr uint32_t kInputPipelineDelayTicks = 1;
 // late frames count as stale instead of blocking the scan.  8 ticks = 400 ms.
 constexpr uint32_t kMaxInputWaitTicks = 8;
 
+// Phase-3 parity gate: with the shared config + tick space (Phase 2) the
+// receiver's own derivation reproduces the client's arc, so the client-
+// decided jump stamp is redundant.  Gate first, verify the e2e suite, then
+// delete the stamp code entirely (see PLAYER_SYNC_IMPL_PLAN.md Phase 3).
+constexpr bool kUseJumpStamp = false;
+
 struct PlayerInputEvent
 {
     // normalized to view

@@ -197,13 +197,16 @@ inline PackedPlayerInputFrame PackFrame(
         dst.moveZ = QuantizeSNorm8(src.move.z);
     }
 
-    if (src.jumped)
+    if constexpr (kUseJumpStamp)
     {
-        dst.flags = static_cast<uint8_t>(dst.flags | HasJumpStamp);
+        if (src.jumped)
+        {
+            dst.flags = static_cast<uint8_t>(dst.flags | HasJumpStamp);
 
-        dst.jumpX = src.jumpPos.x;
-        dst.jumpY = src.jumpPos.y;
-        dst.jumpZ = src.jumpPos.z;
+            dst.jumpX = src.jumpPos.x;
+            dst.jumpY = src.jumpPos.y;
+            dst.jumpZ = src.jumpPos.z;
+        }
     }
 
     return dst;
@@ -227,10 +230,13 @@ inline PlayerInputFrame UnpackFrame(const PackedPlayerInputFrame& src)
         dst.jump = true;
     }
 
-    if ((src.flags & HasJumpStamp) != 0)
+    if constexpr (kUseJumpStamp)
     {
-        dst.jumped = true;
-        dst.jumpPos = {src.jumpX, src.jumpY, src.jumpZ};
+        if ((src.flags & HasJumpStamp) != 0)
+        {
+            dst.jumped = true;
+            dst.jumpPos = {src.jumpX, src.jumpY, src.jumpZ};
+        }
     }
 
     return dst;
@@ -280,11 +286,14 @@ DECL_NET_OBJ(game::input::net::PackedPlayerInputFrame, {
         visit(self.moveZ);
     }
 
-    if ((self.flags & game::input::net::HasJumpStamp) != 0)
+    if constexpr (game::input::kUseJumpStamp)
     {
-        visit(self.jumpX);
-        visit(self.jumpY);
-        visit(self.jumpZ);
+        if ((self.flags & game::input::net::HasJumpStamp) != 0)
+        {
+            visit(self.jumpX);
+            visit(self.jumpY);
+            visit(self.jumpZ);
+        }
     }
 })
 

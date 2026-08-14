@@ -27,6 +27,17 @@ std::pmr::vector<oge::runtime::oge_id_type> RealtimePlayerStages(
     };
 }
 
+std::pmr::vector<oge::runtime::oge_id_type> FixedStepPredictionStages(
+    oge::runtime::AnythingFactory& af)
+{
+    // Fixed player only (see the header): the prediction world's body
+    // motion comes from the realtime trio; the fixed creature/physics
+    // would double-integrate it.
+    return {
+        af.Id<sim::SubsystemPlayer<UpdateType::FixedStep>>(),
+    };
+}
+
 void ApplyServerSimConfig(SceneConfig& cfg, oge::runtime::AnythingFactory& af)
 {
     // Fixed pipeline: terrain first, then the player sim trio.  No realtime
@@ -43,12 +54,14 @@ void ApplyServerSimConfig(SceneConfig& cfg, oge::runtime::AnythingFactory& af)
 
 void ApplyClientSimConfig(SceneConfig& cfg, oge::runtime::AnythingFactory& af)
 {
-    // Fixed pipeline: the player sim trio WITHOUT the terrain stage — a
-    // client-side terrain generator diverges from the server's replicated
-    // chunks and produced false rollbacks (the config-flake class).
-    // loadMask/blocks/terrainDesc stay untouched: they only seed the
-    // terrain ctx, not a terrain stage.
-    cfg.subsystems = FixedStepPlayerStages(af);
+    // Fixed pipeline: the fixed player stage only (Phase 3) — jump/action
+    // decisions stay fixed-tick; the realtime trio integrates the body at
+    // 60 Hz, so the fixed creature/physics must NOT also run here (double
+    // integration).  No terrain stage: a client-side terrain generator
+    // diverges from the server's replicated chunks and produced false
+    // rollbacks (the config-flake class).  loadMask/blocks/terrainDesc
+    // stay untouched: they only seed the terrain ctx, not a terrain stage.
+    cfg.subsystems = FixedStepPredictionStages(af);
 
     // Realtime pipeline: the trio (local-prediction-filtered) + the debug
     // text overlay.

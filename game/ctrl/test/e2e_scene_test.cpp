@@ -450,11 +450,13 @@ TEST(e2e_player_config_parity)
     auto& clientCfg = h.clientScene()->GetConfig();
     auto& serverCfg = h.serverScene()->GetConfig();
 
-    // Client: the fixed trio in the fixed pipeline (no terrain stage — the
-    // config-flake class); the realtime trio + SubsystemDebugText in the
-    // realtime pipeline.
+    // Client: the fixed PLAYER stage only in the fixed pipeline (Phase 3
+    // parity fix — the realtime trio integrates the body, so the fixed
+    // creature/physics must not double-integrate it; no terrain stage —
+    // the config-flake class); the realtime trio + SubsystemDebugText in
+    // the realtime pipeline.
     CHECK(clientCfg.subsystems ==
-          game::sim::FixedStepPlayerStages(h.m_clientRunner.AF()));
+          game::sim::FixedStepPredictionStages(h.m_clientRunner.AF()));
     auto expectedRealtime =
         game::sim::RealtimePlayerStages(h.m_clientRunner.AF());
     expectedRealtime.push_back(

@@ -57,6 +57,15 @@ std::pmr::vector<oge::runtime::oge_id_type> FixedStepPlayerStages(
 std::pmr::vector<oge::runtime::oge_id_type> RealtimePlayerStages(
     oge::runtime::AnythingFactory& af);
 
+// The prediction world's fixed pipeline (Phase 3 parity fix): the fixed
+// player stage only — jump/action decisions + the one-tick frame read stay
+// fixed-tick decisions (D3/D6).  The fixed creature/physics do NOT run in
+// the prediction world: the realtime trio already integrates the body at
+// 60 Hz, and running both trios would double-integrate the body.  The
+// authoritative mirror keeps the full fixed trio (FixedStepPlayerStages).
+std::pmr::vector<oge::runtime::oge_id_type> FixedStepPredictionStages(
+    oge::runtime::AnythingFactory& af);
+
 // Server config: the fixed pipeline is terrain (first) + the fixed trio.
 // NO realtime stages — the server sims once per tick; the old realtime
 // trio double-integrated gravity at 20 Hz.

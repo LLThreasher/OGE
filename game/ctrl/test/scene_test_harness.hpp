@@ -17,7 +17,11 @@
 namespace
 {
 constexpr uint16_t TEST_PORT = 23402;
-constexpr float POLL_DT = 0.016f;
+// Exactly kSubStepDt (1/60): the client's realtime pipeline integrates the
+// body with f.dt, and the server's fixed substeps integrate with kSubStepDt
+// — any other poll dt makes the two trajectories diverge by dt mismatch
+// alone (Phase 3 parity gate).
+constexpr float POLL_DT = 1.f / 60.f;
 constexpr int MAX_POLLS = 500;  // ~8 sec at 60 fps
 }  // namespace
 

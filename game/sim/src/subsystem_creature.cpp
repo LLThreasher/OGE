@@ -1,4 +1,5 @@
 #include "game/components.hpp"
+#include "game/sim/player_sim_config.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "oge/math.hpp"
@@ -24,6 +25,19 @@ void SubsystemCreature<utype>::onUpdate(FrameCtx& ctx)
                       ComponentPhysicBody& body)
     {
         (void)e;
+        // TEMPORARY PFX-DBG (Phase 3 impulse diagnosis — remove before
+        // commit): log the realtime creature's entry state per poll around
+        // the jump tick.
+        if constexpr (utype == UpdateType::Realtime)
+        {
+            static uint32_t poll = 0;
+            auto& tctx = ctx.world.ctx().get<sim::SimTickContext>();
+            if (tctx.currentTick >= 32 && tctx.currentTick <= 38)
+                fprintf(stderr,
+                        "CRT poll=%u tick=%u vy=%.4f gnd=%d jump=%d dt=%.5f\n",
+                        poll++, tctx.currentTick, body.velocity.y,
+                        (int)body.isGrounded, (int)creature.jumpOrder, ctx.dt);
+        }
         float friction =
             blocks.GetBlockFriction(blocks.GetBlockId(body.onTopOfBlkValue));
 
