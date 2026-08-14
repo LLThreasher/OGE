@@ -71,3 +71,6 @@ add_test_target(e2e_scene_test
     SOURCES test/e2e_scene_test.cpp
     LIBRARIES game::ctrl oge::platform::native
 )
+# InterpolationLayer (game/ctrl_ext) is header-only — include dir only, no
+# link (game_view/graphics deps would otherwise drag into the test binary).
+target_include_directories(e2e_scene_test PRIVATE ${CMAKE_SOURCE_DIR}/game/ctrl_ext/include)

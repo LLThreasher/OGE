@@ -114,11 +114,17 @@ class SceneView : protected AppRuntime
         m_inputs.Update({f.dt, f.is});
         m_innerScene.GetWorld().ctx().insert_or_assign(f.perfStats);
 
-        // simulation + interpolation
-        m_interp.PreUpdate(m_innerScene.GetWorld());
+        // simulation + interpolation (Phase 4: the layer snapshots the
+        // authoritative mirror and writes smoothed transforms for remote
+        // copies in the render world).  Scenes without a mirror (base
+        // Scene returns nullptr) fall back to their own world — the only
+        // source of truth they have.
+        GameWorld* authoritative = m_innerScene.GetAuthoritativeWorld();
+        m_interp.PreUpdate(authoritative ? *authoritative
+                                         : m_innerScene.GetWorld());
         m_innerScene.Update(f, sctx);
         float alpha = m_innerScene.GetFixedStepAlpha();
-        m_interp.PostUpdate(m_innerScene.GetWorld(), alpha);
+        m_interp.PostUpdate(m_innerScene.GetWorld(), alpha, f.dt);
 
         // presentation
         m_squeue.Clear();

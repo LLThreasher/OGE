@@ -9,6 +9,8 @@
 
 #include <test_macros.hpp>
 
+#include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <filesystem>
 #include <string>
@@ -20,6 +22,7 @@
 #endif
 
 #include "game/components.hpp"
+#include "game/interpolation.hpp"
 #include "game/net/replication_events.hpp"
 #include "game/net/rollback_event_log_stream.hpp"
 #include "game/sim/player_sim_config.hpp"
@@ -1472,6 +1475,161 @@ TEST(e2e_interpolation_layer)
     // is tagged correctly and the physics position changed.
     CHECK(cw.all_of<game::RenderStrategyTag<game::RenderStrategy::Interpolation>>(
         clientPlayer));
+
+    // Phase 4: the layer is driven from the authoritative mirror world.
+    // The player carries BOTH tags here (the Interpolation stand-in tag
+    // above + LocalPrediction from WireLocalInput) — the local-player
+    // exemption must skip it: the prediction-world body IS its render
+    // state, so no interpolated transform is ever written for it.
+    game::InterpolationLayer layer;
+    for (int i = 0; i < 5; ++i)
+    {
+        h.poll();
+        layer.PreUpdate(h.clientAuthoritativeWorld());
+        layer.PostUpdate(cw, h.clientScene()->GetFixedStepAlpha(), POLL_DT);
+    }
+    CHECK(!cw.all_of<game::ComponentInterpolatedTransform>(clientPlayer));
+}
+
+// =============================================================================
+// Interpolation buffer (Phase 4) — the remote copy's rendered transform
+// follows the authoritative mirror through an exponential attractor, so a
+// server-side teleport (100+ m body snap) never appears as a jump on screen.
+// =============================================================================
+
+TEST(e2e_remote_copy_no_teleport)
+{
+    NetSceneHarness h;
+    h.enableClientPrediction();
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    // Wait for the player to replicate to the client's render world.
+    entt::entity clientPlayer = entt::null;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                clientPlayer = e;
+                return true;
+            }
+            return false;
+        },
+        400));
+    CHECK(clientPlayer != entt::null);
+
+    // The authoritative mirror carries the physics body (see
+    // e2e_player_input_jump_move_aim_sync).
+    entt::entity authPlayer = clientPlayer;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& aw = h.clientAuthoritativeWorld();
+            return aw.valid(authPlayer) &&
+                   aw.all_of<game::ComponentPhysicBody>(authPlayer);
+        },
+        400));
+
+    // Stand-in remote copy: tag the render player Interpolation (the real
+    // view tags remote players this way; RenderStrategyTag does not
+    // replicate) and — defensively — the auth copy too, so PreUpdate
+    // snapshots it.
+    auto& cw = h.clientWorld();
+    cw.emplace_or_replace<
+        game::RenderStrategyTag<game::RenderStrategy::Interpolation>>(
+        clientPlayer);
+    auto& aw = h.clientAuthoritativeWorld();
+    aw.emplace_or_replace<
+        game::RenderStrategyTag<game::RenderStrategy::Interpolation>>(
+        authPlayer);
+
+    // Drive the layer exactly like SceneView::Update does (scene_view.hpp:
+    // 114-117) — the harness has no SceneView.
+    game::InterpolationLayer interp;
+    auto pumpFrame = [&]
+    {
+        h.poll();
+        interp.PreUpdate(aw);
+        interp.PostUpdate(cw, h.clientScene()->GetFixedStepAlpha(), POLL_DT);
+    };
+
+    // Seed the layer's buffers.
+    for (int i = 0; i < 5; ++i) pumpFrame();
+    CHECK(cw.all_of<game::ComponentInterpolatedTransform>(clientPlayer));
+
+    // Teleport the server player — the mirror body snaps 100+ m in one
+    // poll when the UpdateComponentEvent arrives.
+    entt::entity serverPlayer = entt::null;
+    auto& sw = h.serverWorld();
+    for (auto [e, player] : sw.view<game::ComponentPlayer>()->each())
+    {
+        (void)player;
+        serverPlayer = e;
+        break;
+    }
+    CHECK(serverPlayer != entt::null);
+    game::math::vec3 distantPos{100.f, 100.f, 100.f};
+    sw.patch<game::ComponentPhysicBody>(serverPlayer,
+                                        [&](auto& b) { b.pos = distantPos; });
+
+    // Over the window: the mirror must snap, the interpolated transform
+    // must converge to the snap target WITHOUT teleporting, and its
+    // per-frame delta must respect the attractor's rate.
+    //
+    // Deviation note (plan T6 bound): the plan pins |interpDelta| < 0.3 m
+    // against a 100+ m snap while also pinning k ≈ 12/s.  At that rate the
+    // first-frame response is (1 - e^(-12/60)) ≈ 0.18 of the gap — ~18 m
+    // for a 100 m snap — so the two bounds cannot hold simultaneously (a
+    // slower k that met 0.3 m/frame would take ~20 s to converge, not
+    // "within the window").  The asserted bound is the attractor contract
+    // itself: the transform never moves more than its exponential response
+    // to the largest mirror jump (a teleport would move the full snap
+    // distance in one frame — ~5x the bound).
+    const int windowPolls = 200;
+    const float factor =
+        1.f - std::exp(-game::InterpolationLayer::kAttractorRate * POLL_DT);
+    game::math::vec3 prevInterp{};
+    game::math::vec3 prevMirror{};
+    bool havePrev = false;
+    float maxMirrorDelta = 0.f;
+    float maxInterpDelta = 0.f;
+    bool mirrorSnapped = false;
+    bool interpConverged = false;
+    for (int i = 0; i < windowPolls; ++i)
+    {
+        pumpFrame();
+
+        auto& mirrorBody = aw.get<game::ComponentPhysicBody>(authPlayer);
+        if (havePrev)
+        {
+            maxMirrorDelta = std::max(
+                maxMirrorDelta, game::math::len(mirrorBody.pos - prevMirror));
+            maxInterpDelta = std::max(
+                maxInterpDelta,
+                game::math::len(
+                    cw.get<game::ComponentInterpolatedTransform>(clientPlayer)
+                            .pos -
+                        prevInterp));
+        }
+        prevMirror = mirrorBody.pos;
+        prevInterp =
+            cw.get<game::ComponentInterpolatedTransform>(clientPlayer).pos;
+        havePrev = true;
+
+        if (game::math::len(mirrorBody.pos - distantPos) < 2.f)
+            mirrorSnapped = true;
+        if (game::math::len(prevInterp - distantPos) < 2.f)
+            interpConverged = true;
+    }
+
+    CHECK(mirrorSnapped);
+    CHECK(interpConverged);
+    CHECK(maxInterpDelta > 0.f);
+    CHECK(maxInterpDelta < maxMirrorDelta * factor * 1.1f + 0.01f);
 }
 
 // =============================================================================
