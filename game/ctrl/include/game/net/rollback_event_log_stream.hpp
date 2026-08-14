@@ -139,10 +139,21 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         // once validated.  Use max to never regress.
         m_alignmentTick = std::max(m_alignmentTick, avt.tick);
 
-        if (m_currentTick < m_serverTick)
+        // Keep the client counter ahead of the server by the snapshot
+        // interval (D1/D3): client-stamped frames stamped tick T must
+        // arrive at the server before its fixed stage processes T (they
+        // wait in the ring), and predictions stay stamped ahead of the
+        // alignment tick so validation pairs them with the server events
+        // of the tick they predict.  Snap forward whenever the offset is
+        // below the interval; in steady state the counters advance at the
+        // same cadence and this is a no-op.
+        Tick ahead = m_serverTick + m_snapshotInterval;
+        if (m_currentTick < ahead)
         {
-            m_currentTick = m_serverTick + m_snapshotInterval;  // advance to next snapshot interval
-            LOG_WARN("client tick behind server tick, advancing to catch up");
+            Tick oldTick = m_currentTick;
+            m_currentTick = ahead;
+            LOG_WARN("client tick {} behind server tick {}, advancing to {}",
+                     oldTick, m_serverTick, ahead);
             m_snapshots.clear();
             m_predictedEvents.clear();
             m_tickPredictionRanges.clear();
@@ -262,7 +273,12 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         }
 
         if (!consistent) RollbackToLatest(world);
-        else EraseComparedPredictions();
+        else if (m_alignmentTick > 0) EraseComparedPredictions(m_alignmentTick);
+        else
+        {
+            m_predictedEvents.clear();
+            m_tickPredictionRanges.clear();
+        }
 
         return consistent;
     }
@@ -284,14 +300,20 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         Tick baseTick = base->tick;
 
         // Find the prediction at the alignment tick (or the last prediction
-        // with tick ≤ m_alignmentTick).  This aligns the comparison to the
-        // server's confirmed time window.  When alignment is unset (never
-        // pinged), falls back to the newest prediction per family.
+        // with tick < m_alignmentTick).  The alignment tick advances when
+        // AdvanceTick arrives, but the server's state events for that tick
+        // (physics patches etc.) are enqueued after the AdvanceTick and
+        // travel in a later batch — comparing at tick T would pair the
+        // prediction with T-1's events.  Defer one tick: at alignment T the
+        // server has confirmed everything below T (reliable FIFO), so the
+        // prediction stamped T-1 pairs with the last server event of T-1.
+        // When alignment is unset (never pinged), falls back to the newest
+        // prediction per family.
         std::unordered_map<FamilyId, const PredictedEntry*> alignedPred;
         for (auto& range : m_tickPredictionRanges)
         {
             if (range.tick < baseTick) continue;
-            if (m_alignmentTick > 0 && range.tick > m_alignmentTick) break;
+            if (m_alignmentTick > 0 && range.tick >= m_alignmentTick) break;
             for (size_t i = range.startIdx;
                  i < range.startIdx + range.count &&
                  i < m_predictedEvents.size();
@@ -301,6 +323,16 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
                     &m_predictedEvents[i];
             }
         }
+
+        // If no prediction is admissible at this alignment, consume
+        // nothing: the scan below dequeue-consumes every server event it
+        // passes, and events eaten here are never compared.  Validation
+        // runs every poll, so between alignment ticks the scans would
+        // otherwise eat each newly-arrived server event while no
+        // prediction is admissible — the real compare at the next
+        // alignment tick would then find nothing and rollback could never
+        // fire.  Leave the events in the ring for that compare.
+        if (alignedPred.empty()) return true;
 
         // Find last server payload per family since the base snapshot.
         // Incoming server events carry the self bit (peer 63);
@@ -340,7 +372,13 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         }
 
         if (!consistent) RollbackToLatest(world);
-        else EraseComparedPredictions();
+        else if (m_alignmentTick > 0)
+            EraseComparedPredictions(m_alignmentTick - 1);
+        else
+        {
+            m_predictedEvents.clear();
+            m_tickPredictionRanges.clear();
+        }
         return consistent;
     }
 
@@ -525,26 +563,22 @@ class RollbackEventLogStream : public EventLogStream<Capacity>
         }
     }
 
-    // Erase only the predictions that were compared (up to m_alignmentTick).
+    // Erase the predictions the comparison admitted — everything stamped
+    // <= boundary (predictions are in monotonic tick order).  Each
+    // validation path passes its own admission boundary: Validate admits
+    // ticks <= m_alignmentTick; ValidateLatest defers by one tick (server
+    // state events for tick T travel in a later batch than the
+    // AdvanceTick — see ValidateLatest) and passes m_alignmentTick - 1.
     // Predictions made for ticks the server hasn't confirmed yet survive.
-    // When there is no alignment (m_alignmentTick == 0, never pinged), clear
-    // all predictions — the fallback SelectBaseSnapshot pairs the newest
-    // snapshot with whatever server events have arrived.
-    void EraseComparedPredictions()
+    // A caller without an alignment (m_alignmentTick == 0, never pinged)
+    // falls back to the newest prediction, so everything is cleared — see
+    // the call sites.
+    void EraseComparedPredictions(Tick boundary)
     {
-        if (m_alignmentTick > 0)
-        {
-            // Predictions are in monotonic tick order.
-            while (!m_predictedEvents.empty() &&
-                   m_predictedEvents.front().tick <= m_alignmentTick)
-                m_predictedEvents.pop_front();
-            RebuildTickRanges();
-        }
-        else
-        {
-            m_predictedEvents.clear();
-            m_tickPredictionRanges.clear();
-        }
+        while (!m_predictedEvents.empty() &&
+               m_predictedEvents.front().tick <= boundary)
+            m_predictedEvents.pop_front();
+        RebuildTickRanges();
     }
 
     Tick m_currentTick = 0;

@@ -161,7 +161,12 @@ class ClientConnScene : public Scene
                 cfg.subsystems.clear();
                 cfg.realtimeSubsystems.clear();
                 cfg.subsystems.push_back(Id<sim::SubsystemDebugText>());
-                cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
+                // The FixedStep player belongs in the fixed pipeline (D2):
+                // it reads the tick ring on the shared 20 Hz tick space.  Its
+                // subStepIdx==0 gate never opens in the realtime pipeline
+                // (Scene::Update's fixed loop leaves subStepIdx at the
+                // leftover before realtime stages run).
+                cfg.subsystems.push_back(Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
                 cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
                 cfg.realtimeSubsystems.push_back(Id<sim::SubsystemCreature<UpdateType::Realtime>>());
                 cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPhysics<UpdateType::Realtime>>());

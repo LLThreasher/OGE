@@ -37,6 +37,13 @@ class Scene : protected AppRuntime
     sim::SubsystemPipeline m_subsystems;
     sim::RealtimeSubsystemPipeline m_realtimeSubsystems;
 
+    // Scene-driven fixed-frame accumulator (D2): render dt accumulates until
+    // the fixed-frame duration is reached, then the fixed pipeline executes
+    // as explicit sub-steps of sim::kSubStepDt (the sub-step boundaries are
+    // visible to the stages via SimTickContext.subStepIdx).
+    float m_fixedAccum = 0.f;
+    float m_fixedFrameDuration = 1.f / 30.f;
+
     SceneConfig m_sceneConfig = {};
 
    public:
@@ -45,6 +52,14 @@ class Scene : protected AppRuntime
 
     auto& GetWorld() { return m_world; }
     const auto& GetWorld() const { return m_world; }
+
+    // Override the fixed-frame duration.  Default 1/30 preserves the
+    // current fixed-pipeline behavior for all other scenes; the server
+    // sets 1/20 (sim::kFixedFrameDuration).
+    void SetFixedFrameDuration(float duration)
+    {
+        m_fixedFrameDuration = duration;
+    }
 
     // Interpolation alpha from the fixed-step scheduler.
     // Range [0, 1) — fraction of the way from the previous physics tick

@@ -160,8 +160,6 @@ struct ComponentPlayer
 {
     std::array<uint8_t, 16> id;
     float lastActionTime = 0.f;
-    uint64_t inputCursor{};
-    uint64_t actionCursor{};
 
     static entt::entity CreatePlayer(oge::runtime::OgeRegistry& world, PlayerInfo info,
                                      entt::entity hint = entt::null);

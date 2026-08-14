@@ -4,6 +4,7 @@
 #include "game/game_world.hpp"
 #include "oge/json.hpp"
 #include "game/net/replication_events.hpp"
+#include "game/sim/player_sim_config.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
@@ -31,7 +32,40 @@ Scene::~Scene()
 void Scene::Update(Frame f, SceneContext sctx)
 {
     m_ctx.memory.Update(f.dt);
-    m_subsystems.Update(f.dt);
+
+    // Scene-driven fixed-step loop (D2): accumulate render dt and execute
+    // the fixed pipeline as sub-steps of sim::kSubStepDt once the fixed
+    // frame is due.  The sub-step boundaries are visible to the stages via
+    // SimTickContext.subStepIdx (0 = decisions, 1.. = re-application).
+    // kFixedEps covers the harness's POLL_DT (0.016) vs 1/60 drift.
+    constexpr float kFixedEps = 0.005f;
+    m_fixedAccum += f.dt;
+    if (m_fixedAccum + kFixedEps >= m_fixedFrameDuration)
+    {
+        const int subSteps =
+            (int)std::lround(m_fixedFrameDuration / sim::kSubStepDt);
+        OGE_ASSERT(subSteps >= 1,
+                   "fixed frame duration {} is shorter than one sub-step {}",
+                   m_fixedFrameDuration, sim::kSubStepDt);
+        if (m_world.ctx().contains<sim::SimTickContext>())
+        {
+            auto& tickCtx = m_world.ctx().get<sim::SimTickContext>();
+            for (int s = 0; s < subSteps; ++s)
+            {
+                tickCtx.subStepIdx = (uint8_t)s;
+                m_subsystems.Update(sim::kSubStepDt);
+            }
+        }
+        else
+        {
+            for (int s = 0; s < subSteps; ++s)
+            {
+                m_subsystems.Update(sim::kSubStepDt);
+            }
+        }
+        m_fixedAccum = 0.f;
+    }
+
     m_realtimeSubsystems.Update(f.dt);
 }
 

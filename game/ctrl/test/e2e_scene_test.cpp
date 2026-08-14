@@ -21,6 +21,7 @@
 #include "game/components.hpp"
 #include "game/net/replication_events.hpp"
 #include "game/net/rollback_event_log_stream.hpp"
+#include "game/sim/player_sim_config.hpp"
 #include "oge/log.hpp"
 #include "oge/platform/io.hpp"
 #include "scene_test_harness.hpp"
@@ -64,6 +65,27 @@ std::string GetBinaryDir()
     }
 #endif
     return ".";
+}
+
+// Wire up the local player's input components (DebugVoxelView does this in
+// the app; the harness has no view, so tests do it manually).  The realtime
+// and fixed SubsystemPlayer stages hard-get these components — they must all
+// exist before the stages run:
+//  - PlayerInputStream — raw input accumulation + tick ring
+//  - PlayerActionStream — the realtime stage pushes ray-encoded dig/place
+//    actions here (D6)
+//  - PlayerSimInputState — fixed-tick cursors + cached frame (D3)
+//  - UpdateTag<Realtime> — the realtime stage only visits tagged entities
+void WireLocalInput(game::GameWorld& cw, entt::entity clientPlayer)
+{
+    if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
+        cw.emplace<game::input::PlayerInputStream>(clientPlayer);
+    if (!cw.all_of<game::input::PlayerActionStream>(clientPlayer))
+        cw.emplace<game::input::PlayerActionStream>(clientPlayer);
+    if (!cw.all_of<game::input::PlayerSimInputState>(clientPlayer))
+        cw.emplace<game::input::PlayerSimInputState>(clientPlayer);
+    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
+        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
 }
 }  // namespace
 
@@ -359,12 +381,22 @@ TEST(e2e_physics_events_bounded)
             }
         }
 
-        // With one player and the fix, each entity gets at most 1
-        // UpdateComponentEvent per physics frame.
+        // Phase 1 (pre-D7): each entity gets at most kSubStepsPerTick + 1
+        // UpdateComponentEvents per poll — one per fixed sub-step on the
+        // fixed-frame polls (the physics stage batches all three axes into
+        // one patch per sub-step) plus one from the realtime physics stage
+        // that still runs every poll.  The scan window is bounded by the
+        // tail, and the tail lags the enqueue by up to two polls (the
+        // server consumes entries when packets actually drain), so one
+        // window can span a fixed poll + two lagged realtime polls:
+        // 3 sub-steps + 3 realtime = kSubStepsPerTick + 3.  Phase 2's D7
+        // batches the sub-steps into a single event per tick and the
+        // realtime stage stops simulating the player, tightening this back
+        // to <= 1.
         for (auto& [e, count] : perEntityCount)
         {
             (void)e;
-            CHECK(count <= 1);
+            CHECK(count <= game::sim::kSubStepsPerTick + 3);
         }
 
         if (lastCursor != 0) beforeCursor = lastCursor;
@@ -521,28 +553,33 @@ TEST(e2e_update_chunk_replicates)
 }
 
 // =============================================================================
-// Player input replication
+// Player input replication (T2) — the full client → server flow under the
+// tick-space design: a raw frame delta (move + jump + dig) pushed on the
+// client is drained by the realtime stage (the dig becomes a ray-encoded
+// action), aggregated into a tick-stamped movement frame + action frame on
+// the client's fixed frame, shipped, and applied by the SERVER's fixed
+// stage at the stamped tick (D3/D6).  The test verifies:
+//  - the server applied a movement frame carrying the jump flag and the
+//    move (magnitude > 0.4 after SNorm8 round-trip);
+//  - the dig action applied on the same tick and removed exactly the block
+//    the precomputed ray hits (cast from the client camera position);
+//  - the applied tick lies within the client's producing-tick window
+//    (tick-anchored application, not receive time — the client's tick
+//    counter stamps the frames).
 //
-// The client player's input stream is replicated to the server as
-// PlayerInputReplicationEvent (packed with game::input::net::PackFrame).
-// ClientScene2 installs the input hooks and calls PollPlayerInputs each tick;
-// DebugServerScene installs the same hooks so ApplyEvent can insert the
-// incoming frame into the server player's stream.
-//
-// The harness has no DebugVoxelView, so the test creates the player's
-// PlayerInputStream component manually (as DebugVoxelView does) — the
-// on_construct hook auto-registers it.  Then dummy input is injected and the
-// test verifies the server's stream contains the same packed content.
+// The harness has no DebugVoxelView, so the test wires the input components
+// manually (WireLocalInput mirrors what DebugVoxelView does).
 // =============================================================================
 
 TEST(e2e_player_input_replicates)
 {
     NetSceneHarness h;
+    h.enableClientPrediction();
     CHECK(h.start());
     CHECK(h.connect());
     CHECK(h.waitForHandshake());
 
-    // Wait for the player entity to replicate to the client.
+    // Wait for the player to replicate to the client's prediction world.
     entt::entity clientPlayer = entt::null;
     CHECK(h.pumpUntil(
         [&]
@@ -559,68 +596,264 @@ TEST(e2e_player_input_replicates)
         400));
     CHECK(clientPlayer != entt::null);
 
-    // Wire up the local player's input stream (DebugVoxelView does this in
-    // the real app; ClientScene2's hooks auto-register it on construct).
-    auto& cw = h.clientWorld();
-    cw.emplace<game::input::PlayerInputStream>(clientPlayer);
-    auto& clientStream =
-        cw.get<game::input::PlayerInputStream>(clientPlayer);
-
-    // Push a frame delta with a jump action + move delta, then AdvanceTick to
-    // flush the accumulated frame into the discrete stream.  The new frame-stream
-    // API accumulates deltas via PushFrame and commits them via AdvanceTick.
+    // Find the server's player (entity ids are shared client/server).
+    entt::entity serverPlayer = entt::null;
+    for (auto [e, player] : h.serverWorld().view<game::ComponentPlayer>()->each())
     {
-        game::input::PlayerInputFrameDelta delta;
-        delta.inputEvent = game::input::PlayerInputEvent{
-            game::math::vec2{0.25f, 0.5f}, game::input::PlayerAction::Jump};
-        delta.moveDelta = game::math::vec2{0.5f, 0.25f};
-        clientStream.PushFrame(delta);
+        (void)player;
+        serverPlayer = e;
     }
-    clientStream.AdvanceTick();
+    CHECK(serverPlayer != entt::null);
 
-    // The server must receive the input in its player's stream with the same
-    // packed frame content (action mask + quantized positions).
-    bool receivedAction = false;
-    bool receivedMove = false;
+    // Wire up local input + simulation tag (DebugVoxelView does this in the
+    // app) and let both copies fall onto terrain and come to rest — the
+    // camera chase assumes a stationary body, so the emitted ray origin is
+    // exactly the position read below.
+    auto& cw = h.clientWorld();
+    WireLocalInput(cw, clientPlayer);
+    auto& sw = h.serverWorld();
     CHECK(h.pumpUntil(
         [&]
         {
-            auto& sw = h.serverWorld();
-            for (auto [e, player] : sw.view<game::ComponentPlayer>()->each())
-            {
-                (void)player;
-                auto& stream = sw.get<game::input::PlayerInputStream>(e);
+            return sw.get<game::ComponentPhysicBody>(serverPlayer).isGrounded;
+        },
+        600));
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            return cw.get<game::ComponentPhysicBody>(clientPlayer).isGrounded;
+        },
+        600));
 
-                // Read from the very first event: cursor 1, not the default
-                // 0 (a zero cursor snaps to the frontier and skips all).
-                game::input::PlayerInputStream::Cursor c{1};
-                game::input::PlayerInputFrame frame;
-                while (stream.PollFrame(c, frame))
-                {
-                    for (size_t i = 0; i < frame.inputEventCnt; ++i)
-                    {
-                        if (frame.inputEvents[i]
-                                .get<game::input::PlayerAction::Jump>())
-                        {
-                            receivedAction = true;
-                        }
-                    }
-                    // move is in world space (Camera.right * moveDelta.x +
-                    // Camera.forward * moveDelta.y).  Check magnitude rather
-                    // than exact components — SNorm8 quantization rounds.
-                    if (std::abs(frame.move.x) > 0.4f ||
-                        std::abs(frame.move.z) > 0.2f)
-                        receivedMove = true;
-                }
+    // Aim the camera straight down so the dig ray hits the ground beneath
+    // the player deterministically (ViewToRay(camera, {0,0}) == forward).
+    auto& cam = cw.get<game::ComponentCamera>(clientPlayer);
+    cam.SetYawPitch(0.f, -game::math::radians(89.f));
+    // The realtime stage only chases the camera while draining input —
+    // push a no-op delta so the poll below consumes a frame and places the
+    // camera over the body (zero move, no aim/actions: harmless).
+    {
+        game::input::PlayerInputFrameDelta delta;
+        cw.get<game::input::PlayerInputStream>(clientPlayer).PushFrame(delta);
+    }
+    h.poll();  // let the chase update place the camera over the body
 
-                if (receivedAction && receivedMove) return true;
-            }
-            return false;
+    // Precompute the expected dig hit by casting the SAME ray on the server
+    // terrain — origin = the camera position the realtime stage emits from,
+    // dir = the camera forward.
+    const game::math::vec3 rayOrigin = cam.position;
+    const game::math::vec3 rayDir = cam.forward;
+    auto& serverTerrain = sw.ctx().get<game::terrain::TerrainView>();
+    const auto preHit = serverTerrain.CastRay(rayOrigin, rayDir);
+    CHECK(preHit.has_value());
+    const game::Point3 hitPos = preHit->hitPos;
+    {
+        uint32_t preBlock = 0;
+        CHECK(serverTerrain.TryGetBlock(hitPos, preBlock));
+        CHECK(preBlock != 0);
+    }
+
+    // Push ONE frame delta: forward move + jump + dig.  The realtime stage
+    // drains it on the next poll (AdvanceTick commits, then the drain
+    // reads), emitting the dig as a ray-encoded action; the next fixed
+    // frame aggregates the movement frame + the action frame and ships both.
+    const uint32_t clientTick0 = h.clientRollbackStream().CurrentTick();
+    {
+        auto& clientStream =
+            cw.get<game::input::PlayerInputStream>(clientPlayer);
+        game::input::PlayerInputFrameDelta delta;
+        delta.moveDelta = game::math::vec2{0.f, 1.f};
+        auto event = game::input::PlayerInputEvent{
+            game::math::vec2{0.f, 0.f},
+            game::input::PlayerActionKind::Digging};
+        event.set<game::input::PlayerActionKind::Jump>();
+        delta.inputEvent = event;
+        clientStream.PushFrame(delta);
+    }
+
+    // The server's fixed stage applies the stamped movement frame when its
+    // tick reaches the frame's stamp + kInputPipelineDelayTicks (D3).
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& simState =
+                sw.get<game::input::PlayerSimInputState>(serverPlayer);
+            return simState.lastAppliedTick != 0 && simState.hasFrame &&
+                   simState.frame.jump &&
+                   game::math::len(simState.frame.move) > 0.4f;
         },
         400));
 
-    CHECK(receivedAction);
-    CHECK(receivedMove);
+    const uint32_t appliedTick =
+        sw.get<game::input::PlayerSimInputState>(serverPlayer).lastAppliedTick;
+
+    // The dig action frame carries the same stamp as the movement frame —
+    // both aggregate on the same fixed frame and apply on the same tick.
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& simState =
+                sw.get<game::input::PlayerSimInputState>(serverPlayer);
+            return simState.lastActionTick != 0;
+        },
+        400));
+    CHECK(sw.get<game::input::PlayerSimInputState>(serverPlayer)
+                  .lastActionTick == appliedTick);
+
+    // The dig removed the precomputed block on the SERVER terrain (D6: the
+    // exact client ray cast server-side — no camera reconstruction).
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            uint32_t v = 0;
+            return serverTerrain.TryGetBlock(hitPos, v) && v == 0;
+        },
+        400));
+
+    // The server applied the frame at the tick the client stamped it (D3:
+    // tick-anchored application, not receive time): the producing tick lies
+    // within [clientTick0, clientTick1].
+    const uint32_t clientTick1 = h.clientRollbackStream().CurrentTick();
+    CHECK(clientTick0 - 1 <= appliedTick && appliedTick <= clientTick1);
+}
+
+// =============================================================================
+// Tick-anchored input application (T1) — the server applies movement frames
+// at their stamped tick (dueTick = simTick - kInputPipelineDelayTicks), not
+// at receive time.  Frames are injected directly into the server player's
+// stream via the replication apply path, and the test observes:
+//
+//  A. frames stamped ahead of the server tick wait and apply at their
+//     stamped tick (all three are injected up-front — receive-time
+//     application would apply them back-to-back);
+//  B. a stale duplicate of an already-applied frame is dropped;
+//  C. after kMaxInputWaitTicks without an applied frame the read degrades
+//     (lastAppliedTick jumps past the gap) and a far-future frame still
+//     applies at its own due tick.
+//
+// (D — the producing client stamps frames with its own tick — is covered by
+// e2e_player_input_replicates.)
+// =============================================================================
+
+TEST(e2e_input_tick_anchored_apply)
+{
+    NetSceneHarness h;
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    auto& sw = h.serverWorld();
+
+    // Find the server player and let it fall onto terrain and come to rest.
+    entt::entity serverPlayer = entt::null;
+    for (auto [e, player] : sw.view<game::ComponentPlayer>()->each())
+    {
+        (void)player;
+        serverPlayer = e;
+    }
+    CHECK(serverPlayer != entt::null);
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            return sw.get<game::ComponentPhysicBody>(serverPlayer).isGrounded;
+        },
+        600));
+
+    auto& simTick = sw.ctx().get<game::sim::SimTickContext>();
+    auto& simState = sw.get<game::input::PlayerSimInputState>(serverPlayer);
+    auto bodyPos = [&]
+    { return sw.get<game::ComponentPhysicBody>(serverPlayer).pos; };
+    const uint32_t T0 = simTick.currentTick;
+
+    // Inject three movement frames stamped T0+1..T0+3 NOW, before their due
+    // ticks.
+    auto inject = [&](uint32_t stamp, game::math::vec3 move)
+    {
+        game::input::PlayerInputFrame f{};
+        f.tick = stamp;
+        f.move = move;
+        game::net::ApplyEvent(
+            sw, game::net::PlayerInputReplicationEvent{
+                    serverPlayer, game::input::net::PackFrame(f)});
+    };
+    inject(T0 + 1, {0.f, 0.f, 1.f});
+    inject(T0 + 2, {0.f, 0.f, -1.f});
+    inject(T0 + 3, {1.f, 0.f, 0.f});
+
+    // Poll to a tick boundary and record the body position there (the first
+    // poll of tick T already ran tick T's fixed frame).
+    auto pumpToTick = [&](uint32_t target, game::math::vec3& outPos)
+    {
+        return h.pumpUntil(
+            [&]
+            {
+                if (simTick.currentTick != target) return false;
+                outPos = bodyPos();
+                return true;
+            },
+            400);
+    };
+
+    // (A) Each frame applies at its stamped tick (D3: dueTick = simTick - 1).
+    game::math::vec3 p1{}, p2{}, p3{}, p4{};
+    CHECK(pumpToTick(T0 + 1, p1));
+    CHECK(simState.lastAppliedTick <= T0);  // stamped T0+1 — not due yet
+    CHECK(pumpToTick(T0 + 2, p2));
+    CHECK(simState.lastAppliedTick == T0 + 1);
+    CHECK(simState.frame.move.z > 0.9f);
+    CHECK(pumpToTick(T0 + 3, p3));
+    CHECK(simState.lastAppliedTick == T0 + 2);
+    CHECK(simState.frame.move.z < -0.9f);
+    CHECK(pumpToTick(T0 + 4, p4));
+    CHECK(simState.lastAppliedTick == T0 + 3);
+    CHECK(simState.frame.move.x > 0.9f);
+
+    // Displacements land in the applied tick (friction 0.5 converges the
+    // creature velocity toward maxSpeed*move, so a full tick of order gives
+    // ~0.1+ m — residual decay after the order ends stays in the same
+    // direction).
+    CHECK(p2.z - p1.z > 0.03f);   // +Z applied during tick T0+2
+    CHECK(p3.z - p2.z < -0.03f);  // -Z applied during tick T0+3
+    CHECK(p4.x - p3.x > 0.03f);   // +X applied during tick T0+4
+
+    // (B) A stale duplicate of an already-applied frame is dropped: the
+    // lastAppliedTick stays put and the -X move never shows up in the
+    // trajectory (residual +X drift keeps x displacement positive).
+    inject(T0 + 2, {-1.f, 0.f, 0.f});  // stale: T0+2 <= lastAppliedTick
+    game::math::vec3 p5{}, p6{}, p7{};
+    CHECK(pumpToTick(T0 + 5, p5));
+    CHECK(pumpToTick(T0 + 6, p6));
+    CHECK(pumpToTick(T0 + 7, p7));
+    CHECK(simState.lastAppliedTick == T0 + 3);
+    CHECK(p6.x - p5.x >= -0.02f);
+    CHECK(p7.x - p6.x >= -0.02f);
+
+    // (C) Bounded wait + degrade: a frame stamped 8+ ticks ahead waits for
+    // its due tick; after kMaxInputWaitTicks without an applied frame the
+    // read degrades (lastAppliedTick advances past the gap), and the frame
+    // still applies at its own due tick.
+    inject(T0 + 8, {0.f, 0.f, 1.f});
+    game::math::vec3 p8{}, p9{}, p10{}, p13{}, p15{}, p17{}, p19{};
+    CHECK(pumpToTick(T0 + 8, p8));
+    CHECK(game::math::abs(p8.z - p7.z) < 0.03f);  // waiting — no move
+    CHECK(simState.lastAppliedTick == T0 + 3);
+    CHECK(pumpToTick(T0 + 9, p9));
+    CHECK(simState.lastAppliedTick == T0 + 8);  // applied at its due tick
+    CHECK(p9.z - p8.z > 0.05f);
+
+    // Inject a frame stamped far ahead, then wait past the bounded-wait
+    // window: the degrade advances lastAppliedTick without applying it.
+    CHECK(pumpToTick(T0 + 10, p10));
+    inject(T0 + 18, {0.f, 0.f, 1.f});
+    CHECK(pumpToTick(T0 + 13, p13));
+    CHECK(simState.lastAppliedTick == T0 + 8);  // still waiting
+    CHECK(pumpToTick(T0 + 15, p15));
+    CHECK(simState.lastAppliedTick == T0 + 8);  // 15-8 = 7 <= 8 — no degrade
+    CHECK(pumpToTick(T0 + 17, p17));
+    CHECK(simState.lastAppliedTick == T0 + 16);  // degrade: 17-8 = 9 > 8
+    CHECK(pumpToTick(T0 + 19, p19));
+    CHECK(simState.lastAppliedTick == T0 + 18);  // applied at its due tick
+    CHECK(p19.z - p17.z > 0.05f);
 }
 
 // =============================================================================
@@ -631,8 +864,11 @@ TEST(e2e_player_input_replicates)
 // Regression coverage:
 //  - PackedPlayerInputFrame dropped moveZ on the wire (forward movement at
 //    identity camera is pure +z, so the server never moved).
-//  - UnpackFrame never restored hasAim (the server camera ignored the
-//    client's pan).
+//  - Aim delivery: the old movement frame carried a pan/aim section that was
+//    dropped on the wire (the server camera ignored the client's pan).  The
+//    aim section left the movement frame (D6) — delivery is now asserted
+//    via a ray-encoded dig action hitting the exact block the client aims
+//    at (see the end of this test).
 // =============================================================================
 
 TEST(e2e_player_input_prediction_vs_authoritative)
@@ -686,9 +922,7 @@ TEST(e2e_player_input_prediction_vs_authoritative)
     // does this in the app; the tag is also replicated now, but keep the
     // emplace defensive like e2e_local_prediction_player_moves).
     auto& cw = h.clientWorld();
-    cw.emplace<game::input::PlayerInputStream>(clientPlayer);
-    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
-        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+    WireLocalInput(cw, clientPlayer);
     auto& clientStream =
         cw.get<game::input::PlayerInputStream>(clientPlayer);
 
@@ -705,8 +939,6 @@ TEST(e2e_player_input_prediction_vs_authoritative)
     const auto predPos0 = cw.get<game::ComponentPhysicBody>(clientPlayer).pos;
     const auto& aw = h.clientAuthoritativeWorld();
     const auto authPos0 = aw.get<game::ComponentPhysicBody>(authPlayer).pos;
-    const float srvYaw0 =
-        h.serverWorld().get<game::ComponentCamera>(serverPlayer).yaw;
 
     // Drive forward input (+ a rightward pan) for 90 frames, one delta per
     // poll, then let replication settle.
@@ -744,23 +976,86 @@ TEST(e2e_player_input_prediction_vs_authoritative)
     // at a fraction of it (empty frames polluting the server's input ring).
     CHECK(authDist > 0.6f * predDist);
 
-    // The server camera must follow the client's aim — hasAim was dropped by
-    // UnpackFrame before the fix, so the accumulated yaw stayed 0.  Allow a
-    // couple of frames of slack: the server's first poll snaps its cursor to
-    // the stream frontier and may skip the very first frame.
-    const float srvYaw =
-        h.serverWorld().get<game::ComponentCamera>(serverPlayer).yaw;
-    const float yawDelta = game::input::WrapRadians0To2Pi(srvYaw) -
-                           game::input::WrapRadians0To2Pi(srvYaw0);
-    CHECK(yawDelta > InputFrames * PanPerFrame - 0.5f);
+    // Aim delivery (D6): the movement frame no longer carries aim — the pan
+    // above turned the camera locally only.  Delivery is asserted via a
+    // ray-encoded dig action: the client realtime stage bakes the ray from
+    // the live camera, the server casts the SAME ray (no camera
+    // reconstruction) and removes exactly the block the client aims at.
+    {
+        // Aim straight down so the ray hits the ground beneath the player
+        // deterministically, and let the chase update place the camera.
+        auto& cam = cw.get<game::ComponentCamera>(clientPlayer);
+        cam.SetYawPitch(0.f, -game::math::radians(89.f));
+        h.poll();
+
+        // Push one dig delta.  The realtime stage emits it on the next poll.
+        {
+            game::input::PlayerInputFrameDelta delta;
+            delta.inputEvent = game::input::PlayerInputEvent{
+                game::math::vec2{0.f, 0.f},
+                game::input::PlayerActionKind::Digging};
+            clientStream.PushFrame(delta);
+        }
+
+        // The client's authoritative mirror receives the aggregated action
+        // frame (PollPlayerActions pushes a copy there).  Read it to learn
+        // the EXACT emitted ray — no timing assumptions about the camera.
+        auto& mirrorActionStream =
+            aw.get<game::input::PlayerActionStream>(authPlayer);
+        game::input::PlayerActionFrame actionFrame{};
+        CHECK(h.pumpUntil(
+            [&]
+            {
+                auto c = mirrorActionStream.HeadCursor();
+                if (c == 0) return false;
+                actionFrame = mirrorActionStream.At(c - 1);
+                return actionFrame.actionCnt > 0;
+            },
+            400));
+        CHECK(actionFrame.actionCnt > 0);
+
+        const game::input::PlayerAction emitted = actionFrame.actions[0];
+        auto& serverTerrain =
+            h.serverWorld().ctx().get<game::terrain::TerrainView>();
+        const auto preHit =
+            serverTerrain.CastRay(emitted.origin, emitted.dir);
+        CHECK(preHit.has_value());
+        const game::Point3 hitPos = preHit->hitPos;
+        {
+            uint32_t preBlock = 0;
+            CHECK(serverTerrain.TryGetBlock(hitPos, preBlock));
+            CHECK(preBlock != 0);
+        }
+
+        // The server applies the action frame at its stamped tick.
+        CHECK(h.pumpUntil(
+            [&]
+            {
+                auto& simState = h.serverWorld()
+                                     .get<game::input::PlayerSimInputState>(
+                                         serverPlayer);
+                return simState.lastActionTick == actionFrame.tick;
+            },
+            400));
+
+        // ...and the dig removed the block the client aimed at.
+        CHECK(h.pumpUntil(
+            [&]
+            {
+                uint32_t v = 0;
+                return serverTerrain.TryGetBlock(hitPos, v) && v == 0;
+            },
+            400));
+    }
 }
 
 // =============================================================================
 // Jump + move + aim at the same time — the prediction and authoritative
-// copies must both jump.  The real client config runs
-// SubsystemPlayer<FixedStep> in the realtime pipeline to process action
-// events; if the prediction world lacks it, the local copy stays grounded
-// while the authoritative copy hops ~1.65 m — a visible divergence.
+// copies must both jump.  The client config runs SubsystemPlayer<FixedStep>
+// in the fixed pipeline on the shared tick space: it reads the aggregated
+// tick frame and fires the jump decision; if the prediction world lacks it,
+// the local copy stays grounded while the authoritative copy hops ~1.65 m —
+// a visible divergence.
 // =============================================================================
 
 TEST(e2e_player_input_jump_move_aim_sync)
@@ -803,9 +1098,7 @@ TEST(e2e_player_input_jump_move_aim_sync)
     // Wire up local input + simulation tag (DebugVoxelView does this in the
     // app).
     auto& cw = h.clientWorld();
-    cw.emplace<game::input::PlayerInputStream>(clientPlayer);
-    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
-        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+    WireLocalInput(cw, clientPlayer);
     auto& clientStream =
         cw.get<game::input::PlayerInputStream>(clientPlayer);
 
@@ -859,7 +1152,8 @@ TEST(e2e_player_input_jump_move_aim_sync)
         delta.panDelta = game::math::vec2{0.05f, 0.f};
         if (jump)
             delta.inputEvent = game::input::PlayerInputEvent{
-                game::math::vec2{0.f, 0.f}, game::input::PlayerAction::Jump};
+                game::math::vec2{0.f, 0.f},
+                game::input::PlayerActionKind::Jump};
         clientStream.PushFrame(delta);
         h.poll();
     };
@@ -987,10 +1281,7 @@ TEST(e2e_interpolation_layer)
         clientPlayer);
     // Wire the player for local simulation (as DebugVoxelView does) so the
     // realtime subsystems drive the body.
-    if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
-        cw.emplace<game::input::PlayerInputStream>(clientPlayer);
-    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
-        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+    WireLocalInput(cw, clientPlayer);
     auto& body = cw.get<game::ComponentPhysicBody>(clientPlayer);
     game::math::vec3 initialPos = body.pos;
 
@@ -1050,10 +1341,7 @@ TEST(e2e_local_prediction_player_moves)
     auto& cw = h.clientWorld();
     cw.emplace_or_replace<game::RenderStrategyTag<game::RenderStrategy::LocalPrediction>>(
         clientPlayer);
-    if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
-        cw.emplace<game::input::PlayerInputStream>(clientPlayer);
-    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
-        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+    WireLocalInput(cw, clientPlayer);
 
     auto& clientStream = cw.get<game::input::PlayerInputStream>(clientPlayer);
 
@@ -1123,10 +1411,7 @@ TEST(e2e_rollback_on_server_correction)
     auto& cw = h.clientWorld();
     cw.emplace_or_replace<game::RenderStrategyTag<game::RenderStrategy::LocalPrediction>>(
         clientPlayer);
-    if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
-        cw.emplace<game::input::PlayerInputStream>(clientPlayer);
-    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
-        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+    WireLocalInput(cw, clientPlayer);
 
     // Let a few frames run so the client receives AdvanceTick events and
     // the rollback stream takes snapshots.  The snapshots are taken from
@@ -1233,10 +1518,7 @@ TEST(e2e_rollback_recovery_no_relapse)
     auto& cw = h.clientWorld();
     cw.emplace_or_replace<game::RenderStrategyTag<game::RenderStrategy::LocalPrediction>>(
         clientPlayer);
-    if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
-        cw.emplace<game::input::PlayerInputStream>(clientPlayer);
-    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
-        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+    WireLocalInput(cw, clientPlayer);
 
     // Let snapshots accumulate.
     auto& rbs = h.clientRollbackStream();
@@ -1388,10 +1670,7 @@ TEST(e2e_prediction_stability)
     auto& cw = h.clientWorld();
     cw.emplace_or_replace<game::RenderStrategyTag<game::RenderStrategy::LocalPrediction>>(
         clientPlayer);
-    if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
-        cw.emplace<game::input::PlayerInputStream>(clientPlayer);
-    if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
-        cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+    WireLocalInput(cw, clientPlayer);
 
     // Run 200 frames with prediction enabled — must not crash or assert.
     for (int i = 0; i < 200; ++i)

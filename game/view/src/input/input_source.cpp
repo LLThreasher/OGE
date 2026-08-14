@@ -54,33 +54,33 @@ void KeyMouseInput::onUpdate(FInputContext& ctx)
         if (event.type == InputEventType::MouseButtonDown)
         {
             if (event.mouse.button() == MouseButton::Left)
-                pEvent.set<PlayerAction::Digging>();
+                pEvent.set<PlayerActionKind::Digging>();
             else if (event.mouse.button() == MouseButton::Right)
-                pEvent.set<PlayerAction::Placing>();
+                pEvent.set<PlayerActionKind::Placing>();
         }
         else if (event.type == InputEventType::MouseButtonUp)
         {
             if (event.mouse.button() == MouseButton::Left)
             {
-                pEvent.unset<PlayerAction::Digging>();
+                pEvent.unset<PlayerActionKind::Digging>();
                 dirty = true;
             }
             else if (event.mouse.button() == MouseButton::Right)
             {
-                pEvent.unset<PlayerAction::Placing>();
+                pEvent.unset<PlayerActionKind::Placing>();
                 dirty = true;
             }
         }
         else if (event.type == InputEventType::KeyDown)
         {
             if (event.key == KeyCode::KY_SPACE)
-                pEvent.set<PlayerAction::Jump>();
+                pEvent.set<PlayerActionKind::Jump>();
         }
         else if (event.type == InputEventType::KeyUp)
         {
             if (event.key == KeyCode::KY_SPACE)
             {
-                pEvent.unset<PlayerAction::Jump>();
+                pEvent.unset<PlayerActionKind::Jump>();
                 dirty = true;
             }
         }
@@ -120,9 +120,9 @@ void WidgetInput::onUpdate(FInputContext& ctx)
     // handle pan
     {
         bool dirty = pEvent.actionMask &=
-            ~(1 << static_cast<uint32_t>(PlayerAction::Digging));
+            ~(1 << static_cast<uint32_t>(PlayerActionKind::Digging));
         pEvent.actionMask &=
-            (1 << static_cast<uint32_t>(PlayerAction::Digging));
+            (1 << static_cast<uint32_t>(PlayerActionKind::Digging));
         auto drag = game.try_get<UIDrag>(viewWidget);
         auto [dragRel, _] = ui::TryGetReleasedDragSrc(game, viewWidget);
 
@@ -133,13 +133,13 @@ void WidgetInput::onUpdate(FInputContext& ctx)
                 if (drag->deltaTime > 0.5f && drag->IsHold(game))
                 {
                     isDigging = true;
-                    pEvent.set<PlayerAction::Digging>();
+                    pEvent.set<PlayerActionKind::Digging>();
                     pEvent.actionPos = ScreenToView(pcam, drag->dragLastPos);
                     dirty = true;
                 }
                 else if (dragRel != nullptr && dragRel->IsClick(game))
                 {
-                    pEvent.set<PlayerAction::Placing>();
+                    pEvent.set<PlayerActionKind::Placing>();
                     pEvent.actionPos = ScreenToView(pcam, drag->dragLastPos);
                     dirty = true;
                 }
@@ -154,12 +154,12 @@ void WidgetInput::onUpdate(FInputContext& ctx)
         else if (dragRel != nullptr || drag == nullptr)
         {
             isDigging = false;
-            pEvent.unset<PlayerAction::Digging>();
+            pEvent.unset<PlayerActionKind::Digging>();
             dirty = true;
         }
         else
         {
-            pEvent.set<PlayerAction::Digging>();
+            pEvent.set<PlayerActionKind::Digging>();
             pEvent.actionPos = ScreenToView(pcam, drag->dragLastPos);
             dirty = true;
         }

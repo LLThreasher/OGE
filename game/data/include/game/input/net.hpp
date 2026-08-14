@@ -84,71 +84,51 @@ concept IsLifetimePacketAdapter =
 
 enum PlayerInputFrameFlags : uint8_t
 {
-    HasEvents = 1 << 0,
-    HasMove = 1 << 1,
-    HasPan = 1 << 2,
-    HasJump = 1 << 3,
-};
-
-struct PackedPlayerInputEvent
-{
-    uint16_t actionX = 0;
-    uint16_t actionY = 0;
-    uint8_t actionMask = 0;
-
-    PackedPlayerInputEvent() {}
-    PackedPlayerInputEvent(PlayerInputEvent& e);
-    operator PlayerInputEvent() const;
+    HasMove = 1 << 0,
+    HasJumpInput = 1 << 1,  // the aggregated jump input flag (movement frame)
+    HasJumpStamp = 1 << 2,  // client-decided lift-off stamp (until Phase 3)
 };
 
 struct PackedPlayerInputFrame
 {
+    // The producing tick — always serialized (not flag-gated): the fixed
+    // stage anchors application to it (D3/D8).
+    uint32_t tick = 0;
+
     uint8_t flags = 0;
 
     int8_t moveX = 0;
     int8_t moveY = 0;
     int8_t moveZ = 0;
 
-    int16_t panX = 0;
-    int16_t panY = 0;
-
     // Client-decided jump stamp: lift-off position (raw floats — world
     // coordinates exceed the small quantized ranges; jumps are rare so the
-    // 12 bytes are negligible).
+    // 12 bytes are negligible).  Until Phase 3.
     float jumpX = 0.f;
     float jumpY = 0.f;
     float jumpZ = 0.f;
-
-    std::vector<PackedPlayerInputEvent> inputEvents;
 
     PackedPlayerInputFrame() {}
     PackedPlayerInputFrame(PlayerInputFrame& e);
     operator PlayerInputFrame() const;
 };
 
-inline uint16_t QuantizeUNorm16(float v)
+// Ray-encoded action — raw floats (R14: do not quantize v1; the rays are
+// ≤3/tick and correctness outranks bytes here).
+struct PackedPlayerAction
 {
-    v = std::clamp(v, 0.0f, 1.0f);
+    uint8_t actionMask = 0;
+    float originX = 0.f;
+    float originY = 0.f;
+    float originZ = 0.f;
+    float dirX = 0.f;
+    float dirY = 0.f;
+    float dirZ = 0.f;
 
-    return static_cast<uint16_t>(std::lround(v * 65535.0f));
-}
-
-inline float DequantizeUNorm16(uint16_t v)
-{
-    return static_cast<float>(v) / 65535.0f;
-}
-
-inline int16_t QuantizeSNorm16(float v)
-{
-    v = std::clamp(v, -1.0f, 1.0f);
-
-    return static_cast<int16_t>(std::lround(v * 32767.0f));
-}
-
-inline float DequantizeSNorm16(int16_t v)
-{
-    return std::max(-1.0f, static_cast<float>(v) / 32767.0f);
-}
+    PackedPlayerAction() {}
+    PackedPlayerAction(const PlayerAction& e);
+    operator PlayerAction() const;
+};
 
 inline int8_t QuantizeSNorm8(float v)
 {
@@ -162,74 +142,30 @@ inline float DequantizeSNorm8(int8_t v)
     return std::max(-1.0f, static_cast<float>(v) / 127.0f);
 }
 
-inline int16_t QuantizeRangeS16(float v, float maxAbs)
+inline PackedPlayerAction PackAction(
+    const PlayerAction& src)
 {
-    if (maxAbs <= 0.0f)
-    {
-        return 0;
-    }
+    PackedPlayerAction dst;
 
-    v = std::clamp(v, -maxAbs, maxAbs);
-
-    return static_cast<int16_t>(std::lround(v / maxAbs * 32767.0f));
-}
-
-inline float DequantizeRangeS16(int16_t v, float maxAbs)
-{
-    if (maxAbs <= 0.0f)
-    {
-        return 0.0f;
-    }
-
-    return static_cast<float>(v) / 32767.0f * maxAbs;
-}
-
-inline uint16_t QuantizeRangeU16(float v, float minValue, float maxValue)
-{
-    if (maxValue <= minValue)
-    {
-        return 0;
-    }
-
-    v = std::clamp(v, minValue, maxValue);
-
-    const float t = (v - minValue) / (maxValue - minValue);
-
-    return static_cast<uint16_t>(std::lround(t * 65535.0f));
-}
-
-inline float DequantizeRangeU16(uint16_t v, float minValue, float maxValue)
-{
-    if (maxValue <= minValue)
-    {
-        return minValue;
-    }
-
-    const float t = static_cast<float>(v) / 65535.0f;
-
-    return minValue + t * (maxValue - minValue);
-}
-
-inline PackedPlayerInputEvent PackEvent(
-    const PlayerInputEvent& src)
-{
-    PackedPlayerInputEvent dst;
-
-    dst.actionX = QuantizeSNorm16(src.actionPos.x);
-    dst.actionY = QuantizeSNorm16(src.actionPos.y);
     dst.actionMask = src.actionMask;
+    dst.originX = src.origin.x;
+    dst.originY = src.origin.y;
+    dst.originZ = src.origin.z;
+    dst.dirX = src.dir.x;
+    dst.dirY = src.dir.y;
+    dst.dirZ = src.dir.z;
 
     return dst;
 }
 
-inline PlayerInputEvent UnpackEvent(
-    const PackedPlayerInputEvent& src)
+inline PlayerAction UnpackAction(
+    const PackedPlayerAction& src)
 {
-    PlayerInputEvent dst;
+    PlayerAction dst;
 
-    dst.actionPos.x = DequantizeSNorm16(src.actionX);
-    dst.actionPos.y = DequantizeSNorm16(src.actionY);
     dst.actionMask = src.actionMask;
+    dst.origin = {src.originX, src.originY, src.originZ};
+    dst.dir = {src.dirX, src.dirY, src.dirZ};
 
     return dst;
 }
@@ -241,18 +177,15 @@ inline PackedPlayerInputFrame PackFrame(
     // commit time, so local consumers and the packed copy stay in sync.
     PackedPlayerInputFrame dst;
 
-    bool hasEvents = src.inputEventCnt > 0;
+    dst.tick = src.tick;
 
     bool hasMove = std::abs(src.move.x) > INPUT_EPSILON ||
                    std::abs(src.move.y) > INPUT_EPSILON ||
                    std::abs(src.move.z) > INPUT_EPSILON;
 
-    bool hasPan = std::abs(src.aim.x) > INPUT_EPSILON ||
-                  std::abs(src.aim.y) > INPUT_EPSILON;
-
-    if (hasEvents)
+    if (src.jump)
     {
-        dst.flags = static_cast<uint8_t>(dst.flags | HasEvents);
+        dst.flags = static_cast<uint8_t>(dst.flags | HasJumpInput);
     }
 
     if (hasMove)
@@ -264,34 +197,13 @@ inline PackedPlayerInputFrame PackFrame(
         dst.moveZ = QuantizeSNorm8(src.move.z);
     }
 
-    if (hasPan)
-    {
-        dst.flags = static_cast<uint8_t>(dst.flags | HasPan);
-
-        dst.panX = QuantizeRangeU16(src.aim.x, 0.f, math::pi * 2);
-        dst.panY = QuantizeRangeS16(src.aim.y, math::pi);
-    }
-
     if (src.jumped)
     {
-        dst.flags = static_cast<uint8_t>(dst.flags | HasJump);
+        dst.flags = static_cast<uint8_t>(dst.flags | HasJumpStamp);
 
         dst.jumpX = src.jumpPos.x;
         dst.jumpY = src.jumpPos.y;
         dst.jumpZ = src.jumpPos.z;
-    }
-
-    if (hasEvents)
-    {
-        const std::size_t count =
-            std::min<std::size_t>(src.inputEventCnt, 255);
-
-        dst.inputEvents.resize(count);
-
-        for (std::size_t i = 0; i < count; ++i)
-        {
-            dst.inputEvents[i] = PackEvent(src.inputEvents[i]);
-        }
     }
 
     return dst;
@@ -301,6 +213,8 @@ inline PlayerInputFrame UnpackFrame(const PackedPlayerInputFrame& src)
 {
     PlayerInputFrame dst{};
 
+    dst.tick = src.tick;
+
     if ((src.flags & HasMove) != 0)
     {
         dst.move.x = DequantizeSNorm8(src.moveX);
@@ -308,42 +222,28 @@ inline PlayerInputFrame UnpackFrame(const PackedPlayerInputFrame& src)
         dst.move.z = DequantizeSNorm8(src.moveZ);
     }
 
-    if ((src.flags & HasPan) != 0)
+    if ((src.flags & HasJumpInput) != 0)
     {
-        dst.aim.x = DequantizeRangeU16(src.panX, 0.f, math::pi * 2);
-        dst.aim.y = DequantizeRangeS16(src.panY, math::pi);
-        // Consumers gate camera updates on hasAim — keep it consistent with
-        // the packed flags, otherwise the aim is silently dropped on apply.
-        dst.hasAim = true;
+        dst.jump = true;
     }
 
-    if ((src.flags & HasJump) != 0)
+    if ((src.flags & HasJumpStamp) != 0)
     {
         dst.jumped = true;
         dst.jumpPos = {src.jumpX, src.jumpY, src.jumpZ};
     }
 
-    if ((src.flags & HasEvents) != 0)
-    {
-        dst.inputEventCnt = src.inputEvents.size();
-
-        for (std::size_t i = 0; i < src.inputEvents.size(); ++i)
-        {
-            dst.inputEvents[i] = UnpackEvent(src.inputEvents[i]);
-        }
-    }
-
     return dst;
 }
 
-inline PackedPlayerInputEvent::PackedPlayerInputEvent(PlayerInputEvent& src)
+inline PackedPlayerAction::PackedPlayerAction(const PlayerAction& src)
 {
-    *this = PackEvent(src);
+    *this = PackAction(src);
 }
 
-inline PackedPlayerInputEvent::operator PlayerInputEvent() const
+inline PackedPlayerAction::operator PlayerAction() const
 {
-    return UnpackEvent(*this);
+    return UnpackAction(*this);
 }
 
 inline PackedPlayerInputFrame::PackedPlayerInputFrame(PlayerInputFrame& src)
@@ -358,13 +258,19 @@ inline PackedPlayerInputFrame::operator PlayerInputFrame() const
 
 }  // namespace game::input::net
 
-DECL_NET_OBJ(game::input::net::PackedPlayerInputEvent, {
-    visit(self.actionX);
-    visit(self.actionY);
+DECL_NET_OBJ(game::input::net::PackedPlayerAction, {
     visit(self.actionMask);
+    visit(self.originX);
+    visit(self.originY);
+    visit(self.originZ);
+    visit(self.dirX);
+    visit(self.dirY);
+    visit(self.dirZ);
 })
 
 DECL_NET_OBJ(game::input::net::PackedPlayerInputFrame, {
+    visit(self.tick);
+
     visit(self.flags);
 
     if ((self.flags & game::input::net::HasMove) != 0)
@@ -374,28 +280,17 @@ DECL_NET_OBJ(game::input::net::PackedPlayerInputFrame, {
         visit(self.moveZ);
     }
 
-    if ((self.flags & game::input::net::HasPan) != 0)
-    {
-        visit(self.panX);
-        visit(self.panY);
-    }
-
-    if ((self.flags & game::input::net::HasJump) != 0)
+    if ((self.flags & game::input::net::HasJumpStamp) != 0)
     {
         visit(self.jumpX);
         visit(self.jumpY);
         visit(self.jumpZ);
     }
-
-    if ((self.flags & game::input::net::HasEvents) != 0)
-    {
-        visit(self.inputEvents);
-    }
 })
 
-DECL_NET_OBJ_PACKED(game::input::PlayerInputEvent,
-                    game::input::net::PackedPlayerInputEvent,
-                    game::input::net::PackEvent, game::input::net::UnpackEvent)
+DECL_NET_OBJ_PACKED(game::input::PlayerAction,
+                    game::input::net::PackedPlayerAction,
+                    game::input::net::PackAction, game::input::net::UnpackAction)
 
 DECL_NET_OBJ_PACKED(game::input::PlayerInputFrame,
                     game::input::net::PackedPlayerInputFrame,

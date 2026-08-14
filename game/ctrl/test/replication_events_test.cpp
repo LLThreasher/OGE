@@ -539,17 +539,21 @@ TEST(rollback_pong_partial_erase_validate)
 }
 
 // Same as rollback_pong_partial_erase_validate but exercises ValidateLatest.
-// ValidateLatest compares the prediction at the alignment tick (tick ≤
-// m_alignmentTick) against the last server event — not the newest
-// prediction.  This prevents false rollbacks from comparing predictions
-// and server events at different ticks.
+// ValidateLatest defers one tick (the server's state events for tick T
+// travel in a later batch than the AdvanceTick — see its comment):
+// predictions stamped < m_alignmentTick are compared and erased, those
+// beyond survive.
 TEST(rollback_pong_partial_erase_validate_latest)
 {
     oge::runtime::OgeRegistry w;
     auto e = w.create(); w.emplace<game::ReplicatedTag>(e);
 
     game::net::RollbackEventLogStream<> stream;
-    stream.m_snapshotInterval = 1;
+    // Snapshot every OTHER tick: with a snapshot on every tick the base
+    // snapshot lands exactly on the alignment tick and the deferred
+    // admission window [baseTick, m_alignmentTick) is empty.  The e2e
+    // config (interval 3) has the same phase offset.
+    stream.m_snapshotInterval = 2;
     stream.AddPeer(63);
 
     game::net::RollbackCapability cap{};
@@ -561,12 +565,15 @@ TEST(rollback_pong_partial_erase_validate_latest)
 
     stream.AdvanceLocalTick(w);
     stream.InsertPredicted(game::net::AddEntityEvent{e});  // tick 1
-    stream.AdvanceLocalTick(w);
+    stream.AdvanceLocalTick(w);                            // snapshot at 2
     stream.InsertPredicted(game::net::AddEntityEvent{e});  // tick 2
     stream.AdvanceLocalTick(w);
     stream.InsertPredicted(game::net::AddEntityEvent{e});  // tick 3
+    stream.AdvanceLocalTick(w);                            // snapshot at 4
+    stream.InsertPredicted(game::net::AddEntityEvent{e});  // tick 4
 
-    CHECK_EQ(stream.PredictedCount(), 3);
+    // The tick-1 prediction was pruned with the oldest snapshot.
+    CHECK_EQ(stream.PredictedCount(), 3);  // ticks 2, 3, 4
 
     // One server event so the last-vs-last comparison within the alignment
     // window succeeds.
@@ -574,11 +581,308 @@ TEST(rollback_pong_partial_erase_validate_latest)
     auto buf = stream.EnqueueEvent(f, sizeof(entt::entity));
     buf.Write(e);
 
-    // Align to tick 2: predictions at τ ≤ 2 are compared and erased.
-    stream.DebugSetAlignment(2);
+    // Align to tick 3: base snapshot = 2, deferred admission = τ < 3 →
+    // prediction 2 is compared and erased; ticks 3-4 survive.
+    stream.DebugSetAlignment(3);
 
     CHECK(stream.ValidateLatest(w));
-    CHECK_EQ(stream.PredictedCount(), 1);  // only tick 3 survives
+    CHECK_EQ(stream.PredictedCount(), 2);  // ticks 3, 4 survive
+}
+
+// =========================================================================
+// Player input / action serialization + tick-stamped read contract (D3/D6/D8)
+// =========================================================================
+
+// PackedPlayerInputFrame: tick always serialized (incl. wrap values),
+// flag-gated move quantization, jump input + jump stamp round-trip.
+TEST(packed_input_frame_rt)
+{
+    game::input::PlayerInputFrame f{};
+    f.tick = 0xFFFFFFFF;
+    f.move = {0.5f, -0.25f, 0.125f};
+    f.jump = true;
+    f.jumped = true;
+    f.jumpPos = {20.f, 18.5f, 20.f};
+
+    game::input::net::PackedPlayerInputFrame p =
+        game::input::net::PackFrame(f);
+    game::input::net::PackedPlayerInputFrame d{};
+    RT(p, d);
+
+    CHECK_EQ(d.tick, 0xFFFFFFFFu);
+    CHECK((d.flags & game::input::net::HasMove) != 0);
+    CHECK((d.flags & game::input::net::HasJumpInput) != 0);
+    CHECK((d.flags & game::input::net::HasJumpStamp) != 0);
+
+    auto u = game::input::net::UnpackFrame(d);
+    CHECK_EQ(u.tick, f.tick);
+    CHECK(u.jump);
+    CHECK(u.jumped);
+    CHECK(std::abs(u.move.x - f.move.x) <= 1.f / 127.f);
+    CHECK(std::abs(u.move.y - f.move.y) <= 1.f / 127.f);
+    CHECK(std::abs(u.move.z - f.move.z) <= 1.f / 127.f);
+    CHECK(u.jumpPos == f.jumpPos);
+}
+
+// Empty frame: no flags, nothing flag-gated serialized, tick survives.
+TEST(packed_input_frame_zero)
+{
+    game::input::PlayerInputFrame f{};
+    f.tick = 42;
+    game::input::net::PackedPlayerInputFrame p =
+        game::input::net::PackFrame(f);
+    game::input::net::PackedPlayerInputFrame d{};
+    RT(p, d);
+    CHECK_EQ(d.tick, 42u);
+    CHECK_EQ(d.flags, 0);
+    auto u = game::input::net::UnpackFrame(d);
+    CHECK(!u.jump);
+    CHECK(!u.jumped);
+    CHECK(u.move == game::math::vec3{});
+}
+
+// PackedPlayerAction: raw floats, exact round-trip (R14 — no quantization).
+TEST(packed_action_rt)
+{
+    game::input::PlayerAction a{};
+    a.actionMask = (1 << 0) | (1 << 1);
+    a.origin = {12.25f, -3.5f, 7.75f};
+    a.dir = {0.f, -1.f, 0.02f};
+    game::input::net::PackedPlayerAction p{a};
+    game::input::net::PackedPlayerAction d{};
+    RT(p, d);
+    auto u = game::input::net::UnpackAction(d);
+    CHECK_EQ(u.actionMask, a.actionMask);
+    CHECK(u.origin == a.origin);
+    CHECK(u.dir == a.dir);
+}
+
+TEST(player_action_replication_rt)
+{
+    game::net::PlayerActionReplicationEvent o{};
+    o.playerEntity = entt::entity{9};
+    o.tick = 123;
+    o.actionCnt = 2;
+    o.actions[0] = game::input::net::PackedPlayerAction{
+        game::input::PlayerAction{(1 << 0), {1.f, 2.f, 3.f}, {0.f, -1.f, 0.f}}};
+    o.actions[1] = game::input::net::PackedPlayerAction{
+        game::input::PlayerAction{(1 << 1), {4.f, 5.f, 6.f}, {0.f, 0.f, 1.f}}};
+
+    game::net::PlayerActionReplicationEvent d{};
+    RT(o, d);
+    CHECK_EQ(o.playerEntity, d.playerEntity);
+    CHECK_EQ(o.tick, d.tick);
+    CHECK_EQ(o.actionCnt, d.actionCnt);
+    CHECK(d.actions[0].originX == o.actions[0].originX);
+    CHECK(d.actions[0].dirY == o.actions[0].dirY);
+    CHECK(d.actions[1].originZ == o.actions[1].originZ);
+}
+
+TEST(player_input_replication_rt)
+{
+    game::net::PlayerInputReplicationEvent o{};
+    o.playerEntity = entt::entity{4};
+    game::input::PlayerInputFrame f{};
+    f.tick = 77;
+    f.move = {1.f, -1.f, 0.5f};
+    f.jump = true;
+    o.frame = game::input::net::PackFrame(f);
+
+    game::net::PlayerInputReplicationEvent d{};
+    RT(o, d);
+    CHECK_EQ(o.playerEntity, d.playerEntity);
+    CHECK_EQ(o.frame.tick, d.frame.tick);
+    CHECK((d.frame.flags & game::input::net::HasMove) != 0);
+    CHECK((d.frame.flags & game::input::net::HasJumpInput) != 0);
+}
+
+// AggregateTickInput: empty window → false (empty-tick contract).
+TEST(aggregate_tick_empty)
+{
+    game::input::PlayerInputStream s;
+    game::input::PlayerInputStream::Cursor c{1};
+    game::input::PlayerInputFrame out{};
+    CHECK(!game::input::AggregateTickInput(s, c, 5, out));
+}
+
+// Stamp + weighted move average (delta-count weighting matches the
+// per-frame normalize semantics).
+TEST(aggregate_tick_stamp_move)
+{
+    game::input::PlayerInputStream s;
+    game::input::PlayerInputFrameDelta d1;
+    d1.moveDelta = {1.f, 0.f};
+    s.PushFrame(d1);
+    s.AdvanceTick();
+
+    game::input::PlayerInputStream::Cursor c{1};
+    game::input::PlayerInputFrame out{};
+    CHECK(game::input::AggregateTickInput(s, c, 42, out));
+    CHECK_EQ(out.tick, 42u);
+    CHECK(game::math::len(out.move) > 0.5f);
+}
+
+// Jump input OR + client-decided jump stamp carried through the window.
+TEST(aggregate_tick_jump)
+{
+    game::input::PlayerInputStream s;
+    game::input::PlayerInputFrameDelta d;
+    d.inputEvent = game::input::PlayerInputEvent{
+        game::math::vec2{0.f, 0.f}, game::input::PlayerActionKind::Jump};
+    s.PushFrame(d);
+    s.MarkJumpPerformed(game::math::vec3{1.f, 2.f, 3.f});
+    s.AdvanceTick();
+
+    game::input::PlayerInputStream::Cursor c{1};
+    game::input::PlayerInputFrame out{};
+    CHECK(game::input::AggregateTickInput(s, c, 7, out));
+    CHECK(out.jump);
+    CHECK(out.jumped);
+    CHECK((out.jumpPos == game::math::vec3{1.f, 2.f, 3.f}));
+}
+
+// TickIsStale: wrap-safe comparisons (D8) — the inverted-branch bug made
+// frames on the wrong side of the 2^31 boundary misclassify.
+TEST(tickstale_wrap)
+{
+    CHECK(game::input::TickIsStale(5u, 10u));
+    CHECK(!game::input::TickIsStale(10u, 5u));
+    // One step behind across the wrap → stale.
+    CHECK(game::input::TickIsStale(0xFFFFFFFFu, 0u));
+    // One step ahead across the wrap → not stale.
+    CHECK(!game::input::TickIsStale(0u, 0xFFFFFFFFu));
+    CHECK(!game::input::TickIsStale(0xFFFFFFFFu, 0xFFFFFFFEu));
+}
+
+// TryReadTickFrame: exact-tick apply (dueTick = simTick - 1).
+TEST(tickread_exact_apply)
+{
+    game::input::PlayerInputStream s;
+    s.PushTick({10});
+    game::input::PlayerInputStream::Cursor c{1};
+    uint32_t last = 0;
+    game::input::PlayerInputFrame out{};
+    CHECK(game::input::TryReadTickFrame(s, c, 11, last, out));
+    CHECK_EQ(out.tick, 10u);
+    CHECK_EQ(last, 10u);
+}
+
+// Frames stamped <= lastAppliedTick are stale: skipped, never re-applied.
+TEST(tickread_stale_skip)
+{
+    game::input::PlayerInputStream s;
+    s.PushTick({5});
+    s.PushTick({10});
+    game::input::PlayerInputStream::Cursor c{1};
+    uint32_t last = 10;
+    game::input::PlayerInputFrame out{};
+    CHECK(!game::input::TryReadTickFrame(s, c, 11, last, out));
+    CHECK_EQ(last, 10u);
+}
+
+// A frame stamped ahead of the due tick waits: not consumed, applied once
+// the sim reaches its tick.  (last starts inside the degrade window.)
+TEST(tickread_not_due_wait)
+{
+    game::input::PlayerInputStream s;
+    s.PushTick({12});
+    game::input::PlayerInputStream::Cursor c{1};
+    uint32_t last = 4;
+    game::input::PlayerInputFrame out{};
+    CHECK(!game::input::TryReadTickFrame(s, c, 10, last, out));  // due 9
+    CHECK_EQ(last, 4u);
+    CHECK(game::input::TryReadTickFrame(s, c, 13, last, out));  // due 12
+    CHECK_EQ(out.tick, 12u);
+    CHECK_EQ(last, 12u);
+}
+
+// A frame behind the due tick missed its window: skipped, and the bounded
+// wait degrades lastAppliedTick past the gap after kMaxInputWaitTicks.
+TEST(tickread_missed_window)
+{
+    game::input::PlayerInputStream s;
+    s.PushTick({10});
+    game::input::PlayerInputStream::Cursor c{1};
+    uint32_t last = 0;
+    game::input::PlayerInputFrame out{};
+    CHECK(!game::input::TryReadTickFrame(s, c, 12, last, out));  // due 11
+    CHECK_EQ(last, 11u);  // 12 - 0 > kMaxInputWaitTicks → degrade to dueTick
+}
+
+// Pure gap degrade: nothing in the ring, sim 9 ticks past the last applied.
+TEST(tickread_gap_degrade)
+{
+    game::input::PlayerInputStream s;
+    game::input::PlayerInputStream::Cursor c{1};
+    uint32_t last = 0;
+    game::input::PlayerInputFrame out{};
+    CHECK(!game::input::TryReadTickFrame(s, c, 9, last, out));
+    CHECK_EQ(last, 8u);  // dueTick = 9 - 1
+}
+
+// Fresh cursor (0) snaps to the frontier: a reader started after the frames
+// were pushed sees nothing (documented sentinel — readers must outlive the
+// window they read).  The bounded wait then degrades lastAppliedTick past
+// the gap.
+TEST(tickread_fresh_cursor_snaps_frontier)
+{
+    game::input::PlayerInputStream s;
+    s.PushTick({10});
+    game::input::PlayerInputStream::Cursor c{0};
+    uint32_t last = 0;
+    game::input::PlayerInputFrame out{};
+    CHECK(!game::input::TryReadTickFrame(s, c, 11, last, out));
+    CHECK_EQ(last, 10u);  // degraded: 11 - 0 > kMaxInputWaitTicks → dueTick
+}
+
+// Wrap-safe read: a frame stamped 0xFFFFFFFF applies at simTick 0
+// (dueTick wraps to 0xFFFFFFFF).
+TEST(tickread_wrap)
+{
+    game::input::PlayerInputStream s;
+    s.PushTick({0xFFFFFFFF});
+    game::input::PlayerInputStream::Cursor c{1};
+    uint32_t last = 0xFFFFFFFE;
+    game::input::PlayerInputFrame out{};
+    CHECK(game::input::TryReadTickFrame(s, c, 0, last, out));
+    CHECK_EQ(out.tick, 0xFFFFFFFFu);
+    CHECK_EQ(last, 0xFFFFFFFFu);
+}
+
+// Regression: a late frame (missed window) before a matching frame must not
+// break the scan.  The inverted not-due comparison broke out on the late
+// frame and the matching frame was never applied.
+TEST(tickread_late_before_due_regression)
+{
+    game::input::PlayerInputStream s;
+    s.PushTick({10});
+    s.PushTick({14});
+    game::input::PlayerInputStream::Cursor c{1};
+    uint32_t last = 0;
+    game::input::PlayerInputFrame out{};
+    CHECK(game::input::TryReadTickFrame(s, c, 15, last, out));  // due 14
+    CHECK_EQ(out.tick, 14u);
+    CHECK_EQ(last, 14u);
+}
+
+// The same read contract drives the action stream (D6).
+TEST(tickread_action_stream_apply)
+{
+    game::input::PlayerActionStream s;
+    game::input::PlayerActionFrame f{};
+    f.tick = 21;
+    f.actionCnt = 1;
+    f.actions[0] = game::input::PlayerAction{
+        (1 << 0), {1.f, 2.f, 3.f}, {0.f, -1.f, 0.f}};
+    s.PushTick(f);
+
+    game::input::PlayerActionStream::Cursor c{1};
+    uint32_t last = 0;
+    game::input::PlayerActionFrame out{};
+    CHECK(game::input::TryReadTickFrame(s, c, 22, last, out));
+    CHECK_EQ(out.tick, 21u);
+    CHECK_EQ(out.actionCnt, 1);
+    CHECK_EQ(last, 21u);
 }
 
 RUN_TESTS("Replication Events Tests")
