@@ -1,8 +1,16 @@
 #pragma once
 
 #include <cstdint>
+#include <memory_resource>
+#include <vector>
 
 #include "oge/runtime/type_name.hpp"
+#include "oge/runtime/typed_registry.hpp"
+
+namespace game
+{
+struct SceneConfig;
+}
 
 namespace game::sim
 {
@@ -27,6 +35,38 @@ struct SimTickContext
     uint32_t currentTick = 0;
     uint8_t subStepIdx = 0;
 };
+
+// =========================================================================
+// Stage-list builders (Phase 2, single source): the player sim's stage
+// lists are assembled here so the server scene, the client scene and the
+// test harness can never drift from each other (the config-drift bug
+// class).  Ids come from the caller's factory, so the lists are portable
+// across runner instances.
+// =========================================================================
+
+// The fixed (20 Hz) player sim trio, in execution order: player ->
+// creature -> physics.  Runs on the server world and the client's
+// authoritative mirror — both drive the same sub-step chain over the
+// shared tick space (D1/D9).
+std::pmr::vector<oge::runtime::oge_id_type> FixedStepPlayerStages(
+    oge::runtime::AnythingFactory& af);
+
+// The realtime (60 Hz) trio: player (input drain + aim + camera chase),
+// creature, physics — prediction-world only, filtered to locally-predicted
+// entities (D9).
+std::pmr::vector<oge::runtime::oge_id_type> RealtimePlayerStages(
+    oge::runtime::AnythingFactory& af);
+
+// Server config: the fixed pipeline is terrain (first) + the fixed trio.
+// NO realtime stages — the server sims once per tick; the old realtime
+// trio double-integrated gravity at 20 Hz.
+void ApplyServerSimConfig(SceneConfig& cfg, oge::runtime::AnythingFactory& af);
+
+// Client config: the fixed pipeline is the fixed trio WITHOUT the terrain
+// stage (a client-side terrain generator diverges from the server's
+// replicated chunks — the config-flake class); the realtime pipeline is
+// the realtime trio + SubsystemDebugText.
+void ApplyClientSimConfig(SceneConfig& cfg, oge::runtime::AnythingFactory& af);
 
 }  // namespace game::sim
 

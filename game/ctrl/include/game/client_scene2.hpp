@@ -6,6 +6,7 @@
 #include <string_view>
 
 #include "game/components.hpp"
+#include "game/frame_perf.hpp"
 #include "oge/json.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "game/net/replication_events.hpp"
@@ -156,6 +157,44 @@ class ClientScene2 : public Scene
             setMask(Id<net::RemoveComponentEvent<ComponentPhysicBody>>(),
                     bothMask);
 
+            // Phase 2: the mirror's parity sim needs the full player
+            // component set + the fixed tag (its fixed stages view
+            // UpdateTag<FixedStep>).  Camera is replicated for
+            // compatibility; the mirror never renders.
+            setMask(Id<net::AddComponentEvent<ComponentCamera>>(), bothMask);
+            setMask(Id<net::UpdateComponentEvent<ComponentCamera>>(),
+                    bothMask);
+            setMask(Id<net::RemoveComponentEvent<ComponentCamera>>(),
+                    bothMask);
+
+            setMask(Id<net::AddComponentEvent<ComponentPerspectiveCamera>>(),
+                    bothMask);
+            setMask(
+                Id<net::UpdateComponentEvent<ComponentPerspectiveCamera>>(),
+                bothMask);
+            setMask(
+                Id<net::RemoveComponentEvent<ComponentPerspectiveCamera>>(),
+                bothMask);
+
+            setMask(Id<net::AddComponentEvent<ComponentCreature>>(), bothMask);
+            setMask(Id<net::UpdateComponentEvent<ComponentCreature>>(),
+                    bothMask);
+            setMask(Id<net::RemoveComponentEvent<ComponentCreature>>(),
+                    bothMask);
+
+            setMask(Id<net::AddComponentEvent<ComponentPlayer>>(), bothMask);
+            setMask(Id<net::UpdateComponentEvent<ComponentPlayer>>(), bothMask);
+            setMask(Id<net::RemoveComponentEvent<ComponentPlayer>>(), bothMask);
+
+            setMask(Id<net::AddComponentEvent<UpdateTag<UpdateType::FixedStep>>>(),
+                    bothMask);
+            setMask(
+                Id<net::UpdateComponentEvent<UpdateTag<UpdateType::FixedStep>>>(),
+                bothMask);
+            setMask(
+                Id<net::RemoveComponentEvent<UpdateTag<UpdateType::FixedStep>>>(),
+                bothMask);
+
             // Replicated terrain must reach the authoritative world too —
             // its fixed pipeline (parity sim) collides against the same
             // chunks as the server (D9).  Note: doubles chunk traffic.
@@ -198,6 +237,12 @@ class ClientScene2 : public Scene
         m_world.ctx().emplace<sim::SimTickContext>();
         m_authoritativeWorld.ctx().emplace<sim::SimTickContext>();
 
+        // SubsystemDebugText hard-gets FramePerfStatus from ctx every
+        // update (the real app's SceneView emplaces it per frame; the
+        // harness has no view — emplace it defensively).
+        if (!m_world.ctx().contains<::game::FramePerfStatus>())
+            m_world.ctx().emplace<::game::FramePerfStatus>();
+
         // The client's fixed pipeline ticks at 20 Hz aligned with the shared
         // tick space (D1/D2): 3 sub-steps of kSubStepDt per fixed frame —
         // the same cadence the server scene sets, so fixed-stage decisions
@@ -223,24 +268,18 @@ class ClientScene2 : public Scene
 
         // The parity sim: the server's fixed stage list over the
         // authoritative world (no terrain stage — chunks replicate in).
-        m_authoritativeSim.AddStage(
-            m_ctx.any_factory,
-            Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
-        m_authoritativeSim.AddStage(
-            m_ctx.any_factory,
-            Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
-        m_authoritativeSim.AddStage(
-            m_ctx.any_factory,
-            Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
+        // The same shared builder the server scene uses (Phase 2).
+        for (auto stage : sim::FixedStepPlayerStages(m_ctx.any_factory))
+        {
+            m_authoritativeSim.AddStage(m_ctx.any_factory, stage);
+        }
 
         // The mirror's player needs the input streams + sim state for the
         // parity sim — they are not replicated components.  Emplace them
-        // when the physics body constructs in the authoritative world
-        // (Phase 1: the mirror only receives the entity + AABBCollider +
-        // PhysicBody families — ComponentPlayer is masked to the prediction
-        // world.  Phase 2 extends the masks and can anchor this hook on
-        // ComponentPlayer instead.)
-        m_authoritativeWorld.on_construct<ComponentPhysicBody>()
+        // when ComponentPlayer constructs in the authoritative world (the
+        // snapshot's last component — Phase 2 extends the masks so the
+        // mirror receives the full player component set).
+        m_authoritativeWorld.on_construct<ComponentPlayer>()
             .template connect<+[](oge::runtime::OgeRegistryRef world,
                                   entt::entity entity)
                               {
@@ -327,10 +366,28 @@ class ClientScene2 : public Scene
             }
 
             // Re-anchor the prediction world to the parity sim's result.
-            // Phase 1: the mirror sim is inert (component families are
-            // prediction-world only), so this copies server truth — the
+            // Phase 2: the mirror parity sim runs the full fixed stage
+            // list, so this copies the authoritative sim result — the
             // realtime prediction below then simulates from it.
             ReanchorPredictionToMirror();
+
+            // Insert the predicted physics AFTER the mirror sim (D7): one
+            // predicted event per entity per tick, sourced from the
+            // authoritative world's parity-sim bodies — 1:1 with the
+            // server's single tick-batched patch.  Inserted before this
+            // poll's server events: a correction arriving later this poll
+            // reaches the mirror after this prediction was taken from the
+            // pre-correction state, so validation sees the divergence and
+            // rollback fires.
+            for (auto [e, body] :
+                 m_authoritativeWorld
+                     .view<UpdateTag<UpdateType::FixedStep>,
+                           ComponentPhysicBody>()
+                     .each())
+            {
+                net::UpdateComponentEvent<ComponentPhysicBody> evt{e, body};
+                m_rollbackStream.InsertPredicted(evt);
+            }
         }
 
         // (2) Receive server events (AdvanceTick → snapshot via apply fn)
@@ -343,24 +400,6 @@ class ClientScene2 : public Scene
 
         // (3) Run local simulation (prediction) — moves the player locally
         Scene::Update(f, sctx);
-
-        // Insert the predicted physics AFTER the sim: the payload must be
-        // the client's genuine prediction (the locally-simulated body), not
-        // a copy of mirror truth — otherwise validation always compares
-        // server state against itself and rollback can never fire.  Inserted
-        // every poll (3 per tick, all stamped m_currentTick); the per-family
-        // map in ValidateLatest takes the last one, i.e. the fullest
-        // prediction of the tick.
-        for (auto [e, body] :
-                m_world
-                    .view<
-                        RenderStrategyTag<RenderStrategy::LocalPrediction>,
-                        ComponentPhysicBody>()
-                    .each())
-        {
-            net::UpdateComponentEvent<ComponentPhysicBody> evt{e, body};
-            m_rollbackStream.InsertPredicted(evt);
-        }
 
         // (4) Validate predictions against server events.  Snapshots were
         // taken from the authoritative world (clean server truth), so a

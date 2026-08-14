@@ -4,6 +4,7 @@
 #include <unordered_set>
 
 #include "game/components.hpp"
+#include "game/sim/player_sim_config.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/terrain/block_registry.hpp"
 #include "game/terrain/terrain_view.hpp"
@@ -18,6 +19,48 @@ using oge::CollisionResult2;
 using ::game::terrain::AABBList;
 using ::game::terrain::BlockRegistry;
 using ::game::terrain::TerrainView;
+
+// D9: run `fn` over every entity the variant simulates.  The realtime
+// variant additionally requires the LocalPrediction tag — remote players
+// are never driven realtime on the client.  The fixed variant keeps the
+// tag-only filter (simulates everyone, like the server).  Two helpers
+// cover the two view shapes used by the physics update.
+template <UpdateType utype, typename TWorld, typename Fn>
+void ForEachBody(TWorld& game, Fn&& fn)
+{
+    if constexpr (utype == UpdateType::Realtime)
+    {
+        game.template view<
+                UpdateTag<utype>,
+                const RenderStrategyTag<RenderStrategy::LocalPrediction>,
+                ComponentPhysicBody>()
+            .each(std::forward<Fn>(fn));
+    }
+    else
+    {
+        game.template view<UpdateTag<utype>, ComponentPhysicBody>().each(
+            std::forward<Fn>(fn));
+    }
+}
+
+template <UpdateType utype, typename TWorld, typename Fn>
+void ForEachColliderBody(TWorld& game, Fn&& fn)
+{
+    if constexpr (utype == UpdateType::Realtime)
+    {
+        game.template view<
+                UpdateTag<utype>,
+                const RenderStrategyTag<RenderStrategy::LocalPrediction>,
+                const ComponentAABBCollider, const ComponentPhysicBody>()
+            .each(std::forward<Fn>(fn));
+    }
+    else
+    {
+        game.template view<UpdateTag<utype>, const ComponentAABBCollider,
+                           const ComponentPhysicBody>()
+            .each(std::forward<Fn>(fn));
+    }
+}
 
 template <UpdateType utype>
 void SubsystemPhysics<utype>::onAttach(Ctx& ctx)
@@ -157,13 +200,15 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     auto& game = ctx.world;
     auto& blocks = game.ctx().get<BlockRegistry>();
     auto& terrain = game.ctx().get<TerrainView>();
-    for (auto [e, body] :
-         game.view<UpdateTag<utype>, ComponentPhysicBody>().each())
-    {
-        if (body.enableGravity) body.acceleration.y -= 9.8f;
-        body.velocity += body.acceleration * ctx.dt;
-        body.acceleration = {};
-    }
+    ForEachBody<utype>(game,
+                       [&](entt::entity e, ComponentPhysicBody& body)
+                       {
+                           (void)e;
+                           if (body.enableGravity)
+                               body.acceleration.y -= 9.8f;
+                           body.velocity += body.acceleration * ctx.dt;
+                           body.acceleration = {};
+                       });
 
     // Track which entities are modified by collision resolution so we can
     // fire a single on_update / replication event per entity per frame.
@@ -172,18 +217,19 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     cachedCollisions.clear();
 
     // collision between physical body and terrain Y
-    for (auto [e, collider, body] :
-         game.view<UpdateTag<utype>, const ComponentAABBCollider,
-                   const ComponentPhysicBody>()
-             .each())
-    {
-        auto& [collisions, blkVals] = cachedCollisions[e];
-        auto realAABB = collider.aabb + body.pos;
-        auto yOffset = body.velocity.y * ctx.dt;
-        CheckAABBAgainstTerrainSingle<1>(yOffset, realAABB, terrain, blocks,
-                                         collisions, blkVals);
-        assert(math::abs(yOffset) >= math::abs(collisions.effectiveOffset.y));
-    }
+    ForEachColliderBody<utype>(
+        game,
+        [&](entt::entity e, const ComponentAABBCollider& collider,
+            const ComponentPhysicBody& body)
+        {
+            auto& [collisions, blkVals] = cachedCollisions[e];
+            auto realAABB = collider.aabb + body.pos;
+            auto yOffset = body.velocity.y * ctx.dt;
+            CheckAABBAgainstTerrainSingle<1>(yOffset, realAABB, terrain, blocks,
+                                             collisions, blkVals);
+            assert(math::abs(yOffset) >=
+                   math::abs(collisions.effectiveOffset.y));
+        });
 
     // apply collision resolution (terrain Y)
     for (auto [e, tup] : cachedCollisions)
@@ -213,46 +259,47 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     cachedCollisions.clear();
 
     // collision between physical body and terrain X
-    for (auto [e, collider, body] :
-         game.view<UpdateTag<utype>, const ComponentAABBCollider,
-                   const ComponentPhysicBody>()
-             .each())
-    {
-        auto& [collisions, blkVals] = cachedCollisions[e];
-        auto realAABB = collider.aabb + body.pos;
-        auto xOffset = body.velocity.x * ctx.dt;
-        if (CheckAABBAgainstTerrainSingle<0>(xOffset, realAABB, terrain, blocks,
-                                             collisions, blkVals))
+    ForEachColliderBody<utype>(
+        game,
+        [&](entt::entity e, const ComponentAABBCollider& collider,
+            const ComponentPhysicBody& body)
         {
-            if (body.isGrounded && collisions.type != -1)
+            auto& [collisions, blkVals] = cachedCollisions[e];
+            auto realAABB = collider.aabb + body.pos;
+            auto xOffset = body.velocity.x * ctx.dt;
+            if (CheckAABBAgainstTerrainSingle<0>(xOffset, realAABB, terrain,
+                                                 blocks, collisions, blkVals))
             {
-                uint32_t stepBlkVal;
-                CollisionResult2 stepRes;
-                CheckAABBAgainstTerrainSingle<1>(
-                    -body.stepAssist,
-                    realAABB + math::vec3{xOffset, body.stepAssist, 0}, terrain,
-                    blocks, stepRes, stepBlkVal);
-                float stepHeight = body.stepAssist + stepRes.effectiveOffset.y;
-                if (stepHeight < body.stepAssist)
+                if (body.isGrounded && collisions.type != -1)
                 {
-                    if (!CheckAABBAgainstTerrainSingle<1>(stepHeight, realAABB,
-                                                          terrain, blocks,
-                                                          stepRes, stepBlkVal))
+                    uint32_t stepBlkVal;
+                    CollisionResult2 stepRes;
+                    CheckAABBAgainstTerrainSingle<1>(
+                        -body.stepAssist,
+                        realAABB + math::vec3{xOffset, body.stepAssist, 0},
+                        terrain, blocks, stepRes, stepBlkVal);
+                    float stepHeight =
+                        body.stepAssist + stepRes.effectiveOffset.y;
+                    if (stepHeight < body.stepAssist)
                     {
-                        if (!CheckAABBAgainstTerrainSingle<0>(
-                                xOffset,
-                                realAABB + math::vec3{0, stepHeight, 0},
-                                terrain, blocks, stepRes, stepBlkVal))
+                        if (!CheckAABBAgainstTerrainSingle<1>(
+                                stepHeight, realAABB, terrain, blocks, stepRes,
+                                stepBlkVal))
                         {
-                            collisions.effectiveOffset = {xOffset, stepHeight,
-                                                          0};
-                            collisions.type = oge::COLLISION_TYPE_POS_Y;
+                            if (!CheckAABBAgainstTerrainSingle<0>(
+                                    xOffset,
+                                    realAABB + math::vec3{0, stepHeight, 0},
+                                    terrain, blocks, stepRes, stepBlkVal))
+                            {
+                                collisions.effectiveOffset = {
+                                    xOffset, stepHeight, 0};
+                                collisions.type = oge::COLLISION_TYPE_POS_Y;
+                            }
                         }
                     }
                 }
             }
-        }
-    }
+        });
 
     // apply collision resolution (terrain X)
     for (auto [e, tup] : cachedCollisions)
@@ -272,46 +319,47 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     cachedCollisions.clear();
 
     // collision between physical body and terrain Z
-    for (auto [e, collider, body] :
-         game.view<UpdateTag<utype>, const ComponentAABBCollider,
-                   const ComponentPhysicBody>()
-             .each())
-    {
-        auto& [collisions, blkVals] = cachedCollisions[e];
-        auto realAABB = collider.aabb + body.pos;
-        auto zOffset = body.velocity.z * ctx.dt;
-        if (CheckAABBAgainstTerrainSingle<2>(zOffset, realAABB, terrain, blocks,
-                                             collisions, blkVals))
+    ForEachColliderBody<utype>(
+        game,
+        [&](entt::entity e, const ComponentAABBCollider& collider,
+            const ComponentPhysicBody& body)
         {
-            if (body.isGrounded && collisions.type != -1)
+            auto& [collisions, blkVals] = cachedCollisions[e];
+            auto realAABB = collider.aabb + body.pos;
+            auto zOffset = body.velocity.z * ctx.dt;
+            if (CheckAABBAgainstTerrainSingle<2>(zOffset, realAABB, terrain,
+                                                 blocks, collisions, blkVals))
             {
-                uint32_t stepBlkVal;
-                CollisionResult2 stepRes;
-                CheckAABBAgainstTerrainSingle<1>(
-                    -body.stepAssist,
-                    realAABB + math::vec3{0, body.stepAssist, zOffset}, terrain,
-                    blocks, stepRes, stepBlkVal);
-                float stepHeight = body.stepAssist + stepRes.effectiveOffset.y;
-                if (stepHeight < body.stepAssist)
+                if (body.isGrounded && collisions.type != -1)
                 {
-                    if (!CheckAABBAgainstTerrainSingle<1>(stepHeight, realAABB,
-                                                          terrain, blocks,
-                                                          stepRes, stepBlkVal))
+                    uint32_t stepBlkVal;
+                    CollisionResult2 stepRes;
+                    CheckAABBAgainstTerrainSingle<1>(
+                        -body.stepAssist,
+                        realAABB + math::vec3{0, body.stepAssist, zOffset},
+                        terrain, blocks, stepRes, stepBlkVal);
+                    float stepHeight =
+                        body.stepAssist + stepRes.effectiveOffset.y;
+                    if (stepHeight < body.stepAssist)
                     {
-                        if (!CheckAABBAgainstTerrainSingle<2>(
-                                zOffset,
-                                realAABB + math::vec3{0, stepHeight, 0},
-                                terrain, blocks, stepRes, stepBlkVal))
+                        if (!CheckAABBAgainstTerrainSingle<1>(
+                                stepHeight, realAABB, terrain, blocks, stepRes,
+                                stepBlkVal))
                         {
-                            collisions.effectiveOffset = {0, stepHeight,
-                                                          zOffset};
-                            collisions.type = oge::COLLISION_TYPE_POS_Y;
+                            if (!CheckAABBAgainstTerrainSingle<2>(
+                                    zOffset,
+                                    realAABB + math::vec3{0, stepHeight, 0},
+                                    terrain, blocks, stepRes, stepBlkVal))
+                            {
+                                collisions.effectiveOffset = {
+                                    0, stepHeight, zOffset};
+                                collisions.type = oge::COLLISION_TYPE_POS_Y;
+                            }
                         }
                     }
                 }
             }
-        }
-    }
+        });
 
     // apply collision resolution (terrain Z)
     for (auto [e, tup] : cachedCollisions)
@@ -334,15 +382,15 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
     // inverse mass.  No heap allocations — uses the ECS view .each()
     // directly with nested lambdas.
     {
-        auto entityView = game.view<UpdateTag<utype>, const ComponentAABBCollider,
-                                    const ComponentPhysicBody>();
-        entityView.each(
+        ForEachColliderBody<utype>(
+            game,
             [&](entt::entity e1, const ComponentAABBCollider& collider1,
                 const ComponentPhysicBody& body1)
             {
                 auto aabb1 = collider1.aabb + body1.pos;
 
-                entityView.each(
+                ForEachColliderBody<utype>(
+                    game,
                     [&](entt::entity e2, const ComponentAABBCollider& collider2,
                         const ComponentPhysicBody& body2)
                     {
@@ -468,7 +516,33 @@ void SubsystemPhysics<utype>::onUpdate(FrameCtx& ctx)
 
     // Fire a single on_update per modified entity so that replication hooks
     // produce at most one UpdateComponentEvent<ComponentPhysicBody> per
-    // entity per physics frame.
+    // entity per update.
+    //
+    // D7: the fixed variant batches across the tick — one patch per entity
+    // per fixed frame (kSubStepsPerTick sub-steps), so the server emits
+    // exactly one replication event per entity per tick, 1:1 with the
+    // client's mirror-sourced prediction.  The realtime variant keeps the
+    // per-update patch (the prediction world has no replication hooks).
+    // Without a SimTickContext (bare worlds, e.g. sim_physics_test) the
+    // fixed variant falls back to the per-update patch.
+    if constexpr (utype == UpdateType::FixedStep)
+    {
+        if (game.ctx().contains<SimTickContext>())
+        {
+            auto& tickCtx = game.ctx().get<SimTickContext>();
+            if (tickCtx.subStepIdx == 0)
+            {
+                m_modifiedTick.clear();
+            }
+            m_modifiedTick.insert(modified.begin(), modified.end());
+            if (tickCtx.subStepIdx == kSubStepsPerTick - 1)
+            {
+                for (auto e : m_modifiedTick)
+                    game.patch<ComponentPhysicBody>(e);
+            }
+            return;
+        }
+    }
 
     for (auto e : modified)
         game.patch<ComponentPhysicBody>(e);

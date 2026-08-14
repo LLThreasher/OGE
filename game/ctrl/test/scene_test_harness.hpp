@@ -105,24 +105,15 @@ struct NetSceneHarness
         };
         cliConfig.terrainDesc.chunkViewDistance = 4;
 
-        // When prediction is enabled, run local simulation on the client
-        // so the local player entity drives physics/creature locally.
-        // Mirror the real client config (ClientConnScene's default): the
-        // FixedStep player runs in the fixed pipeline on the shared 20 Hz
-        // tick space (it reads the tick ring; its subStepIdx==0 gate never
-        // opens in the realtime pipeline), while the realtime player stage
-        // processes action events (jump/dig/place).
-        if (m_clientPrediction)
-        {
-            cliConfig.subsystems.push_back(
-                m_clientRunner.Id<game::sim::SubsystemPlayer<game::UpdateType::FixedStep>>());
-            cliConfig.realtimeSubsystems.push_back(
-                m_clientRunner.Id<game::sim::SubsystemPlayer<game::UpdateType::Realtime>>());
-            cliConfig.realtimeSubsystems.push_back(
-                m_clientRunner.Id<game::sim::SubsystemCreature<game::UpdateType::Realtime>>());
-            cliConfig.realtimeSubsystems.push_back(
-                m_clientRunner.Id<game::sim::SubsystemPhysics<game::UpdateType::Realtime>>());
-        }
+        // The stage lists come from the shared builders (Phase 2) — the
+        // same config the real client synthesizes (ClientConnScene's
+        // default).  Unconditional: every harness client runs the full
+        // local sim (fixed trio + realtime trio + DebugText); the realtime
+        // LocalPrediction filter keeps remote copies inert.  loadMask and
+        // blocks only seed the terrain ctx — no terrain STAGE (a
+        // client-side generator diverges from the server's replicated
+        // chunks).
+        game::sim::ApplyClientSimConfig(cliConfig, m_clientRunner.AF());
 
         cliArgs["scene_config"] = game::json::ToJson(cliConfig);
         m_clientRunner.SwitchToScene<game::ClientConnScene>(std::move(cliArgs));

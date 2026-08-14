@@ -161,20 +161,11 @@ class DebugServerScene final : public Scene
             .connect<&DebugServerScene::onServerReceivePacket>(this);
         RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
 
-        m_sceneConfig.subsystems.push_back(Id<sim::SubsystemTerrain>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
-
-        m_sceneConfig.realtimeSubsystems.push_back(
-            Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-        m_sceneConfig.realtimeSubsystems.push_back(
-            Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-        m_sceneConfig.realtimeSubsystems.push_back(
-            Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
+        // Phase 2: the stage lists come from the shared sim config (single
+        // source).  Fixed pipeline: terrain + the player sim trio.  No
+        // realtime stages — the server sims once per tick; the old realtime
+        // trio ran in the fixed loop at 20 Hz and double-integrated gravity.
+        sim::ApplyServerSimConfig(m_sceneConfig, m_ctx.any_factory);
 
         Load();
 
@@ -309,9 +300,11 @@ class DebugServerScene final : public Scene
         {
             m_subsystems.AddStage(m_ctx.any_factory, stage);
         }
+        // Realtime stages go to the realtime pipeline (empty under
+        // ApplyServerSimConfig — kept correct for non-default configs).
         for (auto stage : m_sceneConfig.realtimeSubsystems)
         {
-            m_subsystems.AddStage(m_ctx.any_factory, stage);
+            m_realtimeSubsystems.AddStage(m_ctx.any_factory, stage);
         }
     }
 };

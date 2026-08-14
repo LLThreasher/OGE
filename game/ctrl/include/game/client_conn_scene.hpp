@@ -10,6 +10,7 @@
 #include "oge/json.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
+#include "game/sim/player_sim_config.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
 #include "oge/color.hpp"
@@ -154,22 +155,15 @@ class ClientConnScene : public Scene
                 sctx.nextSceneArgs[key] = val;
             }
             // Only synthesize the default client config when the caller did
-            // not provide one (tests pass their own scene_config).
+            // not provide one (tests pass their own scene_config).  The
+            // stage lists come from the shared builders (Phase 2) —
+            // loadMask/blocks/terrainDesc from the default config seed the
+            // terrain ctx; the terrain STAGE is excluded (a client-side
+            // generator diverges from the server's replicated chunks).
             if (m_nextSceneArgs.find("scene_config") == m_nextSceneArgs.end())
             {
                 SceneConfig cfg = GetDefaultSceneConfig(AF());
-                cfg.subsystems.clear();
-                cfg.realtimeSubsystems.clear();
-                cfg.subsystems.push_back(Id<sim::SubsystemDebugText>());
-                // The FixedStep player belongs in the fixed pipeline (D2):
-                // it reads the tick ring on the shared 20 Hz tick space.  Its
-                // subStepIdx==0 gate never opens in the realtime pipeline
-                // (Scene::Update's fixed loop leaves subStepIdx at the
-                // leftover before realtime stages run).
-                cfg.subsystems.push_back(Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
-                cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-                cfg.realtimeSubsystems.push_back(Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-                cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
+                sim::ApplyClientSimConfig(cfg, AF());
                 sctx.nextSceneArgs["scene_config"] = json::ToJson(cfg);
             }
             sctx.nextSceneArgs["wait_player"] = json::ToJson(true);

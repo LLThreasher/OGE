@@ -484,6 +484,9 @@ struct PlayerSimInputState
     uint32_t consumedTick = 0;  // tick the fixed-stage decisions were made for
     bool hasFrame = false;      // cached movement frame valid?
     PlayerInputFrame frame{};
+    // True once a jump stamp anchored this arc (non-local streams) — repeat
+    // stamps must not re-anchor a running arc; resets when the body lands.
+    bool stampActive = false;
 };
 
 }  // namespace game::input

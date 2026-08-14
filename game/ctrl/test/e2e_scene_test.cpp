@@ -76,6 +76,12 @@ std::string GetBinaryDir()
 //    actions here (D6)
 //  - PlayerSimInputState — fixed-tick cursors + cached frame (D3)
 //  - UpdateTag<Realtime> — the realtime stage only visits tagged entities
+//  - UpdateTag<FixedStep> — the fixed stage only visits tagged entities
+//    (replicated from the server; emplaced defensively like CreatePlayer)
+//  - RenderStrategyTag<LocalPrediction> — like DebugVoxelView::onConstructPlayer:
+//    the re-anchor and the realtime creature/physics stages (D9) only visit
+//    LocalPrediction-tagged bodies; without the tag the local copy never
+//    re-anchors to the parity sim and drifts ahead unboundedly
 void WireLocalInput(game::GameWorld& cw, entt::entity clientPlayer)
 {
     if (!cw.all_of<game::input::PlayerInputStream>(clientPlayer))
@@ -86,6 +92,13 @@ void WireLocalInput(game::GameWorld& cw, entt::entity clientPlayer)
         cw.emplace<game::input::PlayerSimInputState>(clientPlayer);
     if (!cw.all_of<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer))
         cw.emplace<game::UpdateTag<game::UpdateType::Realtime>>(clientPlayer);
+    if (!cw.all_of<game::UpdateTag<game::UpdateType::FixedStep>>(clientPlayer))
+        cw.emplace<game::UpdateTag<game::UpdateType::FixedStep>>(clientPlayer);
+    if (!cw.all_of<game::RenderStrategyTag<game::RenderStrategy::LocalPrediction>>(
+            clientPlayer))
+        cw.emplace<
+            game::RenderStrategyTag<game::RenderStrategy::LocalPrediction>>(
+            clientPlayer);
 }
 }  // namespace
 
@@ -381,22 +394,15 @@ TEST(e2e_physics_events_bounded)
             }
         }
 
-        // Phase 1 (pre-D7): each entity gets at most kSubStepsPerTick + 1
-        // UpdateComponentEvents per poll — one per fixed sub-step on the
-        // fixed-frame polls (the physics stage batches all three axes into
-        // one patch per sub-step) plus one from the realtime physics stage
-        // that still runs every poll.  The scan window is bounded by the
-        // tail, and the tail lags the enqueue by up to two polls (the
-        // server consumes entries when packets actually drain), so one
-        // window can span a fixed poll + two lagged realtime polls:
-        // 3 sub-steps + 3 realtime = kSubStepsPerTick + 3.  Phase 2's D7
-        // batches the sub-steps into a single event per tick and the
-        // realtime stage stops simulating the player, tightening this back
-        // to <= 1.
+        // D7 (Phase 2): the fixed physics stage batches its patches across
+        // the tick — one UpdateComponentEvent per entity per fixed frame —
+        // and the server's realtime physics stage is gone.  A per-poll scan
+        // window can therefore contain at most one event per entity (the
+        // tail-clamped window spans at most one fixed frame's drain).
         for (auto& [e, count] : perEntityCount)
         {
             (void)e;
-            CHECK(count <= game::sim::kSubStepsPerTick + 3);
+            CHECK(count <= 1);
         }
 
         if (lastCursor != 0) beforeCursor = lastCursor;
@@ -405,6 +411,65 @@ TEST(e2e_physics_events_bounded)
     // At least one sample must have produced physics events (gravity affects
     // the player body every frame).
     CHECK(anyEvent);
+}
+
+// =============================================================================
+// Config parity — the server and client stage lists come from the shared
+// builders (Phase 2).  Guards the config-drift bug class: the harness,
+// ClientConnScene's default synthesis and the server scene used to
+// hand-assemble diverging stage lists (e.g. the client missing
+// SubsystemPlayer<FixedStep>).
+// =============================================================================
+
+TEST(e2e_player_config_parity)
+{
+    NetSceneHarness h;
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    // Wait until the client scene switched to ClientScene2 (the player
+    // replicated) — its GetConfig() is the round-tripped scene_config.
+    bool clientReady = false;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)e;
+                (void)player;
+                clientReady = true;
+                return true;
+            }
+            return false;
+        },
+        400));
+    CHECK(clientReady);
+
+    auto& clientCfg = h.clientScene()->GetConfig();
+    auto& serverCfg = h.serverScene()->GetConfig();
+
+    // Client: the fixed trio in the fixed pipeline (no terrain stage — the
+    // config-flake class); the realtime trio + SubsystemDebugText in the
+    // realtime pipeline.
+    CHECK(clientCfg.subsystems ==
+          game::sim::FixedStepPlayerStages(h.m_clientRunner.AF()));
+    auto expectedRealtime =
+        game::sim::RealtimePlayerStages(h.m_clientRunner.AF());
+    expectedRealtime.push_back(
+        h.m_clientRunner.Id<game::sim::SubsystemDebugText>());
+    CHECK(clientCfg.realtimeSubsystems == expectedRealtime);
+
+    // Server: terrain first, then the fixed trio; no realtime stages (the
+    // realtime trio used to double-integrate gravity at 20 Hz).
+    auto expectedServerFixed =
+        game::sim::FixedStepPlayerStages(h.m_serverRunner.AF());
+    expectedServerFixed.insert(
+        expectedServerFixed.begin(),
+        h.m_serverRunner.Id<game::sim::SubsystemTerrain>());
+    CHECK(serverCfg.subsystems == expectedServerFixed);
+    CHECK(serverCfg.realtimeSubsystems.empty());
 }
 
 // =============================================================================
@@ -1142,8 +1207,8 @@ TEST(e2e_player_input_jump_move_aim_sync)
     float authPeak = groundY;
     int predLiftPoll = -1;
     int authLiftPoll = -1;
-    game::math::vec3 predLiftPos{};
     game::math::vec3 authLiftPos{};
+    game::math::vec3 stampAnchor{};  // the client-stamped lift-off spot
 
     auto pushInput = [&](bool jump)
     {
@@ -1160,9 +1225,19 @@ TEST(e2e_player_input_jump_move_aim_sync)
 
     for (int i = 0; i < RunFrames; ++i) pushInput(false);
 
+    // Phase 2: sample the arcs per tick — the rollback tick advances every
+    // 3rd poll (the fixed-frame polls).  The prediction world moves at
+    // 60 Hz between ticks (its realtime lead, re-anchored to the mirror
+    // each tick), so mid-window samples skew the lift-off comparison by up
+    // to one tick of run motion.
+    uint32_t lastTick = h.clientRollbackStream().CurrentTick();
     for (int i = 0; i < JumpFrames; ++i)
     {
         pushInput(true);
+
+        const uint32_t tick = h.clientRollbackStream().CurrentTick();
+        if (tick == lastTick) continue;
+        lastTick = tick;
 
         const auto& predBody = cw.get<game::ComponentPhysicBody>(clientPlayer);
         const auto& authBody = h.clientAuthoritativeWorld()
@@ -1172,12 +1247,22 @@ TEST(e2e_player_input_jump_move_aim_sync)
         if (predLiftPoll < 0 && predBody.pos.y > predGroundY + 0.1f)
         {
             predLiftPoll = RunFrames + i;
-            predLiftPos = predBody.pos;
+            // The decision frame the prediction copy just applied carries
+            // the stamped lift-off spot — the anchor both the mirror and
+            // the server snap their arcs to.
+            stampAnchor =
+                cw.get<game::input::PlayerSimInputState>(clientPlayer)
+                    .frame.jumpPos;
         }
         if (authLiftPoll < 0 && authBody.pos.y > groundY + 0.1f)
         {
             authLiftPoll = RunFrames + i;
             authLiftPos = authBody.pos;
+            // The mirror lifts on the tick it applies the stamp frame — its
+            // cached frame carries the anchor both arcs started from.
+            stampAnchor = h.clientAuthoritativeWorld()
+                              .get<game::input::PlayerSimInputState>(authPlayer)
+                              .frame.jumpPos;
         }
     }
     for (int i = 0; i < 20; ++i) h.poll();
@@ -1206,11 +1291,18 @@ TEST(e2e_player_input_jump_move_aim_sync)
     // The arcs must start from the same spot: the server re-deriving the
     // jump tick from its own physics shifts lift-off forward by
     // latency × run speed (~0.25–0.4 m).  With the client-stamped jump the
-    // server anchors to the stamped lift-off position.
-    const float liftDrift = game::math::len(
-        game::math::vec2{predLiftPos.x - authLiftPos.x,
-                         predLiftPos.z - authLiftPos.z});
-    CHECK(liftDrift < 0.15f);
+    // server anchors to the stamped lift-off position — measured against
+    // the stamp anchor itself.  (The prediction copy's own lift position
+    // leads the anchor by one tick of run motion, so raw pred-vs-auth
+    // positions differ by construction; T4 aligns the arcs by lift-off
+    // tick instead.)
+    if (authLiftPoll >= 0)
+    {
+        const float liftDrift = game::math::len(
+            game::math::vec2{authLiftPos.x - stampAnchor.x,
+                             authLiftPos.z - stampAnchor.z});
+        CHECK(liftDrift < 0.15f);
+    }
 }
 
 // =============================================================================

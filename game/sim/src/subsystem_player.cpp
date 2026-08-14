@@ -132,11 +132,16 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
 {
     auto& terrain = ctx.world.ctx().get<TerrainView>();
     auto& blocks = ctx.world.ctx().get<BlockRegistry>();
+    // UpdateTag<variant> for uniformity with creature/physics: both tags
+    // now exist on every player entity (CreatePlayer / DebugVoxelView), and
+    // the FixedStep tag replicates so the authoritative mirror drives the
+    // parity sim.
     for (auto [entity, camera, pcam, input, collider, player, body, creature] :
          ctx.world
-             .view<ComponentCamera, const ComponentPerspectiveCamera,
-                   PlayerInputStream, const ComponentAABBCollider,
-                   ComponentPlayer, ComponentPhysicBody, ComponentCreature>()
+             .view<const UpdateTag<variant>, ComponentCamera,
+                   const ComponentPerspectiveCamera, PlayerInputStream,
+                   const ComponentAABBCollider, ComponentPlayer,
+                   ComponentPhysicBody, ComponentCreature>()
              .each())
     {
         if constexpr (variant == UpdateType::Realtime)
@@ -261,7 +266,19 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                     simState.frame = frame;
                     simState.hasFrame = true;
 
-                    if (frame.jumped && !input.IsLocalInput())
+                    // Landing resets the stamp gate: a fresh jump press may
+                    // stamp again.  Repeat stamps while the stamped arc is
+                    // still airborne must not re-anchor it (the held jump
+                    // input produces a fresh stamp every tick the local
+                    // copy re-decides — anchoring each one restarts the
+                    // arc and the receiver never completes the jump).
+                    if (body.isGrounded)
+                    {
+                        simState.stampActive = false;
+                    }
+
+                    if (frame.jumped && !input.IsLocalInput() &&
+                        !simState.stampActive)
                     {
                         // Client-decided jump stamp (server streams only —
                         // the client's own stamp passes through locally and
@@ -289,6 +306,7 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                         {
                             body.pos = frame.jumpPos;
                             body.velocity.y = creature.initJumpSpeed;
+                            simState.stampActive = true;
                         }
                         else
                         {
