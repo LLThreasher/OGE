@@ -2,8 +2,9 @@
 
 **Status: Phases 1–4 IMPLEMENTED and verified.  Working tree clean, all commits pushed.**
 Target branch: `main` (PR #8 was retargeted from `dev/player-sync-tickspace` on
-2026-08-14 — the branch is a linear extension of `origin/main` at 98327ce, so the
-merge is conflict-free; the old target's jump-stamp experiments are superseded).
+2026-08-14; on 2026-08-15 the branch was rebased onto `origin/main` at a5f5b30 —
+the cursor fix from PR #10 — so it remains a linear, conflict-free extension.
+The old target's jump-stamp experiments are superseded.)
 Read `PLAYER_SYNC_IMPL_PLAN.md` for the
 full spec; this file is the implemented state, the two documented plan deviations,
 and what remains.
@@ -12,12 +13,14 @@ and what remains.
 
 | Commit | What |
 |---|---|
-| 589b0ca | **Phase 1** — shared 20 Hz tick space (`SimTickContext`, `kSubStepDt=1/60`, 3 sub-steps/tick), tick-stamped movement frames, ray-encoded action stream |
-| 27d5d74 | **Phase 2** — single-cadence deterministic player sim from one shared config (`player_sim_config.hpp` builders; no hand-assembled stage pushes) |
-| 6b1900d | **Phase 3** — parity: final component values on the wire, exact harness dt |
-| 4ff2d1d | **Phase 3** — T4 rewritten to post-stamp aligned-arc parity bounds |
-| 93f79dd | **Phase 3** — the jump stamp deleted (276 lines), diagnostics removed |
-| 1d53e9a | **Phase 4** — interpolation buffer for the remote copy (two-world attractor) |
+| 89054f5 | **Phase 1** — shared 20 Hz tick space (`SimTickContext`, `kSubStepDt=1/60`, 3 sub-steps/tick), tick-stamped movement frames, ray-encoded action stream |
+| a6a314f | **Phase 2** — single-cadence deterministic player sim from one shared config (`player_sim_config.hpp` builders; no hand-assembled stage pushes) |
+| 14f5e9b | **Phase 3** — parity: final component values on the wire, exact harness dt |
+| eced2bf | **Phase 3** — T4 rewritten to post-stamp aligned-arc parity bounds |
+| 8f042ee | **Phase 3** — the jump stamp deleted (276 lines), diagnostics removed |
+| eb6e31e | **Phase 4** — interpolation buffer for the remote copy (two-world attractor) |
+| 1085b8a | docs: PR #8 retargeted to `main` (conflict-free — linear extension of origin/main) |
+| 88017fc | **fix** — dig/place release resets the action cooldown (main parity, user-reported regression) |
 
 ## The implemented design (what the code does now)
 
@@ -74,6 +77,12 @@ fall back to their own world).
    `ComponentInterpolatedTransform` (T6/exemption assertion).
 7. **Entity ids are shared between the client's worlds** — the interpolation
    layer correlates mirror↔render entities by id.
+8. **Dig/place release resets the cooldown (main parity):** every event whose
+   non-jump mask is 0 emits a mask-0 release action into the action stream,
+   and `ApplyRayAction` zeroes `lastActionTime` before the cooldown gate —
+   releasing unthrottles the next press; held dig/place still repeats at the
+   0.3 s gap.  The reset rides the replicated stream (never the realtime
+   stage) so both fixed pipelines stay deterministic.
 
 ## Documented plan deviations (in the test comments, don't "fix" without reading)
 
@@ -106,9 +115,12 @@ fall back to their own world).
 ## Verification numbers
 
 - Full build (`--target all`): green, incl. `Arterium.app` + `game_server`.
-- Full ctest: **145/145 twice** (70–75 s each).
-- e2e binary: **18/18 three times**; with the old single-world lerp swapped in,
-  the Phase-4 tests fail (16/2) — the new tests have teeth.
+- Full ctest: **151/151** (145 through Phase 4 + the two release-reset tests
+  + the standalone-scene tests on the merged branch; 70–80 s each).
+- e2e binary: **19/19 three times**; with the old single-world lerp swapped in,
+  the Phase-4 tests fail (16/2) — the new tests have teeth.  The release-reset
+  e2e was red-checked against the exact pre-fix semantics (dig 2 dropped
+  inside the cooldown window).
 - Grep gates: no `HasJumpStamp|jumpPos|MarkJumpPerformed|kUseJumpStamp|stampActive`
   hits; no hand-assembled `push_back(Id<sim::Subsystem…)` stage pushes outside
   `player_sim_config.hpp`.

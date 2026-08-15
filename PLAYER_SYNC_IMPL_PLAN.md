@@ -9,7 +9,7 @@ Working branch: `worktree-player-sync-tickspace-impl` (PR #8 targets `main`;
 jump-stamp experiments).
 
 > **Implementation status (2026-08-14):** Phases 1–4 implemented and verified on
-> `worktree-player-sync-tickspace-impl` (PR #8) — commits 589b0ca … 1d53e9a.
+> `worktree-player-sync-tickspace-impl` (PR #8) — commits 89054f5 … eb6e31e.
 > Full ctest 145/145 twice; e2e 18/18 three times.  The jump stamp is deleted
 > (Phase 3) and the interpolation buffer is in (Phase 4).  Two planned numeric
 > bounds were adjusted during implementation, both documented in the test
@@ -17,8 +17,17 @@ jump-stamp experiments).
 > per-tick re-anchor they assumed) and T6's 0.3 m/frame bound (unattainable
 > alongside k ≈ 12/s for a 100+ m snap).  Phase 5 stays out of scope.  See
 > HANDOFF.md for the implemented state.
-
-> **Revision 3** (per design review):
+>
+> **Follow-up fix (2026-08-15):** dig/place release resets the action cooldown
+> (main parity, user-reported regression) — commit 88017fc.  A mask-0 release
+> action rides the replicated action stream for every dig/place-unset event and
+> `ApplyRayAction` zeroes `lastActionTime` before the cooldown gate.  ctest
+> 151/151; e2e 19/19; the new e2e was red-checked against the exact pre-fix
+> semantics (dig 2 dropped inside the cooldown window).
+>
+> **Rebase (2026-08-15):** branch rebased onto `origin/main` (a5f5b30 — the cursor
+> fix from PR #10); commit hashes throughout this file and HANDOFF.md were
+> updated to the post-rebase values.
 > - The client runs the player sim at **both** cadences in parallel — the 20 tps
 >   fixed pipeline (parity sim) and a 60 Hz realtime sim (aim + action authority).
 > - Input flows through **non-destructive, cursor-based streams**: the fixed
