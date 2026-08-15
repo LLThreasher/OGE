@@ -67,11 +67,11 @@ ctest --test-dir out/build/apple-debug
 add_test_target(name SOURCES test/foo.cpp LIBRARIES game::ctrl oge::platform::native)
 ```
 
-## Test Suites (7 suites, 96 tests)
+## Test Suites (7 suites, 97 tests)
 | Suite | Count | Module | Covers |
 |---|---|---|---|
 | datastruct_test | 11 | core | RingBuffer, DiscreteEventStream |
-| oge_registry_test | 19 | runtime | OgeRegistry CRUD, views, ctx, signals |
+| oge_registry_test | 20 | runtime | OgeRegistry CRUD, views, ctx, signals, stage-dup guard |
 | replication_events_test | 43 | ctrl | Events, hooks, EventLog, scheduler, snapshot, compression, rollback |
 | registry_bug_recreate_test | 4 | ctrl | OgeRegistry vs raw entt parity (regression) |
 | scene_load_test | 4 | ctrl | Scene construction + config, standalone sim smoke + dig + jump |
@@ -289,6 +289,16 @@ contract:
   contract — also true on the networked path), so the very first frame
   pushed by a stream is sacrificed; tests prime with a no-op frame before
   injecting the frame under test.
+- **The default standalone config registers one body sim.**
+  `GetDefaultSceneConfig` puts the fixed trio (terrain + fixed
+  player/creature/physics) in the fixed pipeline and only the realtime
+  player stage (camera chase, raw-frame drain, ray baking) in the realtime
+  pipeline.  Registering the realtime creature/physics too would integrate
+  the same body twice (fixed 30 Hz + realtime 60 Hz) and accelerate
+  movement.  Networked scenes use `ApplyServerSimConfig` /
+  `ApplyClientSimConfig` instead (the client's realtime trio is its
+  prediction sim).  `BasePipeline::AddStage` also guards against the same
+  stage type being added to one pipeline twice.
 
 ## Known Issues
 1. **`scene_load_test`**: `Scene::Load()` with JSON config triggers `__next_prime

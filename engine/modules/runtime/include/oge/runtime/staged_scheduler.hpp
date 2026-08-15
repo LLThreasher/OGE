@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "oge/log.hpp"
 #include "oge/runtime/tick_scheduler.hpp"
 #include "oge/runtime/typed_registry.hpp"
 
@@ -23,8 +24,14 @@ class Stage
     virtual void onDetach(TCtx& ctx) = 0;
     virtual void onUpdate(TFrameCtx& ctx) = 0;
 
+    // Concrete type id of this stage, set by BasePipeline::AddStage's
+    // factory path.  0 = unknown (direct construction) — the duplicate
+    // guard skips stages without an id.
+    oge_id_type StageId() const { return id_; }
+    void SetStageId(oge_id_type id) { id_ = id; }
+
    private:
-    oge_id_type id_;
+    oge_id_type id_ = 0;
 };
 
 template <typename TControl, typename TStage, typename TFrameData = float>
@@ -57,12 +64,39 @@ class BasePipeline
 
     TStage* AddStage(AnythingFactory& af, oge_id_type id, entt::any data = {})
     {
-        return AddStage(af.BuildABC<TStage>(id, data));
+        if (HasStageId(id))
+        {
+            LOG_WARN(
+                "stage type {} already registered in pipeline; duplicate add "
+                "ignored (a double add would run the stage twice per update)",
+                id);
+            return nullptr;
+        }
+        auto stage = af.BuildABC<TStage>(id, data);
+        if (stage)
+        {
+            stage->SetStageId(id);
+        }
+        return AddStage(std::move(stage));
     }
 
     TStage* AddStage(std::unique_ptr<TStage> stage)
     {
         assert(stage);
+        // Duplicate-stage guard: each stage type runs exactly once per
+        // pipeline.  A second registration (double Load, duplicated config
+        // list) would run the stage twice per update — double integration,
+        // accelerated movement.  Stages built outside the factory path
+        // carry no id (StageId() == 0) and bypass the check.
+        const oge_id_type id = stage->StageId();
+        if (id != 0 && HasStageId(id))
+        {
+            LOG_WARN(
+                "stage type {} already registered in pipeline; duplicate add "
+                "ignored (a double add would run the stage twice per update)",
+                id);
+            return nullptr;
+        }
         m_stages.push_back(std::move(stage));
         assert(m_stages.back() != nullptr && "nullptr stage");
         m_stages.back()->onAttach(m_ctx);
@@ -121,6 +155,14 @@ class BasePipeline
                                [handle](const auto& ptr)
                                { return ptr.get() == handle; });
         return it;
+    }
+
+    bool HasStageId(oge_id_type id) const
+    {
+        return std::find_if(m_stages.begin(), m_stages.end(),
+                            [id](const auto& stage)
+                            { return stage->StageId() == id; })
+               != m_stages.end();
     }
 
     std::vector<std::unique_ptr<TStage>> m_stages;
