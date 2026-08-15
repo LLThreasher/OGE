@@ -1,5 +1,6 @@
 #pragma once
 
+#include "game/input/net.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "oge/runtime/oge_registry.hpp"
 
@@ -39,12 +40,19 @@ inline void AggregateLocalInputs(oge::runtime::OgeRegistry& world,
 
         // Movement: the raw 60 Hz window since the last aggregation becomes
         // one stamped tick frame (empty windows ship nothing — the
-        // empty-tick contract).
+        // empty-tick contract).  The frame is quantized exactly like the
+        // wire (SNorm8 round-trip — PollPlayerInputs pushes the packed
+        // value into the local tick ring), so a transport-less fixed stage
+        // consumes bit-identical frames to the networked one: the fixed
+        // sim must not branch on the transport layer's existence.  The
+        // 60 Hz realtime stage keeps draining raw frames — it is
+        // prediction-only and diverges by cadence anyway.
         input::PlayerInputFrame frame{};
         if (input::AggregateTickInput(input, simState.aggregateCursor, tick,
                                       frame))
         {
-            input.PushTick(frame);
+            input.PushTick(static_cast<input::PlayerInputFrame>(
+                input::net::PackedPlayerInputFrame{frame}));
         }
 
         // Actions: the ray-encoded accumulation becomes one stamped action

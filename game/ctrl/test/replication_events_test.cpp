@@ -13,8 +13,11 @@
 #include "game/components.hpp"
 #include "game/components_net.hpp"
 #include "game/input/net.hpp"
+#include "game/input/player_action_stream.hpp"
+#include "game/input/player_input_stream.hpp"
 #include "game/net/event_log_stream.hpp"
 #include "game/net/replication_registry.hpp"
+#include "game/sim/input_aggregation.hpp"
 #include "game/terrain/defs.hpp"
 #include "game/terrain/terrain_view.hpp"
 #include "oge/point3.hpp"
@@ -730,6 +733,75 @@ TEST(aggregate_tick_jump)
     game::input::PlayerInputFrame out{};
     CHECK(game::input::AggregateTickInput(s, c, 7, out));
     CHECK(out.jump);
+}
+
+// AggregateLocalInputs (transport-less scenes) pushes the SNorm8-quantized
+// round-trip of the aggregated frame, exactly like the networked path
+// (PollPlayerInputs pushes the packed value into the local tick ring) — the
+// fixed stage must consume bit-identical frames with or without a transport
+// layer.  Diagonal moves quantize inexactly (±0.7071 → ±90/127), so the
+// pushed tick frame differs from the raw aggregate by the wire's
+// quantization.
+TEST(aggregate_local_inputs_quantizes_move)
+{
+    oge::runtime::OgeRegistry w;
+    auto e = w.create();
+    w.emplace<game::input::PlayerInputStream>(e);
+    w.emplace<game::input::PlayerActionStream>(e);
+    w.emplace<game::input::PlayerSimInputState>(e);
+
+    auto& s = w.get<game::input::PlayerInputStream>(e);
+
+    // Prime the aggregate cursor (shared cold-start contract): the first
+    // aggregation snaps a fresh cursor to the raw-ring frontier, so the
+    // very first frame pushed by a stream is sacrificed — and a stream only
+    // becomes local (IsLocalInput) after its first PushFrame.  This prime
+    // frame is diagonal too, so it doubles as the sacrificial frame.
+    game::input::PlayerInputFrameDelta d;
+    d.moveDelta = {-0.70710678f, -0.70710678f};
+    s.PushFrame(d);
+    s.AdvanceTick();
+    game::sim::AggregateLocalInputs(w, 1);
+
+    // The frame under test — another diagonal (S+D): unit-vector components
+    // do not quantize exactly to SNorm8.
+    s.PushFrame(d);
+    s.AdvanceTick();
+
+    // The raw aggregate the wire would pack (the raw ring is non-consuming,
+    // so an independent cursor can re-read it).
+    game::input::PlayerInputFrame raw{};
+    {
+        game::input::PlayerInputStream::Cursor c{2};
+        CHECK(game::input::AggregateTickInput(s, c, 2, raw));
+    }
+
+    game::sim::AggregateLocalInputs(w, 2);
+
+    CHECK_EQ(s.HeadCursor(), 2u);  // one tick frame pushed
+
+    // Read the pushed tick frame the way the fixed stage does.
+    game::input::PlayerInputStream::Cursor c{1};
+    uint32_t last = 0;
+    game::input::PlayerInputFrame f{};
+    CHECK(game::input::TryReadTickFrame(s, c, 3, last, f));
+    CHECK_EQ(f.tick, 2u);
+    // The pushed move is the wire round-trip of the raw aggregate — and
+    // this diagonal is inexact, so it differs from the raw value.
+    CHECK(f.move.x ==
+          game::input::net::DequantizeSNorm8(
+              game::input::net::QuantizeSNorm8(raw.move.x)));
+    CHECK(f.move.y ==
+          game::input::net::DequantizeSNorm8(
+              game::input::net::QuantizeSNorm8(raw.move.y)));
+    CHECK(f.move.z ==
+          game::input::net::DequantizeSNorm8(
+              game::input::net::QuantizeSNorm8(raw.move.z)));
+    CHECK(f.move != raw.move);
+    // Each nonzero component is exactly the quantized unit diagonal:
+    // lround(0.70710678 × 127) = 90.
+    CHECK(game::math::abs(f.move.x) == 90.f / 127.f);
+    CHECK(game::math::abs(f.move.z) == 90.f / 127.f);
 }
 
 // TickIsStale: wrap-safe comparisons (D8) — the inverted-branch bug made
