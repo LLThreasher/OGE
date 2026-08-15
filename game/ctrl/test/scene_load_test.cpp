@@ -87,8 +87,10 @@ TEST(scene_standalone_player_sim_smoke) {
     }
     CHECK(w.valid(player));
 
-    // The realtime trio simulates the player: gravity moved the body off
+    // The fixed trio simulates the player: gravity moved the body off
     // its spawn height (falling, or landed on terrain below the spawn).
+    // The default config registers one body sim — the realtime pipeline
+    // hosts the player stage only (camera chase, input drain).
     const auto& body = w.get<game::ComponentPhysicBody>(player);
     CHECK(body.pos.y < spawnPos.y);
 
@@ -266,9 +268,11 @@ TEST(scene_standalone_player_jump) {
     }
 
     // Scan ~2 s: the body must leave the ground and reach a jump apex.
-    // Both the fixed and the realtime physics integrate gravity in the
-    // standalone default config, so the effective gravity doubles
-    // (~19.6 m/s²) and the 1.65 m jump-height impulse peaks at ~0.83 m.
+    // The default config registers one body sim (the fixed trio), so the
+    // 1.65 m jump-height impulse integrates under single gravity (~9.8
+    // m/s²) and peaks near the configured height.  The 1.2 m gate is the
+    // single-integration teeth check — the old double-sim config (fixed +
+    // realtime physics both integrating) peaked at ~0.83 m.
     float maxY = groundY;
     bool lifted = false;
     for (int i = 0; i < 120; ++i)
@@ -279,7 +283,7 @@ TEST(scene_standalone_player_jump) {
         if (y > groundY + 0.1f) lifted = true;
     }
     CHECK(lifted);
-    CHECK(maxY > groundY + 0.4f);
+    CHECK(maxY > groundY + 1.2f);
 
     scene.Unload();
 }

@@ -163,12 +163,14 @@ SceneConfig GetDefaultSceneConfig(AnythingFactory& af)
     config.subsystems.push_back(
         af.Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
 
+    // Realtime pipeline: the player stage only — it drains raw frames,
+    // chases the camera and bakes ray actions.  The fixed trio owns the
+    // body sim (movement, jump, physics) — registering the realtime
+    // creature/physics here would integrate the same body twice (fixed
+    // 30 Hz + realtime 60 Hz) and accelerate movement.  A standalone scene
+    // has no prediction layer that needs a realtime body sim.
     config.realtimeSubsystems.push_back(
         af.Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-    config.realtimeSubsystems.push_back(
-        af.Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-    config.realtimeSubsystems.push_back(
-        af.Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
     return config;
 }
 
