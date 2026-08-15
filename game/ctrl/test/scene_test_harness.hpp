@@ -63,6 +63,10 @@ struct NetSceneHarness
     TestSceneRunner m_serverRunner;
     TestSceneRunner m_clientRunner;
     bool m_clientPrediction = false;
+    // Overridable for the version-mismatch test — defaults keep the
+    // production handshake (both sides net::kProtocolVersion).
+    uint32_t m_serverProtocolVersion = game::net::kProtocolVersion;
+    uint32_t m_clientProtocolVersion = game::net::kProtocolVersion;
 
     bool start()
     {
@@ -79,6 +83,8 @@ struct NetSceneHarness
         // Pass the test port to both scenes so they talk to each other.
         game::json::Object srvArgs;
         srvArgs["port"] = static_cast<int64_t>(TEST_PORT);
+        srvArgs["protocol_version"] =
+            static_cast<int64_t>(m_serverProtocolVersion);
         m_serverRunner.SwitchToScene<game::DebugServerScene>(std::move(srvArgs));
 
         return true;
@@ -96,6 +102,8 @@ struct NetSceneHarness
         game::json::Object cliArgs;
         cliArgs["port"] = static_cast<int64_t>(TEST_PORT);
         cliArgs["ip"] = std::string("127.0.0.1");
+        cliArgs["protocol_version"] =
+            static_cast<int64_t>(m_clientProtocolVersion);
         cliArgs["next_scene"] =
             game::json::Int(entt::type_hash<TestClientScene>::value());
 

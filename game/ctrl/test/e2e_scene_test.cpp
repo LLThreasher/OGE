@@ -2170,4 +2170,35 @@ TEST(e2e_prediction_stability)
     CHECK(cw.all_of<game::ComponentPhysicBody>(clientPlayer));
 }
 
+TEST(e2e_handshake_version_mismatch_rejected)
+{
+    NetSceneHarness h;
+    // Server expects a protocol version one ahead of the client — the
+    // handshake must be rejected on both sides (stale-binary guard).
+    h.m_serverProtocolVersion = game::net::kProtocolVersion + 1;
+    CHECK(h.start());
+    CHECK(h.connect());
+
+    // The server must never create the player for a rejected handshake.
+    CHECK(!h.waitForHandshake(200));
+
+    auto* srvScene = h.serverScene();
+    CHECK(srvScene != nullptr);
+    size_t playerCount = 0;
+    for (auto [e, player] :
+         srvScene->GetWorld().view<game::ComponentPlayer>()->each())
+    {
+        (void)e;
+        (void)player;
+        ++playerCount;
+    }
+    CHECK_EQ(playerCount, size_t{0});
+
+    // The client must have bailed out of ClientConnScene: the timeout path
+    // switches to the bare Scene placeholder, never to TestClientScene.
+    auto* cliScene = h.clientScene();
+    CHECK(cliScene != nullptr);
+    CHECK(dynamic_cast<TestClientScene*>(cliScene) == nullptr);
+}
+
 RUN_TESTS("E2E Scene Tests")

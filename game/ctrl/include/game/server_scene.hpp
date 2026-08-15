@@ -5,6 +5,7 @@
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/net/event_log_stream.hpp"
+#include "game/net/protocol.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
 #include "game/sim/player_sim_config.hpp"
@@ -38,6 +39,7 @@ class DebugServerScene final : public Scene
     // Update-frame counter for the fixed cadence (D1): every
     // sim::kSubStepsPerTick updates are one fixed frame = one tick.
     uint32_t m_fixedFrameCounter = 0;
+    uint32_t m_protocolVersion = net::kProtocolVersion;
     std::deque<PlayerInfo> m_playerEntries;
     net::EventLogStream<>& m_eventLogStream;
     net::ReplicationRegistry m_replicationRegistry;
@@ -88,6 +90,20 @@ class DebugServerScene final : public Scene
         {
             m_pendingConnection = nullptr;
             m_pendingConnTimeout = 0.f;
+            // Handshake layout: [protocolVersion, PlayerInfo].  Reject
+            // stale clients before their packet is misread as the old
+            // layout (a legacy packet is 4 bytes short of the guard).
+            if (p.data->Size() < sizeof(uint32_t) + sizeof(PlayerInfo) ||
+                p.data->Read<uint32_t>() != m_protocolVersion)
+            {
+                LOG_ERROR(
+                    "rejecting client handshake: protocol version mismatch "
+                    "or truncated packet — server {} ({} bytes); "
+                    "disconnecting",
+                    m_protocolVersion, p.data->Size());
+                m_netServer.Disconnect(p.peer);
+                return;
+            }
             if (m_pendingConnection2 == nullptr)
             {
                 m_pendingConnection2 = p.peer;
@@ -118,7 +134,11 @@ class DebugServerScene final : public Scene
                 math::max(p.peerId + 1, (uint32_t)m_playerEntries.size()));
             m_playerEntries[p.peerId] = playerInfo;
 
-            auto packet = m_netServer.StartPacket(sizeof(entt::entity));
+            // Reply layout: [protocolVersion, playerEntity] — the client
+            // aborts the handshake on mismatch (stale server detection).
+            auto packet = m_netServer.StartPacket(sizeof(uint32_t) +
+                                                  sizeof(entt::entity));
+            packet.Write(m_protocolVersion);
             packet.Write<entt::entity>(entt::null);
             m_netServer.Send(p.peer, packet);
         }
@@ -181,7 +201,16 @@ class DebugServerScene final : public Scene
             if (it != def.args.end())
                 maxClients = std::get<int64_t>(it->second);
         }
+        // Overridable for mismatch tests (default net::kProtocolVersion).
+        {
+            auto it = def.args.find("protocol_version");
+            if (it != def.args.end())
+                m_protocolVersion =
+                    static_cast<uint32_t>(std::get<int64_t>(it->second));
+        }
         m_netServer.Initialize(port, maxClients, 3);
+        LOG_INFO("game server started on port {} — protocol version {}",
+                 port, m_protocolVersion);
 
         // The fixed pipeline runs one pass per sub-step (D1/D2) — the
         // scene-driven loop feeds kSubStepDt 3x per fixed frame.
