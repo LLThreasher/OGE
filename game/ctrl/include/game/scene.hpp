@@ -10,6 +10,7 @@
 #include "game/game_world.hpp"
 #include "oge/json.hpp"
 #include "game/scene_runner.hpp"
+#include "game/sim/player_sim_config.hpp"
 #include "game/sim/subsystem.hpp"
 #include "oge/runtime/type_name.hpp"
 
@@ -43,7 +44,11 @@ class Scene : protected AppRuntime
     // as explicit sub-steps of sim::kSubStepDt (the sub-step boundaries are
     // visible to the stages via SimTickContext.subStepIdx).
     float m_fixedAccum = 0.f;
-    float m_fixedFrameDuration = 1.f / 30.f;
+    // One sub-step per fixed frame (60 Hz): a bare scene's fixed physics
+    // integrates every frame, so standalone movement is as smooth as the
+    // old realtime-trio path — without double-simming the body.  Transport
+    // scenes override to sim::kFixedFrameDuration (1/20, 3 sub-steps).
+    float m_fixedFrameDuration = sim::kSubStepDt;
 
     // Tick arbitration: the last SimTickContext.currentTick this scene saw.
     // Transport scenes (server/client) write the tick before Update — their

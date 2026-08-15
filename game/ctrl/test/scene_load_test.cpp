@@ -77,9 +77,9 @@ TEST(scene_standalone_player_sim_smoke) {
     std::optional<oge::runtime::oge_id_type> nextScene;
     game::json::Object nextSceneArgs;
 
-    // One second at 60 fps: several fixed frames (30 Hz, 2 sub-steps each)
-    // plus 60 realtime ticks.  The fixed pipeline runs
-    // SubsystemPlayer<FixedStep> over the player every frame.
+    // One second at 60 fps: the bare scene's fixed frame is one sub-step
+    // (kSubStepDt), so the fixed pipeline runs every update — physics
+    // integrates per frame — plus 60 realtime ticks (camera chase).
     const auto spawnPos = w.get<game::ComponentPhysicBody>(player).pos;
     for (int i = 0; i < 60; ++i)
     {

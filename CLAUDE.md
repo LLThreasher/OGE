@@ -271,7 +271,11 @@ contract:
   scenes call `SetUpdateInterval(sim::kSubStepDt)` explicitly) — a longer
   interval lets the pipeline's internal scheduler collapse the sub-steps
   into one stage update at the last sub-step index, and the
-  `subStepIdx == 0` decision gate never opens.
+  `subStepIdx == 0` decision gate never opens.  A bare scene's fixed-frame
+  duration is also `kSubStepDt` (one sub-step, 60 Hz) so fixed physics
+  integrates every frame — smooth standalone movement without a realtime
+  body sim; transport scenes override to `sim::kFixedFrameDuration`
+  (1/20, 3 sub-steps).
 - **Tick arbitration:** transport scenes overwrite `currentTick` from their
   replication tick before `Scene::Update` (every fixed frame — their 1/20
   frame aligns with `kSubStepsPerTick`, so arbitration never fires there).
