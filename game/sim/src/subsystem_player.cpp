@@ -242,40 +242,14 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
 
         if constexpr (variant == UpdateType::FixedStep)
         {
-            // Bare-world fallback (mirrors SubsystemPhysics): a standalone
-            // scene (no server/client scene) has no SimTickContext in world
-            // ctx — there is no tick space, no tick-stamped frames and no
-            // sub-step cadence.  The ctx().get below throws on a missing
-            // ctx variable (entt dense_map::at), so degrade instead: the
-            // player's motion comes from the realtime trio, and the action
-            // accumulation is drained directly.  Nothing else aggregates
-            // the action stream here (PollPlayerActions is the transport
-            // layer's job), so without the drain the 3-slot accumulator
-            // fills and every further action warns "player action overflow"
-            // while nothing ever applies.
-            if (!ctx.world.ctx().contains<sim::SimTickContext>())
-            {
-                auto& actionStream =
-                    ctx.world.get<input::PlayerActionStream>(entity);
-                input::PlayerActionFrame actionFrame{};
-                if (actionStream.AggregateTick(0, actionFrame))
-                {
-                    for (uint8_t i = 0; i < actionFrame.actionCnt; ++i)
-                    {
-                        ApplyRayAction(terrain, blocks, collider, body, player,
-                                       actionFrame.actions[i]);
-                    }
-                }
-                // The dig/place cooldown decrements once per fixed update,
-                // like the tick path below (sub-step count differs, but the
-                // 0.3 s gate only needs a live decay).
-                player.lastActionTime -= ctx.dt;
-                continue;
-            }
-
-            // The 20 tps parity path (D1/D9): the server world and the
-            // client's authoritative world run this identical stage over
-            // the same SimTickContext.
+            // The 20 tps parity path (D1/D9) — the single fixed-stage code
+            // path.  Every world hosting this stage has a SimTickContext
+            // (the Scene constructor guarantees one; the transport scenes
+            // drive the same stage over their replication tick), and every
+            // input configuration stamps frames into the tick rings — the
+            // transport pollers for networked scenes,
+            // sim::AggregateLocalInputs for transport-less scenes.  The
+            // stage never branches on the transport layer's existence.
             auto& simState = ctx.world.get<input::PlayerSimInputState>(entity);
             const auto& tickCtx = ctx.world.ctx().get<sim::SimTickContext>();
 

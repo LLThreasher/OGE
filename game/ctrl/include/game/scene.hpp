@@ -3,6 +3,7 @@
 #include <uuid.h>
 
 #include <cstddef>
+#include <cstdint>
 
 #include "game/app_context.hpp"
 #include "game/components.hpp"
@@ -43,6 +44,13 @@ class Scene : protected AppRuntime
     // visible to the stages via SimTickContext.subStepIdx).
     float m_fixedAccum = 0.f;
     float m_fixedFrameDuration = 1.f / 30.f;
+
+    // Tick arbitration: the last SimTickContext.currentTick this scene saw.
+    // Transport scenes (server/client) write the tick before Update — their
+    // tick space is the replication tick.  A bare scene owns its tick
+    // space: when the tick is unchanged, Update advances it and aggregates
+    // the local input (sim::AggregateLocalInputs) before the fixed stages.
+    uint32_t m_lastFixedTick = 0;
 
     SceneConfig m_sceneConfig = {};
 

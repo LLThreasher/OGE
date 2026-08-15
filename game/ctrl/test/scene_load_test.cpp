@@ -42,12 +42,11 @@ TEST(scene_one_step_update) {
 }
 
 /// Standalone-simulation smoke test: a plain game::Scene (no server scene,
-/// no client scene — the transport layer is meant to be optional) must run
-/// the full default sim config with a live player.  The fixed
-/// SubsystemPlayer reads sim::SimTickContext from world ctx; a standalone
-/// scene never emplaces one, so the stage must degrade gracefully (this
-/// test crashes with std::out_of_range from ctx().get without the
-/// bare-world fallback).
+/// no client scene — the transport layer is optional) must run the full
+/// default sim config with a live player.  The fixed SubsystemPlayer reads
+/// sim::SimTickContext from world ctx; the Scene constructor guarantees one
+/// in every scene world and Update advances it (tick arbitration), so the
+/// stage's single tick-frame code path needs no transport-layer fallback.
 TEST(scene_standalone_player_sim_smoke) {
     INIT
 
@@ -64,14 +63,16 @@ TEST(scene_standalone_player_sim_smoke) {
         w, game::PlayerInfo{{}, {20.f, 20.f, 20.f}});
     CHECK(w.valid(player));
 
-    // Drive local input like the view does: raw frames only — a standalone
-    // scene has no PollPlayerInputs, so no tick-stamped frames exist.
+    // Drive local input like the view does: raw 60 Hz frames.  The scene
+    // aggregates them into tick-stamped frames itself (the transport
+    // pollers' standalone equivalent).
     {
         game::input::PlayerInputFrameDelta delta;
         delta.moveDelta = {1.f, 0.f};
         delta.dt = 1.f / 60.f;
         w.get<game::input::PlayerInputStream>(player).PushFrame(delta);
     }
+    CHECK(w.get<game::input::PlayerInputStream>(player).IsLocalInput());
 
     std::optional<oge::runtime::oge_id_type> nextScene;
     game::json::Object nextSceneArgs;
@@ -95,10 +96,11 @@ TEST(scene_standalone_player_sim_smoke) {
 }
 
 /// Standalone dig action: a bare game::Scene has no transport layer, so
-/// PollPlayerActions never runs and nothing stamps the action window.  The
-/// fixed player stage must drain the PlayerActionStream directly —
-/// otherwise the 3-slot accumulator fills ("player action overflow" warn)
-/// and dig/place actions never remove a block.
+/// PollPlayerActions never runs — the scene itself aggregates the local
+/// input into tick-stamped frames (sim::AggregateLocalInputs) and the fixed
+/// player stage drains them like it does on the server.  Without the
+/// aggregation the 3-slot accumulator fills ("player action overflow"
+/// warn) and dig/place actions never remove a block.
 TEST(scene_standalone_player_dig_action) {
     INIT
 
@@ -167,8 +169,8 @@ TEST(scene_standalone_player_dig_action) {
         CHECK(preBlock != 0);
     }
 
-    // Dig: the fixed stage drains the action accumulation directly in bare
-    // mode (no tick stamps exist) and applies the ray like the tick path.
+    // Dig: the scene aggregates the action accumulation into a stamped
+    // tick frame and the fixed stage applies the ray like the server path.
     {
         game::input::PlayerInputFrameDelta delta;
         delta.inputEvent = game::input::PlayerInputEvent{
@@ -184,6 +186,100 @@ TEST(scene_standalone_player_dig_action) {
             return terrain.TryGetBlock(hitPos, v) && v == 0;
         },
         600));
+
+    scene.Unload();
+}
+
+/// Standalone jump: jump input must take the same path as the networked
+/// sim — raw frames aggregate into tick-stamped frames (the scene owns the
+/// aggregation when no transport layer exists), the fixed player stage
+/// reads the frame and raises the creature's jumpOrder, and the fixed
+/// creature stage applies the impulse.  Before the sim-layer tick
+/// aggregation the jump bit was dead input in standalone (the bare-world
+/// fallback drained actions only), so the body never left the ground.
+TEST(scene_standalone_player_jump) {
+    INIT
+
+    game::Scene::Def def{appCtx, {}};
+    game::Scene scene(def);
+
+    game::sim::RegisterSubsystems(appCtx.any_factory);
+
+    scene.GetConfig() = game::GetDefaultSceneConfig(types);
+    scene.Load();
+
+    auto& w = scene.GetWorld();
+    auto player = game::ComponentPlayer::CreatePlayer(
+        w, game::PlayerInfo{{}, {20.f, 20.f, 20.f}});
+    CHECK(w.valid(player));
+
+    std::optional<oge::runtime::oge_id_type> nextScene;
+    game::json::Object nextSceneArgs;
+    auto pumpUntil = [&](auto&& done, int maxFrames)
+    {
+        for (int i = 0; i < maxFrames; ++i)
+        {
+            scene.Update({1.f / 60.f}, {nextScene, nextSceneArgs});
+            if (done()) return true;
+        }
+        return false;
+    };
+
+    // Settle: terrain generates under the spawn and the body lands.
+    CHECK(pumpUntil(
+        [&]
+        {
+            return w.get<game::ComponentPhysicBody>(player).isGrounded;
+        },
+        1200));
+
+    const float groundY = w.get<game::ComponentPhysicBody>(player).pos.y;
+
+    auto& stream = w.get<game::input::PlayerInputStream>(player);
+    auto step = [&](int frames)
+    {
+        for (int i = 0; i < frames; ++i)
+            scene.Update({1.f / 60.f}, {nextScene, nextSceneArgs});
+    };
+
+    // Prime the aggregation: a fresh aggregate cursor snaps to the raw
+    // ring frontier (the shared contract — a fresh reader starts at "now"),
+    // so the very first frame ever pushed is sacrificed.  Push a no-op
+    // delta and let one aggregation run so the jump frame below reads
+    // normally (the same cold-start the networked pollers have).
+    {
+        game::input::PlayerInputFrameDelta delta;
+        stream.PushFrame(delta);
+    }
+    step(3);
+
+    // Jump: one raw frame with the Jump event.  The scene aggregates it
+    // into a stamped tick frame on the next fixed frame; the fixed player
+    // reads the frame (dueTick = tick - 1) and raises jumpOrder; the fixed
+    // creature applies the impulse.
+    {
+        game::input::PlayerInputFrameDelta delta;
+        delta.inputEvent = game::input::PlayerInputEvent{
+            game::math::vec2{0.f, 0.f},
+            game::input::PlayerActionKind::Jump};
+        stream.PushFrame(delta);
+    }
+
+    // Scan ~2 s: the body must leave the ground and reach a jump apex.
+    // Both the fixed and the realtime physics integrate gravity in the
+    // standalone default config, so the effective gravity doubles
+    // (~19.6 m/s²) and the 1.65 m jump-height impulse peaks at ~0.83 m.
+    float maxY = groundY;
+    bool lifted = false;
+    for (int i = 0; i < 120; ++i)
+    {
+        scene.Update({1.f / 60.f}, {nextScene, nextSceneArgs});
+        const float y = w.get<game::ComponentPhysicBody>(player).pos.y;
+        if (y > maxY) maxY = y;
+        if (y > groundY + 0.1f) lifted = true;
+    }
+    CHECK(lifted);
+    CHECK(maxY > groundY + 0.4f);
 
     scene.Unload();
 }

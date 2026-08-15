@@ -2,8 +2,10 @@
 
 #include "game/components.hpp"
 #include "game/game_world.hpp"
+#include "game/input/player_input_stream.hpp"
 #include "oge/json.hpp"
 #include "game/net/replication_events.hpp"
+#include "game/sim/input_aggregation.hpp"
 #include "game/sim/player_sim_config.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
@@ -15,9 +17,31 @@ using namespace game;
 
 Scene::Scene(const Def& def)
     : AppRuntime(def.ctx),
-      m_subsystems({m_world, def.ctx.events, def.ctx.memory}, 1.f / 30.f),
+      // The fixed pipeline ticks once per sub-step (D2): Scene::Update
+      // drives the sub-steps explicitly and the stages observe them via
+      // SimTickContext.subStepIdx.  A longer interval would let the
+      // pipeline's internal scheduler re-accumulate the sub-steps and
+      // collapse them into one update at the last sub-step index — the
+      // subStepIdx == 0 decision gate would never open and the fixed
+      // stages would never decide anything.  (The transport scenes call
+      // SetUpdateInterval(sim::kSubStepDt) explicitly; this default keeps
+      // the bare scene on the same cadence.)
+      m_subsystems({m_world, def.ctx.events, def.ctx.memory},
+                   sim::kSubStepDt),
       m_realtimeSubsystems({m_world, def.ctx.events, def.ctx.memory})
 {
+    // The sim always runs in a tick space — the transport layer is
+    // optional, never required.  Every scene world gets its SimTickContext
+    // at construction (not in Load): the scene runner constructs a scene
+    // and Updates it without ever loading it (e.g. ClientConnScene, the
+    // bare Scene placeholder), and Scene::Update's fixed block reads the
+    // tick unconditionally.  Transport scenes overwrite currentTick every
+    // Update from their replication tick; a scene that owns its tick starts
+    // at 0 and advances it in Update (tick arbitration).  emplace is
+    // idempotent (try_emplace), so the transport scenes' own emplace in
+    // their constructors just returns this one.
+    m_world.ctx().emplace<sim::SimTickContext>();
+
     auto it = def.args.find("scene_config");
     if (it != def.args.end())
     {
@@ -47,21 +71,25 @@ void Scene::Update(Frame f, SceneContext sctx)
         OGE_ASSERT(subSteps >= 1,
                    "fixed frame duration {} is shorter than one sub-step {}",
                    m_fixedFrameDuration, sim::kSubStepDt);
-        if (m_world.ctx().contains<sim::SimTickContext>())
+        auto& tickCtx = m_world.ctx().get<sim::SimTickContext>();
+        // Tick arbitration: transport scenes advance currentTick before
+        // Update (their tick space is the replication tick).  When the tick
+        // is unchanged, this scene owns its tick space — advance it and
+        // aggregate the local input into tick-stamped frames, exactly like
+        // the transport pollers do.  The same stamp (T - pipeline delay)
+        // feeds the same fixed-stage code path in every configuration.
+        if (tickCtx.currentTick == m_lastFixedTick)
         {
-            auto& tickCtx = m_world.ctx().get<sim::SimTickContext>();
-            for (int s = 0; s < subSteps; ++s)
-            {
-                tickCtx.subStepIdx = (uint8_t)s;
-                m_subsystems.Update(sim::kSubStepDt);
-            }
+            ++tickCtx.currentTick;
+            sim::AggregateLocalInputs(
+                m_world,
+                tickCtx.currentTick - input::kInputPipelineDelayTicks);
         }
-        else
+        m_lastFixedTick = tickCtx.currentTick;
+        for (int s = 0; s < subSteps; ++s)
         {
-            for (int s = 0; s < subSteps; ++s)
-            {
-                m_subsystems.Update(sim::kSubStepDt);
-            }
+            tickCtx.subStepIdx = (uint8_t)s;
+            m_subsystems.Update(sim::kSubStepDt);
         }
         m_fixedAccum = 0.f;
     }

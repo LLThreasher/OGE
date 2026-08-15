@@ -434,6 +434,8 @@ struct PlayerSimInputState
     PlayerInputStream::Cursor moveCursor{};
     PlayerActionStream::Cursor actionCursor{};
     PlayerInputStream::Cursor realtimeCursor{};  // realtime per-frame drain
+    PlayerInputStream::Cursor aggregateCursor{};  // local-input aggregation
+                                                  // (transport-less scenes)
     uint32_t consumedTick = 0;  // tick the fixed-stage decisions were made for
     bool hasFrame = false;      // cached movement frame valid?
     PlayerInputFrame frame{};
