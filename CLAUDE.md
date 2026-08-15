@@ -67,14 +67,14 @@ ctest --test-dir out/build/apple-debug
 add_test_target(name SOURCES test/foo.cpp LIBRARIES game::ctrl oge::platform::native)
 ```
 
-## Test Suites (7 suites, 93 tests)
+## Test Suites (7 suites, 95 tests)
 | Suite | Count | Module | Covers |
 |---|---|---|---|
 | datastruct_test | 11 | core | RingBuffer, DiscreteEventStream |
 | oge_registry_test | 19 | runtime | OgeRegistry CRUD, views, ctx, signals |
 | replication_events_test | 43 | ctrl | Events, hooks, EventLog, scheduler, snapshot, compression, rollback |
 | registry_bug_recreate_test | 4 | ctrl | OgeRegistry vs raw entt parity (regression) |
-| scene_load_test | 1 | ctrl | Scene construction + config |
+| scene_load_test | 3 | ctrl | Scene construction + config, standalone sim smoke + dig action |
 | sim_physics_test | 12 | sim | AABB collision, PhysBody defaults |
 | debug_scene3_test | 3 | ctrl_ext | Type registration, inheritance |
 
@@ -228,6 +228,14 @@ synchronize first (e.g. wait until the client chunk is `Persistent` before
   `PlayerInputReplicationEvent` (`PackedPlayerInputFrame`, quantized via
   `game::input::net`).  Reliable channel (`SingleReliable`).  The server
   never calls it — input only flows client → server.
+- **Standalone scenes have no poller**: `PollPlayerInputs`/`PollPlayerActions`
+  live in the transport layer (`ClientScene2`).  A bare `game::Scene` (no
+  SimTickContext in ctx) skips them, so `SubsystemPlayer<FixedStep>`'s
+  bare-world fallback drains the `PlayerActionStream` accumulation directly
+  (`AggregateTick` + `ApplyRayAction`) — without the drain the 3-slot
+  accumulator fills and every further action warns "player action overflow"
+  while never applying.  Gated by `scene_standalone_player_dig_action`
+  (scene_load_test).
 - **`ApplyEvent(PlayerInputReplicationEvent)`** — inserts the unpacked frame
   into the server player's stream; `SubsystemPlayer` consumes it with
   `ComponentPlayer::inputCursor`.  Entity ids are shared between client and
