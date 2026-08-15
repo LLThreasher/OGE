@@ -67,14 +67,14 @@ ctest --test-dir out/build/apple-debug
 add_test_target(name SOURCES test/foo.cpp LIBRARIES game::ctrl oge::platform::native)
 ```
 
-## Test Suites (7 suites, 95 tests)
+## Test Suites (7 suites, 96 tests)
 | Suite | Count | Module | Covers |
 |---|---|---|---|
 | datastruct_test | 11 | core | RingBuffer, DiscreteEventStream |
 | oge_registry_test | 19 | runtime | OgeRegistry CRUD, views, ctx, signals |
 | replication_events_test | 43 | ctrl | Events, hooks, EventLog, scheduler, snapshot, compression, rollback |
 | registry_bug_recreate_test | 4 | ctrl | OgeRegistry vs raw entt parity (regression) |
-| scene_load_test | 3 | ctrl | Scene construction + config, standalone sim smoke + dig action |
+| scene_load_test | 4 | ctrl | Scene construction + config, standalone sim smoke + dig + jump |
 | sim_physics_test | 12 | sim | AABB collision, PhysBody defaults |
 | debug_scene3_test | 3 | ctrl_ext | Type registration, inheritance |
 
@@ -250,6 +250,45 @@ synchronize first (e.g. wait until the client chunk is `Persistent` before
   action + move delta, and pumps until the server's stream has the same
   content.  Note: a zero `Cursor{}` snaps to the frontier and skips all
   events — the test reads from cursor 1 to see the first event.
+
+## Standalone Scene Notes (transport-agnostic sim)
+
+The sim must never branch on the transport layer's existence — `game::Scene`
+runs the full default config with or without server/client scenes.  The
+contract:
+
+- **`SimTickContext` is guaranteed in every scene world at Scene
+  construction.**  The `Scene` ctor emplaces it (entt ctx `emplace` is
+  `try_emplace`-idempotent, so the transport scenes' own ctor emplaces are
+  harmless).  This must live in the ctor, not `Load()`: `SceneRunner`
+  constructs a scene and calls `Update` directly without ever loading it
+  (e.g. `ClientConnScene`, the bare `game::Scene` placeholder) — a
+  Load-only guarantee left those worlds without a tick ctx and the fixed
+  block aborted on its first fire.
+- **`Scene::Update` owns the fixed-step loop** and drives the pipeline in
+  `kSubStepDt` sub-steps, writing `SimTickContext.subStepIdx` per sub-step.
+  The fixed pipeline interval is `kSubStepDt` (Scene ctor default; transport
+  scenes call `SetUpdateInterval(sim::kSubStepDt)` explicitly) — a longer
+  interval lets the pipeline's internal scheduler collapse the sub-steps
+  into one stage update at the last sub-step index, and the
+  `subStepIdx == 0` decision gate never opens.
+- **Tick arbitration:** transport scenes overwrite `currentTick` from their
+  replication tick before `Scene::Update` (every fixed frame — their 1/20
+  frame aligns with `kSubStepsPerTick`, so arbitration never fires there).
+  When `currentTick` is unchanged, the scene owns its tick space: it
+  advances the tick and runs `sim::AggregateLocalInputs` with stamp
+  `tick - input::kInputPipelineDelayTicks` — the same one-tick pipeline
+  delay and the same empty-window contract as the transport pollers.
+- **`SubsystemPlayer<FixedStep>` has one code path.**  It reads
+  `SimTickContext` + `PlayerSimInputState` unconditionally; every input
+  configuration stamps tick frames into the rings (transport pollers, or
+  `AggregateLocalInputs` for transport-less scenes).  `AggregateLocalInputs`
+  only aggregates streams with `IsLocalInput()` — replicated players fill
+  their rings via `ApplyEvent(PushTick)`.
+- A fresh aggregate cursor snaps to the raw-ring frontier (shared cold-start
+  contract — also true on the networked path), so the very first frame
+  pushed by a stream is sacrificed; tests prime with a no-op frame before
+  injecting the frame under test.
 
 ## Known Issues
 1. **`scene_load_test`**: `Scene::Load()` with JSON config triggers `__next_prime
