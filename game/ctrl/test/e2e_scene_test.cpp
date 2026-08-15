@@ -789,6 +789,147 @@ TEST(e2e_player_input_replicates)
 }
 
 // =============================================================================
+// Dig cooldown release-reset (main parity): the pre-ray path zeroed
+// lastActionTime on every event whose non-jump mask was 0, so releasing
+// dig/place unthrottles the next press.  The ray-encoded pipeline must do
+// the same: a mask-0 release action rides the replicated stream and resets
+// the cooldown in the fixed stage.  Without the reset, the second dig here
+// lands inside the first dig's 0.3 s (6-tick) cooldown and is dropped.
+// =============================================================================
+
+TEST(e2e_dig_cooldown_release_reset)
+{
+    NetSceneHarness h;
+    h.enableClientPrediction();
+    CHECK(h.start());
+    CHECK(h.connect());
+    CHECK(h.waitForHandshake());
+
+    entt::entity clientPlayer = entt::null;
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            auto& cw = h.clientWorld();
+            for (auto [e, player] : cw.view<game::ComponentPlayer>()->each())
+            {
+                (void)player;
+                clientPlayer = e;
+                return true;
+            }
+            return false;
+        },
+        400));
+    CHECK(clientPlayer != entt::null);
+
+    entt::entity serverPlayer = entt::null;
+    for (auto [e, player] :
+         h.serverWorld().view<game::ComponentPlayer>()->each())
+    {
+        (void)player;
+        serverPlayer = e;
+    }
+    CHECK(serverPlayer != entt::null);
+
+    auto& cw = h.clientWorld();
+    WireLocalInput(cw, clientPlayer);
+    auto& sw = h.serverWorld();
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            return sw.get<game::ComponentPhysicBody>(serverPlayer).isGrounded;
+        },
+        600));
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            return cw.get<game::ComponentPhysicBody>(clientPlayer).isGrounded;
+        },
+        600));
+
+    // Aim straight down; the chase places the camera over the body on the
+    // next drain (same pattern as e2e_player_input_replicates).
+    auto& cam = cw.get<game::ComponentCamera>(clientPlayer);
+    cam.SetYawPitch(0.f, -game::math::radians(89.f));
+    auto& clientStream = cw.get<game::input::PlayerInputStream>(clientPlayer);
+    clientStream.PushFrame(game::input::PlayerInputFrameDelta{});
+    h.poll();
+
+    const game::math::vec3 rayOrigin = cam.position;
+    const game::math::vec3 rayDir = cam.forward;
+    auto& serverTerrain = sw.ctx().get<game::terrain::TerrainView>();
+
+    // Dig 1 removes the first solid block under the player.
+    const auto preHit = serverTerrain.CastRay(rayOrigin, rayDir);
+    CHECK(preHit.has_value());
+    const game::Point3 hitPos1 = preHit->hitPos;
+    {
+        uint32_t v = 0;
+        CHECK(serverTerrain.TryGetBlock(hitPos1, v));
+        CHECK(v != 0);
+    }
+    {
+        game::input::PlayerInputFrameDelta delta;
+        delta.inputEvent = game::input::PlayerInputEvent{
+            game::math::vec2{0.f, 0.f},
+            game::input::PlayerActionKind::Digging};
+        clientStream.PushFrame(delta);
+    }
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            uint32_t v = 0;
+            return serverTerrain.TryGetBlock(hitPos1, v) && v == 0;
+        },
+        400));
+    const uint32_t dig1Tick =
+        sw.get<game::input::PlayerSimInputState>(serverPlayer).lastActionTick;
+
+    // The second dig's target: the same ray now passes through the dug
+    // (air) block and hits the next solid one below (CastRay marches to the
+    // first non-air voxel).
+    const auto hit2 = serverTerrain.CastRay(rayOrigin, rayDir);
+    CHECK(hit2.has_value());
+    const game::Point3 hitPos2 = hit2->hitPos;
+    {
+        uint32_t v = 0;
+        CHECK(serverTerrain.TryGetBlock(hitPos2, v));
+        CHECK(v != 0);
+    }
+
+    // Release + immediate second dig — both deltas land in one raw frame,
+    // so the emitted action frame is [release, dig] in emission order.  The
+    // dig falls inside dig 1's 6-tick cooldown; only the release reset can
+    // make it land.
+    {
+        game::input::PlayerInputFrameDelta release;
+        release.inputEvent =
+            game::input::PlayerInputEvent{game::math::vec2{0.f, 0.f}};
+        clientStream.PushFrame(release);
+
+        game::input::PlayerInputFrameDelta dig2;
+        dig2.inputEvent = game::input::PlayerInputEvent{
+            game::math::vec2{0.f, 0.f},
+            game::input::PlayerActionKind::Digging};
+        clientStream.PushFrame(dig2);
+    }
+    CHECK(h.pumpUntil(
+        [&]
+        {
+            uint32_t v = 0;
+            return serverTerrain.TryGetBlock(hitPos2, v) && v == 0;
+        },
+        400));
+
+    // The second dig applied while the first dig's cooldown was still
+    // running (0.3 s = 6 ticks at 20 Hz) — the release reset made that
+    // possible.
+    const uint32_t dig2Tick =
+        sw.get<game::input::PlayerSimInputState>(serverPlayer).lastActionTick;
+    CHECK(dig2Tick > dig1Tick);
+    CHECK(dig2Tick - dig1Tick <= 5);
+}
+
+// =============================================================================
 // Tick-anchored input application (T1) — the server applies movement frames
 // at their stamped tick (dueTick = simTick - kInputPipelineDelayTicks), not
 // at receive time.  Frames are injected directly into the server player's
@@ -1073,6 +1214,10 @@ TEST(e2e_player_input_prediction_vs_authoritative)
         // the EXACT emitted ray — no timing assumptions about the camera.
         auto& mirrorActionStream =
             aw.get<game::input::PlayerActionStream>(authPlayer);
+        // Release actions (mask 0) now ride the stream whenever dig/place
+        // is unset (main parity: the cooldown resets on release), so wait
+        // for the latest frame that actually contains a dig action instead
+        // of assuming actions[0] is the dig.
         game::input::PlayerActionFrame actionFrame{};
         CHECK(h.pumpUntil(
             [&]
@@ -1080,16 +1225,32 @@ TEST(e2e_player_input_prediction_vs_authoritative)
                 auto c = mirrorActionStream.HeadCursor();
                 if (c == 0) return false;
                 actionFrame = mirrorActionStream.At(c - 1);
-                return actionFrame.actionCnt > 0;
+                for (uint8_t i = 0; i < actionFrame.actionCnt; ++i)
+                {
+                    if (actionFrame.actions[i].actionMask != 0)
+                    {
+                        return true;
+                    }
+                }
+                return false;
             },
             400));
         CHECK(actionFrame.actionCnt > 0);
 
-        const game::input::PlayerAction emitted = actionFrame.actions[0];
+        const game::input::PlayerAction* emitted = nullptr;
+        for (uint8_t i = 0; i < actionFrame.actionCnt; ++i)
+        {
+            if (actionFrame.actions[i].actionMask != 0)
+            {
+                emitted = &actionFrame.actions[i];
+                break;
+            }
+        }
+        CHECK(emitted != nullptr);
         auto& serverTerrain =
             h.serverWorld().ctx().get<game::terrain::TerrainView>();
         const auto preHit =
-            serverTerrain.CastRay(emitted.origin, emitted.dir);
+            serverTerrain.CastRay(emitted->origin, emitted->dir);
         CHECK(preHit.has_value());
         const game::Point3 hitPos = preHit->hitPos;
         {

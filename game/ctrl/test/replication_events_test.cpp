@@ -876,4 +876,32 @@ TEST(tickread_action_stream_apply)
     CHECK_EQ(last, 21u);
 }
 
+// Release actions (mask 0) ride the action stream as ordinary content: the
+// fixed stage resets the dig/place cooldown on them (main parity — the
+// pre-ray path zeroed lastActionTime on every event whose non-jump mask was
+// 0).  A release-only tick is NOT an empty tick, so it must ship.
+TEST(action_stream_release_frames)
+{
+    game::input::PlayerActionStream s;
+    s.PushAction(game::input::PlayerAction{
+        (1 << 0), {1.f, 2.f, 3.f}, {0.f, -1.f, 0.f}});
+    s.PushAction(game::input::PlayerAction{});  // release
+    game::input::PlayerActionFrame f{};
+    CHECK(s.AggregateTick(7, f));
+    CHECK_EQ(f.tick, 7u);
+    CHECK_EQ(f.actionCnt, 2);
+    CHECK(f.actions[1].actionMask == 0);
+
+    // Release-only window: ships — the release is semantic content.
+    s.PushAction(game::input::PlayerAction{});
+    game::input::PlayerActionFrame f2{};
+    CHECK(s.AggregateTick(8, f2));
+    CHECK_EQ(f2.actionCnt, 1);
+    CHECK(f2.actions[0].actionMask == 0);
+
+    // Truly empty window: still the empty-tick contract.
+    game::input::PlayerActionFrame f3{};
+    CHECK(!s.AggregateTick(9, f3));
+}
+
 RUN_TESTS("Replication Events Tests")

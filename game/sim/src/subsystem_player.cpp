@@ -71,14 +71,24 @@ using ::game::terrain::TerrainView;
 
 // Apply a ray-encoded dig/place action (D6): the fixed stage casts the
 // exact ray the client emitted, so the server needs no camera
-// reconstruction.  Gated by the action cooldown like the pre-ray code; the
-// cooldown is enforced (not reset by empty frames) so back-to-back actions
-// respect the 0.3 s gap.
+// reconstruction.  Gated by the action cooldown like the pre-ray code; a
+// mask-0 release action resets the cooldown (main parity: the pre-ray path
+// zeroed lastActionTime on every event whose non-jump mask was 0) — held
+// dig/place repeats at the 0.3 s gap, while releasing unthrottles the next
+// press.
 inline void ApplyRayAction(TerrainView& terrain, BlockRegistry& blocks,
                            const ComponentAABBCollider& collider,
                            ComponentPhysicBody& body, ComponentPlayer& player,
                            const input::PlayerAction& action)
 {
+    if (action.actionMask == 0)
+    {
+        // Dig/place unset — reset the cooldown unconditionally (the
+        // original reset even mid-cooldown).
+        player.lastActionTime = 0.f;
+        return;
+    }
+
     if (player.lastActionTime > 0.f)
     {
         return;
@@ -186,6 +196,8 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                     // fixed-pipeline-only.
                     camera.position = body.pos + eyeOffset -
                                       camera.forward * 3.f;
+                    auto& actions =
+                        ctx.world.get<input::PlayerActionStream>(entity);
                     for (size_t k = 0; k < frame.inputEventCnt; ++k)
                     {
                         auto event = frame.inputEvents[k];
@@ -194,10 +206,17 @@ void SubsystemPlayer<variant>::onUpdate(FGameState& ctx)
                             ~(1 << static_cast<uint32_t>(PlayerActionKind::Jump));
                         if (mask == 0)
                         {
+                            // Dig/place unset (release or jump-only event):
+                            // emit a mask-0 release action so the fixed
+                            // stage resets the dig/place cooldown — the
+                            // pre-ray path zeroed lastActionTime on every
+                            // such event (main parity).  The release rides
+                            // the replicated action stream, NOT this
+                            // realtime stage, so both fixed pipelines stay
+                            // deterministic.
+                            actions.PushAction(input::PlayerAction{});
                             continue;
                         }
-                        auto& actions =
-                            ctx.world.get<input::PlayerActionStream>(entity);
                         actions.PushAction(input::PlayerAction{
                             mask, camera.position,
                             ViewToRay(camera, event.actionPos)});
