@@ -250,6 +250,14 @@ synchronize first (e.g. wait until the client chunk is `Persistent` before
   action + move delta, and pumps until the server's stream has the same
   content.  Note: a zero `Cursor{}` snaps to the frontier and skips all
   events — the test reads from cursor 1 to see the first event.
+- **Handshake protocol version**: `net::kProtocolVersion` (2, in
+  `game/ctrl/include/game/net/protocol.hpp`) starts the client's first
+  handshake packet (`[version, PlayerInfo]`) and the server's reply echoes
+  it (`[version, playerEntity]`); both sides reject mismatched/truncated
+  handshakes so stale binaries fail loudly instead of misreading the packet
+  layout.  Bump on every wire-format change.  Overridable per scene via the
+  `protocol_version` scene arg (the harness exposes it for
+  `e2e_handshake_version_mismatch_rejected`).
 
 ## Standalone Scene Notes (transport-agnostic sim)
 

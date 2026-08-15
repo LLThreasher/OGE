@@ -28,6 +28,11 @@ jump-stamp experiments).
 > **Rebase (2026-08-15):** branch rebased onto `origin/main` (a5f5b30 — the cursor
 > fix from PR #10); commit hashes throughout this file and HANDOFF.md were
 > updated to the post-rebase values.
+>
+> **Protocol version check (2026-08-15):** `net::kProtocolVersion` (2) rides
+> the handshake in both directions; mismatched/truncated handshakes are
+> rejected on both sides so stale binaries fail loudly (commit 68be42a).
+> ctest 152/152; e2e 20/20.
 > - The client runs the player sim at **both** cadences in parallel — the 20 tps
 >   fixed pipeline (parity sim) and a 60 Hz realtime sim (aim + action authority).
 > - Input flows through **non-destructive, cursor-based streams**: the fixed

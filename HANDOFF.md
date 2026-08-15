@@ -21,6 +21,7 @@ and what remains.
 | eb6e31e | **Phase 4** — interpolation buffer for the remote copy (two-world attractor) |
 | 1085b8a | docs: PR #8 retargeted to `main` (conflict-free — linear extension of origin/main) |
 | 88017fc | **fix** — dig/place release resets the action cooldown (main parity, user-reported regression) |
+| 68be42a | **feat** — handshake protocol version check: `net::kProtocolVersion` (2) starts the first handshake packet and the server reply echoes it; mismatched/truncated handshakes are rejected on both sides |
 
 ## The implemented design (what the code does now)
 
@@ -83,6 +84,12 @@ fall back to their own world).
    releasing unthrottles the next press; held dig/place still repeats at the
    0.3 s gap.  The reset rides the replicated stream (never the realtime
    stage) so both fixed pipelines stay deterministic.
+9. **Handshake version check:** the first client packet starts with
+   `net::kProtocolVersion` (2) and the server reply echoes it.  A stale
+   binary on either side fails loudly (the server disconnects before
+   CreatePlayer; the client aborts on a mismatched/short reply) instead of
+   misreading the other side's packet layout.  Overridable per scene via
+   the `protocol_version` scene arg (mismatch tests).
 
 ## Documented plan deviations (in the test comments, don't "fix" without reading)
 
@@ -115,12 +122,13 @@ fall back to their own world).
 ## Verification numbers
 
 - Full build (`--target all`): green, incl. `Arterium.app` + `game_server`.
-- Full ctest: **151/151** (145 through Phase 4 + the two release-reset tests
-  + the standalone-scene tests on the merged branch; 70–80 s each).
-- e2e binary: **19/19 three times**; with the old single-world lerp swapped in,
+- Full ctest: **152/152** (151 through the release-reset fix + the
+  handshake version-check test; 70–80 s each).
+- e2e binary: **20/20**; with the old single-world lerp swapped in,
   the Phase-4 tests fail (16/2) — the new tests have teeth.  The release-reset
   e2e was red-checked against the exact pre-fix semantics (dig 2 dropped
-  inside the cooldown window).
+  inside the cooldown window); the version-mismatch e2e fails if either
+  side's check is removed (same wire format, different version numbers).
 - Grep gates: no `HasJumpStamp|jumpPos|MarkJumpPerformed|kUseJumpStamp|stampActive`
   hits; no hand-assembled `push_back(Id<sim::Subsystem…)` stage pushes outside
   `player_sim_config.hpp`.
@@ -130,8 +138,8 @@ fall back to their own world).
 ```sh
 cmake --preset apple-debug                    # always the preset, not raw -D
 cmake --build out/build/apple-debug --target e2e_scene_test
-out/build/apple-debug/game/ctrl/e2e_scene_test                 # 18 tests
+out/build/apple-debug/game/ctrl/e2e_scene_test                 # 20 tests
 out/build/apple-debug/game/ctrl/e2e_scene_test --run-test=<name>
-ctest --test-dir out/build/apple-debug                         # 145 tests
+ctest --test-dir out/build/apple-debug                         # 152 tests
 gh pr checks 8                                                 # PR CI
 ```
