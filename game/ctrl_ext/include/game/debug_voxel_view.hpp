@@ -141,6 +141,14 @@ class DebugVoxelView : public SceneView
 
             if (!world.all_of<input::PlayerInputStream>(e))
                 world.emplace<input::PlayerInputStream>(e);
+            // The realtime stage pushes ray-encoded actions here; the fixed
+            // stage reads them per tick (D6).
+            if (!world.all_of<input::PlayerActionStream>(e))
+                world.emplace<input::PlayerActionStream>(e);
+            // Fixed-tick input read state (D3): per-entity cursors + the
+            // cached current-tick frame.
+            if (!world.all_of<input::PlayerSimInputState>(e))
+                world.emplace<input::PlayerSimInputState>(e);
             if (!world.all_of<UpdateTag<UpdateType::Realtime>>(e))
                 world.emplace<UpdateTag<UpdateType::Realtime>>(e);
             // Local player: use prediction with rollback

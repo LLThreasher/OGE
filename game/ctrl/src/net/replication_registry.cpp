@@ -158,6 +158,17 @@ void game::net::RegisterReplications(AnythingFactory& af,
                 ReplicationMethod::SingleReliable));
     }
 
+    // Player action replication — the ray-encoded dig/place twin of player
+    // input (D6).  Client → server only; the server's apply unpacks the
+    // tick-stamped frame into the player's action stream.
+    {
+        auto& desc = af.RegisterType<PlayerActionReplicationEvent>();
+        desc.capabilities.Add<ReplicationCapability>(
+            MakeSimpleReplicationCapability<PlayerActionReplicationEvent>(
+                desc.localId, nullptr,
+                ReplicationMethod::SingleReliable));
+    }
+
     // AdvanceTick — server→client tick sync; drives rollback snapshots.
     // Mirrored into the client's authoritative world: that world owns the
     // RollbackEventLogStream, so the routed apply snapshots clean server

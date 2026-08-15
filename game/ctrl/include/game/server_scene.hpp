@@ -5,8 +5,10 @@
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/net/event_log_stream.hpp"
+#include "game/net/protocol.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
+#include "game/sim/player_sim_config.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
@@ -34,6 +36,10 @@ class DebugServerScene final : public Scene
     ENetPeer* m_pendingConnection2 = nullptr;
     float m_pendingConnTimeout = 0.f;
     float m_pendingConn2Timeout = 0.f;
+    // Update-frame counter for the fixed cadence (D1): every
+    // sim::kSubStepsPerTick updates are one fixed frame = one tick.
+    uint32_t m_fixedFrameCounter = 0;
+    uint32_t m_protocolVersion = net::kProtocolVersion;
     std::deque<PlayerInfo> m_playerEntries;
     net::EventLogStream<>& m_eventLogStream;
     net::ReplicationRegistry m_replicationRegistry;
@@ -84,6 +90,20 @@ class DebugServerScene final : public Scene
         {
             m_pendingConnection = nullptr;
             m_pendingConnTimeout = 0.f;
+            // Handshake layout: [protocolVersion, PlayerInfo].  Reject
+            // stale clients before their packet is misread as the old
+            // layout (a legacy packet is 4 bytes short of the guard).
+            if (p.data->Size() < sizeof(uint32_t) + sizeof(PlayerInfo) ||
+                p.data->Read<uint32_t>() != m_protocolVersion)
+            {
+                LOG_ERROR(
+                    "rejecting client handshake: protocol version mismatch "
+                    "or truncated packet — server {} ({} bytes); "
+                    "disconnecting",
+                    m_protocolVersion, p.data->Size());
+                m_netServer.Disconnect(p.peer);
+                return;
+            }
             if (m_pendingConnection2 == nullptr)
             {
                 m_pendingConnection2 = p.peer;
@@ -114,7 +134,11 @@ class DebugServerScene final : public Scene
                 math::max(p.peerId + 1, (uint32_t)m_playerEntries.size()));
             m_playerEntries[p.peerId] = playerInfo;
 
-            auto packet = m_netServer.StartPacket(sizeof(entt::entity));
+            // Reply layout: [protocolVersion, playerEntity] — the client
+            // aborts the handshake on mismatch (stale server detection).
+            auto packet = m_netServer.StartPacket(sizeof(uint32_t) +
+                                                  sizeof(entt::entity));
+            packet.Write(m_protocolVersion);
             packet.Write<entt::entity>(entt::null);
             m_netServer.Send(p.peer, packet);
         }
@@ -157,20 +181,11 @@ class DebugServerScene final : public Scene
             .connect<&DebugServerScene::onServerReceivePacket>(this);
         RegisterReplications(m_ctx.any_factory, m_replicationRegistry);
 
-        m_sceneConfig.subsystems.push_back(Id<sim::SubsystemTerrain>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemCreature<UpdateType::FixedStep>>());
-        m_sceneConfig.subsystems.push_back(
-            Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
-
-        m_sceneConfig.realtimeSubsystems.push_back(
-            Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-        m_sceneConfig.realtimeSubsystems.push_back(
-            Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-        m_sceneConfig.realtimeSubsystems.push_back(
-            Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
+        // Phase 2: the stage lists come from the shared sim config (single
+        // source).  Fixed pipeline: terrain + the player sim trio.  No
+        // realtime stages — the server sims once per tick; the old realtime
+        // trio ran in the fixed loop at 20 Hz and double-integrated gravity.
+        sim::ApplyServerSimConfig(m_sceneConfig, m_ctx.any_factory);
 
         Load();
 
@@ -186,9 +201,21 @@ class DebugServerScene final : public Scene
             if (it != def.args.end())
                 maxClients = std::get<int64_t>(it->second);
         }
+        // Overridable for mismatch tests (default net::kProtocolVersion).
+        {
+            auto it = def.args.find("protocol_version");
+            if (it != def.args.end())
+                m_protocolVersion =
+                    static_cast<uint32_t>(std::get<int64_t>(it->second));
+        }
         m_netServer.Initialize(port, maxClients, 3);
+        LOG_INFO("game server started on port {} — protocol version {}",
+                 port, m_protocolVersion);
 
-        m_subsystems.SetUpdateInterval(1 / 20.f);
+        // The fixed pipeline runs one pass per sub-step (D1/D2) — the
+        // scene-driven loop feeds kSubStepDt 3x per fixed frame.
+        m_subsystems.SetUpdateInterval(sim::kSubStepDt);
+        SetFixedFrameDuration(sim::kFixedFrameDuration);
         // UpdateTag drives which subsystems simulate an entity on the client
         // (SubsystemCreature/SubsystemPhysics iterate only tagged entities).
         // Registered in RegisterComponentEvents but the hooks were never
@@ -208,6 +235,10 @@ class DebugServerScene final : public Scene
         net::InstallEntityReplicationHooks(m_world);
         net::InstallTerrainReplicationHooks(m_world);
         net::InstallPlayerInputReplicationHooks(m_world);
+        // D6: the server's action apply fn requires the action state +
+        // streams in ctx (like the input hooks above) — without it
+        // PlayerActionReplicationEvent applies are silently dropped.
+        net::InstallPlayerActionReplicationHooks(m_world);
 
         // Rollback ping/pong ctx: the ping apply fn reads the sender and
         // pong type id from these (apply fns are stateless).  The current
@@ -215,6 +246,10 @@ class DebugServerScene final : public Scene
         m_world.ctx().emplace<net::IncomingPeerId>();
         m_world.ctx().emplace<net::PongContext>(
             net::PongContext{m_ctx.any_factory.Id<net::RollbackPong>()});
+
+        // The shared tick space (D1): the fixed stages observe the current
+        // server tick via this ctx.
+        m_world.ctx().emplace<sim::SimTickContext>();
     }
 
     ~DebugServerScene()
@@ -255,14 +290,19 @@ class DebugServerScene final : public Scene
         OGE_ASSERT(m_serverEventDispatcher.size() == 0,
                    "Event dispatcher not empty after poll");
         m_eventLogStream.Update();
-        // One AdvanceTick per frame drives the clients' rollback snapshot
-        // cadence.  Only when peers are connected: the event carries a full
-        // peer mask and EnqueueEvent rejects an empty one.
-        if (!m_replicationRegistry.Peers().empty())
+        // One AdvanceTick per fixed frame (D1) drives the clients' rollback
+        // snapshot cadence — every kSubStepsPerTick updates.  Only when
+        // peers are connected: the event carries a full peer mask and
+        // EnqueueEvent rejects an empty one.
+        if (++m_fixedFrameCounter % sim::kSubStepsPerTick == 0 &&
+            !m_replicationRegistry.Peers().empty())
             m_replicationRegistry.AdvancePeerTick();
         // Keep the pong tick current — pings received in the next Poll read
         // the tick this frame advanced to.
         m_world.ctx().get<net::PongContext>().currentServerTick =
+            m_replicationRegistry.CurrentTick();
+        // The fixed stages observe the current server tick (D1).
+        m_world.ctx().get<sim::SimTickContext>().currentTick =
             m_replicationRegistry.CurrentTick();
         m_replicationRegistry.ProduceAll(m_netServer, m_world);
         Scene::Update(f, sctx);
@@ -289,9 +329,11 @@ class DebugServerScene final : public Scene
         {
             m_subsystems.AddStage(m_ctx.any_factory, stage);
         }
+        // Realtime stages go to the realtime pipeline (empty under
+        // ApplyServerSimConfig — kept correct for non-default configs).
         for (auto stage : m_sceneConfig.realtimeSubsystems)
         {
-            m_subsystems.AddStage(m_ctx.any_factory, stage);
+            m_realtimeSubsystems.AddStage(m_ctx.any_factory, stage);
         }
     }
 };

@@ -6,12 +6,16 @@
 #include <string_view>
 
 #include "game/components.hpp"
+#include "game/frame_perf.hpp"
 #include "oge/json.hpp"
+#include "game/input/player_input_stream.hpp"
 #include "game/net/replication_events.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/net/rollback_capability.hpp"
 #include "game/net/rollback_event_log_stream.hpp"
 #include "game/scene.hpp"
+#include "game/sim/player_sim_config.hpp"
+#include "game/sim/subsystem_physics.hpp"
 #include "oge/log.hpp"
 #include "oge/runtime/net_client.hpp"
 #include "oge/runtime/net_packet_sender.hpp"
@@ -30,17 +34,27 @@ class ClientScene2 : public Scene
     NetClient& m_client;
     entt::dispatcher m_clientDispatcher;
 
-    oge::runtime::TickScheduler m_serverTickScheduler{1 / 20.f};
-
     // Authoritative mirror world (WorldRouter variant 1): receives the
     // replication families flagged in their worldMask, mirrors server truth
     // without local prediction, and owns the RollbackEventLogStream.  The
     // rollback snapshots are taken from this world so they never contain
     // predicted state.
     GameWorld m_authoritativeWorld;
+
+    // The client's 20 tps parity sim (D9): the server's fixed stage list
+    // over the authoritative world, driven with the same 3-sub-step loop on
+    // the fixed frames.  Phase 3 parity fix: the prediction world NO
+    // LONGER re-anchors to it each tick — its own continuous sim over the
+    // shared frames derives the same states at the same ticks (the anchor
+    // only fires after a rollback).
+    sim::SubsystemPipeline m_authoritativeSim;
     net::RollbackEventLogStream<>& m_rollbackStream;
     net::WorldRouter m_worldRouter;
     net::ReplicationRegistry m_replicationRegistry;
+
+    // Update-frame counter for the fixed cadence (D1): every
+    // sim::kSubStepsPerTick updates are one fixed frame = one tick.
+    uint32_t m_fixedFrameCounter = 0;
 
     bool m_readyToQuit = false;
 
@@ -55,10 +69,38 @@ class ClientScene2 : public Scene
         m_replicationRegistry.HandleIncoming(0, m_worldRouter, *ctx.data);
     }
 
+    // Copy the authoritative mirror's bodies into the prediction world.
+    // The mirror holds server truth (replication + parity sim), so this
+    // hard-corrects the prediction world.  Phase 3 parity fix: called ONLY
+    // after a rollback (the prediction world's continuous sim is the parity
+    // derivation — re-anchoring every tick would drag it back to the
+    // mirror's 3-tick-lagged state and it would never reach parity).
+    void ReanchorPredictionToMirror()
+    {
+        for (auto [e, body] :
+                m_world
+                    .view<
+                        RenderStrategyTag<RenderStrategy::LocalPrediction>,
+                        ComponentPhysicBody>()
+                    .each())
+        {
+            auto* authBody =
+                m_authoritativeWorld.try_get<ComponentPhysicBody>(e);
+            if (authBody == nullptr)
+            {
+                continue;
+            }
+            body = *authBody;
+        }
+    }
+
    public:
     ClientScene2(const Def& def)
         : Scene(def),
           m_client(*m_ctx.any_ctx.Get<NetClient>()),
+          m_authoritativeSim(
+              {m_authoritativeWorld, m_ctx.events, m_ctx.memory},
+              sim::kSubStepDt),
           m_rollbackStream(m_authoritativeWorld.ctx()
                                .emplace<::game::net::RollbackEventLogStream<>>(
                                    &m_ctx.any_factory)),
@@ -119,6 +161,51 @@ class ClientScene2 : public Scene
             setMask(Id<net::RemoveComponentEvent<ComponentPhysicBody>>(),
                     bothMask);
 
+            // Phase 2: the mirror's parity sim needs the full player
+            // component set + the fixed tag (its fixed stages view
+            // UpdateTag<FixedStep>).  Camera is replicated for
+            // compatibility; the mirror never renders.
+            setMask(Id<net::AddComponentEvent<ComponentCamera>>(), bothMask);
+            setMask(Id<net::UpdateComponentEvent<ComponentCamera>>(),
+                    bothMask);
+            setMask(Id<net::RemoveComponentEvent<ComponentCamera>>(),
+                    bothMask);
+
+            setMask(Id<net::AddComponentEvent<ComponentPerspectiveCamera>>(),
+                    bothMask);
+            setMask(
+                Id<net::UpdateComponentEvent<ComponentPerspectiveCamera>>(),
+                bothMask);
+            setMask(
+                Id<net::RemoveComponentEvent<ComponentPerspectiveCamera>>(),
+                bothMask);
+
+            setMask(Id<net::AddComponentEvent<ComponentCreature>>(), bothMask);
+            setMask(Id<net::UpdateComponentEvent<ComponentCreature>>(),
+                    bothMask);
+            setMask(Id<net::RemoveComponentEvent<ComponentCreature>>(),
+                    bothMask);
+
+            setMask(Id<net::AddComponentEvent<ComponentPlayer>>(), bothMask);
+            setMask(Id<net::UpdateComponentEvent<ComponentPlayer>>(), bothMask);
+            setMask(Id<net::RemoveComponentEvent<ComponentPlayer>>(), bothMask);
+
+            setMask(Id<net::AddComponentEvent<UpdateTag<UpdateType::FixedStep>>>(),
+                    bothMask);
+            setMask(
+                Id<net::UpdateComponentEvent<UpdateTag<UpdateType::FixedStep>>>(),
+                bothMask);
+            setMask(
+                Id<net::RemoveComponentEvent<UpdateTag<UpdateType::FixedStep>>>(),
+                bothMask);
+
+            // Replicated terrain must reach the authoritative world too —
+            // its fixed pipeline (parity sim) collides against the same
+            // chunks as the server (D9).  Note: doubles chunk traffic.
+            setMask(Id<net::AddChunkEvent>(), bothMask);
+            setMask(Id<net::RemoveChunkEvent>(), bothMask);
+            setMask(Id<net::UpdateChunkEvent>(), bothMask);
+
             // AdvanceTick snapshots the authoritative world — the only world
             // holding the RollbackEventLogStream in its ctx.  Without this
             // the client never takes rollback snapshots.
@@ -148,6 +235,77 @@ class ClientScene2 : public Scene
         // it to the server.  The stream component appears after the player
         // entity replicates (DebugVoxelView emplaces it on construct).
         net::InstallPlayerInputReplicationHooks(m_world);
+        net::InstallPlayerActionReplicationHooks(m_world);
+
+        // Both worlds' fixed stages observe the shared tick space (D1).
+        m_world.ctx().emplace<sim::SimTickContext>();
+        m_authoritativeWorld.ctx().emplace<sim::SimTickContext>();
+
+        // SubsystemDebugText hard-gets FramePerfStatus from ctx every
+        // update (the real app's SceneView emplaces it per frame; the
+        // harness has no view — emplace it defensively).
+        if (!m_world.ctx().contains<::game::FramePerfStatus>())
+            m_world.ctx().emplace<::game::FramePerfStatus>();
+
+        // The client's fixed pipeline ticks at 20 Hz aligned with the shared
+        // tick space (D1/D2): 3 sub-steps of kSubStepDt per fixed frame —
+        // the same cadence the server scene sets, so fixed-stage decisions
+        // fire once per tick on both sides.
+        m_subsystems.SetUpdateInterval(sim::kSubStepDt);
+        SetFixedFrameDuration(sim::kFixedFrameDuration);
+
+        // The authoritative world runs the fixed sim — it needs terrain like
+        // the server world does (mirrors the scene Load() terrain section).
+        // Chunks arrive via the replication bothMask above; the descriptor
+        // matches the server's chunkViewDistance.
+        {
+            auto& blocks = m_authoritativeWorld.ctx()
+                               .emplace<::game::terrain::BlockRegistry>();
+            blocks.RegisterBlock("dirt", {"Dirt", "dirt.png", 1});
+            blocks.RegisterBlock("wood", {"Wood", "wood_plank.png", 1});
+            blocks.RegisterBlock("stone", {"Stone", "green_stone.png", 1});
+            auto& desc = m_authoritativeWorld.ctx()
+                             .emplace<::game::terrain::TerrainDesc>();
+            desc.chunkViewDistance = 8;
+            m_authoritativeWorld.ctx().emplace<::game::terrain::TerrainView>();
+        }
+
+        // The parity sim: the server's fixed stage list over the
+        // authoritative world (no terrain stage — chunks replicate in).
+        // The same shared builder the server scene uses (Phase 2).
+        for (auto stage : sim::FixedStepPlayerStages(m_ctx.any_factory))
+        {
+            m_authoritativeSim.AddStage(m_ctx.any_factory, stage);
+        }
+
+        // The mirror's player needs the input streams + sim state for the
+        // parity sim — they are not replicated components.  Emplace them
+        // when ComponentPlayer constructs in the authoritative world (the
+        // snapshot's last component — Phase 2 extends the masks so the
+        // mirror receives the full player component set).
+        m_authoritativeWorld.on_construct<ComponentPlayer>()
+            .template connect<+[](oge::runtime::OgeRegistryRef world,
+                                  entt::entity entity)
+                              {
+                                  if (!world.all_of<input::PlayerInputStream>(
+                                          entity))
+                                  {
+                                      world.emplace<input::PlayerInputStream>(
+                                          entity);
+                                      world.emplace<input::PlayerActionStream>(
+                                          entity);
+                                      world.emplace<input::PlayerSimInputState>(
+                                          entity);
+                                  }
+                              }>();
+
+        // PollPlayerInputs/PollPlayerActions push the aggregated frames into
+        // the authoritative world's streams — the local 20 tps sim and the
+        // server apply bit-identical frames (D3/D9).
+        m_world.ctx().get<net::PlayerInputReplicationState>().mirrorWorld =
+            oge::runtime::OgeRegistryPtr{&m_authoritativeWorld};
+        m_world.ctx().get<net::PlayerActionReplicationState>().mirrorWorld =
+            oge::runtime::OgeRegistryPtr{&m_authoritativeWorld};
 
         m_replicationRegistry.AddPeer(0, m_client.Host(), &m_world);
 
@@ -168,7 +326,48 @@ class ClientScene2 : public Scene
 
     void Update(Frame f, SceneContext sctx) override
     {
-        // (1) Receive server events (AdvanceTick → snapshot via apply fn)
+        // (1) Fixed frame (D1): every sim::kSubStepsPerTick updates is one
+        // tick in the shared tick space.  Phase 3 parity fix: the
+        // prediction world no longer re-anchors to the mirror here — its
+        // continuous sim (step 3) is the parity derivation, applying the
+        // same frames at the same ticks as the server.  A server
+        // correction arriving this poll diverges from the prediction
+        // inserted in step 3 and rollback fires on validation (step 4).
+        if (++m_fixedFrameCounter % sim::kSubStepsPerTick == 0)
+        {
+            // Advance the client tick (snapshot cadence).  Snapshots are
+            // taken from the authoritative mirror — clean server truth,
+            // never predicted state.
+            m_rollbackStream.AdvanceLocalTick(m_authoritativeWorld);
+            const uint32_t tick = m_rollbackStream.CurrentTick();
+
+            // Both worlds' fixed stages observe the shared tick space.
+            m_world.ctx().get<sim::SimTickContext>().currentTick = tick;
+            m_authoritativeWorld.ctx().get<sim::SimTickContext>().currentTick =
+                tick;
+
+            // Aggregate this tick's input (D3): frames are stamped
+            // tick - kInputPipelineDelayTicks and applied by the parity sim
+            // this tick (dueTick = simTick - 1).  Pushes to the wire and the
+            // mirror's streams; the prediction world's own ring receives the
+            // local copy for its fixed stage.
+            net::PollPlayerInputs(m_world,
+                                  tick - input::kInputPipelineDelayTicks);
+            net::PollPlayerActions(m_world,
+                                   tick - input::kInputPipelineDelayTicks);
+
+            // Drive the 20 tps parity sim (D9): the server's fixed stage
+            // list over the authoritative world, 3 sub-steps per tick.
+            auto& authTickCtx =
+                m_authoritativeWorld.ctx().get<sim::SimTickContext>();
+            for (uint8_t s = 0; s < sim::kSubStepsPerTick; ++s)
+            {
+                authTickCtx.subStepIdx = s;
+                m_authoritativeSim.Update(sim::kSubStepDt);
+            }
+        }
+
+        // (2) Receive server events (AdvanceTick → snapshot via apply fn)
         m_client.Poll(m_clientDispatcher, f.dt);
         if (m_readyToQuit)
         {
@@ -176,31 +375,47 @@ class ClientScene2 : public Scene
             sctx.nextSceneArgs = {};
         }
 
-        // (2) Flush terrain + input into replication stream
-        // net::PollTerrainChunkEvents(m_world);
-        net::PollPlayerInputs(m_world);
-
-        // Advance the client tick (snapshot cadence).  Snapshots are taken
-        // from the authoritative mirror — clean server truth, never
-        // predicted state.
-        m_rollbackStream.AdvanceLocalTick(m_authoritativeWorld);
-
         // (3) Run local simulation (prediction) — moves the player locally
         Scene::Update(f, sctx);
 
-        // (4) Insert predicted physics for LocalPrediction-tagged entities
-        for (auto [e, body] :
-                m_world
-                    .view<
-                        RenderStrategyTag<RenderStrategy::LocalPrediction>,
-                        ComponentPhysicBody>()
-                    .each())
+        // (3b) Insert the predicted physics AFTER the local sim (D7,
+        // Phase 3 parity fix): one predicted event per entity per tick.
+        // The locally-predicted player's body comes from the prediction
+        // world — the honest prediction, which ValidateLatest pairs with
+        // the server's patch of the SAME tick (stamp + alignment).  The
+        // other entities come from the authoritative mirror (their truth
+        // proxy — the relayed patch itself), preserving the 1:1 entity
+        // pairing with the server's per-entity patches.  Inserted after
+        // this poll's server events: a correction arriving this poll
+        // diverges from the prediction stamped for its tick and rollback
+        // fires on validation.
+        if (m_fixedFrameCounter % sim::kSubStepsPerTick == 0)
         {
-            net::UpdateComponentEvent<ComponentPhysicBody> evt{e, body};
-            m_rollbackStream.InsertPredicted(evt);
+            for (auto [e, body] :
+                 m_authoritativeWorld
+                     .view<UpdateTag<UpdateType::FixedStep>,
+                           ComponentPhysicBody>()
+                     .each())
+            {
+                auto* predBody = m_world.try_get<ComponentPhysicBody>(e);
+                if (predBody != nullptr &&
+                    m_world.all_of<RenderStrategyTag<RenderStrategy::LocalPrediction>>(
+                        e))
+                {
+                    net::UpdateComponentEvent<ComponentPhysicBody> evt{
+                        e, *predBody};
+                    m_rollbackStream.InsertPredicted(evt);
+                }
+                else
+                {
+                    net::UpdateComponentEvent<ComponentPhysicBody> evt{e,
+                                                                       body};
+                    m_rollbackStream.InsertPredicted(evt);
+                }
+            }
         }
 
-        // (5) Validate predictions against server events.  Snapshots were
+        // (4) Validate predictions against server events.  Snapshots were
         // taken from the authoritative world (clean server truth), so a
         // rollback restores m_world to that state; the mirror itself never
         // diverges and is never rolled back.  After a rollback the stream
@@ -209,6 +424,15 @@ class ClientScene2 : public Scene
         m_rollbackStream.ValidateLatest(m_world);
         if (m_rollbackStream.IsWaitingPong())
         {
+            // A rollback just restored the prediction world from the
+            // snapshot (pre-correction state).  Re-anchor to the mirror
+            // NOW: the mirror already holds the server's correction, and
+            // without this the polls before the next fixed frame would
+            // insert stale predictions from the restored snapshot — the
+            // next validation would see the same divergence and roll back
+            // again, forever.
+            ReanchorPredictionToMirror();
+
             ::game::net::RollbackPing ping{
                 m_rollbackStream.CurrentTick(),
                 m_rollbackStream.PingCursor()};

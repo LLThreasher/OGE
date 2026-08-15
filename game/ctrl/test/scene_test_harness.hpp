@@ -17,7 +17,11 @@
 namespace
 {
 constexpr uint16_t TEST_PORT = 23402;
-constexpr float POLL_DT = 0.016f;
+// Exactly kSubStepDt (1/60): the client's realtime pipeline integrates the
+// body with f.dt, and the server's fixed substeps integrate with kSubStepDt
+// — any other poll dt makes the two trajectories diverge by dt mismatch
+// alone (Phase 3 parity gate).
+constexpr float POLL_DT = 1.f / 60.f;
 constexpr int MAX_POLLS = 500;  // ~8 sec at 60 fps
 }  // namespace
 
@@ -59,6 +63,10 @@ struct NetSceneHarness
     TestSceneRunner m_serverRunner;
     TestSceneRunner m_clientRunner;
     bool m_clientPrediction = false;
+    // Overridable for the version-mismatch test — defaults keep the
+    // production handshake (both sides net::kProtocolVersion).
+    uint32_t m_serverProtocolVersion = game::net::kProtocolVersion;
+    uint32_t m_clientProtocolVersion = game::net::kProtocolVersion;
 
     bool start()
     {
@@ -75,6 +83,8 @@ struct NetSceneHarness
         // Pass the test port to both scenes so they talk to each other.
         game::json::Object srvArgs;
         srvArgs["port"] = static_cast<int64_t>(TEST_PORT);
+        srvArgs["protocol_version"] =
+            static_cast<int64_t>(m_serverProtocolVersion);
         m_serverRunner.SwitchToScene<game::DebugServerScene>(std::move(srvArgs));
 
         return true;
@@ -92,6 +102,8 @@ struct NetSceneHarness
         game::json::Object cliArgs;
         cliArgs["port"] = static_cast<int64_t>(TEST_PORT);
         cliArgs["ip"] = std::string("127.0.0.1");
+        cliArgs["protocol_version"] =
+            static_cast<int64_t>(m_clientProtocolVersion);
         cliArgs["next_scene"] =
             game::json::Int(entt::type_hash<TestClientScene>::value());
 
@@ -105,23 +117,15 @@ struct NetSceneHarness
         };
         cliConfig.terrainDesc.chunkViewDistance = 4;
 
-        // When prediction is enabled, run local simulation on the client
-        // so the local player entity drives physics/creature locally.
-        // Mirror the real client config (ClientConnScene's default): the
-        // FixedStep player runs in the realtime pipeline and processes
-        // action events (jump/dig/place) — without it the prediction copy
-        // never jumps and diverges from the authoritative copy.
-        if (m_clientPrediction)
-        {
-            cliConfig.realtimeSubsystems.push_back(
-                m_clientRunner.Id<game::sim::SubsystemPlayer<game::UpdateType::FixedStep>>());
-            cliConfig.realtimeSubsystems.push_back(
-                m_clientRunner.Id<game::sim::SubsystemPlayer<game::UpdateType::Realtime>>());
-            cliConfig.realtimeSubsystems.push_back(
-                m_clientRunner.Id<game::sim::SubsystemCreature<game::UpdateType::Realtime>>());
-            cliConfig.realtimeSubsystems.push_back(
-                m_clientRunner.Id<game::sim::SubsystemPhysics<game::UpdateType::Realtime>>());
-        }
+        // The stage lists come from the shared builders (Phase 2) — the
+        // same config the real client synthesizes (ClientConnScene's
+        // default).  Unconditional: every harness client runs the full
+        // local sim (fixed trio + realtime trio + DebugText); the realtime
+        // LocalPrediction filter keeps remote copies inert.  loadMask and
+        // blocks only seed the terrain ctx — no terrain STAGE (a
+        // client-side generator diverges from the server's replicated
+        // chunks).
+        game::sim::ApplyClientSimConfig(cliConfig, m_clientRunner.AF());
 
         cliArgs["scene_config"] = game::json::ToJson(cliConfig);
         m_clientRunner.SwitchToScene<game::ClientConnScene>(std::move(cliArgs));

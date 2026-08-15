@@ -65,6 +65,7 @@ namespace game::net
 
 namespace net = oge::runtime::net;
 using oge::runtime::oge_id_type;
+using oge::runtime::OgeRegistryPtr;
 using oge::runtime::OgeRegistryRef;
 
 using Tick = int64_t;
@@ -199,6 +200,17 @@ struct PlayerInputReplicationEvent
     input::net::PackedPlayerInputFrame frame{};
 };
 
+// Ray-encoded per-tick action frame (D6): the server applies the exact rays
+// the client emitted — no camera reconstruction.
+struct PlayerActionReplicationEvent
+{
+    entt::entity playerEntity = entt::null;
+    uint32_t tick = 0;
+    uint8_t actionCnt = 0;
+    std::array<input::net::PackedPlayerAction, input::kMaxActionsPerTick>
+        actions{};
+};
+
 // =========================================================================
 // State structs emplaced in world.ctx() for hook bookkeeping
 // =========================================================================
@@ -209,13 +221,31 @@ namespace terrain = ::game::terrain;
 // Emplaced in world.ctx() by InstallPlayerInputReplicationHooks.
 struct PlayerInputReplicationState
 {
-    // Cursor per player entity — each player has an independent input stream.
+    // Aggregation cursor per player entity — each player has an independent
+    // raw input stream.
     std::unordered_map<entt::entity, input::PlayerInputStream::Cursor> cursors;
 
     // The PlayerInputStream per entity must be accessible.  If your project
     // stores streams elsewhere (e.g. a component), adjust PollPlayerInputs
     // to retrieve them accordingly.
     std::unordered_map<entt::entity, input::PlayerInputStream*> streams;
+
+    // Client-side: the authoritative world that runs the 20 tps parity sim.
+    // PollPlayerInputs pushes the aggregated frame into this world's stream
+    // too, so the local 20 tps sim and the server apply bit-identical frames
+    // (D3/D9).  Null on the server.
+    OgeRegistryPtr mirrorWorld = nullptr;
+};
+
+// Tracks per-player action streams — the ray-encoded action twin of
+// PlayerInputReplicationState.  Emplaced in world.ctx() by
+// InstallPlayerActionReplicationHooks.
+struct PlayerActionReplicationState
+{
+    std::unordered_map<entt::entity, input::PlayerActionStream*> streams;
+
+    // Client-side: the authoritative world (see PlayerInputReplicationState).
+    OgeRegistryPtr mirrorWorld = nullptr;
 };
 
 // Tracks the cursor into the terrain ChunkEventStream.
@@ -636,9 +666,20 @@ inline void InstallPlayerInputReplicationHooks(OgeRegistryRef world)
                           { UnregisterPlayerInputStream(world, entity); }>();
 }
 
-// Call this each tick to flush player input frames into the replication
-// stream.  All input is sent through the reliable channel.
-inline void PollPlayerInputs(OgeRegistryRef world)
+// Call this once per tick (the client's fixed frame) to aggregate the raw
+// input window into the per-tick movement frame and flush it into the
+// replication stream.  The frame is stamped with `tick` — the producing
+// tick (D3: one-tick pipeline delay, both sides apply at tick + 1).
+//
+// The aggregated frame also goes to:
+//  - the client's authoritative-world stream (the local 20 tps sim applies
+//    bit-identical frames — the packed round-trip quantizes both copies);
+//  - the stream's own tick ring when it is local input, so the client's
+//    prediction-world fixed stage reads the same frame (D3: "its own
+//    world's stream").
+//
+// All input is sent through the reliable channel.
+inline void PollPlayerInputs(OgeRegistryRef world, uint32_t tick)
 {
     if (!world.ctx().contains<PlayerInputReplicationState>())
     {
@@ -657,18 +698,37 @@ inline void PollPlayerInputs(OgeRegistryRef world)
         auto& cursor = state.cursors[player];
 
         input::PlayerInputFrame frame{};
-        if (!stream->PollFrame(cursor, frame)) continue;
-
-        // Only emit an event if there is something to send.
-        if (frame.inputEventCnt == 0 && frame.move == math::vec3{} &&
-            !frame.hasAim)
+        if (!input::AggregateTickInput(*stream, cursor, tick, frame))
         {
-            continue;
+            continue;  // empty-tick contract: absence = no input
         }
 
         input::net::PackedPlayerInputFrame packed{frame};
         PlayerInputReplicationEvent evt{player, packed};
         PushReplicationEvent(world, evt);
+
+        // The client's authoritative-world stream receives the quantized
+        // round-trip value (bit-identical to what the server unpacks).
+        if (state.mirrorWorld != nullptr)
+        {
+            OgeRegistryRef mirror = *state.mirrorWorld;
+            if (mirror.valid(player))
+            {
+                if (auto* mirrorStream =
+                        mirror.try_get<input::PlayerInputStream>(player))
+                {
+                    mirrorStream->PushTick(
+                        static_cast<input::PlayerInputFrame>(packed));
+                }
+            }
+        }
+
+        // Local input: the prediction world's fixed stage reads the same
+        // frame from its own stream.
+        if (stream->IsLocalInput())
+        {
+            stream->PushTick(static_cast<input::PlayerInputFrame>(packed));
+        }
     }
 }
 
@@ -697,6 +757,133 @@ inline void ApplyEvent(OgeRegistryRef world,
     // Unpack and insert.
     input::PlayerInputFrame frame = event.frame;
     stream->PushTick(frame);
+}
+
+// =========================================================================
+// Player action replication hooks — the ray-encoded action twin of the
+// input hooks above (D6).
+// =========================================================================
+
+inline void InstallPlayerActionReplicationHooks(OgeRegistryRef world)
+{
+    if (world.ctx().contains<PlayerActionReplicationState>())
+    {
+        return;
+    }
+    world.ctx().emplace<PlayerActionReplicationState>();
+
+    // Auto-register each player's action stream so it is polled (client)
+    // and receives replicated actions (server).  Cover both creation orders,
+    // like the input hooks.
+    world.on_construct<input::PlayerActionStream>()
+        .template connect<
+            +[](OgeRegistryRef world, entt::entity entity)
+            {
+                if (world.all_of<ComponentPlayer>(entity))
+                {
+                    auto& state = world.ctx().get<PlayerActionReplicationState>();
+                    state.streams[entity] =
+                        &world.template get<input::PlayerActionStream>(entity);
+                }
+            }>();
+    world.on_construct<ComponentPlayer>()
+        .template connect<
+            +[](OgeRegistryRef world, entt::entity entity)
+            {
+                if (world.all_of<input::PlayerActionStream>(entity))
+                {
+                    auto& state = world.ctx().get<PlayerActionReplicationState>();
+                    state.streams[entity] =
+                        &world.template get<input::PlayerActionStream>(entity);
+                }
+            }>();
+    world.on_destroy<input::PlayerActionStream>()
+        .template connect<+[](OgeRegistryRef world, entt::entity entity)
+                          {
+                              auto& state = world.ctx().get<PlayerActionReplicationState>();
+                              state.streams.erase(entity);
+                          }>();
+}
+
+// Call this once per tick (the client's fixed frame) to aggregate the
+// per-tick action window and flush it into the replication stream.  Mirror
+// of PollPlayerInputs — the same one-tick delay + mirror push contract.
+// The prediction world never applies actions locally (D6): they go to the
+// wire and the client's authoritative world only.
+inline void PollPlayerActions(OgeRegistryRef world, uint32_t tick)
+{
+    if (!world.ctx().contains<PlayerActionReplicationState>())
+    {
+        return;
+    }
+
+    auto& state = world.ctx().get<PlayerActionReplicationState>();
+
+    for (auto& [player, stream] : state.streams)
+    {
+        if (stream == nullptr)
+        {
+            continue;
+        }
+
+        input::PlayerActionFrame frame{};
+        if (!stream->AggregateTick(tick, frame))
+        {
+            continue;  // empty-tick contract: absence = no actions
+        }
+
+        PlayerActionReplicationEvent evt{player, tick, frame.actionCnt, {}};
+        for (uint8_t i = 0; i < frame.actionCnt; ++i)
+        {
+            evt.actions[i] = input::net::PackedPlayerAction{frame.actions[i]};
+        }
+        PushReplicationEvent(world, evt);
+
+        // The client's authoritative world applies the identical frame
+        // (raw floats — actions are not quantized, R14).
+        if (state.mirrorWorld != nullptr)
+        {
+            OgeRegistryRef mirror = *state.mirrorWorld;
+            if (mirror.valid(player))
+            {
+                if (auto* mirrorStream =
+                        mirror.try_get<input::PlayerActionStream>(player))
+                {
+                    mirrorStream->PushTick(frame);
+                }
+            }
+        }
+    }
+}
+
+// =========================================================================
+// Player action apply function
+// =========================================================================
+
+inline void ApplyEvent(OgeRegistryRef world,
+                       const PlayerActionReplicationEvent& event)
+{
+    if (!world.ctx().contains<PlayerActionReplicationState>())
+    {
+        return;
+    }
+
+    auto& state = world.ctx().get<PlayerActionReplicationState>();
+
+    auto it = state.streams.find(event.playerEntity);
+    if (it == state.streams.end() || it->second == nullptr)
+    {
+        return;
+    }
+
+    input::PlayerActionFrame frame{};
+    frame.tick = event.tick;
+    frame.actionCnt = event.actionCnt;
+    for (uint8_t i = 0; i < event.actionCnt; ++i)
+    {
+        frame.actions[i] = static_cast<input::PlayerAction>(event.actions[i]);
+    }
+    it->second->PushTick(frame);
 }
 
 // =========================================================================
@@ -917,6 +1104,8 @@ DECL_TYPE_NAME(game::net::RemoveChunkEvent, "net::RemoveChunkEvent")
 DECL_TYPE_NAME(game::net::UpdateChunkEvent, "net::UpdateChunkEvent")
 DECL_TYPE_NAME(game::net::PlayerInputReplicationEvent,
                "net::PlayerInputReplicationEvent")
+DECL_TYPE_NAME(game::net::PlayerActionReplicationEvent,
+               "net::PlayerActionReplicationEvent")
 DECL_TYPE_NAME(game::net::RollbackPing, "net::RollbackPing")
 DECL_TYPE_NAME(game::net::RollbackPong, "net::RollbackPong")
 
@@ -1116,6 +1305,13 @@ DECL_NET_OBJ(game::net::UpdateChunkEvent, {
 DECL_NET_OBJ(game::net::PlayerInputReplicationEvent, {
     visit(self.playerEntity);
     visit(self.frame);
+})
+
+DECL_NET_OBJ(game::net::PlayerActionReplicationEvent, {
+    visit(self.playerEntity);
+    visit(self.tick);
+    visit(self.actionCnt);
+    visit(self.actions);
 })
 
 DECL_NET_OBJ(game::net::RollbackPing, {

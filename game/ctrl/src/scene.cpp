@@ -2,8 +2,11 @@
 
 #include "game/components.hpp"
 #include "game/game_world.hpp"
+#include "game/input/player_input_stream.hpp"
 #include "oge/json.hpp"
 #include "game/net/replication_events.hpp"
+#include "game/sim/input_aggregation.hpp"
+#include "game/sim/player_sim_config.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
 #include "game/sim/terrain/subsystem_terrain.hpp"
@@ -14,9 +17,31 @@ using namespace game;
 
 Scene::Scene(const Def& def)
     : AppRuntime(def.ctx),
-      m_subsystems({m_world, def.ctx.events, def.ctx.memory}, 1.f / 30.f),
+      // The fixed pipeline ticks once per sub-step (D2): Scene::Update
+      // drives the sub-steps explicitly and the stages observe them via
+      // SimTickContext.subStepIdx.  A longer interval would let the
+      // pipeline's internal scheduler re-accumulate the sub-steps and
+      // collapse them into one update at the last sub-step index — the
+      // subStepIdx == 0 decision gate would never open and the fixed
+      // stages would never decide anything.  (The transport scenes call
+      // SetUpdateInterval(sim::kSubStepDt) explicitly; this default keeps
+      // the bare scene on the same cadence.)
+      m_subsystems({m_world, def.ctx.events, def.ctx.memory},
+                   sim::kSubStepDt),
       m_realtimeSubsystems({m_world, def.ctx.events, def.ctx.memory})
 {
+    // The sim always runs in a tick space — the transport layer is
+    // optional, never required.  Every scene world gets its SimTickContext
+    // at construction (not in Load): the scene runner constructs a scene
+    // and Updates it without ever loading it (e.g. ClientConnScene, the
+    // bare Scene placeholder), and Scene::Update's fixed block reads the
+    // tick unconditionally.  Transport scenes overwrite currentTick every
+    // Update from their replication tick; a scene that owns its tick starts
+    // at 0 and advances it in Update (tick arbitration).  emplace is
+    // idempotent (try_emplace), so the transport scenes' own emplace in
+    // their constructors just returns this one.
+    m_world.ctx().emplace<sim::SimTickContext>();
+
     auto it = def.args.find("scene_config");
     if (it != def.args.end())
     {
@@ -31,7 +56,44 @@ Scene::~Scene()
 void Scene::Update(Frame f, SceneContext sctx)
 {
     m_ctx.memory.Update(f.dt);
-    m_subsystems.Update(f.dt);
+
+    // Scene-driven fixed-step loop (D2): accumulate render dt and execute
+    // the fixed pipeline as sub-steps of sim::kSubStepDt once the fixed
+    // frame is due.  The sub-step boundaries are visible to the stages via
+    // SimTickContext.subStepIdx (0 = decisions, 1.. = re-application).
+    // kFixedEps covers the harness's POLL_DT (0.016) vs 1/60 drift.
+    constexpr float kFixedEps = 0.005f;
+    m_fixedAccum += f.dt;
+    if (m_fixedAccum + kFixedEps >= m_fixedFrameDuration)
+    {
+        const int subSteps =
+            (int)std::lround(m_fixedFrameDuration / sim::kSubStepDt);
+        OGE_ASSERT(subSteps >= 1,
+                   "fixed frame duration {} is shorter than one sub-step {}",
+                   m_fixedFrameDuration, sim::kSubStepDt);
+        auto& tickCtx = m_world.ctx().get<sim::SimTickContext>();
+        // Tick arbitration: transport scenes advance currentTick before
+        // Update (their tick space is the replication tick).  When the tick
+        // is unchanged, this scene owns its tick space — advance it and
+        // aggregate the local input into tick-stamped frames, exactly like
+        // the transport pollers do.  The same stamp (T - pipeline delay)
+        // feeds the same fixed-stage code path in every configuration.
+        if (tickCtx.currentTick == m_lastFixedTick)
+        {
+            ++tickCtx.currentTick;
+            sim::AggregateLocalInputs(
+                m_world,
+                tickCtx.currentTick - input::kInputPipelineDelayTicks);
+        }
+        m_lastFixedTick = tickCtx.currentTick;
+        for (int s = 0; s < subSteps; ++s)
+        {
+            tickCtx.subStepIdx = (uint8_t)s;
+            m_subsystems.Update(sim::kSubStepDt);
+        }
+        m_fixedAccum = 0.f;
+    }
+
     m_realtimeSubsystems.Update(f.dt);
 }
 
@@ -101,12 +163,14 @@ SceneConfig GetDefaultSceneConfig(AnythingFactory& af)
     config.subsystems.push_back(
         af.Id<sim::SubsystemPhysics<UpdateType::FixedStep>>());
 
+    // Realtime pipeline: the player stage only — it drains raw frames,
+    // chases the camera and bakes ray actions.  The fixed trio owns the
+    // body sim (movement, jump, physics) — registering the realtime
+    // creature/physics here would integrate the same body twice (fixed
+    // 30 Hz + realtime 60 Hz) and accelerate movement.  A standalone scene
+    // has no prediction layer that needs a realtime body sim.
     config.realtimeSubsystems.push_back(
         af.Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-    config.realtimeSubsystems.push_back(
-        af.Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-    config.realtimeSubsystems.push_back(
-        af.Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
     return config;
 }
 

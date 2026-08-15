@@ -20,11 +20,10 @@ template <UpdateType utype>
 void SubsystemCreature<utype>::onUpdate(FrameCtx& ctx)
 {
     auto& blocks = ctx.world.ctx().get<terrain::BlockRegistry>();
-    for (auto [e, creature, body] :
-         ctx.world
-             .view<UpdateTag<utype>, ComponentCreature, ComponentPhysicBody>()
-             .each())
+    auto update = [&](entt::entity e, ComponentCreature& creature,
+                      ComponentPhysicBody& body)
     {
+        (void)e;
         float friction =
             blocks.GetBlockFriction(blocks.GetBlockId(body.onTopOfBlkValue));
 
@@ -50,6 +49,25 @@ void SubsystemCreature<utype>::onUpdate(FrameCtx& ctx)
 
         creature.moveOrder = {};
         creature.jumpOrder = false;
+    };
+
+    // The realtime variant simulates only locally-predicted entities (D9):
+    // remote players are never driven realtime on the client.  The fixed
+    // variant keeps the tag-only filter — it simulates everyone, like the
+    // server.
+    if constexpr (utype == UpdateType::Realtime)
+    {
+        ctx.world
+            .view<UpdateTag<utype>,
+                  const RenderStrategyTag<RenderStrategy::LocalPrediction>,
+                  ComponentCreature, ComponentPhysicBody>()
+            .each(update);
+    }
+    else
+    {
+        ctx.world
+            .view<UpdateTag<utype>, ComponentCreature, ComponentPhysicBody>()
+            .each(update);
     }
 }
 

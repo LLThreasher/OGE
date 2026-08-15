@@ -2,6 +2,8 @@
 #include <vector>
 
 #include "oge/runtime/oge_registry.hpp"
+#include "oge/runtime/staged_scheduler.hpp"
+#include "oge/runtime/typed_registry.hpp"
 
 struct TestComp { int v = 0; };
 DECL_TYPE_NAME(TestComp, "TestComp")
@@ -165,6 +167,58 @@ TEST(signals_fire) {
     auto e = reg.create();
     reg.emplace<TestComp>(e);
     CHECK_EQ(g_sigCount, 1);
+}
+
+// -- staged scheduler: duplicate stage-type guard --
+namespace
+{
+struct StageTestCtx
+{
+    int attachCount = 0;
+    int updateCount = 0;
+};
+struct StageTestFrame
+{
+    float dt;
+    StageTestCtx& ctx;
+};
+
+struct GuardStageBase : oge::runtime::Stage<StageTestCtx, StageTestFrame>
+{
+};
+struct GuardCounterStage : GuardStageBase
+{
+    void onAttach(StageTestCtx& ctx) override { ++ctx.attachCount; }
+    void onDetach(StageTestCtx& ctx) override { --ctx.attachCount; }
+    void onUpdate(StageTestFrame& f) override { ++f.ctx.updateCount; }
+};
+}  // namespace
+
+DECL_TYPE_NAME(GuardStageBase, "test::GuardStageBase")
+DECL_TYPE_NAME(GuardCounterStage, "test::GuardCounterStage")
+
+TEST(staged_scheduler_duplicate_stage_guard) {
+    oge::runtime::OgeRegistry reg;
+    oge::runtime::OGEContext octx(reg);
+    oge::runtime::AnythingFactory af(octx);
+    af.RegisterABC<GuardStageBase>();
+    af.RegisterDerived<GuardStageBase, GuardCounterStage>();
+
+    StageTestCtx ctx;
+    oge::runtime::FramePipeline<GuardStageBase, float> pipe(ctx);
+
+    auto* first = pipe.AddStage<GuardCounterStage>(af);
+    CHECK(first != nullptr);
+    CHECK_EQ(ctx.attachCount, 1);
+
+    // The same stage type must not be added to one pipeline twice — a
+    // duplicate would run the stage twice per update (double integration).
+    auto* dup = pipe.AddStage<GuardCounterStage>(af);
+    CHECK(dup == nullptr);
+    CHECK_EQ(ctx.attachCount, 1);
+
+    pipe.Update(1.f / 60.f);
+    CHECK_EQ(ctx.updateCount, 1);
 }
 
 RUN_TESTS("OgeRegistry Tests")

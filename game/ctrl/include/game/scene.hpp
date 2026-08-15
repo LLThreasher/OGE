@@ -3,12 +3,14 @@
 #include <uuid.h>
 
 #include <cstddef>
+#include <cstdint>
 
 #include "game/app_context.hpp"
 #include "game/components.hpp"
 #include "game/game_world.hpp"
 #include "oge/json.hpp"
 #include "game/scene_runner.hpp"
+#include "game/sim/player_sim_config.hpp"
 #include "game/sim/subsystem.hpp"
 #include "oge/runtime/type_name.hpp"
 
@@ -37,6 +39,24 @@ class Scene : protected AppRuntime
     sim::SubsystemPipeline m_subsystems;
     sim::RealtimeSubsystemPipeline m_realtimeSubsystems;
 
+    // Scene-driven fixed-frame accumulator (D2): render dt accumulates until
+    // the fixed-frame duration is reached, then the fixed pipeline executes
+    // as explicit sub-steps of sim::kSubStepDt (the sub-step boundaries are
+    // visible to the stages via SimTickContext.subStepIdx).
+    float m_fixedAccum = 0.f;
+    // One sub-step per fixed frame (60 Hz): a bare scene's fixed physics
+    // integrates every frame, so standalone movement is as smooth as the
+    // old realtime-trio path — without double-simming the body.  Transport
+    // scenes override to sim::kFixedFrameDuration (1/20, 3 sub-steps).
+    float m_fixedFrameDuration = sim::kSubStepDt;
+
+    // Tick arbitration: the last SimTickContext.currentTick this scene saw.
+    // Transport scenes (server/client) write the tick before Update — their
+    // tick space is the replication tick.  A bare scene owns its tick
+    // space: when the tick is unchanged, Update advances it and aggregates
+    // the local input (sim::AggregateLocalInputs) before the fixed stages.
+    uint32_t m_lastFixedTick = 0;
+
     SceneConfig m_sceneConfig = {};
 
    public:
@@ -45,6 +65,14 @@ class Scene : protected AppRuntime
 
     auto& GetWorld() { return m_world; }
     const auto& GetWorld() const { return m_world; }
+
+    // Override the fixed-frame duration.  Default 1/30 preserves the
+    // current fixed-pipeline behavior for all other scenes; the server
+    // sets 1/20 (sim::kFixedFrameDuration).
+    void SetFixedFrameDuration(float duration)
+    {
+        m_fixedFrameDuration = duration;
+    }
 
     // Interpolation alpha from the fixed-step scheduler.
     // Range [0, 1) — fraction of the way from the previous physics tick

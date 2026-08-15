@@ -67,14 +67,14 @@ ctest --test-dir out/build/apple-debug
 add_test_target(name SOURCES test/foo.cpp LIBRARIES game::ctrl oge::platform::native)
 ```
 
-## Test Suites (7 suites, 93 tests)
+## Test Suites (7 suites, 97 tests)
 | Suite | Count | Module | Covers |
 |---|---|---|---|
 | datastruct_test | 11 | core | RingBuffer, DiscreteEventStream |
-| oge_registry_test | 19 | runtime | OgeRegistry CRUD, views, ctx, signals |
+| oge_registry_test | 20 | runtime | OgeRegistry CRUD, views, ctx, signals, stage-dup guard |
 | replication_events_test | 43 | ctrl | Events, hooks, EventLog, scheduler, snapshot, compression, rollback |
 | registry_bug_recreate_test | 4 | ctrl | OgeRegistry vs raw entt parity (regression) |
-| scene_load_test | 1 | ctrl | Scene construction + config |
+| scene_load_test | 4 | ctrl | Scene construction + config, standalone sim smoke + dig + jump |
 | sim_physics_test | 12 | sim | AABB collision, PhysBody defaults |
 | debug_scene3_test | 3 | ctrl_ext | Type registration, inheritance |
 
@@ -228,6 +228,14 @@ synchronize first (e.g. wait until the client chunk is `Persistent` before
   `PlayerInputReplicationEvent` (`PackedPlayerInputFrame`, quantized via
   `game::input::net`).  Reliable channel (`SingleReliable`).  The server
   never calls it — input only flows client → server.
+- **Standalone scenes have no poller**: `PollPlayerInputs`/`PollPlayerActions`
+  live in the transport layer (`ClientScene2`).  A bare `game::Scene` (no
+  SimTickContext in ctx) skips them, so `SubsystemPlayer<FixedStep>`'s
+  bare-world fallback drains the `PlayerActionStream` accumulation directly
+  (`AggregateTick` + `ApplyRayAction`) — without the drain the 3-slot
+  accumulator fills and every further action warns "player action overflow"
+  while never applying.  Gated by `scene_standalone_player_dig_action`
+  (scene_load_test).
 - **`ApplyEvent(PlayerInputReplicationEvent)`** — inserts the unpacked frame
   into the server player's stream; `SubsystemPlayer` consumes it with
   `ComponentPlayer::inputCursor`.  Entity ids are shared between client and
@@ -242,6 +250,72 @@ synchronize first (e.g. wait until the client chunk is `Persistent` before
   action + move delta, and pumps until the server's stream has the same
   content.  Note: a zero `Cursor{}` snaps to the frontier and skips all
   events — the test reads from cursor 1 to see the first event.
+- **Handshake protocol version**: `net::kProtocolVersion` (2, in
+  `game/ctrl/include/game/net/protocol.hpp`) starts the client's first
+  handshake packet (`[version, PlayerInfo]`) and the server's reply echoes
+  it (`[version, playerEntity]`); both sides reject mismatched/truncated
+  handshakes so stale binaries fail loudly instead of misreading the packet
+  layout.  Bump on every wire-format change.  Overridable per scene via the
+  `protocol_version` scene arg (the harness exposes it for
+  `e2e_handshake_version_mismatch_rejected`).
+
+## Standalone Scene Notes (transport-agnostic sim)
+
+The sim must never branch on the transport layer's existence — `game::Scene`
+runs the full default config with or without server/client scenes.  The
+contract:
+
+- **`SimTickContext` is guaranteed in every scene world at Scene
+  construction.**  The `Scene` ctor emplaces it (entt ctx `emplace` is
+  `try_emplace`-idempotent, so the transport scenes' own ctor emplaces are
+  harmless).  This must live in the ctor, not `Load()`: `SceneRunner`
+  constructs a scene and calls `Update` directly without ever loading it
+  (e.g. `ClientConnScene`, the bare `game::Scene` placeholder) — a
+  Load-only guarantee left those worlds without a tick ctx and the fixed
+  block aborted on its first fire.
+- **`Scene::Update` owns the fixed-step loop** and drives the pipeline in
+  `kSubStepDt` sub-steps, writing `SimTickContext.subStepIdx` per sub-step.
+  The fixed pipeline interval is `kSubStepDt` (Scene ctor default; transport
+  scenes call `SetUpdateInterval(sim::kSubStepDt)` explicitly) — a longer
+  interval lets the pipeline's internal scheduler collapse the sub-steps
+  into one stage update at the last sub-step index, and the
+  `subStepIdx == 0` decision gate never opens.  A bare scene's fixed-frame
+  duration is also `kSubStepDt` (one sub-step, 60 Hz) so fixed physics
+  integrates every frame — smooth standalone movement without a realtime
+  body sim; transport scenes override to `sim::kFixedFrameDuration`
+  (1/20, 3 sub-steps).
+- **Tick arbitration:** transport scenes overwrite `currentTick` from their
+  replication tick before `Scene::Update` (every fixed frame — their 1/20
+  frame aligns with `kSubStepsPerTick`, so arbitration never fires there).
+  When `currentTick` is unchanged, the scene owns its tick space: it
+  advances the tick and runs `sim::AggregateLocalInputs` with stamp
+  `tick - input::kInputPipelineDelayTicks` — the same one-tick pipeline
+  delay, the same empty-window contract, and the same SNorm8 wire
+  quantization as the transport pollers (`PollPlayerInputs` and
+  `AggregateLocalInputs` both push the `PackedPlayerInputFrame` round-trip
+  into the local tick ring, so fixed stages consume bit-identical frames
+  with or without a transport layer).  Only the 60 Hz realtime prediction
+  stage drains raw frames — it diverges by cadence anyway.
+- **`SubsystemPlayer<FixedStep>` has one code path.**  It reads
+  `SimTickContext` + `PlayerSimInputState` unconditionally; every input
+  configuration stamps tick frames into the rings (transport pollers, or
+  `AggregateLocalInputs` for transport-less scenes).  `AggregateLocalInputs`
+  only aggregates streams with `IsLocalInput()` — replicated players fill
+  their rings via `ApplyEvent(PushTick)`.
+- A fresh aggregate cursor snaps to the raw-ring frontier (shared cold-start
+  contract — also true on the networked path), so the very first frame
+  pushed by a stream is sacrificed; tests prime with a no-op frame before
+  injecting the frame under test.
+- **The default standalone config registers one body sim.**
+  `GetDefaultSceneConfig` puts the fixed trio (terrain + fixed
+  player/creature/physics) in the fixed pipeline and only the realtime
+  player stage (camera chase, raw-frame drain, ray baking) in the realtime
+  pipeline.  Registering the realtime creature/physics too would integrate
+  the same body twice (fixed 30 Hz + realtime 60 Hz) and accelerate
+  movement.  Networked scenes use `ApplyServerSimConfig` /
+  `ApplyClientSimConfig` instead (the client's realtime trio is its
+  prediction sim).  `BasePipeline::AddStage` also guards against the same
+  stage type being added to one pipeline twice.
 
 ## Known Issues
 1. **`scene_load_test`**: `Scene::Load()` with JSON config triggers `__next_prime

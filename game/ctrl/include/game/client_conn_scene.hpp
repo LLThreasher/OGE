@@ -8,8 +8,10 @@
 #include "game/game_world.hpp"
 #include "game/input/player_input_stream.hpp"
 #include "oge/json.hpp"
+#include "game/net/protocol.hpp"
 #include "game/net/replication_registry.hpp"
 #include "game/scene.hpp"
+#include "game/sim/player_sim_config.hpp"
 #include "game/sim/subsystem.hpp"
 #include "game/sim/subsystem_physics.hpp"
 #include "oge/color.hpp"
@@ -64,13 +66,18 @@ class ClientConnScene : public Scene
     // whose dispatcher has no OnClientConnected sink, so PlayerInfo was
     // never sent and the server handshake stalled (Linux-only failure).
     State m_state = State::Connecting;
+    uint32_t m_protocolVersion = net::kProtocolVersion;
 
     void onConnected(OnClientConnected ctx)
     {
-        LOG_INFO("client connected");
+        LOG_INFO("client connected, protocol version {}", m_protocolVersion);
         m_state = State::Connected;
 
-        auto packet = m_client.StartPacket(sizeof(PlayerInfo));
+        // Handshake layout: [protocolVersion, PlayerInfo] — the server
+        // rejects stale clients before it misreads the old packet layout.
+        auto packet =
+            m_client.StartPacket(sizeof(uint32_t) + sizeof(PlayerInfo));
+        packet.Write(m_protocolVersion);
         packet.Write(m_playerInfo);
         m_client.Send(packet, oge::runtime::SendType::Reliable);
     }
@@ -89,6 +96,19 @@ class ClientConnScene : public Scene
 
     void onRecievePacket(OnClientReceivePacket ctx)
     {
+        // Reply layout: [protocolVersion, playerEntity].  A legacy
+        // (pre-versioning) server sends only the entity — the short
+        // packet fails the size guard, so mixed binaries fail loudly.
+        if (ctx.data->Size() < sizeof(uint32_t) + sizeof(entt::entity) ||
+            ctx.data->Read<uint32_t>() != m_protocolVersion)
+        {
+            LOG_ERROR(
+                "server protocol version mismatch — client {} ({} bytes); "
+                "aborting handshake",
+                m_protocolVersion, ctx.data->Size());
+            m_state = State::Timeout;
+            return;
+        }
         LOG_INFO("handshake success");
         m_state = State::Ready;
         m_nextSceneArgs["player_entity"] =
@@ -110,6 +130,14 @@ class ClientConnScene : public Scene
             m_nextSene = std::get<int64_t>(it->second);
         }
         m_playerInfo = LoadOrCreatePlayer();
+
+        // Overridable for mismatch tests (default net::kProtocolVersion).
+        {
+            auto it = def.args.find("protocol_version");
+            if (it != def.args.end())
+                m_protocolVersion =
+                    static_cast<uint32_t>(std::get<int64_t>(it->second));
+        }
 
         // Forward an explicit scene_config to the next scene so callers
         // (e.g. tests) can control what ClientScene2 loads.
@@ -154,17 +182,15 @@ class ClientConnScene : public Scene
                 sctx.nextSceneArgs[key] = val;
             }
             // Only synthesize the default client config when the caller did
-            // not provide one (tests pass their own scene_config).
+            // not provide one (tests pass their own scene_config).  The
+            // stage lists come from the shared builders (Phase 2) —
+            // loadMask/blocks/terrainDesc from the default config seed the
+            // terrain ctx; the terrain STAGE is excluded (a client-side
+            // generator diverges from the server's replicated chunks).
             if (m_nextSceneArgs.find("scene_config") == m_nextSceneArgs.end())
             {
                 SceneConfig cfg = GetDefaultSceneConfig(AF());
-                cfg.subsystems.clear();
-                cfg.realtimeSubsystems.clear();
-                cfg.subsystems.push_back(Id<sim::SubsystemDebugText>());
-                cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPlayer<UpdateType::FixedStep>>());
-                cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPlayer<UpdateType::Realtime>>());
-                cfg.realtimeSubsystems.push_back(Id<sim::SubsystemCreature<UpdateType::Realtime>>());
-                cfg.realtimeSubsystems.push_back(Id<sim::SubsystemPhysics<UpdateType::Realtime>>());
+                sim::ApplyClientSimConfig(cfg, AF());
                 sctx.nextSceneArgs["scene_config"] = json::ToJson(cfg);
             }
             sctx.nextSceneArgs["wait_player"] = json::ToJson(true);
