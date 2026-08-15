@@ -290,7 +290,12 @@ contract:
   When `currentTick` is unchanged, the scene owns its tick space: it
   advances the tick and runs `sim::AggregateLocalInputs` with stamp
   `tick - input::kInputPipelineDelayTicks` — the same one-tick pipeline
-  delay and the same empty-window contract as the transport pollers.
+  delay, the same empty-window contract, and the same SNorm8 wire
+  quantization as the transport pollers (`PollPlayerInputs` and
+  `AggregateLocalInputs` both push the `PackedPlayerInputFrame` round-trip
+  into the local tick ring, so fixed stages consume bit-identical frames
+  with or without a transport layer).  Only the 60 Hz realtime prediction
+  stage drains raw frames — it diverges by cadence anyway.
 - **`SubsystemPlayer<FixedStep>` has one code path.**  It reads
   `SimTickContext` + `PlayerSimInputState` unconditionally; every input
   configuration stamps tick frames into the rings (transport pollers, or

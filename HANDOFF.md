@@ -38,7 +38,11 @@ it and the client's own authoritative mirror receives the quantized round-trip
 value, so both sides read bit-identical frames.  The fixed stage applies the frame
 stamped `simTick - 1` (`TryReadTickFrame`: exact-tick apply, stale drop, bounded
 8-tick gap wait).  Actions ride a parallel `PlayerActionStream` with ray-encoded
-dig/place.
+dig/place.  Transport-less scenes aggregate through `sim::AggregateLocalInputs`,
+which pushes the SAME SNorm8 round-trip into the local tick ring — the fixed
+stage consumes bit-identical frames with or without a transport layer.  Only the
+60 Hz realtime prediction stage drains raw frames (it diverges by cadence
+anyway).
 
 **Jump parity (Phase 3).**  There is NO client-decided jump stamp anymore — every
 stream re-derives the jump from its own physics over the shared frame, and the
@@ -90,6 +94,16 @@ fall back to their own world).
    CreatePlayer; the client aborts on a mismatched/short reply) instead of
    misreading the other side's packet layout.  Overridable per scene via
    the `protocol_version` scene arg (mismatch tests).
+10. **Fixed-stage input is always the wire's quantized round-trip.**
+    `PollPlayerInputs` (networked) and `sim::AggregateLocalInputs`
+    (transport-less) both push `static_cast<PlayerInputFrame>(
+    PackedPlayerInputFrame{aggregate})` into the local tick ring — the SNorm8
+    quantization the wire applies — so the fixed stage never branches on the
+    transport layer's existence.  Diagonal moves quantize inexactly
+    (±0.7071 → ±90/127 ≈ ±0.7087), so a diagonal raw frame and its tick
+    frame differ by the wire's quantization: that is intended, not drift.
+    Only the 60 Hz realtime prediction stage drains raw frames
+    (`aggregate_local_inputs_quantizes_move` pins all of this).
 
 ## Documented plan deviations (in the test comments, don't "fix" without reading)
 
@@ -122,8 +136,9 @@ fall back to their own world).
 ## Verification numbers
 
 - Full build (`--target all`): green, incl. `Arterium.app` + `game_server`.
-- Full ctest: **152/152** (151 through the release-reset fix + the
-  handshake version-check test; 70–80 s each).
+- Full ctest: **153/153** (151 through the release-reset fix + the
+  handshake version-check test + the standalone quantization test;
+  70–80 s each).
 - e2e binary: **20/20**; with the old single-world lerp swapped in,
   the Phase-4 tests fail (16/2) — the new tests have teeth.  The release-reset
   e2e was red-checked against the exact pre-fix semantics (dig 2 dropped
